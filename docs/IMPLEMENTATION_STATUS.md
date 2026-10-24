@@ -1,3 +1,5 @@
+> Dix thèmes personnels 11–20 : [ESSENTIAL_THEMES_20261024.md](ESSENTIAL_THEMES_20261024.md). Galerie Web/Expo et préférence Supabase livrées; SMS reportés à la fin à la demande de l’utilisateur.
+
 > État actualisé : [ESSENTIAL_BILLING_20261024.md](ESSENTIAL_BILLING_20261024.md). Facturation Web/Expo et accès borne développés; configuration et recette Stripe réelle non validées. Le prompt complet reste ouvert.
 
 > Organisation et planification Essentiel : voir [ESSENTIAL_PLANNING_20261024.md](ESSENTIAL_PLANNING_20261024.md). Départements, établissements, périmètres superviseurs, récurrences/rotations, échanges et couverture sont reliés au serveur. Produit complet toujours en développement.
