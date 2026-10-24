@@ -1,11 +1,12 @@
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.80.0?bundle';
 const PROJECT='https://mlabstdxxwjdpfaxiwmg.supabase.co';
+const OAUTH_REDIRECT='https://punch360app.github.io/Punch360/';
 const PUBLISHABLE='sb_publishable_nTBs7dPcKFdkqUZVc3D1YA_LddvQj0b';
 const sb=createClient(PROJECT,PUBLISHABLE,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true,flowType:'pkce'}});
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],conversations:[],messages:[],chatId:null,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null};
+const state={user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],conversations:[],messages:[],chatId:null,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const urls={google:j=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(j.latitude!=null&&j.longitude!=null?j.latitude+','+j.longitude:j.address),waze:j=>'https://waze.com/ul?'+(j.latitude!=null&&j.longitude!=null?'ll='+encodeURIComponent(j.latitude+','+j.longitude):'q='+encodeURIComponent(j.address))+'&navigate=yes'};
 function toast(t){state.toast=t;const existing=$('toast');if(existing){existing.textContent=t;existing.style.display='block'}setTimeout(()=>{if(state.toast===t){state.toast=null;const n=$('toast');if(n)n.style.display='none'}},3900)}
 function error(err){console.error(err);toast(err?.message||String(err)||'Erreur inconnue')}
@@ -26,7 +27,7 @@ function heading(title,back){return '<div class="between"><h2>'+title+'</h2>'+(b
 function stateText(s){return ({pending:'En attente',approved:'Approuvé',rejected:'Refusé',requested:'Demandé',ordered:'Commandé',delivered:'Livré',restricted:'Gestion suspendue',grace:'Surcis',setup:'Configuration',active:'Actif'})[s]||s||'—'}
 function isRestrict(){return ['restricted','cancelled'].includes(state.account?.companies?.billing_status)}
 function authHTML(){return '<div class="authwrap"><div class="huge">⛑ PUNCH <b>360°</b></div><div class="tag">LE CHANTIER DANS TA POCHE</div><p>Vos heures. Vos équipes. Vos chantiers. Tout au même endroit.</p>'+
-(!state.user?'<form id="authForm">'+formfield('Adresse courriel','email','','email','autocomplete="email" required')+formfield('Mot de passe','password','','password','minlength="8" required')+'<div class="buttonrow">'+button('Se connecter','login','gold')+button('Créer un compte','signup')+'</div></form>'+button('Mot de passe oublié','resetPassword')+'<div class="notice">Connexion Google et Apple : activation des fournisseurs encore nécessaire. Commence avec courriel et mot de passe.</div>':
+(!state.user?'<form id="authForm">'+formfield('Adresse courriel','email','','email','autocomplete="email" required')+formfield('Mot de passe','password','','password','minlength="8" required')+'<div class="buttonrow">'+button('Se connecter','login','gold')+button('Créer un compte','signup')+'</div></form>'+button('Mot de passe oublié','resetPassword')+'<div class="oauth-divider"><span>OU CONTINUER AVEC</span></div><div class="oauth-buttons"><button type="button" class="oauth-btn oauth-google" data-action="oauthGoogle"><span class="oauth-mark google-mark" aria-hidden="true">G</span>Continuer avec Google</button><button type="button" class="oauth-btn oauth-apple" data-action="oauthApple"><span class="oauth-mark" aria-hidden="true">●</span>Continuer avec Apple</button></div>'+((state.providers.google===false||state.providers.apple===false)?'<div class="oauth-status">'+(state.providers.google===false?'Google':'')+(state.providers.google===false&&state.providers.apple===false?' et ':'')+(state.providers.apple===false?'Apple':'')+' : activation nécessaire dans Supabase avant la première connexion.</div>':''):
 '<div class="tag">'+e(state.user.email)+'</div><h2>Créer ma compagnie</h2><p>Un compte et une compagnie test sont nécessaires pour utiliser les vrais modules PUNCH.</p>'+formfield('Nom de la compagnie','companyName','PUNCH — Test')+button('Créer ma compagnie','createCompany','gold full')+button('Se déconnecter','logout','full')+'<div class="notice">Le paiement et les invitations seront activés après intégration Stripe. Tu peux tester les fonctionnalités avec ton propre compte.</div>')+
 '<div class="small muted center">Version alpha Web · données sauvegardées dans Supabase PUNCH</div></div>'}
 function base(){const t=new Date();const name=state.account?.companies?.name||'PUNCH';const n=[['home','⌂','Accueil'],['hours','◷','Mes heures'],['orders','🛒','Commande'],['messages','▤','Message'],['more','▦','Plus']];return '<div class="wrap"><div class="pitch"><div class="kicker">PUNCH 360° · TEST WEB</div><h1>Le chantier <b>dans ta poche.</b></h1><p>Une vraie session, de vrais chantiers et des heures de test enregistrées sur le serveur.</p><p class="small muted">Accès mobile Android / iPhone / PC</p></div><div class="phone"><div class="backdrop"></div><div class="statusline"><span id="topclock">'+t.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+'</span><span>◉ ▴ ▰</span></div><header class="header"><span style="font-size:29px">👷</span><div class="logo">PUNCH <span>360°</span><span class="date">'+t.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short',year:'numeric'})+'</span></div><button class="iconbutton" data-action="refresh" aria-label="Actualiser">⟳</button><button class="iconbutton" data-action="profile" aria-label="Mon profil">👤</button></header><main id="main">'+(member()?page():authHTML())+'</main><div class="banner">'+(member()?'● ALPHA CONNECTÉE — NE PAS UTILISER POUR LA PAIE':'● ALPHA — COMPTE DE TEST')+'</div>'+(member()?'<nav class="nav">'+n.map(a=>'<button class="'+(state.section===a[0]||(state.section==='jobs'&&a[0]==='home')||(state.section==='detail'&&a[0]==='home')||(state.section==='sub'&&a[0]==='more')?'active':'')+'" data-action="navigate" data-id="'+a[0]+'"><i>'+a[1]+'</i><span>'+a[2]+'</span></button>').join('')+'</nav>':'')+'<div class="toast" id="toast" style="display:none"></div></div></div>'}
@@ -92,6 +93,42 @@ async function loadChat(id){const r=await sb.from('conversation_messages').selec
 async function sendMessage(){const body=$val('chatMessage');if(!body||!state.chatId)return;try{const r=await sb.from('conversation_messages').insert({company_id:company(),conversation_id:state.chatId,sender_id:state.user.id,body});if(r.error)throw r.error;await loadChat(state.chatId);draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight}catch(err){error(err)}}
 async function createGroup(){const title=$val('groupTitle');if(!title)return toast('Nom de groupe requis');const ids=[...document.querySelectorAll('.member-check:checked')].map(el=>el.value);try{const r=await sb.rpc('create_company_group',{p_company:company(),p_title:title,p_member_ids:ids});if(r.error)throw r.error;await loadData();state.chatId=r.data;state.section='messages';state.sub='';state.messages=[];draw();toast('Groupe créé')}catch(err){error(err)}}
 async function privateChat(){const team=state.teamList.find(t=>t.lead_user_id===state.user.id);if(!team)return toast('Le boss doit affecter une équipe à ce chef.');try{const r=await sb.rpc('create_private_team_chat',{p_team:team.id});if(r.error)throw r.error;await loadData();state.chatId=r.data;state.messages=[];await loadChat(state.chatId);draw()}catch(err){error(err)}}
+// Auth Google et Apple via la page Supabase; jamais de secret OAuth dans ce site public.
+async function loadProviders(){
+ try{
+  const response=await fetch(PROJECT+'/auth/v1/settings',{headers:{apikey:PUBLISHABLE,Accept:'application/json'}});
+  if(!response.ok)throw new Error('Provider discovery unavailable');
+  const config=await response.json();
+  if(typeof config.external?.google==='boolean')state.providers.google=config.external.google;
+  if(typeof config.external?.apple==='boolean')state.providers.apple=config.external.apple;
+  if(!member())draw();
+ }catch(err){console.warn('OAuth provider status unavailable',err?.message||err)}
+}
+async function oauthLogin(provider){
+ if(!['google','apple'].includes(provider)||state.busy)return;
+ if(state.providers[provider]===false){
+  toast((provider==='google'?'Google':'Apple')+' doit d’abord être activé dans Supabase → Authentication → Sign In / Providers.');
+  return;
+ }
+ state.busy=true;
+ try{
+  const {error:loginError}=await sb.auth.signInWithOAuth({
+   provider,
+   options:{redirectTo:OAUTH_REDIRECT}
+  });
+  if(loginError)throw loginError;
+  // Supabase redirige automatiquement ce navigateur vers Google ou Apple.
+ }catch(err){error(err);state.busy=false}
+}
+function showOAuthCallbackError(){
+ const fromQuery=new URLSearchParams(location.search);
+ const fromHash=new URLSearchParams(location.hash.replace(/^#/,''));
+ const code=fromQuery.get('error')||fromHash.get('error');
+ if(!code)return;
+ const detail=fromQuery.get('error_description')||fromHash.get('error_description')||code;
+ history.replaceState(null,'',location.pathname);
+ toast('Connexion refusée : '+detail);
+}
 async function login(mode){const email=$val('email'),password=$('password')?.value||'';if(!email||password.length<8)return toast('Courriel et mot de passe de 8 caractères minimum.');state.busy=true;try{const r=mode==='signup'?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});if(r.error)throw r.error;if(mode==='signup'&&!r.data.session)toast('Vérifie ta boîte courriel pour confirmer ton compte.');else await initialize()}catch(err){error(err)}finally{state.busy=false}}
 async function resetPassword(){const email=$val('email');if(!email)return toast('Écris ton courriel.');const r=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href});if(r.error)error(r.error);else toast('Courriel de récupération demandé.')}
 async function createCompany(){const n=$val('companyName');if(n.length<2)return toast('Nom de compagnie trop court.');try{const r=await sb.rpc('create_my_company',{p_name:n});if(r.error)throw r.error;await initialize();toast('Compagnie créée sur PUNCH')}catch(err){error(err)}}
@@ -116,6 +153,8 @@ else if(a==='waze'||a==='googleMaps')mapRoute(getJob(state.detailId),a==='waze'?
 else if(a==='archiveToggle'){state.showArchives=!state.showArchives;draw()}
 else if(a.startsWith('archive:'))await archive(a.split(':')[1]);
 else if(a==='login'||a==='signup')await login(a);
+else if(a==='oauthGoogle')await oauthLogin('google');
+else if(a==='oauthApple')await oauthLogin('apple');
 else if(a==='logout')await logOut();
 else if(a==='resetPassword')await resetPassword();
 else if(a==='createCompany')await createCompany();
@@ -136,4 +175,4 @@ else if(a==='privateChat')await privateChat();
 document.addEventListener('submit',ev=>{if(ev.target?.id==='authForm'){ev.preventDefault();login('login')}});
 document.addEventListener('input',ev=>{if(ev.target?.id==='jobSearch'){state.search=ev.target.value;const current=ev.target.selectionStart;const newHtml=jobsPage();const m=$('main');if(m){const y=m.scrollTop;m.innerHTML=newHtml;m.scrollTop=y;const inp=$('jobSearch');inp?.focus();try{inp?.setSelectionRange(current,current)}catch{}}renderMap()}});
 sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){state.user=null;state.account=null;state.section='home';draw()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
-initialize();setInterval(tick,1000);setInterval(async()=>{if(state.chatId&&member()&&!state.busy){try{await loadChat(state.chatId);if(state.section==='messages')draw()}catch{}}},10000);
+initialize().then(()=>showOAuthCallbackError());loadProviders();setInterval(tick,1000);setInterval(async()=>{if(state.chatId&&member()&&!state.busy){try{await loadChat(state.chatId);if(state.section==='messages')draw()}catch{}}},10000);
