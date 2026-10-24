@@ -87,3 +87,12 @@ Barre FIXE : **Accueil · Mes heures · Commande · Message · Plus**.
 - Sauvegarde/restauration testées, export complet de données et conformité à la rétention réglementaire.
 - Priorités : sécurité/base des compagnies/équipes -> moteur punch & validations -> annuaire/affectations -> documents, commandes, messagerie -> paiements et outils avancés.
 - Chaque nouvelle fonctionnalité doit avoir un emplacement clair dans un des cinq onglets ou une vue secondaire, sans doublons.
+
+## Essentiel — application personnelle facultative avec iPad commun
+- Une compagnie qui choisit **tablette commune uniquement pour pointer** peut aussi autoriser chaque salarié à **créer son compte personnel facultatif** sur Android, iPhone ou Web pour voir son **horaire, ses heures, ses congés, ses demandes et les changements d'horaire**. L'employé peut rester uniquement sur borne s'il le préfère.
+- **Configurer séparément « méthode de punch » et « accès individuel à l'application ».** Si le pointage mobile est interdit, le compte personnel reste un espace en consultation et ne propose pas PUNCH IN sur téléphone ; si mode mixte, l'app permet aussi de puncher.
+- **Ne jamais créer deux salariés pour une même personne :** l'invitation sécurisée associe son Auth personnel à son dossier `worker_id` et son historique antérieur de borne. Le lien d'activation est limité, à usage unique et vérifié côté serveur; jamais d'association par nom/email seul.
+- L'employé choisit son thème parmi **les 20 designs PUNCH Essentiel** pour sa propre application; le thème de l'iPad reste commun.
+- Une place payante par **personne active**, indépendamment du nombre d'appareils et du moment d'activation de son compte; borne non facturée comme personne.
+- Consulter [le parcours détaillé et les tests](ESSENTIAL_MIXED_PUNCH_SPEC.md#13-compte-personnel-facultatif-même-lorsque-lentreprise-choisit-une-tablette-commune). **Conception validée, pas encore implémentée.**
+
