@@ -334,3 +334,50 @@ Le Boss configure deux options indépendantes, par établissement et éventuelle
 
 **Implémentation :** ceci est une exigence officielle à réaliser après la migration contrôlée `company_workers`/identité métier prévue plus haut ; ni l'enrôlement à partir d'une invitation ni la liaison compte → salarié sans Auth ne sont encore déclarés livrés.
 
+
+
+## 14. Lien direct vers la PWA d'appairage depuis la fiche d'une borne — DÉCISION OFFICIELLE (24 octobre 2026)
+
+### Objectif
+Depuis **PUNCH Essentiel → Administration/Boss → Bornes de pointage → [Borne]**, le Boss doit trouver immédiatement comment ouvrir la pointeuse sur son iPad ou sa tablette Android. Aucun besoin de rechercher ni de composer manuellement l'adresse.
+
+**Adresse publique cible de la page borne :** `https://punch360app.github.io/Punch360/kiosk.html` (fichier source actuel `web/live/kiosk.html`, publié à la racine du site via `.github/workflows/deploy-web.yml`). Vérifier la disponibilité effective sur GitHub Pages avant de déclarer le parcours livré.
+
+### Interface Boss — fiche de borne
+- Afficher l'état **À appairer / Active / Hors ligne / Révoquée**, le nom de la borne et l'établissement.
+- Ajouter le bouton principal **« Ouvrir la pointeuse »**, ouvrant l'URL HTTPS publique **statique** de `kiosk.html` (nouvel onglet si approprié).
+- Ajouter **« Copier le lien »**, copiant uniquement cette même URL publique et sans secret.
+- Facultatif : QR code qui encode **uniquement l'URL publique statique** ; aucun code, aucune donnée d'identité, aucun jeton.
+- Le **code temporaire d'appairage** est généré séparément par le serveur, présenté uniquement dans la vue sécurisée du Boss autorisé, avec possibilité de le régénérer et de le saisir **manuellement sur la tablette**.
+- Un lien vers la PWA peut être partagé; il ne prouve pas le droit d'appairer. L'ouverture de la page n'authentifie pas un Boss et n'enrôle jamais automatiquement la borne.
+
+### Interdictions de sécurité explicites
+- **Ne jamais transmettre le code d'appairage dans l'URL**, y compris chemin, paramètres de requête (`?code=`), fragment (`#...`), lien profond, raccourci PWA, QR ou outil d'analyse.
+- Ne jamais inclure les jetons de borne, jetons Auth, identifiants Admin/Boss, session ou secrets dans les liens de navigation, prévisualisations ou journaux de clic.
+- Le code est saisi dans la page borne puis vérifié **côté serveur**, usage unique, lié à la compagnie et à l'établissement, expiration cible **10 minutes**; invalider après usage et journaliser l'appairage.
+- La page publique non appairée ne présente aucun registre d'heures, aucune liste de salariés et aucune console de gestion.
+- Ne pas ajouter de stockage de code d'appairage dans le navigateur de la tablette. **Seule une autorisation technique limitée, révocable et protégée de l'appareil** peut persister après l'appairage.
+
+### Parcours recommandé — PWA maintenant, application native ensuite
+1. Le Boss crée une borne et ouvre sa fiche.
+2. Il clique sur **« Ouvrir la pointeuse »** ou copie le lien vers l'iPad.
+3. Sur l'iPad, il ouvre `kiosk.html` dans Safari, puis peut choisir **Sur l'écran d'accueil** pour installer la PWA. Sur Android, utiliser le navigateur compatible.
+4. Le Boss obtient séparément un code temporaire depuis sa session de gestion et le saisit dans la page d'appairage de la tablette.
+5. Le serveur lie l'appareil à **une seule** compagnie/établissement. La tablette revient à l'accueil de pointage; nul besoin de réappairer chaque jour.
+6. Les salariés saisissent chaque fois leur matricule et NIP. Aucun identifiant personnel prérempli. Après pointage, retour automatique à l'accueil; **10 secondes d'inactivité par défaut**, réglables par l'Admin autorisé à 5/10/15/30/60 secondes.
+7. Les responsables peuvent accéder à l'Administration sur une borne qui l'autorise, avec leur **compte personnel** et jamais leur simple NIP; expiration administrative par défaut **5 minutes** et retour à la pointeuse. Cet accès peut être interdit par le Boss sur une borne donnée.
+8. Les salariés peuvent librement quitter la PWA et utiliser d'autres applications; aucun mode kiosque OS verrouillé n'est imposé. À la réouverture, les sessions personnelles ne sont jamais restaurées; seul le statut technique appairé persiste.
+9. Prévoir une future app native iPad/Android **sans refaire le backend, les identités salariés, l'appairage ni le registre de temps**.
+
+### Critères de recette
+- [ ] La fiche Boss affiche un lien explicite et ses actions **Ouvrir / Copier**, en utilisant l'URL publique statique réellement publiée.
+- [ ] L'URL ouverte, copiée et intégrée au QR ne contient **aucun code temporaire, jeton ou secret**, même dans le fragment.
+- [ ] Une personne possédant seulement le lien ne peut pas appairer de borne sans code temporaire valide obtenu séparément.
+- [ ] Code invalide, expiré, déjà consommé, autre compagnie ou borne révoquée : refus côté serveur.
+- [ ] Ouvrir la page sur un nouvel iPad affiche **Appairer cette borne** sans révéler des données internes.
+- [ ] Une borne déjà appairée s'ouvre directement sur l'accueil employé avec champs vides, sans nouvelle invitation d'appairage.
+- [ ] 10 secondes d'inactivité après une identification effacent matricule, NIP et état employé; **aucune session personnelle restaurée** après fermeture/réouverture.
+- [ ] Aucun changement du parcours PUNCH Construction.
+- [ ] Tests à réaliser sur iPad Safari/PWA, tablette Android et PC; ne pas déclarer une page PWA pleinement installable si manifeste/service worker et installation n'ont pas été vérifiés.
+
+**Statut : exigence ajoutée au cahier des charges.** Le fichier `web/live/kiosk.html` existe, mais les boutons **Ouvrir / Copier** de la fiche et la validation du déploiement effectif restent à vérifier ou implémenter; cette modification documentaire ne constitue pas leur livraison.
