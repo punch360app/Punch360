@@ -19,7 +19,7 @@ function company(){return state.account?.company_id}
 function manager(){return ['boss','admin'].includes(state.account?.role)}
 function member(){return !!state.account&&!!state.user}
 function $val(id){return $(id)?.value?.trim()||''}
-function button(title,action,kind='',extra=''){return '<button class="btn '+kind+'" data-action="'+e(action)+'" '+extra+'>'+title+'</button>'}
+function button(title,action,kind='',extra=''){return '<button type="button" class="btn '+kind+'" data-action="'+e(action)+'" '+extra+'>'+title+'</button>'}
 function card(v,style=''){return '<section class="card '+style+'">'+v+'</section>'}
 function formfield(label,id,val='',type='text',extra=''){return '<div class="group"><label for="'+id+'">'+label+'</label><input class="field" id="'+id+'" type="'+type+'" value="'+e(val)+'" '+extra+'></div>'}
 function heading(title,back){return '<div class="between"><h2>'+title+'</h2>'+(back?button('← Retour',back):'')+'</div>'}
@@ -133,6 +133,7 @@ else if(a==='newGroup'){state.section='sub';state.sub='group';draw()}
 else if(a==='createGroup')await createGroup();
 else if(a==='privateChat')await privateChat();
 }catch(err){error(err)}});
+document.addEventListener('submit',ev=>{if(ev.target?.id==='authForm'){ev.preventDefault();login('login')}});
 document.addEventListener('input',ev=>{if(ev.target?.id==='jobSearch'){state.search=ev.target.value;const current=ev.target.selectionStart;const newHtml=jobsPage();const m=$('main');if(m){const y=m.scrollTop;m.innerHTML=newHtml;m.scrollTop=y;const inp=$('jobSearch');inp?.focus();try{inp?.setSelectionRange(current,current)}catch{}}renderMap()}});
 sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){state.user=null;state.account=null;state.section='home';draw()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
 initialize();setInterval(tick,1000);setInterval(async()=>{if(state.chatId&&member()&&!state.busy){try{await loadChat(state.chatId);if(state.section==='messages')draw()}catch{}}},10000);
