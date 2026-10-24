@@ -237,7 +237,65 @@ Un Boss/Admin n'a pas besoin d'un NIP employé pour gérer la borne ; en revanch
 4. **P1 — Défaillances** : coupure réseau, confinement, rejet NIP, vol, horloge locale fausse, DST et passage minuit.
 5. **P2 — Compléments** : badges/NFC, QR matricule, multiétablissements, éventuellement calcul des primes de quarts, langues.
 
-## 12. Ce qui est réellement livré au 24 octobre 2026
+## 12. Accès personnel facultatif à l'horaire lorsque la compagnie choisit l'iPad commun — NOUVELLE DÉCISION OFFICIELLE
+
+**L'utilisation de la borne partagée n'empêche JAMAIS un employé d'ouvrir son propre compte mobile.** L'entreprise peut choisir **« Pointage uniquement sur iPad »** et permettre simultanément **« Consultation personnelle des horaires et heures sur l'app »**. L'accès de consultation est inclus pour tout salarié actif, sans imposer un smartphone à ceux qui n'en ont pas.
+
+### Parcours employé
+1. Boss/Admin crée d'abord un **dossier salarié interne** dans la compagnie (matricule, prénom/nom, rôle Employé, établissement, département, horaires, autorisations, statut payant selon forfait). Ce dossier reste utilisable en kiosque même sans adresse courriel.
+2. L'Admin peut activer un **NIP secret** individuel pour pointer sur l'iPad sécurisé, sans voir le NIP une fois créé.
+3. Lorsque l'employé veut accéder à son horaire sur téléphone, Boss/Admin déclenche **Inviter sur l'application** depuis ce dossier, via SMS ou courriel, ou imprime un QR d'activation temporaire. Invitation **liée cryptographiquement au dossier `worker_id` et à `company_id`**, aléatoire, à usage unique, à courte durée configurable. **Un QR/matricule seul ne doit jamais permettre de revendiquer un salarié.**
+4. L'employé installe PUNCH Essentiel Android/iPhone ou ouvre la PWA et se connecte/crée un compte personnel via Google, Apple ou courriel. En cas de création, confirmer la propriété du canal d'invitation. L'invitation est ensuite échangée côté serveur contre le rattachement **de son seul `auth.uid()` au dossier salarié existant**, après vérification anti-rejeu, statut de la compagnie, appartenance et absence de liaison à un autre compte.
+5. La création du compte personnel **ne crée ni un second salarié ni une seconde place facturable**, ne réinitialise ni le NIP, ni les horaires, ni le pointage kiosque, et n'accorde jamais un rôle Boss/Admin. Si le dossier est déjà lié à un autre compte, refuser le rattachement et déclencher une procédure de récupération vérifiée.
+6. L'employé retrouve ses horaires, ses heures personnelles y compris celles enregistrées sur iPad, ses demandes de congé et ses notifications. Il reste libre de pointer sur iPad même après activation de l'application.
+7. Si l'Admin modifie, publie ou annule un quart, l'application synchronise l'horaire, identifie la version/date et prévient l'employé si les notifications sont activées. Accusé de lecture facultatif selon la politique RH.
+
+### Droits distincts du canal de pointage
+Le Boss configure deux options indépendantes, par établissement et éventuellement par salarié :
+
+| Réglage | iPad commun | App personnelle |
+| --- | --- | --- |
+| **Mode A — iPad seulement (avec app personnelle)** | PUNCH IN/PAUSE/REPRISE/OUT | Horaire, heures, demandes, notifications, **aucun punch mobile** |
+| **Mode B — téléphone + iPad** | PUNCH IN/PAUSE/REPRISE/OUT | Les mêmes actions de punch autorisées + espace personnel |
+| **Mode C — téléphone seulement** | Borne désactivée pour le salarié | Punch mobile + espace personnel |
+
+**Défaut proposé si l'entreprise choisit iPad commun : Mode A + consultation personnelle activée.** Un accès personnel ne doit PAS activer le pointage sur téléphone par accident. Le verrouillage doit être contrôlé **côté serveur**, pas simplement par l'absence du bouton.
+
+### Interface employé personnel (design Essentiel)
+- Barre fixe **Punch · Heures · Horaire · Plus** et choix parmi les **20 thèmes Essentiel** personnels ; la tablette commune conserve son thème uniforme d'entreprise.
+- Si le pointage téléphone est désactivé, onglet **Punch** : carte explicite **« Pointage sur la tablette de l'entreprise »**, état aujourd'hui mis à jour depuis le serveur, dernière entrée/sortie, sans bouton de pointage mobile. Il est possible de mettre l'onglet **Horaire** en premier au démarrage dans ce mode, sans casser la structure à 4 onglets.
+- **Horaire** : vue semaine et mois, prochain quart, début/fin, établissement, département/poste, notes de l'Admin, changements récents, disponibilités, proposition d'échange de quart à soumettre (après implémentation du workflow), congés approuvés. Aucun horaire d'un collègue non autorisé.
+- **Heures** : historique personnel brut, pauses, net, statut synchronisé/à vérifier et demandes de correction ; heures de l'iPad et du téléphone réunies.
+- **Plus** : profil, disponibilité, vacances/congés, notifications, Apparence, aide, sécurité, connexion/déconnexion.
+- L'interface personnalisée de l'employé peut être **lecture seule pour l'horaire**, tout en permettant les demandes de congé/échange sans altérer directement le calendrier publié.
+
+### Interfaces Admin et Boss
+- **Admin → Employés → [salarié]** : état `Borne seulement / Compte personnel invité / Compte personnel activé`, méthode d'invitation, relance, révocation des accès personnels, réinitialisation sécurisée, date du dernier accès (sans divulguer secrets et contenus privés).
+- **Admin → Horaires** : publication de quarts, modifications, notifications ciblées, conflits, demandes de disponibilités et échanges.
+- **Boss → Paramètres Essentiel → Modes de pointage** : cases indépendantes **« Autoriser le pointage sur tablette »**, **« Autoriser le pointage sur téléphone »**, **« Permettre l'accès personnel à l'horaire »** (proposer cette dernière activée). Contrôles par site, avec journal d'audit.
+- **Boss → Utilisateurs et places** : chaque salarié actif compte **une** place, même si NIP borne + compte personnel. Inviter un compte rattaché à une personne existante n'est **pas un ajout de siège** ; réserver une place uniquement lors de la création d'un nouveau salarié actif non déjà compté.
+
+### Confidentialité, invitations et récupération
+- Les données de paie, profil, horaire, contacts, heures ne sont consultables que par le salarié lui-même et les responsables autorisés ; la borne ne peut jamais ouvrir l'app personnelle d'un employé.
+- L'employé ne rejoint jamais librement une compagnie en devinant un matricule, une adresse courriel ou un code affiché sur la tablette.
+- Ne pas permettre le rattachement libre par correspondance d'e-mail, par nom, ou par simple NIP. Éviter le détournement d'identité d'un salarié existant.
+- Une invitation non acceptée expire et peut être renouvelée par l'Admin ; cela n'ouvre jamais un deuxième siège pour ce salarié déjà actif.
+- Si le compte téléphone est perdu ou compromis, récupération + nouveau rattachement après vérification forte par responsable autorisé, révocation de l'ancien accès et journalisation.
+- En cas de non-paiement après sursis, les salariés actifs conservent les punchs sur iPad, la consultation de leurs horaires/heures et leurs exports personnels selon les règles commerciales déjà décidées.
+
+### Critères d'acceptation supplémentaires
+- [ ] Une compagnie **iPad seulement** peut inviter un salarié à consulter l'horaire sur son téléphone, sans lui donner la capacité de Punch IN/OUT mobile.
+- [ ] Un salarié sans courriel reste capable de pointer sur iPad, sans invitation personnelle obligatoire.
+- [ ] L'activation Google/Apple/email revendique **un dossier déjà présent** ; pas de salarié dupliqué, pas de nouvelle place facturable.
+- [ ] Un employé voit les mêmes heures sur iPad (ses confirmations) et son téléphone (son historique), sans exposer les heures de collègues sur la borne.
+- [ ] Modification d'horaire et nouvelle affectation apparaissent dans l'app après synchronisation, avec notification si activée.
+- [ ] Rejeu d'invitation, code expiré, compte personnel déjà lié, autre compagnie, matricule deviné et tentative de promotion de rôle : refus et audit.
+- [ ] La désactivation du punch mobile est imposée par serveur même si l'employé tente d'appeler l'API directement.
+- [ ] Aucune perte d'heures ou d'horaire lors de la création, révocation et récupération du compte personnel.
+
+**Statut : conception validée, pas encore développée.** Modèle salarié `worker_id` et invitations d'activation sont à développer et tester avant de revendiquer la compatibilité kiosque + app personnelle.
+
+## 13. Ce qui est réellement livré au 24 octobre 2026
 **Déjà dans le dépôt** : édition Essentiel, écran employé sage, création de compagnie/établissement technique, journal mobile hors ligne, punch IN/OUT et pauses, heures, horaires et exports partiels, rôles Admin/Boss différents, politique d'impayé, isolation RLS.
 
 **NOUVELLEMENT VALIDÉ DANS CE DOCUMENT SEULEMENT** : mode mixte, appareil partagé, NIP, indépendance des identités métier, création/révocation de bornes, interface Borne, mode hors ligne borne, jointure sessions téléphone/tablette et écrans Admin/Boss correspondants.
