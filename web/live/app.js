@@ -284,4 +284,4 @@ document.addEventListener('input',ev=>{if(ev.target?.id==='jobSearch'){state.sea
 sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){state.recovery=true;setTimeout(draw,0)}else if(event==='SIGNED_OUT'){localStorage.removeItem('punch-local-user');state.user=null;state.account=null;state.section='home';draw()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
 initialize().then(()=>showOAuthCallbackError());loadProviders();setInterval(tick,1000);setInterval(async()=>{if(state.chatId&&member()&&!state.busy){try{await loadChat(state.chatId);if(state.section==='messages')draw()}catch{}}},10000);
 
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(console.warn);
