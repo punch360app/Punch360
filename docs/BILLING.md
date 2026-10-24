@@ -55,3 +55,9 @@ Le prototype HTML de la console Super Admin est une **démonstration locale**, n
 | PUNCH Construction | Chantiers et équipes mobiles | Noyau des heures et gestion par jobs, commandes, plans et équipes | 49 CAD pour 5 personnes, puis +7 CAD/personne |
 
 Les prix sont indicatifs et hors taxes. `src/billing/plans.ts` est un catalogue de propositions, pas une preuve de paiement ni un droit d’ajouter des places. Stripe et la validation commerciale restent nécessaires. Une nouvelle compagnie choisit son édition sans changer les rôles : le créateur est Boss; les invités gardent exactement leur rôle attribué.
+
+## Tablette commune (PUNCH Essentiel)
+
+Le **mode mixte téléphone/tablette** ne crée pas deux employés : une personne compte **une seule place facturable**, peu importe le nombre d'appareils utilisés. Une borne est un terminal d'entreprise, **pas** un membre facturé. Proposition commerciale à confirmer : une borne comprise par établissement; bornes supplémentaires configurables plus tard par Super Admin sans tarif inventé dans la V1. Les salariés Essentiel sans téléphone ni courriel doivent aussi compter dans les places humaines actives lorsqu'ils pointent exclusivement au kiosque.
+
+En `restricted`, les bornes déjà enregistrées continuent de recevoir les punchs des salariés existants, et ces derniers conservent l'accès à leur historique. Seules les opérations de gestion/facturation sont restreintes selon le contrat. Voir [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md).
