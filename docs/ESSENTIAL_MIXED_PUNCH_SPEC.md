@@ -243,3 +243,36 @@ Un Boss/Admin n'a pas besoin d'un NIP employé pour gérer la borne ; en revanch
 **NOUVELLEMENT VALIDÉ DANS CE DOCUMENT SEULEMENT** : mode mixte, appareil partagé, NIP, indépendance des identités métier, création/révocation de bornes, interface Borne, mode hors ligne borne, jointure sessions téléphone/tablette et écrans Admin/Boss correspondants.
 
 **Aucun prototype kiosque n'est déclaré fonctionnel sans migrations, endpoints, UI et tests.**
+
+## 13. Compte personnel facultatif même lorsque l'entreprise choisit une tablette commune
+
+**Décision officielle : le choix d'une tablette commune ne prive jamais un employé de son compte personnel PUNCH Essentiel.** Le Boss peut configurer « Pointage autorisé sur tablette seulement » tout en laissant **Consultation personnelle sur téléphone** activée. La création de compte personnel est **facultative pour l'employé**, possible à l'embauche ou plus tard.
+
+### Parcours Employé
+1. Le Boss/Admin crée d'abord **un seul dossier salarié** (matricule, compagnie, établissement, horaire et droits, éventuellement sans email et sans téléphone). Le salarié pointe immédiatement à la borne avec son identifiant et NIP après enrôlement sécurisé.
+2. L'entreprise lui fournit une **invitation personnelle** via courriel ou SMS, ou un **code d'activation/QR temporaire à usage unique** remis en personne. Le QR est un moyen d'ouvrir le flux et **ne constitue pas à lui seul une preuve d'identité** : exiger vérification additionnelle adaptée et protection anti-usurpation.
+3. L'employé télécharge PUNCH Essentiel (Android/iPhone ou site Web), crée son compte par courriel/mot de passe ou Google/Apple, puis **confirme son adresse/identité**. Un code d'association, lié au `worker_id` existant, à la compagnie, à une durée d'expiration courte et à un nombre de tentatives limité, établit le lien. **Jamais de rapprochement automatique par nom, adresse courriel saisie ou matricule seul.**
+4. L'identité Auth se rattache au dossier salarié initial et **réutilise les heures, pauses, horaires, demandes et affectations déjà enregistrés à l'iPad** ; aucun deuxième dossier, aucune seconde place facturable.
+5. L'employé choisit **un des 20 thèmes PUNCH Essentiel**, synchronisé dans son profil individuel. L'iPad commun conserve le thème de borne choisi par la compagnie et n'affiche pas le thème d'un salarié.
+6. L'app personnelle affiche : **Horaire et prochain quart, Mes heures/historique, Pauses, Congés/absences et demandes, Modifications d'horaire, Notifications, Plus/profil**. Les informations visibles sont **strictement personnelles**.
+7. Le bouton Punch mobile est activé **seulement si le Boss l'autorise** pour cet employé/établissement ; sinon afficher « Pointage sur la tablette de l'entreprise » avec un **accès en lecture seule à l'horaire et aux heures**. Ne pas forcer l'installation du téléphone pour pointer à la borne.
+8. Le compte personnel peut être créé après des semaines ou mois de pointage borne ; les heures restent attachées au **même salarié stable** et restent consultables depuis son activation.
+
+### Parcours Boss et Admin
+- Réglage Essentiel par établissement : **Canal de pointage = tablette / mobile / mixte** ; option distincte et indépendante **Accès personnel à l'horaire et aux heures = autorisé (défaut)**.
+- Dans Employés : `Compte mobile : non activé / invitation envoyée / activé / désactivé`, bouton **Inviter à créer son compte**, **Renvoyer l'invitation** (sans invalider des heures), **Révoquer l'accès personnel** avec journal d'audit.
+- L'Admin/Boss peut associer un compte seulement via procédure d'enrôlement vérifiée : ne peut pas connaître le mot de passe, lier un compte tiers arbitraire ou agir en tant que salarié.
+- Les modifications d'horaires et congés déclenchent une notification à l'app personnelle quand elle est activée ; sans app, conserver l'information sur l'horaire accessible au kiosque selon les politiques de confidentialité.
+- Un salarié existant peut choisir de **ne jamais créer de compte** sans conséquence sur l'accès à la borne et ses heures. La suppression/désactivation de son accès personnel ne supprime pas ses punchs ni son dossier métier.
+- **Facturation :** un salarié actif = **une place payante**, qu'il utilise la borne seule ou la borne + l'app. L'iPad n'est pas un salarié facturable. L'activation du compte personnel ne déclenche aucun supplément de places.
+
+### Sécurité et critères de recette
+- Utiliser un `worker_id` immuable, facultativement relié à `auth_user_id` après activation ; l'application personnelle ne doit pas créer automatiquement une nouvelle appartenance Boss ni un nouveau salarié.
+- Un code d'activation expire et ne peut être consommé qu'une fois. Tentatives limitées et lien vérifié serveur ; ne pas exposer le NIP de borne dans le processus de connexion personnel. NIP ≠ mot de passe Supabase.
+- Si le salarié possède déjà un compte Auth, lui permettre de se connecter puis **rejoindre le dossier métier existant après invitation vérifiée**, plutôt que d'en créer un doublon.
+- Un compte personnel ne voit que **son** horaire, ses heures, ses congés et ses messages autorisés, jamais ceux d'un autre salarié, même avec connaissance d'un matricule.
+- Tester « 3 semaines de pointage tablette → activation compte → affichage de toutes les anciennes heures », « compte lié à mauvais matricule » (rejet), « employé sans email » (borne toujours accessible), « mobile en lecture seule », « suppression d'accès personnel sans suppression heures » et « aucun siège supplémentaire après activation ».
+- Le verrou de gestion pour non-paiement ne doit pas retirer au salarié actif l'accès à son historique personnel ni bloquer la continuité du punch sur tablette.
+
+**Implémentation :** ceci est une exigence officielle à réaliser après la migration contrôlée `company_workers`/identité métier prévue plus haut ; ni l'enrôlement à partir d'une invitation ni la liaison compte → salarié sans Auth ne sont encore déclarés livrés.
+
