@@ -1,0 +1,34 @@
+begin;
+do $$
+declare boss uuid:=gen_random_uuid(); worker uuid:=gen_random_uuid(); other uuid:=gen_random_uuid(); c uuid; j uuid; shift uuid; inv jsonb; denied boolean; token text;
+begin
+ insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(worker,worker||'@test.invalid',now()),(other,other||'@test.invalid',now());
+ perform set_config('request.jwt.claim.sub',boss::text,true);c:=public.create_my_company('Operations test');
+ insert into public.jobs(company_id,number,name) values(c,'OPS','Ops job') returning id into j;
+ denied:=false;begin perform public.create_company_invitation(c,worker||'@test.invalid','lead',72);exception when others then denied:=true;end;
+ if not denied then raise exception 'Unpaid invitation allowed'; end if;
+ update public.companies set billing_status='active',seat_limit=2 where id=c;
+ inv:=public.create_company_invitation(c,worker||'@test.invalid','lead',72);token:=inv->>'token';
+ denied:=false;begin perform public.create_company_invitation(c,other||'@test.invalid','employee',72);exception when others then denied:=true;end;
+ if not denied then raise exception 'Reserved seat not counted'; end if;
+ perform set_config('request.jwt.claim.sub',other::text,true);
+ denied:=false;begin perform public.accept_company_invitation(token);exception when others then denied:=true;end;
+ if not denied then raise exception 'Wrong recipient accepted'; end if;
+ perform set_config('request.jwt.claim.sub',worker::text,true);perform public.accept_company_invitation(token);
+ if (select role from public.company_members where company_id=c and user_id=worker)<>'lead' then raise exception 'Wrong invite role'; end if;
+ denied:=false;begin perform public.accept_company_invitation(token);exception when others then denied:=true;end;
+ if not denied then raise exception 'Token reused'; end if;
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ shift:=public.schedule_shift(c,worker,j,'2026-11-02 12:00Z','2026-11-02 20:00Z','Test shift');
+ denied:=false;begin perform public.schedule_shift(c,worker,j,'2026-11-02 14:00Z','2026-11-02 22:00Z','Conflict');exception when others then denied:=true;end;
+ if not denied then raise exception 'Overlapping shifts allowed'; end if;
+ perform public.cancel_shift(shift,'Change of schedule');
+ perform public.schedule_shift(c,worker,j,'2026-11-02 14:00Z','2026-11-02 22:00Z','Reassigned');
+ insert into public.leave_requests(company_id,user_id,leave_type,begins_on,ends_on,status) values(c,worker,'vacation','2026-11-04','2026-11-04','approved');
+ denied:=false;begin perform public.schedule_shift(c,worker,j,'2026-11-04 14:00Z','2026-11-04 22:00Z','Leave conflict');exception when others then denied:=true;end;
+ if not denied then raise exception 'Approved leave conflict allowed'; end if;
+ if exists(select 1 from storage.buckets where id='job-documents' and public) then raise exception 'Documents bucket public'; end if;
+ denied:=false;begin insert into public.job_documents(company_id,job_id,name,storage_path,created_by) values(c,j,'Forged','wrong/path.pdf',boss);exception when others then denied:=true;end;
+ if not denied then raise exception 'Forged document path allowed'; end if;
+end $$;
+rollback;

@@ -1,0 +1,46 @@
+begin;
+do $$
+declare boss uuid:=gen_random_uuid(); worker uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); c uuid; j uuid; j2 uuid;
+ e1 uuid:=gen_random_uuid(); e2 uuid:=gen_random_uuid(); e3 uuid:=gen_random_uuid(); bad uuid:=gen_random_uuid(); t timestamptz:=clock_timestamp()-interval '5 hours'; r jsonb; again jsonb; check_id uuid; sid uuid; denied boolean;
+begin
+ insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(worker,worker||'@test.invalid',now()),(outsider,outsider||'@test.invalid',now());
+ perform set_config('request.jwt.claim.sub',boss::text,true);c:=public.create_my_company('GPS offline test');
+ insert into public.company_members(company_id,user_id,role) values(c,worker,'employee');
+ insert into public.jobs(company_id,number,name,latitude,longitude,punch_radius_m) values(c,'GEO','GPS job',46.8,-71.2,100) returning id into j;
+ insert into public.jobs(company_id,number,name,latitude,longitude,punch_radius_m) values(c,'GEO2','GPS job 2',46.8,-71.2,100) returning id into j2;
+ perform set_config('request.jwt.claim.sub',worker::text,true);
+ r:=public.sync_punch_event(e1,c,'in',t,true,j,46.8,-71.2,5,null);
+ if r->>'sync_status'<>'synced' or r->>'review_status'<>'pending' then raise exception 'Offline inside not pending: %',r; end if;
+ sid:=(r->>'session_id')::uuid;
+ if (select started_at from public.punch_sessions where id=sid)<>t then raise exception 'Offline local timestamp lost'; end if;
+ again:=public.sync_punch_event(e1,c,'in',t,true,j,46.8,-71.2,5,null);
+ if r<>again or (select count(*) from public.punch_sessions where company_id=c)<>1 then raise exception 'Retry duplicated punch'; end if;
+ if (select count(*) from public.app_notifications where company_id=c)<>1 then raise exception 'Admin notification missing or duplicated'; end if;
+ r:=public.sync_punch_event(e2,c,'transfer',t+interval '1 hour',true,j2,46.82,-71.2,5,e1);
+ if r->>'location_status'<>'outside' or r->>'sync_status'<>'synced' then raise exception 'Outside GPS not detected: %',r; end if;
+ r:=public.sync_punch_event(e3,c,'out',t+interval '3 hours',true,null,null,null,null,e2);
+ if r->>'sync_status'<>'synced' then raise exception 'Offline OUT failed: %',r; end if;
+ if (select ended_at from public.punch_sessions where id=sid)<>t+interval '3 hours' then raise exception 'OUT timestamp lost'; end if;
+ if (select count(*) from public.punch_segments where session_id=sid)<>2 then raise exception 'Transfer segments wrong'; end if;
+ if (select sum(extract(epoch from ended_at-started_at)) from public.punch_segments where session_id=sid)<>10800 then raise exception 'Segment hours lost'; end if;
+ if (select count(*) from public.punch_event_receipts where company_id=c)<>3 then raise exception 'Missing receipts'; end if;
+ perform set_config('request.jwt.claim.sub',outsider::text,true);
+ denied:=false;begin perform public.review_punch_location((r->>'check_id')::uuid,'Outside company');exception when others then denied:=true;end;
+ if not denied then raise exception 'Cross company GPS review allowed'; end if;
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ for check_id in select id from public.punch_location_checks where company_id=c loop perform public.review_punch_location(check_id,'Verified offline and GPS event');end loop;
+ if exists(select 1 from public.punch_location_checks where company_id=c and review_status='pending') then raise exception 'Reviews not applied'; end if;
+ perform set_config('request.jwt.claim.sub',worker::text,true);
+ r:=public.sync_punch_event(bad,c,'out',t+interval '4 hours',true,null,null,null,null);
+ if r->>'sync_status'<>'conflict' then raise exception 'Invalid sequence not retained'; end if;
+ r:=public.sync_punch_event(gen_random_uuid(),c,'in',t+interval '4 hours',true,j,46.8,-71.2,5,bad);
+ if r->>'sync_status'<>'conflict' then raise exception 'Dependent event applied after conflict'; end if;
+ -- Genuine API role: employee sees own receipts, outsider sees none, raw RPC cannot bypass location.
+ execute 'set local role authenticated';
+ if (select count(*) from public.punch_event_receipts where company_id=c)<>5 then raise exception 'Worker receipts RLS wrong'; end if;
+ perform set_config('request.jwt.claim.sub',outsider::text,true);
+ if exists(select 1 from public.punch_location_checks where company_id=c) or exists(select 1 from public.app_notifications where company_id=c) or exists(select 1 from public.punch_event_receipts where company_id=c) then raise exception 'RLS cross tenant leak'; end if;
+ if has_function_privilege('authenticated','public.punch_in(uuid,uuid)','execute') then raise exception 'Raw punch GPS bypass available'; end if;
+ execute 'reset role';
+end $$;
+rollback;

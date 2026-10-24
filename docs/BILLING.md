@@ -46,3 +46,12 @@ Ce rôle distinct ne correspond pas à « boss » d'une entreprise et n'est jama
 ## État
 
 Le prototype HTML de la console Super Admin est une **démonstration locale**, non connecté à Stripe ou Supabase. Une configuration autonome de backend PUNCH, les identifiants Stripe, les fournisseurs Google/Apple et les tests sont encore nécessaires.
+
+## Deux éditions — proposition du 24 octobre 2026
+
+| Édition | Clientèle | Inclus | Prix mensuel proposé |
+| --- | --- | --- | --- |
+| PUNCH Essentiel | Bureau, atelier, manufacture à un établissement | Punch, pauses non payées saisies, heures, horaires, congés, approbations, exports, hors ligne et périmètre de l’établissement | 19 CAD pour 5 personnes, puis +3 CAD/personne |
+| PUNCH Construction | Chantiers et équipes mobiles | Noyau des heures et gestion par jobs, commandes, plans et équipes | 49 CAD pour 5 personnes, puis +7 CAD/personne |
+
+Les prix sont indicatifs et hors taxes. `src/billing/plans.ts` est un catalogue de propositions, pas une preuve de paiement ni un droit d’ajouter des places. Stripe et la validation commerciale restent nécessaires. Une nouvelle compagnie choisit son édition sans changer les rôles : le créateur est Boss; les invités gardent exactement leur rôle attribué.

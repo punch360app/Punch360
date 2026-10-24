@@ -1,10 +1,13 @@
+import * as Network from 'expo-network';
+import {cachedLocalIdentity,rememberLocalIdentity,forgetLocalIdentity} from './localIdentity';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React,{useEffect,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import type {Session} from '@supabase/supabase-js';
 import {supabase} from '../lib/supabase';
 
-export type WorkspaceAccount={companyId:string;companyName:string;role:'employee'|'lead'|'admin'|'boss';userId:string;billingStatus:string;email:string};
-type Member={company_id:string;role:WorkspaceAccount['role'];companies:{name:string;billing_status:string}|{name:string;billing_status:string}[]|null};
+export type WorkspaceAccount={companyId:string;companyName:string;role:'employee'|'lead'|'admin'|'boss';userId:string;billingStatus:string;email:string;edition?:'construction'|'essential';defaultJobId?:string|null};
+type Member={company_id:string;role:WorkspaceAccount['role'];companies:{name:string;billing_status:string;product_edition?:'construction'|'essential';default_punch_job_id?:string|null}|{name:string;billing_status:string;product_edition?:'construction'|'essential';default_punch_job_id?:string|null}[]|null};
 const CO={bg:'#08131C',panel:'#132630',yellow:'#FFBF40',mint:'#22E1B1',muted:'#A9BAC4',white:'#FFFFFF',stroke:'#38515E'};
 export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.ReactNode}){
  const [session,setSession]=useState<Session|null>(null);
@@ -14,26 +17,30 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
  const [companyName,setCompanyName]=useState('');
+ const [edition,setEdition]=useState<'construction'|'essential'>('construction');
+ const [inviteToken,setInviteToken]=useState('');
  const [loginMode,setLoginMode]=useState<'login'|'signup'>('login');
  const [error,setError]=useState('');
  async function refresh(){
-  const {data}=await supabase.auth.getSession();
+  const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false){const local=await cachedLocalIdentity();if(local){const saved=await AsyncStorage.getItem('punch-workspace:'+local.id);if(saved){setAccount(JSON.parse(saved));setBoot(false);return;}}}
+  const {data,error:sessionError}=await supabase.auth.getSession();
   setSession(data.session);
-  if(!data.session){setAccount(null);setBoot(false);return;}
-  const u=data.session.user;
+  if(!data.session){const local=sessionError?await cachedLocalIdentity():null;const saved=local?await AsyncStorage.getItem('punch-workspace:'+local.id):null;setAccount(saved?JSON.parse(saved):null);setBoot(false);return;}
+  const u=data.session.user;await rememberLocalIdentity(u);
   const {data:membership,error:e}=await supabase.from('company_members')
-   .select('company_id,role,companies(name,billing_status)').eq('user_id',u.id).eq('status','active').limit(1).maybeSingle();
-  if(e){setError(e.message);setAccount(null);}
+   .select('company_id,role,companies(name,billing_status,product_edition,default_punch_job_id)').eq('user_id',u.id).eq('status','active').limit(1).maybeSingle();
+  if(e){const cached=await AsyncStorage.getItem('punch-workspace:'+u.id);if(cached){setAccount(JSON.parse(cached));setError('Mode hors ligne');}else{setError(e.message);setAccount(null);}}
   else if(membership){
    const m=membership as unknown as Member;
    const company=Array.isArray(m.companies)?m.companies[0]:m.companies;
-   setAccount({companyId:m.company_id,companyName:company?.name||'Ma compagnie',role:m.role,userId:u.id,email:u.email||'',billingStatus:company?.billing_status||'setup'});
-  }else{setAccount(null);}
+   const workspace={companyId:m.company_id,companyName:company?.name||'Ma compagnie',role:m.role,userId:u.id,email:u.email||'',billingStatus:company?.billing_status||'setup',edition:company?.product_edition||'construction',defaultJobId:company?.default_punch_job_id||null};setAccount(workspace);await AsyncStorage.setItem('punch-workspace:'+u.id,JSON.stringify(workspace));
+  }else{setAccount(null);await AsyncStorage.removeItem('punch-workspace:'+u.id);}
   setBoot(false);
  }
  useEffect(()=>{
   refresh();
   const {data:sub}=supabase.auth.onAuthStateChange((_event,newSession)=>{
+   if(_event==='SIGNED_OUT')forgetLocalIdentity();
    setSession(newSession);
    setBoot(true);
    // Différer l'appel asynchrone au prochain tour pour éviter un deadlock Supabase Auth.
@@ -75,7 +82,7 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  async function createCompany(){
   setBusy(true);setError('');
   try{
-   const {error:e}=await supabase.rpc('create_my_company',{p_name:companyName.trim()});
+   const {error:e}=await supabase.rpc('create_company_for_edition',{p_name:companyName.trim(),p_edition:edition});
    if(e)throw e;
    await refresh();
   }catch(e:any){setError(e.message||'Création impossible');}
@@ -88,6 +95,9 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    <Text style={st.head}>{session?'Créer ma compagnie':loginMode==='login'?'Se connecter':'Créer un compte'}</Text>
    <Text style={st.hint}>{session?'Configuration de ton espace entreprise. Tu devras choisir et payer un forfait avant d’inviter des employés.':'Tes heures. Tes équipes. Tes chantiers. Tout au même endroit.'}</Text>
    {session?<>
+    <TextInput style={st.input} placeholderTextColor="#718693" placeholder="Code d’invitation reçu" value={inviteToken} onChangeText={setInviteToken} autoCapitalize="none"/>
+    <Pressable style={st.social} disabled={busy} onPress={async()=>{setBusy(true);setError('');try{const r=await supabase.rpc('accept_company_invitation',{p_token:inviteToken.trim()});if(r.error)throw r.error;await refresh()}catch(e:any){setError(e.message)}finally{setBusy(false)}}}><Text style={st.socialText}>Rejoindre la compagnie invitante</Text></Pressable>
+    <View style={{gap:8}}>{(['essential','construction'] as const).map(v=><Pressable key={v} style={st.social} onPress={()=>setEdition(v)}><Text style={st.socialText}>{edition===v?'✓ ':''}{v==='essential'?'Essentiel — bureau / manufacture · 19 $ / mois proposés':'Construction — chantiers et commandes · 49 $ / mois proposés'}</Text></Pressable>)}</View>
     <TextInput style={st.input} placeholderTextColor="#718693" placeholder="Nom de ma compagnie" value={companyName} onChangeText={setCompanyName} autoCapitalize="words"/>
     <Pressable style={[st.button,{backgroundColor:CO.yellow}]} disabled={busy} onPress={createCompany}><Text style={st.buttonText}>Créer ma compagnie</Text></Pressable>
     <Pressable onPress={()=>supabase.auth.signOut()}><Text style={st.alt}>Utiliser un autre compte</Text></Pressable>
