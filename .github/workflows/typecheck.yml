@@ -17,4 +17,5 @@ jobs:
       - name: Offline journal and UI tests
         run: npm test
       - name: Web syntax
-        run: node --check web/live/app.js && node --check web/live/journal.js && node --check web/live/sw.js
+        run: |
+          for file in web/live/*.js; do node --check "$file"; done
