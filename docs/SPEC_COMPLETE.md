@@ -96,3 +96,11 @@ Barre FIXE : **Accueil · Mes heures · Commande · Message · Plus**.
 - Une place payante par **personne active**, indépendamment du nombre d'appareils et du moment d'activation de son compte; borne non facturée comme personne.
 - Consulter [le parcours détaillé et les tests](ESSENTIAL_MIXED_PUNCH_SPEC.md#13-compte-personnel-facultatif-même-lorsque-lentreprise-choisit-une-tablette-commune). **Conception validée, pas encore implémentée.**
 
+
+### Compte personnel sans pointage mobile (Essentiel + iPad commun)
+- Une compagnie choisissant une tablette iPad commune peut **toujours inviter ses salariés à créer un compte personnel** pour voir horaires, heures, congés, disponibilités et notifications depuis Android/iPhone/Web.
+- L'Admin crée d'abord le salarié; invitation sécurisée SMS/courriel/QR temporaire; Google/Apple/email rattache l'utilisateur Auth au **dossier salarié existant**. Pas de nouvelle place payante ni de deuxième historique de punch.
+- Boss définit séparément **autoriser pointage tablette**, **autoriser pointage mobile**, **autoriser consultation personnelle**. En mode iPad seulement, l'application personnelle présente les heures mais ne permet pas de punch mobile, y compris via API.
+- Un salarié sans smartphone n'a aucune obligation de créer ce compte et continue à pointer sur l'iPad avec NIP. Le matricule ou NIP seul ne permet jamais de réclamer un compte.
+- L'employé choisit librement parmi les **20 thèmes Essentiel** sur son téléphone; la tablette partagée garde un thème de borne uniforme.
+- Sécurité et détails : [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md#12-accès-personnel-facultatif-à-lhoraire-lorsque-la-compagnie-choisit-lipad-commun--nouvelle-décision-officielle).
