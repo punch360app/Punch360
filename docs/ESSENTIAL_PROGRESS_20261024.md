@@ -1,3 +1,5 @@
+> Mise à jour suivante : [ESSENTIAL_PLANNING_20261024.md](ESSENTIAL_PLANNING_20261024.md) décrit les fonctions d’organisation et d’horaires désormais développées et leurs limites. Les listes de reste ci-dessous sont historiques.
+
 # PUNCH Essentiel — développement du 24 octobre 2026
 
 ## Livré dans ce lot

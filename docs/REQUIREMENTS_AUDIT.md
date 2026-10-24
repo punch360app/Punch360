@@ -1,3 +1,5 @@
+> Audit actualisé pour l’organisation et les horaires : [ESSENTIAL_PLANNING_20261024.md](ESSENTIAL_PLANNING_20261024.md). Ce document antérieur conserve les constats historiques; le produit complet n’est pas déclaré terminé.
+
 # Audit PUNCH — 24 octobre 2026
 
 ## Sources et portée
