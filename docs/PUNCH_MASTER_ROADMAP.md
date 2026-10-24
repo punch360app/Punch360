@@ -7,7 +7,7 @@
 | E01 | Conserver dépôt et Construction | EN COURS | Branches/PR, régressions Node et SQL; validation appareils restante |
 | E02 | Identité visuelle et six références | EN COURS | docs/design, composants sage; recette visuelle complète restante |
 | E03 | Trois forfaits modifiables | EN COURS | Catalogue versionné, MFA, devis; recette Stripe restante |
-| E04 | Fonctions de base du forfait Essentiel | EN COURS | Punch/horaire/heures/congés/CSV; corrections des pauses restantes |
+| E04 | Fonctions de base du forfait Essentiel | EN COURS | Punch/horaire/heures/congés/CSV et corrections de pauses; recette complète restante |
 | E05 | Gestion Plus | EN COURS | Rotations, échanges, départements, annonces; calendriers externes/push restants |
 | E06 | Gestion Pro | EN COURS | Couverture, RH, rapports estimatifs; budgets et intégrations paie spécifiques restants |
 | E07 | Sécurité commune hors paywall | EN COURS | RLS et tests; audit indépendant, restauration et terrains restants |
@@ -23,8 +23,8 @@
 | E17 | Console Boss | EN COURS | Entreprise, bornes, paie, facturation; direction/coûts complets restants |
 | E18 | Superviseurs par département | EN COURS | Lecture/planification et tests; délégations d’approbations fines restantes |
 | E19 | Moteur d’horaires | EN COURS | Nuit/DST/récurrences/rotations/échanges; modèles complexes/postes restants |
-| E20 | Pauses et règles de temps | EN COURS | Payées/non payées et offline mobile; corrections/politiques détaillées restantes |
-| E21 | Corrections et approbations | EN COURS | Sessions auditées; demandes/corrections de pauses restantes |
+| E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département restantes |
+| E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications restantes |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
 | E23 | Communications et notifications | EN COURS | Annonces, lectures, notes, alertes internes; push et préférences restants |
 | E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements; promotions/support/finances avancés restants |
@@ -34,7 +34,7 @@
 | E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
 | E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 57 tests Node/DOM et 19 SQL; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | 61 tests Node/DOM et 20 SQL; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 
