@@ -1,3 +1,5 @@
+> État actualisé : [ESSENTIAL_BILLING_20261024.md](ESSENTIAL_BILLING_20261024.md). Facturation Web/Expo et accès borne développés; configuration et recette Stripe réelle non validées. Le prompt complet reste ouvert.
+
 > Décision Essentiel actualisée le 24 octobre : Essentiel 19 $, Plus 39 $, Pro 69 $ CA/mois, 5 personnes comprises, +3/+4/+5 $ par personne; annuel −15 % sur base et suppléments; bornes 1/3/illimitées. Les sections « proposition » ci-dessous sont historiques. Les tarifs publics doivent provenir du futur catalogue serveur versionné; les contrats existants restent préservés. Voir ESSENTIAL_DELIVERY_20261024.md pour l’état réel, sans Stripe activé.
 
 # PUNCH — Abonnements et super-administration (V1)

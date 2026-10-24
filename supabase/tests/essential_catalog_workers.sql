@@ -3,6 +3,8 @@ do $$
 declare boss uuid:=gen_random_uuid();emp uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();c uuid;other uuid;w public.company_workers;v integer;owner_id uuid;denied boolean;q jsonb;
 begin
  insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(emp,emp||'@test.invalid',now()),(outsider,outsider||'@test.invalid',now());
+ -- Isolate seed arithmetic from public prices edited through Super Admin. Rolled back.
+ update public.essential_plans set base_cents=1900,included_seats=5,extra_seat_cents=300,annual_discount=15 where id='essential';
  perform set_config('request.jwt.claim.sub',boss::text,true);
  c:=public.create_company_for_edition('Essentiel SQL acceptance','essential');
  update public.companies set billing_status='active',seat_limit=10 where id=c;

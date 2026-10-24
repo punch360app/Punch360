@@ -1,3 +1,5 @@
+> État actualisé : [ESSENTIAL_BILLING_20261024.md](ESSENTIAL_BILLING_20261024.md). Facturation Web/Expo et accès borne développés; configuration et recette Stripe réelle non validées. Le prompt complet reste ouvert.
+
 > Audit actualisé pour l’organisation et les horaires : [ESSENTIAL_PLANNING_20261024.md](ESSENTIAL_PLANNING_20261024.md). Ce document antérieur conserve les constats historiques; le produit complet n’est pas déclaré terminé.
 
 # Audit PUNCH — 24 octobre 2026
