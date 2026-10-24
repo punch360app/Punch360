@@ -69,6 +69,18 @@ Barre FIXE : **Accueil · Mes heures · Commande · Message · Plus**.
 - Renouvellement impayé : 30 jours de sursis (compte complet), après 30 jours verrouillage gestion Admin/Boss/Chef mais **les employés continuent de puncher et consulter leurs heures**. Les responsables peuvent payer et accéder aux registres/exports nécessaires; réactivation après confirmation de paiement.
 - Résiliation : accès jusqu'à la fin payée, puis même verrouillage gestion sans effacer les données.
 
+
+## PUNCH Essentiel — pointage mixte téléphone et tablette commune (décision officielle)
+- La même compagnie Essentiel peut autoriser **téléphone personnel, tablette commune ou les deux**. L'employé peut faire IN sur mobile et OUT sur tablette (et inversement) : même session, même registre serveur, **aucun double punch**.
+- La tablette est une **borne sécurisée appairée à un établissement**. Chaque action demande un matricule individuel + NIP privé (6 chiffres minimum) ; écran réinitialisé automatiquement en 10–15 s ; aucune donnée RH/historique d'un autre employé n'est visible.
+- L'employé sans téléphone ou courriel doit pouvoir être créé avec une identité salarié interne indépendante de `auth.users`; une refonte contrôlée du modèle de punch existant est nécessaire avant livraison.
+- Appairage par code court à usage unique ; jeton limité au pointage, sécurisé en Keystore/Keychain, borne révocable à distance, protection anti-essais NIP et audit. Jamais de clé service_role ou de session Auth générale sur la borne.
+- Hors ligne tablette : journal durable, preuve d'identité protégée, état provisoire explicite, synchronisation idempotente, vérification et approbation des anomalies au retour. Pas d'affirmation de sécurité hors ligne tant que la vérification n'est pas réellement mise en œuvre.
+- Interface Employé : quatre onglets **Punch · Heures · Horaire · Plus**, blanc chaud et vert sauge. Interface tablette : pavé matricule/NIP, boutons Punch/Pause/Reprise/Sortie uniquement. Admin : employés, bornes, statut, horaires et approbations **sans pouvoir puncher**. Boss : métriques entreprises, contrôle des modes et bornes, facturation.
+- Borne = **appareil, pas une place payante**. Tous les humains actifs restent facturables selon le forfait. Une borne par établissement est une proposition produit, sans prix supplémentaire fixé.
+- Après sursis impayé, les salariés existants continuent leur pointage sur téléphone et borne déjà autorisée; Admin/Boss restent limités à facturation et archives nécessaires. Ne pas invalider des bornes à cause d'une facture impayée.
+- **Voir la [spécification complète](ESSENTIAL_MIXED_PUNCH_SPEC.md)** pour le wireframe, l'ordre de développement, le schéma, les règles métier, la sécurité, les cas hors ligne et les tests obligatoires. La présence dans le cahier des charges ne signifie pas que la borne est développée.
+
 ## Robustesse, sécurité et priorités
 - Multi-entreprise avec isolation stricte company_id, vérification RLS, permissions serveur, stockage photos/PDF privé.
 - Le serveur a autorité pour horodatages officiels et approbations; pas de suppression de temps, journal d'audit.
