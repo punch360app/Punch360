@@ -1,0 +1,35 @@
+name: PUNCH 360 Web
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/live/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: punch-web-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate frontend JavaScript
+        run: node --check web/live/app.js
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./web/live
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
