@@ -80,3 +80,10 @@ Référence détaillée : [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_
 - **Non codé à la date du document** : dossier salarié sans compte Auth obligatoire, NIP haché et vérification rate-limitée, jeton et appairage de borne, écran kiosque, synchronisation interappareils avec attribut canal, hors ligne kiosque et leurs tests. Le journal hors ligne mobile existant ne doit pas être présenté comme preuve de fonctionnement d'une borne partagée.
 - **Facturation** : borne non comptée comme membre actif ; forfait Essentiel inchangé. Après restriction, les salariés actifs doivent conserver le pointage sur les appareils préalablement autorisés, pas les fonctions d'administration.
 
+## Essentiel — compte personnel facultatif pour les salariés utilisant l'iPad
+- **Décision approuvée** : un salarié pointant sur une tablette commune peut créer un compte personnel PUNCH Essentiel pour consulter horaire, heures, congés et notifications, sans être obligé de puncher sur son téléphone.
+- **À développer, non livré** : invitation personnelle à usage unique, liaison sûre `auth_user_id` → `worker_id` existant (et conservation des anciennes heures), distinction entre permission de punch mobile et permission de consultation, états d'activation du compte, 20 thèmes Essentiel synchronisés.
+- **Facturation** : même salarié = une place, iPad commun non facturé comme membre ; accès mobile facultatif et sans double décompte.
+- **Tests prioritaires** : historique acquis sur iPad visible après inscription personnelle, activation sans duplication, refus d'association frauduleuse, mode mobile lecture seule si entreprise tablette seulement, aucun effet de la désactivation du compte sur le temps officiel.
+- Spécification : [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md).
+
