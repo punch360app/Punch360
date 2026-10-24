@@ -42,7 +42,7 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
  const text=(s:string,dim=false)=><Text style={{color:dim?colors.muted:colors.text,fontSize:13}}>{s}</Text>;
  const box=(children:React.ReactNode)=><View style={{padding:12,backgroundColor:colors.panel,borderRadius:12,borderWidth:1,borderColor:colors.line,gap:9,marginBottom:9}}>{children}</View>;
  const select=(s:string,active:boolean,onPress:()=>void)=><Pressable key={s} onPress={onPress} style={{padding:11,borderRadius:9,backgroundColor:active?'#5B491C':'#1A3340'}}>{text((active?'● ':'○ ')+s)}</Pressable>;
- const submit=async(fn:()=>Promise<any>)=>{try{const r=await fn();if(r.error)throw r.error;await load();Alert.alert('Enregistré')}catch(e:any){Alert.alert('Erreur',e.message)}};
+ const submit=async(fn:()=>PromiseLike<any>)=>{try{const r=await fn();if(r.error)throw r.error;await load();Alert.alert('Enregistré')}catch(e:any){Alert.alert('Erreur',e.message)}};
  return <ScrollView contentContainerStyle={{paddingBottom:25}}>
   {account.role==='lead'?box(<><Text style={{color:colors.gold,fontSize:16,fontWeight:'800'}}>Heures de mes gars aujourd’hui</Text>{text((teamHours/3600000).toFixed(2)+' h · '+visibleCount+' segments visibles')}</>):null}
   {box(<><Text style={{color:colors.gold,fontSize:16,fontWeight:'800'}}>Mes équipes</Text>{teams.length?teams.map(t=><View key={t.id}>{text(t.name+' · Chef : '+t.lead_user_id.slice(0,8))}</View>):text('Aucune équipe attribuée.',true)}</>)}
