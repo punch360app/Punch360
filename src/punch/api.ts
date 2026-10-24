@@ -5,7 +5,7 @@ import {getPunchJournal} from './journal';
 import {projectPendingPunches} from '../../web/live/journal.js';
 import * as Location from 'expo-location';
 import {supabase} from '../lib/supabase';
-export type PunchSession={id:string;company_id:string;user_id:string;started_at:string;ended_at:string|null};
+export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
 export type PunchSegment={id:string;session_id:string;company_id:string;job_id:string;started_at:string;ended_at:string|null};
 export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null};
 export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null};

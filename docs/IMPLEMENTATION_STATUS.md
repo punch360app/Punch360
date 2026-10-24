@@ -1,3 +1,5 @@
+> Lot borne en ligne ajouté : registre worker_id, appairage, enrôlement NIP, révocation et échanges téléphone/borne testés SQL. 25 tests locaux et huit scripts SQL passent. Voir ESSENTIAL_PROGRESS_20261024.md pour les limites.
+
 > État actualisé : [ESSENTIAL_PROGRESS_20261024.md](ESSENTIAL_PROGRESS_20261024.md). Trois migrations appliquées, deux fonctions SMS déployées, 24 tests locaux et sept scripts SQL passés. Le produit complet n’est pas terminé.
 
 > Lot local Essentiel du 24 octobre : voir [ESSENTIAL_DELIVERY_20261024.md](ESSENTIAL_DELIVERY_20261024.md). Adaptateur Twilio et graines des trois forfaits testés; non déployés.
