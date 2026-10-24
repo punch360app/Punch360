@@ -21,6 +21,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const dimensions=useWindowDimensions(),compact=dimensions.height<850;
  const appearance=usePersonalTheme(account.userId),t=appearance.theme,Z={bg:t.bg,text:t.text,muted:t.muted,line:t.line,sage:t.accent};const styles=makeStyles(Z,t.surface,compact);
  const manager=['boss','admin'].includes(account.role);
+ useEffect(()=>{if(appearance.needsChoice){setPage('more');setDetail('appearance');}},[appearance.needsChoice]);
  async function load(){try{
   const cacheKey='essential-punch-channel:'+account.companyId+':'+account.userId;
   const raw=await AsyncStorage.getItem(cacheKey);const cached=raw?JSON.parse(raw):null;
