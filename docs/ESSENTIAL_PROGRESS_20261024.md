@@ -46,3 +46,22 @@ Une invitation téléphone seul exige actuellement une identité Auth avec tél�
 7. Traductions, accessibilité et revue visuelle complète; sauvegardes/restauration vérifiée; builds, appareils et distribution.
 
 Les sept références visuelles reçues sont conservées dans `docs/design/essential-2026-10-24`. Construction conserve ses prix, sa navigation et ses endpoints; les scripts SQL de régression passent.
+
+## Lot suivant — borne en ligne et registre salarié
+
+Les sections de reste ci-dessus décrivent le lot initial. Les éléments suivants ont ensuite été développés et vérifiés :
+
+- Registre partagé : `punch_sessions.worker_id` conserve l'identité métier; `user_id` devient facultatif. Les sessions Construction conservent leur identité Auth et leurs parcours. Index unique sur le salarié stable pour interdire deux sessions ouvertes. Les endpoints mobiles continuent d'utiliser les mêmes tables et verrous.
+- Activation du compte personnel : rattache les anciennes sessions/pauses de borne sans changer leurs IDs, le worker ni les heures.
+- Appairage de borne par code 256 bits à usage unique, 10 min; jeton de pointage limité haché côté serveur, liste des appareils sans secrets, révocation distante. Limite issue du contrat si présent, sinon du forfait Essentiel de base. Le choix Plus/Pro doit encore être relié à la souscription Stripe, pas librement accordé par le client.
+- Enrôlement NIP : le responsable génère un code temporaire (15 min), le remet au salarié vérifié; le salarié saisit son NIP lui-même sur la borne. Bcrypt coût 12; le responsable ne voit pas le NIP. Minimum six chiffres, échecs conservés et blocage temporaire appareil + salarié après cinq tentatives.
+- Écran Web dédié `kiosk.html`, sans client Auth ni session employé; tablette stocke uniquement son jeton limité dans IndexedDB. Identification à chaque opération et retour après 15 secondes d'inactivité; aucune liste de salariés ni historique des autres personnes. Pas de Keychain/Keystore natif livré.
+- Borne IN / OUT / pause non payée / reprise, horodatage serveur et IDs idempotents. Authentification par appareil + NIP dans une troisième fonction Edge `essential-kiosk`, sans JWT général, avec fonctions DB réservées service_role. Refus des appareils révoqués. Le pointage continue si compagnie `restricted`.
+- Gestion Web : Bornes de pointage, génération du code, révocation; modes téléphone/tablette/mixte par salarié pour le Boss, et code d'enrôlement de NIP. Exports utilisent l'identifiant stable lorsqu'aucun compte personnel n'existe.
+- La borne **ne prend pas de pointage hors ligne** dans ce lot. L'interface indique connexion requise et ne prétend jamais avoir synchronisé un événement non confirmé. Un réessai après réponse perdue réutilise le même event_id en mémoire; après retour à l'accueil, le salarié se réidentifie pour consulter l'état serveur.
+
+Vérification finale : 25 tests Node/DOM, TypeScript, `deno check` sur trois fonctions, huit scripts SQL transactionnels passés. Le nouveau script teste le pointage sans Auth, appairage non rejouable, PIN haché, idempotence, activation pendant un punch ouvert, pause mobile/reprise borne, IN borne/OUT mobile et IN mobile/OUT borne, impayé, blocage PIN et révocation. Pas de test de charge ou de concurrence interconnexions réel.
+
+Metro a produit les bundles Hermes Android (815 modules) et iOS (822 modules). Ce sont des bundles JS/bytecode, **pas des APK/IPA signés ni des tests sur appareils physiques**. L'inspection visuelle navigateur reste non réalisée dans cet environnement.
+
+Stripe, programmes horaires avancés, vingt thèmes, langues, RH/paie, sauvegardes et restauration, hors ligne borne, permissions fines et distribution native restent à terminer. Ce lot n'est pas une certification de paie ni la fin du cahier des charges.
