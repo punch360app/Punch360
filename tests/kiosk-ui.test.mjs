@@ -14,3 +14,8 @@ test('kiosk hides PIN, retries one immutable event after ambiguous network failu
  w.document.querySelector('[data-action="in"]').click();await wait();const events=calls.filter(x=>x.action==='in');assert.equal(events.length,2);assert.equal(events[0].eventId,events[1].eventId);assert.match(w.document.body.textContent,/Pointage enregistré et synchronisé/);assert.equal(w.__kiosk.state.pin,'');assert.equal(w.__kiosk.state.person,null);assert.equal(w.localStorage.length,0);assert.equal(w.sessionStorage.length,0);
  await w.happyDOM.close();
 });
+test('kiosk erases identity on hide and ignores a late identify response',async()=>{
+ const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});w.document.body.innerHTML='<main id="kiosk"></main>';let release;const pending=new Promise(r=>{release=r});w.fetch=async()=>{await pending;return {json:async()=>({ok:true,name:'Private person',active:true})};};
+ w.eval(src.slice(0,src.indexOf('(async()=>{try{state.device='))+`state.device={device_id:'device',token:'limited',company_name:'Atelier',name:'Reception'};draw();window.__kiosk={state,clearPerson};`);
+ w.document.querySelector('#number').value='AB-0248';w.document.querySelector('#pin').value='829471';w.document.querySelector('[data-key="OK"]').click();await wait();w.dispatchEvent(new w.Event('pagehide'));release();await wait();assert.equal(w.__kiosk.state.person,null);assert.equal(w.__kiosk.state.pin,'');assert.doesNotMatch(w.document.body.textContent,/Private person/);await w.happyDOM.close();
+});
