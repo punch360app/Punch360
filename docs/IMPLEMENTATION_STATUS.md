@@ -70,3 +70,13 @@ Une compagnie choisit maintenant **Essentiel** ou **Construction** à sa créati
 - Prix recommandés, non contractuels : Essentiel 19 CAD/mois pour 5 personnes, +3 CAD/personne; Construction 49 CAD/mois pour 5 personnes, +7 CAD/personne. Aucun paiement ni produit Stripe créé par cette livraison.
 - Migrations `essential_edition_breaks` et `essential_labels` appliquées. Script transactionnel `supabase/tests/essential_breaks.sql` passé : création de l’édition, site interne, pause/reprise hors ligne, durée et idempotence, approbation et refus des commandes au niveau RLS.
 - Le test DOM couvre aussi l’absence de commande/numéro de job et les quatre onglets Essentiel, ainsi que les contrôles de pause hors ligne.
+
+## Décision Essentiel : mode mixte téléphone + tablette commune (conception, NON livré)
+
+Référence détaillée : [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md).
+
+- **Validé fonctionnellement** : une seule journée commune par employé entre son application personnelle et une tablette appairée à l'établissement ; NIP individuel masqué, durée de session d'écran courte, punch IN/PAUSE/REPRISE/OUT uniquement ; mêmes totaux, approbations et historiques.
+- **Employé** : conserve l'interface zen blanc chaud/vert sauge `Punch · Heures · Horaire · Plus`. **Admin** : gestion des identifiants salariés, des bornes et des anomalies, sans punch personnel. **Boss** : contrôle global, permission des modes, santé des appareils, abonnements et exports.
+- **Non codé à la date du document** : dossier salarié sans compte Auth obligatoire, NIP haché et vérification rate-limitée, jeton et appairage de borne, écran kiosque, synchronisation interappareils avec attribut canal, hors ligne kiosque et leurs tests. Le journal hors ligne mobile existant ne doit pas être présenté comme preuve de fonctionnement d'une borne partagée.
+- **Facturation** : borne non comptée comme membre actif ; forfait Essentiel inchangé. Après restriction, les salariés actifs doivent conserver le pointage sur les appareils préalablement autorisés, pas les fonctions d'administration.
+
