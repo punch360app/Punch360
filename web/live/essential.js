@@ -1,5 +1,5 @@
 /** Real Essentiel screens; all mutations go through checked server RPCs. */
-export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document}) {
+export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{}}) {
  const s={plans:[],workers:[],dashboard:null,platform:false,platformOpen:true,tab:'plans',selected:'essential_plus',cadence:'monthly',seats:5,error:'',loading:false,saving:false,snapshot:null,factor:null,qr:null,mfaRequired:true,company:null,worker:null};
  const money=c=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(c/100);
  const btn=(text,action,extra='')=>`<button type="button" class="ess-btn" data-action="ess:${action}" ${extra}>${text}</button>`;
@@ -38,7 +38,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  async function handle(el){const action=el.dataset.action?.slice(4);if(!el.dataset.action?.startsWith('ess:'))return false;
  s.error='';try{
  if(action==='monthly'||action==='yearly')s.cadence=action;
- else if(action==='choose'){s.checkout=s.plans.find(p=>p.id===el.dataset.id)?.title;notify('Forfait choisi. Paiement Stripe encore à configurer.');}
+ else if(action==='choose'){s.checkout=s.plans.find(p=>p.id===el.dataset.id)?.title;notify('Forfait choisi. Paiement Stripe encore à configurer.');onChoose(s.plans.find(p=>p.id===el.dataset.id));}
  else if(action==='select')s.selected=el.dataset.id;
  else if(action==='tab'){s.tab=el.dataset.id;s.testCredentials=null;}
  else if(action==='logout'){await sb.auth.signOut();s.platform=false;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;}
