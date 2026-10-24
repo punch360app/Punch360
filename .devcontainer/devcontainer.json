@@ -1,0 +1,14 @@
+{
+  "name": "PUNCH 360 - Test mobile",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "postCreateCommand": "npm install --no-audit --no-fund && npm install --global @expo/ngrok",
+  "forwardPorts": [
+    8081
+  ],
+  "portsAttributes": {
+    "8081": {
+      "label": "PUNCH Expo Metro",
+      "onAutoForward": "silent"
+    }
+  }
+}
