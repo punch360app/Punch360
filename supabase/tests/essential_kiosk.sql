@@ -21,6 +21,7 @@ begin
  r:=public.kiosk_execute((device->>'device_id')::uuid,device->>'token','AB-0248','829471','in',ev);
  if (r->>'session_id')::uuid<>sid then raise exception 'Event replay not idempotent';end if;
  if (select count(*) from public.punch_sessions where worker_id=w.id)<>1 then raise exception 'Duplicate kiosk session';end if;
+ r:=public.kiosk_execute((device->>'device_id')::uuid,device->>'token','AB-0248','829471','break_start_paid',gen_random_uuid());if r->>'ok'<>'true' then raise exception 'Paid kiosk break failed %',r;end if;if not exists(select 1 from public.punch_breaks where session_id=sid and is_paid and ended_at is null) then raise exception 'Paid kiosk classification missing';end if;r:=public.kiosk_execute((device->>'device_id')::uuid,device->>'token','AB-0248','829471','break_end',gen_random_uuid());
  -- Activate personal account while kiosk session is open: retain exactly same worker + session.
  perform set_config('request.jwt.claim.sub',boss::text,true);execute 'set local role authenticated';invite:=public.create_worker_invitation(w.id);
  perform set_config('request.jwt.claim.sub',u::text,true);perform public.accept_worker_invitation(invite->>'token');
