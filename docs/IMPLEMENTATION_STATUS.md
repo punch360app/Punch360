@@ -87,3 +87,6 @@ Référence détaillée : [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_
 - **Tests prioritaires** : historique acquis sur iPad visible après inscription personnelle, activation sans duplication, refus d'association frauduleuse, mode mobile lecture seule si entreprise tablette seulement, aucun effet de la désactivation du compte sur le temps officiel.
 - Spécification : [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md).
 
+
+### Décision ajoutée : accès personnel à l'horaire même avec iPad commun (NON codé)
+La compagnie peut activer **iPad seulement pour pointer**, mais offrir à chaque salarié existant un compte Android/iOS/Web **pour consulter son horaire et ses heures**, demander des congés et recevoir des alertes. Création de compte par invitation liée au dossier salarié interne (Google/Apple/email), sans dupliquer la place payante, sans activer Punch mobile. L'employé sans téléphone continue à pointer sur l'iPad. Les droits séparés `can_kiosk_punch` / `can_mobile_punch` / `can_view_personal_schedule` doivent être imposés côté serveur. Design personnel parmi 20 thèmes Essentiel; design borne uniforme. **Spécifié seulement, pas encore implémenté.** Voir [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md).
