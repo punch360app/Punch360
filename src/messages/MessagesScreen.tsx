@@ -15,6 +15,8 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
  const [groupName,setGroupName]=useState('');
  const [newGroup,setNewGroup]=useState(false);
  const [busy,setBusy]=useState(false);
+ const [candidates,setCandidates]=useState<{user_id:string;role:string;name:string}[]>([]);
+ const [picked,setPicked]=useState<string[]>([]);
  const manager=account.role==='boss'||account.role==='admin';
  const lead=account.role==='lead';
  async function load(){
@@ -26,7 +28,13 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
    .select('id,sender_id,body,created_at').eq('conversation_id',id).order('created_at').limit(100);
   if(!error)setMessages(data||[]);
  }
- useEffect(()=>{load()},[account.companyId]);
+ useEffect(()=>{load();if(account.role==='boss'||account.role==='admin'){(async()=>{
+  const {data:people}=await supabase.from('company_members').select('user_id,role').eq('company_id',account.companyId).eq('status','active');
+  const filtered=(people||[]).filter(p=>p.user_id!==account.userId);
+  if(!filtered.length){setCandidates([]);return;}
+  const {data:profiles}=await supabase.from('employee_profiles').select('user_id,full_name').in('user_id',filtered.map(p=>p.user_id));
+  setCandidates(filtered.map(p=>({...p,name:profiles?.find(pr=>pr.user_id===p.user_id)?.full_name||p.user_id.slice(0,8)})));
+ })()}},[account.companyId]);
  useEffect(()=>{if(!active)return;loadThread(active.id);const t=setInterval(()=>loadThread(active.id),8000);return()=>clearInterval(t)},[active?.id]);
  async function send(){
   if(!active||!draft.trim()||busy)return;
@@ -39,9 +47,9 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
  async function createGroup(){
   if(!groupName.trim())return;
   if(!manager)return Alert.alert('Seuls le boss et l’admin créent les groupes généraux.');
-  const {data,error}=await supabase.rpc('create_company_group',{p_company:account.companyId,p_title:groupName,p_member_ids:[]});
+  const {data,error}=await supabase.rpc('create_company_group',{p_company:account.companyId,p_title:groupName,p_member_ids:picked});
   if(error)Alert.alert('Groupe non créé',error.message);
-  else{setNewGroup(false);setGroupName('');await load();setActive({id:data as string,title:groupName,kind:'group'})}
+  else{setNewGroup(false);setGroupName('');setPicked([]);await load();setActive({id:data as string,title:groupName,kind:'group'})}
  }
  async function createLeadChat(){
   const {data,error}=await supabase.from('teams').select('id,name').eq('lead_user_id',account.userId).eq('company_id',account.companyId).limit(1).maybeSingle();
@@ -62,8 +70,10 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
    <View style={{flexDirection:'row',gap:8,paddingVertical:8}}><TextInput style={{flex:1,color:c.text,backgroundColor:c.panel,borderWidth:1,borderColor:c.line,borderRadius:12,paddingHorizontal:12,minHeight:48}} placeholderTextColor={c.muted} placeholder="Ton message…" value={draft} onChangeText={setDraft}/><Pressable onPress={send} style={{backgroundColor:c.gold,borderRadius:12,padding:12}}><Ionicons name="send" color={c.bg} size={22}/></Pressable></View>
   </>:newGroup?<>
    {row(<><Text style={{color:c.muted}}>Nouveau groupe de chantier</Text><TextInput style={{color:c.text,fontSize:17,paddingVertical:10}} placeholderTextColor={c.muted} placeholder="Nom du groupe" value={groupName} onChangeText={setGroupName}/></>)}
+   <Text style={{color:c.muted,marginVertical:8}}>Membres à inviter au groupe :</Text>
+   <ScrollView style={{maxHeight:330}}>{candidates.map(m=><Pressable key={m.user_id} onPress={()=>setPicked(list=>list.includes(m.user_id)?list.filter(x=>x!==m.user_id):[...list,m.user_id])} style={{flexDirection:'row',gap:9,alignItems:'center',padding:11,backgroundColor:c.panel,marginVertical:3,borderRadius:9}}><Ionicons name={picked.includes(m.user_id)?'checkbox':'square-outline'} color={c.gold} size={22}/><Text style={{color:c.text}}>{m.name} · {m.role}</Text></Pressable>)}</ScrollView>
    <Pressable onPress={createGroup} style={{backgroundColor:c.gold,borderRadius:12,padding:14}}><Text style={{fontWeight:'800',textAlign:'center'}}>Créer le groupe</Text></Pressable>
-   <Text style={{color:c.muted,fontSize:11,marginTop:12}}>Le responsable pourra ajouter les membres autorisés dans l’administration.</Text>
+   <Text style={{color:c.muted,fontSize:11,marginTop:12}}>Les membres choisis rejoignent immédiatement cette conversation.</Text>
   </>:<ScrollView style={{flex:1}}>
    {chats.length===0?row(<Text style={{color:c.muted}}>Aucune conversation. Le boss, l’admin ou le chef d’équipe peut créer son groupe autorisé.</Text>):chats.map(chat=><Pressable key={chat.id} onPress={()=>setActive(chat)}>{row(<View style={{flexDirection:'row',gap:12,alignItems:'center'}}><Ionicons name={chat.kind==='team_private'?'lock-closed':'people'} color={chat.kind==='team_private'?c.green:c.gold} size={24}/><Text style={{color:c.text,fontSize:16,flex:1}}>{chat.title}</Text><Ionicons name="chevron-forward" color={c.muted} size={19}/></View>)}</Pressable>)}
   </ScrollView>}
