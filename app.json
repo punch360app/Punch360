@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "PUNCH 360°",
+    "slug": "punch-360",
+    "scheme": "punchapp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ca.punch360.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "PUNCH utilise la position lorsque vous le demandez pour proposer les chantiers proches."
+      }
+    },
+    "android": {
+      "package": "ca.punch360.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PUNCH utilise votre position lorsque vous le demandez pour proposer les chantiers proches."
+        }
+      ]
+    ]
+  }
+}
