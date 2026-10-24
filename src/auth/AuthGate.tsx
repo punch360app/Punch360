@@ -44,7 +44,7 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    setSession(newSession);
    setBoot(true);
    // Différer l'appel asynchrone au prochain tour pour éviter un deadlock Supabase Auth.
-   Promise.resolve().then(()=>refresh());
+   setTimeout(()=>refresh(),0);
   });
   const listener=Linking.addEventListener('url',async({url})=>{
    try{
@@ -59,9 +59,10 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  async function emailAuth(){
   setError('');setBusy(true);
   try{
-   if(!email.trim()||password.length<8)throw Error('Courriel requis et mot de passe de 8 caractères minimum.');
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))throw Error('Entre une adresse courriel valide.');
+   if(!password||(loginMode==='signup'&&password.length<8))throw Error(loginMode==='signup'?'Choisis un mot de passe d’au moins 8 caractères.':'Entre ton mot de passe.');
    const result=loginMode==='signup'?
-    await supabase.auth.signUp({email:email.trim().toLowerCase(),password}):
+    await supabase.auth.signUp({email:email.trim().toLowerCase(),password,options:{emailRedirectTo:'punchapp://auth/callback'}}):
     await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password});
    if(result.error)throw result.error;
    if(loginMode==='signup'&&!result.data.session)Alert.alert('Vérifie tes courriels','Un lien de confirmation peut être nécessaire pour activer ton compte.');

@@ -1,0 +1,27 @@
+import {Window} from 'happy-dom';
+import {readFile} from 'node:fs/promises';
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {PunchJournal,projectPendingPunches} from '../web/live/journal.js';
+const src=await readFile(new URL('../web/live/app.js',import.meta.url),'utf8');
+test('auth preserves typed credentials across async redraws, submits signup, explains confirmation and handles recovery',async()=>{
+ const w=new Window({url:'https://punch.test/?edition=essential',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
+ w.document.body.innerHTML='<div id="root"></div>';w.__journal={PunchJournal,projectPendingPunches};
+ const calls=[];let callback;
+ w.__createClient=()=>({auth:{onAuthStateChange:cb=>{callback=cb},getSession:async()=>({data:{session:null}}),signUp:async p=>{calls.push(p);return {data:{session:null},error:null}},signInWithPassword:async()=>({error:{code:'email_not_confirmed'}}),resend:async p=>{calls.push(p);return {error:null}},updateUser:async p=>{calls.push(p);return {error:null}}}});
+ w.fetch=async()=>({ok:true,json:async()=>({external:{google:true,apple:false}})});
+ let code=src.replace(/^import .*;\n/gm,'').replace('initialize().then(()=>showOAuthCallbackError());loadProviders();','');
+ w.eval('const {PunchJournal,projectPendingPunches}=window.__journal;const createClient=window.__createClient;\n'+code+'\nwindow.app={state,draw,loadProviders,login,resendConfirmation,savePassword};');
+ const a=w.app;a.draw();w.document.getElementById('email').value='person@example.invalid';w.document.getElementById('password').value='test-pass-123';
+ await a.loadProviders();assert.equal(w.document.getElementById('email').value,'person@example.invalid');assert.equal(w.document.getElementById('password').value,'test-pass-123');assert.equal(w.document.querySelector('[data-action="oauthApple"]'),null);
+ w.document.querySelector('[data-action="authMode"]').click();assert.equal(a.state.authMode,'signup');assert.equal(w.document.getElementById('password').value,'test-pass-123');
+ const form=w.document.getElementById('authForm');form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,20));
+ assert.equal(calls.length,1);assert.equal(calls[0].options.emailRedirectTo,'https://punch360app.github.io/Punch360/');assert.match(w.document.getElementById('authNotice').textContent,/confirmer/);assert.equal(w.document.getElementById('authNotice').hidden,false);
+ await a.login('login');assert.match(w.document.getElementById('authError').textContent,/Confirme ton courriel/);assert.equal(w.document.getElementById('email').value,'person@example.invalid');
+ await a.resendConfirmation();assert.equal(calls[1].type,'signup');
+ callback('PASSWORD_RECOVERY',{});await new Promise(r=>setTimeout(r,20));assert.ok(w.document.getElementById('recoveryForm'));
+ w.document.getElementById('newPassword').value='new-pass-123';w.document.getElementById('confirmPassword').value='wrong-pass';await a.savePassword();assert.equal(calls.length,2);assert.match(w.document.getElementById('authError').textContent,/correspondent/);
+ w.document.getElementById('confirmPassword').value='new-pass-123';await a.savePassword();assert.equal(calls[2].password,'new-pass-123');assert.equal(a.state.recovery,false);
+ assert.ok(![...Array(w.localStorage.length)].some((_,i)=>w.localStorage.getItem(w.localStorage.key(i)).includes('test-pass-123')));
+ await w.happyDOM.close();
+});
