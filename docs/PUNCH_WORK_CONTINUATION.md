@@ -1,14 +1,16 @@
 # Reprise du travail PUNCH
 
-Dernière reprise : 24 octobre 2026. Work courant : lot `feat/essential-hr-payroll`. Base distante inspectée : `5457a27` (guide collaborateur ajouté par un autre travail). Ce guide et le README doivent être conservés lors de la fusion.
+Dernière reprise : 24 octobre 2026. Lot RH fusionné dans la PR #8 (`8b47e3f`). Lot courant : `feat/essential-commercial-details`, comparatif/FAQ Web et vérification syntaxique de tous les modules. Le guide collaborateur et le README sont conservés.
 
 ## Livré dans le lot courant
 
 Code Web/Expo pour documents RH privés/versionnés, délégations séparées Documents/Certifications/Rémunération, confirmations, renouvellements de certifications; annonces et notes de quart; alertes internes horaires. Pauses explicitement payées/non payées avec journal mobile commun et borne en ligne. Rapports Pro estimatifs, règles/taux datés, indemnités saisies, banques auditables, CSV et snapshots.
 
-Backend officiel : trois migrations appliquées `20261024232827`, `20261024232829`, `20261024232903`; Edge `essential-kiosk` version 4. Aucun fournisseur SMS/paiement activé par ce lot. Contrôles : TypeScript, 55 tests Node/DOM, 19 scripts SQL transactionnels, Deno, bundles Metro Android/iOS. Pas d’essai appareil physique ou de recette Storage/fournisseurs complète.
+Backend officiel : trois migrations appliquées `20261024232827`, `20261024232829`, `20261024232903`; Edge `essential-kiosk` version 4. Aucun fournisseur SMS/paiement activé par ce lot. Contrôles : TypeScript, 57 tests Node/DOM (dont deux sur le comparatif public), 19 scripts SQL transactionnels, Deno, bundles Metro Android/iOS. Pas d’essai appareil physique ou de recette Storage/fournisseurs complète.
 
 Détails, preuves et limites : `docs/ESSENTIAL_HR_PAYROLL_20261024.md`. Ne pas déclarer le produit commercialisable sur cette base.
+
+Comparatif public et FAQ : catalogue serveur pour les montants, les membres inclus, les bornes, les établissements et les modules. FAQ accessible au clavier; borne hors ligne explicitement indisponible. Tests DOM sur modification de prix/limites/fonctions, masquage des forfaits privés/inactifs et échappement des noms. Version Web `essential-21`. Recette visuelle navigateur non effectuée : exécutable Playwright indisponible.
 
 ## Coordination
 

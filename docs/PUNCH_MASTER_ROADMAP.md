@@ -31,10 +31,10 @@
 | E25 | Stripe et sursis | EN COURS | Backend et interfaces; recette fournisseur, réabonnement et rapprochement restants |
 | E26 | Données et confidentialité | EN COURS | Isolation/audit; Loi 25, région, rétention, restauration à valider |
 | E27 | Hors ligne | EN COURS | Journal mobile testé; borne hors ligne non livrée |
-| E28 | Site commercial | EN COURS | Trois cartes du catalogue; comparatif/FAQ/recette visuelle restants |
+| E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
 | E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 55 tests Node/DOM et 19 SQL; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | 57 tests Node/DOM et 19 SQL; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 
