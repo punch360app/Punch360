@@ -20,7 +20,7 @@ Deno.serve(async(req:Request)=>{
   const paid=invoice?.status==='paid',periodEnd=sub.current_period_end;
   const state={status:sub.status,paid_through:paid?periodEnd:null,first_unpaid_at:!paid&&['past_due','unpaid','incomplete'].includes(sub.status)?invoice?.created||event.created:null,canceled:sub.cancel_at_period_end||['canceled','incomplete_expired'].includes(sub.status)};
   const priceId=sub.items.data[0]?.price?.id;
-  const resolve=await admin.rpc('billing_service_resolve_order',{p_company:company,p_subscription:sub.id,p_price:priceId,p_original:sub.metadata.punch_order||null});if(resolve.error)throw resolve.error;
+  const resolve=await admin.rpc('billing_service_resolve_order',{p_company:company,p_subscription:sub.id,p_price:priceId,p_original:sub.metadata.punch_order||null});if(resolve.error)throw resolve.error;if(!resolve.data)throw Error('UNKNOWN_CONTRACT_PRICE');
   let receivedInvoice=invoice;if(event.type.startsWith('invoice.')&&obj.id!==latestId)receivedInvoice=await stripe(`/invoices/${obj.id}`);
   const i=receivedInvoice;
   const applied=await admin.rpc('billing_service_apply',{p_event:event.id,p_type:event.type,p_created:event.created,p_company:company,p_order:resolve.data,p_customer:typeof sub.customer==='string'?sub.customer:sub.customer.id,p_subscription:sub.id,p_state:state,p_invoice:i?{id:i.id,status:i.status,total:i.total,amount_paid:i.amount_paid,currency:i.currency,period_end:i.period_end,paid_at:i.status_transitions?.paid_at}:null});
