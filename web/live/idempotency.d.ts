@@ -1,0 +1,1 @@
+export function durableLedgerRequest<T extends Record<string,unknown>,R>(options:{storage:{get:(key:string)=>string|null|Promise<string|null>;set:(key:string,value:string)=>void|Promise<void>;remove:(key:string)=>void|Promise<void>};key:string;payload:T;uuid:()=>string;digest:(value:string)=>Promise<string>;send:(payload:T&{p_request:string})=>Promise<R>}):Promise<R>;

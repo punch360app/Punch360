@@ -1,3 +1,5 @@
+> Mise à jour : corrections de pauses Web/Expo, contrôles serveur et 61 tests Node/DOM + 20 scripts SQL. Voir [le bilan du lot](ESSENTIAL_BREAK_CORRECTIONS_20261024.md). Le prompt complet reste en cours.
+
 > RH, communications, pauses payées et estimations Pro : [ESSENTIAL_HR_PAYROLL_20261024.md](ESSENTIAL_HR_PAYROLL_20261024.md). Fonctions et limites documentées; le prompt intégral reste ouvert, SMS reportés à la fin.
 
 > Dix thèmes personnels 11–20 : [ESSENTIAL_THEMES_20261024.md](ESSENTIAL_THEMES_20261024.md). Galerie Web/Expo et préférence Supabase livrées; SMS reportés à la fin à la demande de l’utilisateur.

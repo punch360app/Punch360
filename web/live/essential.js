@@ -1,3 +1,4 @@
+import {createBreakCorrectionsController} from './break-corrections.js';
 import {renderCommercialDetails} from './commercial.js';
 import {createPayrollController} from './payroll.js';
 import {createCommunicationsController} from './communications.js';
@@ -7,6 +8,7 @@ import {createBillingController} from './billing.js';
 import {createPlanningController} from './planning.js';
 /** Real Essentiel screens; all mutations go through checked server RPCs. */
 export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{}}) {
+ const breakCorrections=createBreakCorrectionsController({sb,redraw,escape:e,document:doc});
  const payroll=createPayrollController({sb,redraw,escape:e,document:doc});
  const communications=createCommunicationsController({sb,redraw,escape:e,document:doc});
  const hr=createHrController({sb,redraw,escape:e,document:doc});
@@ -29,7 +31,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
    if(account?.companies?.product_edition==='essential'){
     await appearance.load(user.id);if(!current())return;
     const r=await sb.from('company_workers').select('*').eq('company_id',account.company_id).order('employee_number');if(!current())return;if(r.error)throw r.error;s.workers=r.data||[];s.worker=s.workers.find(x=>x.auth_user_id===user.id)||null;
-    if(['admin','boss'].includes(account.role)){const dashboard=await rpc('essential_company_dashboard',{p_company:account.company_id});if(!current())return;s.dashboard=dashboard;const devices=await rpc('list_kiosk_devices',{p_company:account.company_id});if(!current())return;s.devices=devices;}await planning.load(account,user.id,s.worker?.id,s.workers);if(current())await hr.load(account,user.id,s.workers,planning.state.departments);if(current())await payroll.load(account,user.id,planning.state.roster);if(current())await communications.load(account,user.id,planning.state.departments,planning.state.entitlement.features||[]);if(current()&&account.role==='boss')await billing.load(account.company_id);
+    if(['admin','boss'].includes(account.role)){const dashboard=await rpc('essential_company_dashboard',{p_company:account.company_id});if(!current())return;s.dashboard=dashboard;const devices=await rpc('list_kiosk_devices',{p_company:account.company_id});if(!current())return;s.devices=devices;}await planning.load(account,user.id,s.worker?.id,s.workers);if(current())await breakCorrections.load(account,user.id,s.workers);if(current())await hr.load(account,user.id,s.workers,planning.state.departments);if(current())await payroll.load(account,user.id,planning.state.roster);if(current())await communications.load(account,user.id,planning.state.departments,planning.state.entitlement.features||[]);if(current()&&account.role==='boss')await billing.load(account.company_id);
    }else planning.reset();
   }}catch(err){if(current())s.error=err.message;}
  }
@@ -95,7 +97,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }
  }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();}return true;
  }
- function input(el){planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
- function reset(){identityRevision++;payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaRequired=true;}
- return {state:s,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
+ function input(el){breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
+ function reset(){identityRevision++;breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaRequired=true;}
+ return {state:s,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
 }

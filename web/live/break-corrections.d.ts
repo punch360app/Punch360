@@ -1,0 +1,1 @@
+export function breakCorrectionPayload(form:{session:string;breakId:string;start:string;end:string;paid:boolean;reason:string}):{p_session:string;p_break:string|null;p_start:string;p_end:string;p_paid:boolean;p_reason:string};
