@@ -1,5 +1,5 @@
 # PUNCH 360° — Référence fonctionnelle consolidée
-Version de conception : 23 octobre 2026. Une exigence ici n'est PAS nécessairement codée. L'état technique exact est dans docs/JOBS.md.
+Version de conception : 23 octobre 2026. Une exigence ici n'est PAS nécessairement codée. L'état technique vérifié est dans docs/REQUIREMENTS_AUDIT.md et docs/IMPLEMENTATION_STATUS.md.
 
 ## Identité et appareils
 - PUNCH 360° : marque commerciale bilingue FR/EN, logo compact PUNCH dans l'application.

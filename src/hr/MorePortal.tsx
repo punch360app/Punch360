@@ -9,14 +9,14 @@ import {WorkforcePanel} from '../workforce/WorkforcePanel';
 import {TeamsPanel} from './TeamsPanel';
 import {WorkspaceAccount} from '../auth/AuthGate';
 const C={bg:'#08131C',panel:'#112532',panel2:'#1B3441',text:'#FFFFFF',muted:'#9FB4C1',gold:'#FFBF40',mint:'#21E2B0',stroke:'#36505A'};
-type Section='menu'|'profile'|'emergency'|'credentials'|'leave'|'admin'|'teams'|'workforce'|'geofence'|'schedule'|'documents'|'invite';
+export type Section='menu'|'profile'|'emergency'|'credentials'|'leave'|'admin'|'teams'|'workforce'|'geofence'|'schedule'|'documents'|'invite';
 type Leave={id:string;leave_type:string;begins_on:string;ends_on:string;status:string};
 type Contact={id:string;name:string;phone:string;relationship:string|null;priority:number};
 function Txt({children,small=false,bold=false,color=C.text}:{children:React.ReactNode;small?:boolean;bold?:boolean;color?:string}){return <Text style={{color,fontSize:small?12:15,fontWeight:bold?'800':'400',lineHeight:small?17:22}}>{children}</Text>}
 function Field({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder?:string}){return <View style={{gap:4,marginTop:9}}><Txt small color={C.muted}>{label}</Txt><TextInput style={s.field} value={value} onChangeText={onChange} placeholder={placeholder||label} placeholderTextColor="#7D95A1" autoCapitalize="sentences"/></View>}
 function Btn({label,onPress,accent=false}:{label:string;onPress:()=>void;accent?:boolean}){return <Pressable onPress={onPress} style={[s.btn,accent&&{backgroundColor:C.gold}]}><Txt color={accent?C.bg:C.text} bold>{label}</Txt></Pressable>}
 function Card({children}:{children:React.ReactNode}){return <View style={s.card}>{children}</View>}
-export function MorePortal({account,onRefresh,initialSection='menu'}:{account:WorkspaceAccount;initialSection?:'menu'|'profile'|'leave';onRefresh:()=>Promise<void>}){
+export function MorePortal({account,onRefresh,initialSection='menu',managementOnly=false}:{account:WorkspaceAccount;managementOnly?:boolean;initialSection?:Section;onRefresh:()=>Promise<void>}){
  const [section,setSection]=useState<Section>(initialSection);
  const [fullName,setFullName]=useState('');
  const [phone,setPhone]=useState('');
@@ -82,7 +82,7 @@ export function MorePortal({account,onRefresh,initialSection='menu'}:{account:Wo
  const open=(next:Section)=>{setSection(next);reload()};
  return <View style={{flex:1,paddingHorizontal:14,paddingBottom:8,gap:10}}>
   <View style={s.header}><Pressable onPress={()=>section==='menu'?undefined:setSection('menu')}><Ionicons name={section==='menu'?'grid-outline':'arrow-back'} size={23} color={C.gold}/></Pressable><Text style={s.title}>{section==='menu'?'Plus':section==='profile'?'Mon profil':section==='emergency'?'Contacts d’urgence':section==='credentials'?'Compétences et cartes':section==='leave'?'Mes congés et absences':section==='teams'?'Mes équipes':section==='schedule'?'Horaire':section==='documents'?'Plans et documents':section==='invite'?'Invitations':section==='geofence'?'Punch GPS et alertes':section==='workforce'?'Heures et approbations':'Administration'}</Text></View>
-  {section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
+  {section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
    <Card><Txt bold>{account.companyName}</Txt><Txt small color={C.muted}>{account.email} · {account.role}</Txt><Txt small color={restricted?'#FE8F8F':C.mint}>Abonnement : {account.billingStatus}</Txt></Card>
    <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{([
     ['person-outline','Mon profil','profile'],
@@ -95,7 +95,7 @@ export function MorePortal({account,onRefresh,initialSection='menu'}:{account:Wo
     ['checkmark-done-outline','Corrections, approbations et exports','workforce'],
     ['locate-outline',manager?'Rayon de punch et notifications':'Mes alertes de punch','geofence'],
     ...(manager?[['business-outline','Gérer les chantiers','admin'],['people-outline','Gérer les équipes','teams']]:account.role==='lead'?[['people-outline','Mon équipe','teams']]:[])
-   ] as string[][]).map(([icon,label,v])=><Pressable key={v} onPress={()=>open(v as Section)} style={[s.menuItem,{width:'48%',padding:9}]}><Ionicons name={icon as any} color={C.gold} size={22}/><Text style={{color:C.text,flex:1,fontSize:15,fontWeight:'600'}}>{label}</Text><Ionicons name="chevron-forward" color={C.muted} size={19}/></Pressable>)}</View>
+   ] as string[][]).filter(([, ,v])=>!managementOnly||!['emergency','credentials','leave'].includes(v)).filter(([, ,v])=>account.edition!=='essential'||!['admin','teams','documents','credentials'].includes(v)).map(([icon,label,v])=><Pressable key={v} onPress={()=>open(v as Section)} style={[s.menuItem,{width:'48%',padding:9}]}><Ionicons name={icon as any} color={C.gold} size={22}/><Text style={{color:C.text,flex:1,fontSize:15,fontWeight:'600'}}>{label}</Text><Ionicons name="chevron-forward" color={C.muted} size={19}/></Pressable>)}</View>
    <Txt small color={C.muted}>À suivre : réglages langue et thème, notifications push et forfait.</Txt>
    <Pressable onPress={()=>supabase.auth.signOut()} style={s.logOut}><Txt color={C.gold}>Se déconnecter</Txt></Pressable>
   </View>:<ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:20,gap:11}}>

@@ -1,5 +1,5 @@
-const CACHE='punch-360-admin-v11';
-const FILES=['./','./index.html','./styles.css?v=admin-11','./app.js?v=admin-11','./journal.js','./vendor/supabase.js'];
+const CACHE='punch-360-roles-v12';
+const FILES=['./','./index.html','./styles.css?v=roles-12','./app.js?v=roles-12','./journal.js','./vendor/supabase.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('punch-360-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 // Cache only application code. Supabase auth/API requests and personal data are NEVER cached here.

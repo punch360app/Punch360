@@ -1,3 +1,5 @@
+> Mise à jour rôles et couverture : voir [REQUIREMENTS_AUDIT.md](REQUIREMENTS_AUDIT.md). Les sections ci-dessous décrivent aussi les livraisons précédentes.
+
 # PUNCH 360° — état réel du 24 octobre 2026
 
 Dépôt officiel : `punch360app/Punch360`. Supabase : `mlabstdxxwjdpfaxiwmg`.

@@ -1,3 +1,4 @@
+import {ManagementWorkspace} from './src/workforce/ManagementWorkspace';
 import {EssentialWorkspace} from './src/workforce/EssentialWorkspace';
 import * as Network from 'expo-network';
 import React,{useEffect,useMemo,useState} from 'react';
@@ -182,4 +183,4 @@ const styles=StyleSheet.create({
  action:{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,backgroundColor:C.panel2,borderRadius:11,borderColor:C.stroke,borderWidth:1,paddingVertical:11,paddingHorizontal:7},
  demoBar:{height:20,justifyContent:'center',backgroundColor:'#242217'}
 });
-export default function App(){return <AuthGate>{account=>account.edition==='essential'?<EssentialWorkspace account={account}/>:<Workspace account={account}/>}</AuthGate>}
+export default function App(){return <AuthGate>{account=>account.role==='admin'||account.role==='boss'?<ManagementWorkspace account={account}>{account.role==='boss'?(account.edition==='essential'?<EssentialWorkspace account={account}/>:<Workspace account={account}/>):null}</ManagementWorkspace>:account.edition==='essential'?<EssentialWorkspace account={account}/>:<Workspace account={account}/>}</AuthGate>}
