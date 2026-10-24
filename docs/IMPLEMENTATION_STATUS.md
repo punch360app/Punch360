@@ -1,3 +1,5 @@
+> RH, communications, pauses payées et estimations Pro : [ESSENTIAL_HR_PAYROLL_20261024.md](ESSENTIAL_HR_PAYROLL_20261024.md). Fonctions et limites documentées; le prompt intégral reste ouvert, SMS reportés à la fin.
+
 > Dix thèmes personnels 11–20 : [ESSENTIAL_THEMES_20261024.md](ESSENTIAL_THEMES_20261024.md). Galerie Web/Expo et préférence Supabase livrées; SMS reportés à la fin à la demande de l’utilisateur.
 
 > État actualisé : [ESSENTIAL_BILLING_20261024.md](ESSENTIAL_BILLING_20261024.md). Facturation Web/Expo et accès borne développés; configuration et recette Stripe réelle non validées. Le prompt complet reste ouvert.

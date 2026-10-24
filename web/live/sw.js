@@ -1,5 +1,5 @@
-const CACHE='punch-360-essential-v19';
-const FILES=['./','./index.html','./styles.css?v=essential-19','./app.js?v=essential-19','./essential.js','./planning.js','./billing.js','./appearance.js','./themes.json','./essential.css?v=essential-19','./kiosk.html','./kiosk.js?v=essential-19','./kiosk.css?v=essential-19','./kiosk.webmanifest','./kiosk-icon.svg','./journal.js','./vendor/supabase.js'];
+const CACHE='punch-360-essential-v20';
+const FILES=['./','./index.html','./styles.css?v=essential-20','./app.js?v=essential-20','./essential.js','./planning.js','./billing.js','./appearance.js','./hr.js','./communications.js','./payroll.js','./idempotency.js','./themes.json','./essential.css?v=essential-20','./kiosk.html','./kiosk.js?v=essential-20','./kiosk.css?v=essential-20','./kiosk.webmanifest','./kiosk-icon.svg','./journal.js','./vendor/supabase.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('punch-360-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 // Cache only application code. Supabase auth/API requests and personal data are NEVER cached here.
