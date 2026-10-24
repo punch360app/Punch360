@@ -1,0 +1,35 @@
+begin;
+do $$
+declare boss uuid:=gen_random_uuid();employee uuid:=gen_random_uuid();attacker uuid:=gen_random_uuid();c uuid;w public.company_workers;invite jsonb;denied boolean;before_count integer;joined uuid;
+begin
+ insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(employee,employee||'@test.invalid',now()),(attacker,attacker||'@test.invalid',now());
+ perform set_config('request.jwt.claim.sub',boss::text,true);c:=public.create_company_for_edition('Invitation SQL test','essential');
+ update public.companies set billing_status='active',seat_limit=4 where id=c;
+ execute 'set local role authenticated';
+ w:=public.create_essential_worker(c,'NEW-001','Alexandre','Martin',employee||'@test.invalid');
+ before_count:=(select count(*) from public.company_workers where company_id=c);
+ invite:=public.create_worker_invitation(w.id);
+ if length(invite->>'token')<>64 then raise exception 'Invalid token entropy';end if;
+ perform set_config('request.jwt.claim.sub',attacker::text,true);
+ denied:=false;begin perform public.accept_worker_invitation(invite->>'token');exception when others then denied:=true;end;
+ if not denied then raise exception 'Wrong confirmed identity accepted';end if;
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ joined:=public.accept_worker_invitation(invite->>'token');
+ if joined<>c then raise exception 'Incorrect tenant joined';end if;
+ denied:=false;begin perform public.accept_worker_invitation(invite->>'token');exception when others then denied:=true;end;
+ if not denied then raise exception 'Invitation replay accepted';end if;
+ if (select role from public.company_members where company_id=c and user_id=employee)<>'employee' then raise exception 'Role escalation';end if;
+ execute 'reset role';
+ if (select count(*) from public.company_workers where company_id=c)<>before_count then raise exception 'Activation duplicated worker/seat';end if;
+ if (select auth_user_id from public.company_workers where id=w.id)<>employee then raise exception 'Stable identity not linked';end if;
+ perform set_config('request.jwt.claim.sub',boss::text,true);execute 'set local role authenticated';
+ w:=public.create_essential_worker(c,'NEW-002','Other','Person',attacker||'@test.invalid');invite:=public.create_worker_invitation(w.id);
+ execute 'reset role';update private.worker_invitations set expires_at=now()-interval '1 second' where id=(invite->>'id')::uuid;
+ perform set_config('request.jwt.claim.sub',attacker::text,true);execute 'set local role authenticated';
+ denied:=false;begin perform public.accept_worker_invitation(invite->>'token');exception when others then denied:=true;end;
+ if not denied then raise exception 'Expired invitation accepted';end if;
+ denied:=false;begin perform public.worker_invitation_sms_claim(boss,(invite->>'id')::uuid);exception when insufficient_privilege then denied:=true;end;
+ if not denied then raise exception 'Client can claim server-only SMS dispatch';end if;
+ execute 'reset role';
+end $$;
+rollback;

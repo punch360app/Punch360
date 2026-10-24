@@ -1,3 +1,7 @@
+> État actualisé : [ESSENTIAL_PROGRESS_20261024.md](ESSENTIAL_PROGRESS_20261024.md). Trois migrations appliquées, deux fonctions SMS déployées, 24 tests locaux et sept scripts SQL passés. Le produit complet n’est pas terminé.
+
+> Lot local Essentiel du 24 octobre : voir [ESSENTIAL_DELIVERY_20261024.md](ESSENTIAL_DELIVERY_20261024.md). Adaptateur Twilio et graines des trois forfaits testés; non déployés.
+
 > Mise à jour rôles et couverture : voir [REQUIREMENTS_AUDIT.md](REQUIREMENTS_AUDIT.md). Les sections ci-dessous décrivent aussi les livraisons précédentes.
 
 # PUNCH 360° — état réel du 24 octobre 2026

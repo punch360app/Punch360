@@ -24,9 +24,12 @@ export function quote(seats: number, config: PricingConfig = defaultPricing, cad
   if (!Number.isSafeInteger(config.baseCents) || config.baseCents < 0
    || !Number.isSafeInteger(config.extraSeatCents) || config.extraSeatCents < 0
    || !Number.isSafeInteger(config.seatsIncluded) || config.seatsIncluded < 1
-   || config.annualDiscountPercent < 0 || config.annualDiscountPercent > 100) throw Error("Invalid pricing");
+   || !Number.isFinite(config.annualDiscountPercent)
+   || config.annualDiscountPercent < 0 || config.annualDiscountPercent > 100
+   || !Number.isSafeInteger(config.graceDays) || config.graceDays < 0) throw Error("Invalid pricing");
   const extraSeats = Math.max(0, seats - config.seatsIncluded);
   const monthlyCents = config.baseCents + extraSeats * config.extraSeatCents;
+  if (!Number.isSafeInteger(monthlyCents) || !Number.isSafeInteger(monthlyCents * 12)) throw Error("Price overflow");
   const annualCents = Math.round(monthlyCents * 12 * (1 - config.annualDiscountPercent / 100));
   return { seats, extraSeats, monthlyCents, annualCents, dueCents: cadence === "yearly" ? annualCents : monthlyCents };
 }
