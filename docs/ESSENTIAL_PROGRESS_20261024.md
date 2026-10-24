@@ -65,3 +65,11 @@ Vérification finale : 25 tests Node/DOM, TypeScript, `deno check` sur trois fon
 Metro a produit les bundles Hermes Android (815 modules) et iOS (822 modules). Ce sont des bundles JS/bytecode, **pas des APK/IPA signés ni des tests sur appareils physiques**. L'inspection visuelle navigateur reste non réalisée dans cet environnement.
 
 Stripe, programmes horaires avancés, vingt thèmes, langues, RH/paie, sauvegardes et restauration, hors ligne borne, permissions fines et distribution native restent à terminer. Ce lot n'est pas une certification de paie ni la fin du cahier des charges.
+
+## Parcours de test Super Admin
+
+La console Web comporte maintenant **Comptes test** : créer une compagnie isolée Essentiel/Construction, créer des comptes employés/chefs/admin/boss avec un mot de passe temporairement affiché, désactiver/réactiver un compte test. Les identifiants de test ne sont pas stockés dans le navigateur. Les fonctions plateforme historiques et le service de création de comptes exigent désormais MFA aussi côté serveur. La suppression de données de travail réelles n'est pas proposée.
+
+Test SQL supplémentaire `platform_test_tools.sql` passé en transaction annulée : refus MFA aal1, création en aal2, compagnie is_test/test_simulated et aucun siège Super Admin ajouté. Neuf scripts SQL au total. Le parcours de création Auth de comptes test n'a pas été exercé de bout en bout depuis l'interface; aucun compte de test persistant créé pendant cette session.
+
+Pour essayer : ouvrir le site avec `?edition=essential`, se connecter au compte plateforme, terminer le MFA, puis **Comptes test**. Créer une compagnie test et un compte Boss test; utiliser ce compte dans une fenêtre privée pour créer les salariés et appairer une borne. Le site public et les devis Supabase ont été vérifiés par HTTP (200, tarifs 1900/3900/6900 cents; Plus 6 personnes annuel = 43860 cents). Aucune confirmation Stripe n'est simulée par ces devis.
