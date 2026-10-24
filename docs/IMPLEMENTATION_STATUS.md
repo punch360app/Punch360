@@ -1,3 +1,5 @@
+> Organisation et planification Essentiel : voir [ESSENTIAL_PLANNING_20261024.md](ESSENTIAL_PLANNING_20261024.md). Départements, établissements, périmètres superviseurs, récurrences/rotations, échanges et couverture sont reliés au serveur. Produit complet toujours en développement.
+
 > Lot borne en ligne ajouté : registre worker_id, appairage, enrôlement NIP, révocation et échanges téléphone/borne testés SQL. 25 tests locaux et huit scripts SQL passent. Voir ESSENTIAL_PROGRESS_20261024.md pour les limites.
 
 > État actualisé : [ESSENTIAL_PROGRESS_20261024.md](ESSENTIAL_PROGRESS_20261024.md). Trois migrations appliquées, deux fonctions SMS déployées, 24 tests locaux et sept scripts SQL passés. Le produit complet n’est pas terminé.
