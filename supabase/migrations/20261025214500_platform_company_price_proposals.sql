@@ -92,7 +92,7 @@ end $fn$;
 create function public.platform_company_price_draft(
  p_company uuid,p_plan text,p_cadence text,p_seats integer,
  p_base integer,p_included integer,p_extra integer,p_discount integer,
- p_effective_on date,p_expected_version integer,p_confirmation text,p_reason text
+ p_effective_on date,p_expected_version integer,p_expected_plan_version integer,p_confirmation text,p_reason text
 ) returns jsonb language plpgsql security definer set search_path='' as $fn$
 declare c public.companies;quote jsonb;last_version integer;newrow private.platform_company_price_proposals;
 begin
@@ -100,12 +100,14 @@ begin
  if length(btrim(coalesce(p_reason,''))) not between 8 and 1000
  or p_confirmation is distinct from p_company::text
  or p_expected_version is null or p_expected_version<0
+ or p_expected_plan_version is null or p_expected_plan_version<1
  then raise exception using errcode='22023',message='Confirmer identifiant exact, version et motif';end if;
  select * into c from public.companies where id=p_company for update;
  if not found or c.product_edition<>'essential' or c.is_test then raise exception using errcode='42501',message='Entreprise Essentiel réelle requise';end if;
  select coalesce(max(proposal_version),0) into last_version from private.platform_company_price_proposals where company_id=p_company;
  if last_version<>p_expected_version then raise exception using errcode='40001',message='Proposition modifiée, recharger avant enregistrement';end if;
  quote:=private.platform_company_price_calculate(p_company,p_plan,p_cadence,p_seats,p_base,p_included,p_extra,p_discount,p_effective_on);
+ if (quote->>'plan_version')::integer<>p_expected_plan_version then raise exception using errcode='40001',message='Forfait public mis à jour : prévisualiser de nouveau';end if;
  if (select count(*) from private.platform_company_price_proposals where company_id=p_company and created_at>clock_timestamp()-interval '1 day')>=30
  then raise exception using errcode='22023',message='Limite quotidienne de projets de tarifs atteinte';end if;
  insert into private.platform_company_price_proposals
@@ -123,9 +125,9 @@ begin
 end $fn$;
 revoke all on function public.platform_company_price_preview(uuid,text,text,integer,integer,integer,integer,integer,date,text),
  public.platform_company_price_list(uuid,text),
- public.platform_company_price_draft(uuid,text,text,integer,integer,integer,integer,integer,date,integer,text,text)
+ public.platform_company_price_draft(uuid,text,text,integer,integer,integer,integer,integer,date,integer,integer,text,text)
  from public,anon;
 grant execute on function public.platform_company_price_preview(uuid,text,text,integer,integer,integer,integer,integer,date,text),
  public.platform_company_price_list(uuid,text),
- public.platform_company_price_draft(uuid,text,text,integer,integer,integer,integer,integer,date,integer,text,text)
+ public.platform_company_price_draft(uuid,text,text,integer,integer,integer,integer,integer,date,integer,integer,text,text)
  to authenticated;
