@@ -1,3 +1,14 @@
+# Reprise active — file push et appareils, 25 octobre 2026
+
+Préférences et routes employé publiées : PR #21 fusionnée dans `ef16fe74c461bb9ba27213b8449483b92006252e`, CI #134 et CI/Pages fusionnés réussis; fichiers publics notification-preferences.js, app.js et sw.js vérifiés identiques.
+
+Lot courant `feat/push-delivery` : appareils liés aux sessions, révocation Web/Expo, file privée avec consentement, worker avec tickets/reçus/erreurs et purge. Trois migrations appliquées; Edge push-delivery v2 déployée, activation fournisseur non effectuée, aucun cron d’envoi. 116 tests Node/DOM, TypeScript, config Expo et SQL dédié/régressions réussis. Détails, limites et interventions dans `NOTIFICATIONS_20261025.md`. Publication par PR/CI à vérifier.
+
+Prochaine priorité indépendante : invitations automatiques par courriel avec états et reprises, en préservant les jetons d’activation existants et SMS reportés. Reste aussi budgets/paie/couverture, OAuth réel/Apple, langues/RTL, design manquant, Super Admin, recette Stripe, builds/appareils/confidentialité/PRA. Le prompt global reste ouvert.
+
+---
+Historique :
+
 # Reprise active — préférences et notifications, 25 octobre 2026
 
 Modèles publiés : PR #20 fusionnée dans `03b607b97d2e1ae664cf894190b8e9aee5059379`, CI #131 réussie. Fichiers publics schedule-templates.js, planning.js et sw.js vérifiés identiques.
