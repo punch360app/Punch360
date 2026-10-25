@@ -1,0 +1,13 @@
+const origin='https://punch360app.github.io';
+const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'content-type, apikey','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
+export function createOfflineKioskHandler({env,fetch:send=globalThis.fetch}){return async req=>{
+ const reply=(status,value)=>new Response(JSON.stringify(value),{status,headers});
+ if(req.method==='OPTIONS')return new Response(null,{status:204,headers});if(req.method!=='POST')return reply(405,{ok:false,error:'METHOD_DENIED'});if(req.headers.get('origin')&&req.headers.get('origin')!==origin)return reply(403,{ok:false,error:'ORIGIN_DENIED'});
+ try{if(Number(req.headers.get('content-length'))>8192)return reply(413,{ok:false,error:'TOO_LARGE'});const reader=req.body?.getReader();if(!reader)return reply(400,{ok:false,error:'INVALID_REQUEST'});let raw='',bytes=0;const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;bytes+=value.length;if(bytes>8192){await reader.cancel();return reply(413,{ok:false,error:'TOO_LARGE'})}raw+=decoder.decode(value,{stream:true})}raw+=decoder.decode();const p=JSON.parse(raw);
+ if(typeof p.deviceId!=='string'||!/^[a-f0-9-]{36}$/i.test(p.deviceId)||typeof p.token!=='string'||!/^[a-f0-9]{64}$/i.test(p.token))return reply(400,{ok:false,error:'INVALID_DEVICE'});
+ const url=env('SUPABASE_URL'),key=env('SUPABASE_SERVICE_ROLE_KEY');if(url!=='https://mlabstdxxwjdpfaxiwmg.supabase.co'||!key)return reply(503,{ok:false,error:'SERVER_NOT_CONFIGURED'});
+ let name,args;if(p.action==='issue'){if(typeof p.number!=='string'||p.number.length>40||typeof p.pin!=='string'||!/^\d{6,12}$/.test(p.pin))return reply(400,{ok:false,error:'INVALID_IDENTITY'});name='kiosk_offline_issue';args={p_device:p.deviceId,p_token:p.token,p_number:p.number,p_pin:p.pin}}
+ else if(p.action==='receive'&&p.event&&typeof p.event==='object'){name='kiosk_offline_receive';args={p_device:p.deviceId,p_token:p.token,p_event:p.event}}else return reply(400,{ok:false,error:'INVALID_ACTION'});
+ const r=await send(url+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});const d=await r.json();if(!r.ok){const m=String(d?.message||'');return reply(409,{ok:false,error:/^(DEVICE_DENIED|INVALID_EVENT|GRANT_REVOKED_OR_EXPIRED|CLOCK_OR_EXPIRY_CONFLICT|INVALID_PROOF|EVENT_CONFLICT|CHAIN_CONFLICT|GRANT_ALREADY_REVIEWED)$/.test(m)?m:'OFFLINE_OPERATION_REFUSED'})}return reply(d?.ok?200:403,d);
+ }catch{return reply(400,{ok:false,error:'OFFLINE_REQUEST_FAILED'})}
+}}

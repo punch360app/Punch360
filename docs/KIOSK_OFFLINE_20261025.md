@@ -1,0 +1,35 @@
+# Borne hors ligne — observations signées et réconciliation
+
+## Comportement développé
+
+Le pointage en ligne existant reste utilisé. Après identification en ligne avec le NIP, le serveur délivre une autorisation limitée au salarié et à la borne, valable huit heures. Le NIP n’est jamais enregistré en clair. L’autorisation et sa preuve secrète sont chiffrées par une clé dérivée du NIP (PBKDF2-SHA256, 600 000 itérations, AES-GCM), puis par une clé AES-GCM non extractible de la borne, stockée par IndexedDB. Les noms et contenus du journal sont également chiffrés sur l’appareil. Cinq échecs de NIP imposent une attente locale persistante. Une nouvelle identification en ligne rétablit un ancrage d’horloge fiable.
+
+Chaque observation porte un UUID, une séquence, une empreinte de l’observation précédente et une preuve HMAC liée à la borne, à l’autorisation, à l’action et à l’heure. L’identité serveur est dérivée d’une clé Vault séparée de la clé d’archives existante. La borne n’obtient aucun droit Auth/Admin. Une transaction IndexedDB demandant la durabilité stricte doit réussir avant le message de conservation; une erreur de stockage ne devient pas un succès. Une révision par salarié empêche deux onglets de valider deux entrées simultanées.
+
+Sans réseau, une autorisation encore valide permet entrée, sortie et pauses payées/non payées. Chaque geste exige une nouvelle identification personnelle, puis l’écran revient à l’accueil. Le statut est toujours **provisoire**. Une autorisation expirée ou une horloge reculée empêche la saisie; aucun contournement silencieux. Au retour du réseau et périodiquement tant que le journal reste en attente, les mêmes événements sont rejoués dans l’ordre avec les mêmes UUID.
+
+Le serveur vérifie le jeton actuel de la borne, la révocation, le salarié actif/autorisé, la version de NIP, les preuves, la chaîne et la période de capture. Les captures doivent dater de la fenêtre de huit heures; le replay est permis jusqu’à 72 heures après son expiration. Les événements acceptés restent en attente, sans créer d’heure officielle. Une tentative refusée reste conservée sur la borne, avec un message de conflit. Une borne révoquée ou un NIP renouvelé ne peut plus faire accepter ses anciennes autorisations.
+
+## Réconciliation Boss/Admin
+
+Écrans Web et Expo dans Bornes : cent lots récents, événements détaillés, motif de confirmation/refus et historique. Une autre personne autorisée confirme les observations; l’autoapprobation de ses heures est refusée. Le serveur utilise les mêmes verrous salarié/paie que les opérations existantes. Il vérifie la session et ses segments/pauses tels qu’ils existaient à l’émission, les chevauchements, les semaines fermées, la séquence des pauses et la présence d’une sortie. Un changement sur un autre appareil ou une séquence incomplète provoque un refus transactionnel de confirmation, sans écrasement ni insertion partielle.
+
+L’approbation peut compléter une journée déjà ouverte à l’émission ou créer une journée terminée avec ses segments et pauses. Après une sortie provisoire, une nouvelle entrée exige une identification en ligne et une nouvelle autorisation; une journée provisoire encore ouverte conserve sa même autorisation au retour du réseau. Une journée encore ouverte reste en attente jusqu’à synchronisation de la sortie. Le refus conserve l’historique. Les reprises identiques de confirmation renvoient le résultat déjà enregistré; aucun doublon d’heures. Les décisions sont auditées et notifiées dans l’application lorsqu’un compte salarié existe. Une semaine ne peut pas être fermée avec des observations synchronisées encore en attente. Les archives suivantes incluent les observations, sans rétablir les autorisations ou rejouer les décisions.
+
+La borne conserve le journal chiffré jusqu’à la décision. Une décision confirmée par le serveur invalide son identité locale; une identification en ligne est alors requise. Les observations définitivement approuvées/refusées sont purgées localement après trente jours. Les observations non synchronisées/en attente ne sont pas purgées automatiquement.
+
+## Validation réellement exécutée
+
+- TypeScript et 102 tests Node/DOM : chiffrement, clé non extractible, absence de NIP/secret/noms dans les enregistrements stockés, PIN incorrect, expiration, retour arrière d’horloge, compteur d’échecs, redémarrage, chaîne/HMAC, reprise réseau, concurrence de deux onglets, rétention, vraie intégration DOM de la saisie hors ligne, retour du réseau en cours de journée et régressions UI en ligne.
+- `supabase/tests/kiosk_offline.sql` : autorisation par PIN, RPC fermées au navigateur, signatures falsifiées, replay idempotent, journée incomplète, absence d’heures avant approbation, création réelle sur fixtures de la journée/pauses, décisions idempotentes, révocation de borne.
+- `supabase/tests/kiosk_offline_conflicts.sql` : fermeture hebdomadaire bloquée, conflit avec une session ajoutée ailleurs, non-écrasement, NIP renouvelé invalidant l’autorisation et rejet conservé.
+- Régressions SQL borne en ligne et archives exécutées en transactions annulées sur données fictives. Advisors relus; tables privées fermées sans policy intentionnelles, RPC publiques de gestion à autorisation explicite.
+- Edge `essential-kiosk-offline` v1 ACTIVE. Validation JWT désactivée pour cet endpoint sans session Auth; il exige l’autorisation limitée de borne et le NIP en ligne ou la preuve signée, via RPC service-only. Aucune fonction de pointage existante ni sa configuration n’a été remplacée.
+
+## Statuts et limites
+
+Développé : Web/PWA borne et réconciliation Web/Expo. Backend : six migrations appliquées. Web : PR/CI puis vérification des fichiers publics, à suivre dans PUNCH_WORK_CONTINUATION. Tests physiques Safari/iPad, Android, mode kiosque OS, perte réelle de réseau/énergie, pression/quota/éviction du navigateur, multiconnexion serveur et charge restent à exécuter. Les tests utilisent une vraie API IndexedDB simulée en Node; ils ne prouvent pas le comportement matériel d’un appareil.
+
+Une clé WebCrypto non extractible n’est pas une garantie matérielle contre un appareil entièrement compromis ou déjà déverrouillé. La révocation est vérifiable au serveur au retour du réseau; une borne isolée ne peut pas apprendre instantanément sa révocation. Ses observations ne deviennent jamais officielles sans ces vérifications et une approbation distincte. Effacer les données de navigateur ou perdre physiquement la seule borne avant synchronisation peut perdre son journal : ne pas présenter cette solution comme une sauvegarde hors appareil.
+
+Limites fonctionnelles explicites : huit heures par identité; confirmation de séquences terminées, pas de journée provisoire encore ouverte. Une autorisation expirée en cours de panne ou un replay après 72 heures nécessite une vérification du responsable et les parcours de correction/journée oubliée; le journal reste sur l’appareil. Aucun dispositif ne prouve à lui seul que la personne a réellement travaillé aux heures indiquées.
