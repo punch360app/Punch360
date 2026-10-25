@@ -1,3 +1,14 @@
+# Reprise active — approbations déléguées, 25 octobre 2026
+
+Politiques de pauses publiées : PR #18 fusionnée dans `81313e226d7b6ec80d83415a0c3d5616f3900345`, CI #125 réussie. Fichiers publics break-policies.js, kiosk.js et sw.js vérifiés identiques à la livraison.
+
+Lot courant : `feat/supervisor-approval-scopes`. Trois migrations appliquées : périmètres heures/congés indépendants, boîte minimale par département, ponts vers les moteurs existants et notifications internes de décision. 108 tests Node/DOM et TypeScript; SQL dédié et quatre régressions réussis sur fixtures annulées. Configuration Boss et interfaces Web/Expo développées; publication PR/CI à vérifier. Voir `SUPERVISOR_APPROVALS_20261025.md`.
+
+Prochaine priorité : examiner les modèles d’horaires, couverture/coûts/budgets et intégrations de paie existants avant extension. Ne pas écraser la branche du collaborateur `feat/essential-pro-wallet-mileage-20261025`. Restent aussi push/préférences/courriels, recette OAuth/Apple, dix langues/RTL, références de design manquantes, Super Admin, Stripe test, builds signés/appareils et confidentialité/PRA. SMS en dernier. Le prompt complet reste ouvert.
+
+---
+Historique :
+
 # Reprise active — politiques de pauses, 25 octobre 2026
 
 Lot hors ligne publié : PR #17 fusionnée dans `a522dc304ef1ca9e6679c59bd5068d2a9a1770d1`, CI #122 réussie. Fichiers publics kiosk-offline.js, kiosk-offline-review.js, kiosk.js et sw.js vérifiés identiques. Les limites matérielles/terrain restent décrites dans `KIOSK_OFFLINE_20261025.md`.
