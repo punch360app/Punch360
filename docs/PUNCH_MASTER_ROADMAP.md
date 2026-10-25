@@ -21,10 +21,10 @@
 | E15 | Quatre onglets Employé | EN COURS | Web/Expo, thèmes, modules; petites tailles/accessibilité physique restantes |
 | E16 | Console Admin distincte | EN COURS | Gestion sans punch, délégations RH; revue complète des permissions restantes |
 | E17 | Console Boss | EN COURS | Entreprise, bornes, paie, facturation; direction/coûts complets restants |
-| E18 | Superviseurs par département | EN COURS | Lecture/planification et tests; délégations d’approbations fines restantes |
+| E18 | Superviseurs par département | EN COURS | Lecture/planification et approbations heures/congés indépendantes par département; recette appareils/concurrence restante |
 | E19 | Moteur d’horaires | EN COURS | Nuit/DST/récurrences/rotations/échanges; modèles complexes/postes restants |
 | E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
-| E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications restantes |
+| E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications internes livrées; push/recette terrain restants |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
 | E23 | Communications et notifications | EN COURS | Annonces, lectures, notes, alertes internes; push et préférences restants |
 | E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements, suppression et coffre des comptes test; support Web/Expo, promotions Stripe et rapports financiers livrés; rapprochement bancaire et recette fournisseur restants |
@@ -34,7 +34,7 @@
 | E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
 | E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 80 tests Node/DOM et 25 SQL; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | 108 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 
@@ -47,3 +47,5 @@ Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serve
 > Borne hors ligne du 25 octobre : identité expirante, double chiffrement local, HMAC/chaîne, IndexedDB durable, contrôle des révocations, replay idempotent et réconciliation séparée Web/Expo développés. 102 tests Node/DOM et deux SQL dédiés; backend/Edge appliqués. Les observations ne sont officielles qu’après approbation. Recette physique/réseau/énergie/charge restante : E08/E09/E27/E31 restent EN COURS. Voir KIOSK_OFFLINE_20261025.md.
 
 > Politiques de pauses : Web/borne/Expo et contrôle serveur du type payé/non payé, historique immuable et snapshots développés. 105 tests Node/DOM, SQL dédié et régressions pauses/hors ligne/archives réussis; quatre migrations appliquées. Durées/délais indicatifs, aucune déduction automatique. Voir DEPARTMENT_BREAK_POLICIES_20261025.md. E20 reste EN COURS pour recette complète.
+
+> Approbations déléguées : Web/Expo et backend développés; trois migrations appliquées, 108 tests Node/DOM, TypeScript, SQL dédié et quatre régressions réussis. Aucune ouverture RLS des salariés privés. Voir SUPERVISOR_APPROVALS_20261025.md; publication Web à vérifier dans le suivi actif.
