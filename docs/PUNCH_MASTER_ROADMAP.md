@@ -52,3 +52,5 @@ Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serve
 
 
 Actualisation budgets (2026-10-25) : Web/Expo développés, SQL fixtures annulées et tests Node/TypeScript; backend appliqué, publication Web essential-37 en cours. Voir LABOR_BUDGETS_20261025.md. Intégrations paie/couverture par qualifications restent ouvertes.
+
+Export de paie configurable (2026-10-25) : profils/correspondances/aperçus Web et source Expo développés, migration appliquée, 132 tests et SQL annulé. Fournisseur nommé/import réel restent non validés. Voir PAYROLL_EXPORTS_20261025.md.
