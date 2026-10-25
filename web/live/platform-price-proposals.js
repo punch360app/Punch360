@@ -6,6 +6,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
  const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(Number(n||0)/100);
  const uuid=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x||'');
  function reset(){generation++;Object.assign(s,fresh());}
+ function choose(companyId){if(!uuid(companyId))return false;reset();s.company=companyId;redraw();return true;}
  function input(el){
   if(s.busy)return;
   const k=el.id?.replace(/^platform-price-/,'');
@@ -66,5 +67,5 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   finally{if(n===generation){s.busy=false;redraw();}}
   return true;
  }
- return {state:s,reset,input,render,handle};
+ return {state:s,reset,choose,input,render,handle};
 }
