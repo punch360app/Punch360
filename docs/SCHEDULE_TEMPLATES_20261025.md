@@ -1,0 +1,9 @@
+# Modèles d’horaires — 25 octobre 2026
+
+Les planificateurs autorisés Plus/Pro peuvent enregistrer un cycle hebdomadaire, jour/soir ou jour/soir/nuit, le charger, le modifier avec version attendue ou l’archiver. Le modèle conserve établissement, département, jours, heures locales et note; il ne contient ni salarié ni dates de publication. Le chargement laisse le salarié et les dates sélectionnés au planificateur. Les quarts ne sont créés que par l’action de publication existante.
+
+Le serveur contrôle le module, les deux périmètres en cas de déplacement d’un modèle, les jours distincts, les heures, les versions et une limite de 200 modèles actifs. Les écritures directes sont refusées; RLS limite la lecture aux planificateurs du département. Les modèles ne réactivent pas de droits à la restauration : ils sont inclus dans l’archive signée mais récupérables en lecture documentaire seulement.
+
+Développé : Web essential-31 et source Expo. Backend : deux migrations essential_schedule_templates et schedule_template_archives appliquées au projet officiel. Tests : 111 Node/DOM et TypeScript, SQL essential_schedule_templates sur fixtures annulées (pas de publication à la sauvegarde, rejet des identités/jours dupliqués, versions obsolètes, RLS employé, périmètre superviseur, cycle de nuit, reprise idempotente, archivage sans modification des quarts). Régression company_archives réussie après ajout de la collection. Publication PR/CI à vérifier dans le suivi actif.
+
+Les contrôles de congés, d’indisponibilité, de chevauchement et de changements saisonniers restent ceux des moteurs repeat/rotate/save existants. Les modèles ne constituent pas une couverture par poste/qualification, un budget ou une intégration de paie. Aucun appareil, build signé ou recette terrain n’est déclaré validé.
