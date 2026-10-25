@@ -19,10 +19,14 @@
 - Les prix négociés historiques restent dans l'ordre signé et les anciens contrats sont journalisés par le trigger.
 
 ## Preuves
-- Migration : `supabase/migrations/20261025221000_platform_negotiated_offer_acceptance.sql` (nom final à aligner sur l'horodatage Supabase).
+- Migration : `supabase/migrations/20261025215638_platform_negotiated_offer_acceptance.sql` (migration déjà appliquée dans Supabase au numéro 20261025215638).
 - Test `supabase/tests/platform_negotiated_offer_acceptance.sql` exécuté sur compagnies fictives avec rollback : refus Boss, MFA Super Admin, mauvaise confirmation, version expirée, présentation de l'offre, double commande idempotente et journal contractuel.
-- Code Web : `web/live/platform-price-proposals.js`, `web/live/billing.js`. Tests `tests/platform-price-proposals.test.mjs` et `tests/billing-ui.test.mjs`.
+- Code Web/Expo : `web/live/platform-price-proposals.js`, `web/live/billing.js`. Tests `tests/platform-price-proposals.test.mjs` et `tests/billing-ui.test.mjs`.
 - **À confirmer avant de clore l'issue #35** : véritable compte Stripe test + API keys + webhooks signés, prorata, abonnement annuel/mensuel, panne réseau, certificat de prix Stripe, factures, renouvellement, taxes, changement d'offre en attente et fin de période. Aucun paiement réel n'est émis pendant les tests.
-- Builds Expo Android/iOS et tests sur appareil non effectués. Un statut CI vert valide le code, pas une transaction financière réelle.
+- Écran mobile Expo codé; builds signés Android/iOS et tests sur appareil non effectués. Un statut CI vert valide le code, pas une transaction financière réelle.
 
 Cette livraison appartient au **prompt original « Validation SQL archives »**, et non au prompt maître séparé de 453 exigences.
+
+## Confirmation de déploiement contrôlé
+
+Migration installée sur le seul projet Supabase `mlabstdxxwjdpfaxiwmg` sous `20261025215638`. Scénario SQL exécuté **après installation** dans une transaction `ROLLBACK` : réussite. Contrôle de données : 0 projet, 0 approbation, 0 ancienne version inventée conservés, refus d'approbation et de commande pour le rôle anonyme. Le code Expo de l'offre a été ajouté après la première exécution CI verte : vérifier le dernier statut CI avant fusion. Aucun compte réel et aucun paiement Stripe touché.
