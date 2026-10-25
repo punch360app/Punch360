@@ -1,12 +1,12 @@
 begin;
 do $$
-declare boss uuid:=gen_random_uuid();a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();owner_id uuid;c uuid;l uuid;d uuid;wa uuid;wb uuid;s1 uuid;s2 uuid;open_shift uuid;r uuid;denied boolean;report jsonb;v_ids uuid[];v_retry uuid[];v_req uuid:=gen_random_uuid();v_pair jsonb;
+declare sid uuid:=gen_random_uuid();boss uuid:=gen_random_uuid();a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();owner_id uuid;c uuid;l uuid;d uuid;wa uuid;wb uuid;s1 uuid;s2 uuid;open_shift uuid;r uuid;denied boolean;report jsonb;v_ids uuid[];v_retry uuid[];v_req uuid:=gen_random_uuid();v_pair jsonb;
 begin
  insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(a,a||'@test.invalid',now()),(b,b||'@test.invalid',now());
  perform set_config('request.jwt.claim.sub',boss::text,true);c:=public.create_company_for_edition('Shift workflow acceptance','essential');
  update public.companies set billing_status='active',is_test=true,billing_mode='test_simulated',seat_limit=10 where id=c;
  insert into public.company_members(company_id,user_id,role) values(c,a,'employee'),(c,b,'employee');
- select user_id into owner_id from private.platform_owner;perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2')::text,true);execute 'set local role authenticated';perform public.platform_set_essential_test_plan(c,'essential_pro');
+ select user_id into owner_id from private.platform_owner;insert into auth.sessions(id,user_id,aal,not_after) values(sid,owner_id,'aal2',clock_timestamp()+interval '1 hour');perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'session_id',sid,'aal','aal2')::text,true);execute 'set local role authenticated';perform public.platform_set_essential_test_plan(c,'essential_pro');
  perform set_config('request.jwt.claim.sub',boss::text,true);
  select id into l from public.essential_locations where company_id=c;d:=public.save_essential_department(c,l,'Production');
  select id into wa from public.company_workers where company_id=c and auth_user_id=a;select id into wb from public.company_workers where company_id=c and auth_user_id=b;

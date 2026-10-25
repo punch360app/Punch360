@@ -1,11 +1,11 @@
 begin;
 do $$
-declare boss uuid:=gen_random_uuid();emp uuid:=gen_random_uuid();admin_user uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();owner_id uuid;c uuid;worker uuid;d public.essential_hr_documents;v public.essential_hr_documents;denied boolean;cert uuid;
+declare sid uuid:=gen_random_uuid();boss uuid:=gen_random_uuid();emp uuid:=gen_random_uuid();admin_user uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();owner_id uuid;c uuid;worker uuid;d public.essential_hr_documents;v public.essential_hr_documents;denied boolean;cert uuid;
 begin
  insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(emp,emp||'@test.invalid',now()),(admin_user,admin_user||'@test.invalid',now()),(outsider,outsider||'@test.invalid',now());
  perform set_config('request.jwt.claim.sub',boss::text,true);c:=public.create_company_for_edition('HR fixture','essential');update public.companies set is_test=true,billing_mode='test_simulated',billing_status='active',seat_limit=10 where id=c;
  insert into public.company_members(company_id,user_id,role) values(c,emp,'employee'),(c,admin_user,'admin');select id into worker from public.company_workers where company_id=c and auth_user_id=emp;
- select user_id into owner_id from private.platform_owner;perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2')::text,true);perform public.platform_set_essential_test_plan(c,'essential_pro');
+ select user_id into owner_id from private.platform_owner;insert into auth.sessions(id,user_id,aal,not_after) values(sid,owner_id,'aal2',clock_timestamp()+interval '1 hour');perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'session_id',sid,'aal','aal2')::text,true);perform public.platform_set_essential_test_plan(c,'essential_pro');
  perform set_config('request.jwt.claim.sub',admin_user::text,true);execute 'set local role authenticated';
  denied:=false;begin perform public.prepare_essential_hr_document(c,'Private file','personal',worker);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Admin inherited confidential HR permissions';end if;
  perform set_config('request.jwt.claim.sub',boss::text,true);perform public.set_essential_hr_grant(c,admin_user,true,true,false,'Delegation RH autorisée');

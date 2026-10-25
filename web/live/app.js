@@ -242,6 +242,7 @@ async function logOut(){essentialUI.reset();localStorage.removeItem('punch-local
 function tick(){state.time=Date.now();const t=$('liveTimer'),cs=currentSession();if(t)t.textContent=isEssential()?elapsed(essentialToday()):elapsed(cs?state.time-Date.parse(cs.started_at):0);const w=$('weekTotal'),y=$('yearTotal');if(w||y){const tot=clockTotals();if(w)w.textContent=mins(tot.week);if(y)y.textContent=mins(tot.year)}if($('topclock'))$('topclock').textContent=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})}
 document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-action]');if(!el)return;const a=el.dataset.action,id=el.dataset.id;try{
 if(a==='activateWorker'){const r=await sb.rpc('accept_worker_invitation',{p_token:sessionStorage.getItem('punch-worker-invite')});if(r.error)throw r.error;sessionStorage.removeItem('punch-worker-invite');await initialize();return;}
+if(a.startsWith('directory:')){await essentialUI.directory.handle(el);return;}
 if(a.startsWith('invite-mail:')){await essentialUI.invitationEmail.handle(el);return;}
 if(a.startsWith('notification-pref:')){await essentialUI.notificationPreferences.handle(el);return;}
 if(a.startsWith('supervision:')){await essentialUI.supervision.handle(el);return;}

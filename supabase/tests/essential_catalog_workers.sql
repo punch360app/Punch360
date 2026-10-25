@@ -1,6 +1,6 @@
 begin;
 do $$
-declare boss uuid:=gen_random_uuid();emp uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();c uuid;other uuid;w public.company_workers;v integer;owner_id uuid;denied boolean;q jsonb;
+declare sid uuid:=gen_random_uuid();boss uuid:=gen_random_uuid();emp uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();c uuid;other uuid;w public.company_workers;v integer;owner_id uuid;denied boolean;q jsonb;
 begin
  insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(emp,emp||'@test.invalid',now()),(outsider,outsider||'@test.invalid',now());
  -- Isolate seed arithmetic from public prices edited through Super Admin. Rolled back.
@@ -29,13 +29,13 @@ begin
  denied:=false;begin perform public.platform_save_essential_plan('essential',1,'{"base_cents":1}', 'Forbidden');exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Ordinary user edited public pricing';end if;
  execute 'reset role';
- select user_id into owner_id from private.platform_owner;
+ select user_id into owner_id from private.platform_owner;insert into auth.sessions(id,user_id,aal,not_after) values(sid,owner_id,'aal2',clock_timestamp()+interval '1 hour');
  perform set_config('request.jwt.claim.sub',owner_id::text,true);
- perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal1')::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'session_id',sid,'aal','aal1')::text,true);
  execute 'set local role authenticated';
  denied:=false;begin perform public.platform_save_essential_plan('essential',1,'{"base_cents":2500}','Requires MFA');exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Owner edited prices without MFA';end if;
- perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2')::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'session_id',sid,'aal','aal2')::text,true);
  select version into v from public.essential_plans where id='essential';
  perform public.platform_save_essential_plan('essential',v,'{"base_cents":2500,"kiosk_limit":2}','SQL transaction test');
  if (select base_cents from public.essential_plans where id='essential')<>2500 then raise exception 'Price update failed';end if;
