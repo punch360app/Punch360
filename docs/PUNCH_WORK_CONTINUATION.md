@@ -1,3 +1,16 @@
+# Reprise active — politiques de pauses, 25 octobre 2026
+
+Lot hors ligne publié : PR #17 fusionnée dans `a522dc304ef1ca9e6679c59bd5068d2a9a1770d1`, CI #122 réussie. Fichiers publics kiosk-offline.js, kiosk-offline-review.js, kiosk.js et sw.js vérifiés identiques. Les limites matérielles/terrain restent décrites dans `KIOSK_OFFLINE_20261025.md`.
+
+Lot courant : `feat/department-break-policies`. Politiques versionnées, contrôle du type payé/non payé dans le moteur, contexte interne du chemin mobile payé, snapshots et UI Web/borne/Expo. Quatre migrations appliquées; TypeScript et 105 tests Node/DOM; SQL dédié sur fixtures et régressions pauses/hors ligne/archives réussis. Web : PR/CI à vérifier. Détails : `DEPARTMENT_BREAK_POLICIES_20261025.md`.
+
+Prochain lot : délégations d’approbation fines par département (heures/congés), isolées des accès RH/rémunération et des pouvoirs de direction. Une branche distante `feat/essential-pro-wallet-mileage-20261025` a été repérée au même commit de base, sans nouveau commit au moment du contrôle; ne pas écraser un futur travail de ce collaborateur dans la paie/dépenses.
+
+Reste ouvert : modèles/coûts/budgets/intégrations paie, push/préférences/courriels, recette OAuth (Apple désactivé observé), dix langues/RTL, autres références de design, audit Super Admin, recette Stripe, builds signés et QA/confidentialité/PRA. Les SMS restent en dernier. Ne pas annoncer le prompt complet terminé.
+
+---
+Historique :
+
 # Reprise active — borne hors ligne, 25 octobre 2026
 
 Branche `feat/kiosk-offline-secure-v1`, base main `6e9bc97`. Borne PWA : identité limitée à huit heures après PIN en ligne, autorisation chiffrée deux fois, journal IndexedDB signé/chaîné, reprises sans doublons, contrôles serveur de révocation/NIP/horloge, réconciliation distincte Boss/Admin Web et Expo. Les heures restent provisoires avant confirmation. Détails et limites : `KIOSK_OFFLINE_20261025.md`.
