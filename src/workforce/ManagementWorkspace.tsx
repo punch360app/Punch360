@@ -22,15 +22,15 @@ type Person={user_id:string;role:string};
 export function ManagementWorkspace({account,children}:{account:WorkspaceAccount;children?:React.ReactNode}){
  const {width}=useWindowDimensions();const wide=width>850,boss=account.role==='boss',essential=account.edition==='essential';
  const [page,setPage]=useState<Section|'home'|'members'|'messages'|'punch'|'supervision'|'breakPolicies'|'organization'|'billing'|'kiosks'|'hr'|'communications'|'payroll'|'laborBudgets'|'qualifiedCoverage'|'missingDays'|'breakCorrections'|'support'>('home'),[people,setPeople]=useState<Person[]>([]),[error,setError]=useState('');
- const [billingStatus,setBillingStatus]=useState(account.billingStatus),[statusLoading,setStatusLoading]=useState(essential&&boss),[statusFailed,setStatusFailed]=useState(false);
+ const [billingStatus,setBillingStatus]=useState(account.billingStatus),[statusLoading,setStatusLoading]=useState(essential),[statusFailed,setStatusFailed]=useState(false);
  const restricted=essential&&(statusLoading||statusFailed||['restricted','cancelled'].includes(billingStatus));
  useEffect(()=>{
-  let alive=true;setPage('home');setBillingStatus(account.billingStatus);setStatusLoading(essential&&boss);setStatusFailed(false);
-  if(!essential||!boss)return()=>{alive=false;};
+  let alive=true;setPage('home');setBillingStatus(account.billingStatus);setStatusLoading(essential);setStatusFailed(false);
+  if(!essential)return()=>{alive=false;};
   (async()=>{try{
-   const r=await supabase.rpc('essential_billing_summary',{p_company:account.companyId});
+   const r=await supabase.rpc('essential_entitlements',{p_company:account.companyId});
    if(!alive)return;if(r.error)throw r.error;
-   setBillingStatus((r.data as {status?:string}|null)?.status||account.billingStatus);
+   setBillingStatus((r.data as {billing_status?:string}|null)?.billing_status||account.billingStatus);
   }catch{if(alive)setStatusFailed(true);}finally{if(alive)setStatusLoading(false);}})();
   return()=>{alive=false;};
  },[account.companyId,account.role,account.edition,account.billingStatus]);
