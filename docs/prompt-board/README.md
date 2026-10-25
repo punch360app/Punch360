@@ -2,6 +2,10 @@
 
 Ce répertoire définit le fonctionnement **Drive → GitHub → ChatGPT Work → statut vérifié**. Il ne change ni l'application ni Supabase.
 
+## Source de vérité après consolidation
+
+**Un seul prompt à exécuter :** [`MASTER_PROMPT_20261025.md`](MASTER_PROMPT_20261025.md) (**476 exigences uniques, 27 lots**). Le giga-prompt historique `docs/CONTINUATION_PROMPT_20261025.md` et la spécification technique sur les absences servent de références, pas de deux autres listes à coder. Les exigences horaires avancés et signalement volontaire sont rangées sous SHIFT-016–025, COVER-018–025, HR-018 et QA-018–020, sans réimplémenter les mécanismes existants. Avant de développer, vérifier le dernier `main`, les PR, la base officielle et les tests ; un document n'est pas une preuve de livraison.
+
 ## Principe
 - **Google Drive** : boîte d'entrée des nouveaux prompts et visuels. Dossier existant intitulé `promt` dans le Drive autorisé du propriétaire.
 - **GitHub (ce dépôt)** : source de vérité des tâches, modifications, preuves et statuts. Les prompts doivent être triés en exigences vérifiables, sans duplication du code existant.
