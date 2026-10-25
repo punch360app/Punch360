@@ -12,7 +12,7 @@ export function stripeClient(secret,fetcher=fetch){
  if(!/^sk_(test|live)_/.test(secret||''))throw Error('STRIPE_NOT_CONFIGURED');
  /** @param {string} path @param {any} params @param {string|null} key */
  return async(path,params=null,key=null)=>{
-  if(!/^\/[a-z0-9_/-]+(?:\?[a-z_]+=[a-zA-Z0-9_]+)?$/.test(path))throw Error('INVALID_STRIPE_PATH');
+  if(!/^\/[a-z0-9_/-]+(?:\?[a-z_]+=[a-zA-Z0-9_]+(?:&[a-z_]+=[a-zA-Z0-9_]+)*)?$/.test(path))throw Error('INVALID_STRIPE_PATH');
   const headers={Authorization:`Bearer ${secret}`,'Stripe-Version':'2025-02-24.acacia'};
   if(key)headers['Idempotency-Key']=key;
   const flatten=(v,p,out)=>{if(v===undefined||v===null)return;if(Array.isArray(v))v.forEach((x,i)=>flatten(x,`${p}[${i}]`,out));else if(typeof v==='object')Object.entries(v).forEach(([k,x])=>flatten(x,p?`${p}[${k}]`:k,out));else out.append(p,String(v));};
