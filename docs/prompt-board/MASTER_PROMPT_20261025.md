@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition du 25 octobre 2026 — 441 exigences identifiées en 27 lots.**
+**Édition du 25 octobre 2026 — 453 exigences identifiées en 27 lots.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -166,7 +166,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **CORE-017** — Interdire changement de site non autorisé et ne pas mélanger avec un chantier.
 - [ ] **CORE-018** — Faire tenir la page Punch mobile sans scroll vertical en usage normal.
 
-## P0 — Bornes communes et accès Admin/Boss (KIOSK, 26 points)
+## P0 — Bornes communes et accès Admin/Boss (KIOSK, 32 points)
 **Objectif :** Finaliser borne tablette sécurisée, appairage et sessions mixtes.
 **Sources :** Master / intégration 10 thèmes borne. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **KIOSK-001** — Maintenir URL publique kiosk.html sans identifiant secret dans le lien.
@@ -195,6 +195,12 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **KIOSK-024** — Interdire au lecteur QR d’ouvrir l’administration ou de confondre les sessions Boss/Admin avec l’identité technique de la borne.
 - [ ] **KIOSK-025** — Si QR/WALLET est indisponible, maintenir le matricule/NIP et son mode hors ligne déjà autorisé; ne jamais fabriquer une validation QR hors ligne non sécurisée.
 - [ ] **KIOSK-026** — Valider sur iPad Safari/PWA et tablette Android Chrome/PWA, avec bornes actives/révoquées, touches, caméra et parcours utilisateur réels.
+- [ ] **KIOSK-027** — Ne pas dépendre uniquement de l’API navigateur `BarcodeDetector` : fournir un **décodeur QR local de secours compatible Safari iPad/iOS et Chrome Android**, détection de capacité et tests PWA réellement effectués; aucune vidéo envoyée à un service externe.
+- [ ] **KIOSK-028** — Prévoir, en option facultative, le **lecteur QR optique externe USB/Bluetooth** fonctionnant en mode clavier si le matériel et le système le permettent; scanner les écrans de téléphone, analyser seulement les entrées dans un champ dédié non administratif et appliquer exactement les mêmes vérifications serveur et NIP que la caméra.
+- [ ] **KIOSK-029** — Ajouter **Boss/Admin → Bornes → Diagnostic du scanner** : tester la caméra, l’autorisation, le format QR et, si présent, le lecteur externe à partir d’un code de test non lié à un employé; indiquer statut de compatibilité et erreurs sans conserver de vidéo.
+- [ ] **KIOSK-030** — Prévoir un **signal visuel et sonore facultatif** pour succès et refus, seulement après confirmation serveur de l’opération; rendre le volume/désactivation configurable, fournir équivalents accessibles et ne pas annoncer oralement un nom ou un montant d’heures.
+- [ ] **KIOSK-031** — Documenter l’installation physique : support stable, orientation avant/arrière de caméra, angle de présentation des écrans Apple/Android, lumière/reflets, distance, alimentation, affichage lisible et confidentialité à plusieurs employés.
+- [ ] **KIOSK-032** — Si le scanner est incompatible, caméra impossible ou lecteur externe absent, présenter un état explicite « Scanner indisponible » et préserver **Matricule/NIP** utilisable; ne pas promettre le scanner fonctionnel sur la seule détection d’une caméra.
 
 ## P0 — Borne hors ligne et récupération (OFFLINE, 12 points)
 **Objectif :** Valider terrain, sécurité de journal, reprise et réconciliation.
@@ -335,7 +341,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **CAL-010** — Préparer adaptateurs bidirectionnels sans promettre API non connectées.
 - [ ] **CAL-011** — Tester révocation lien et changement de rôle/compagnie.
 
-## P2 — Cartes Wallet et pointage QR (WALLET, 60 points)
+## P2 — Cartes Wallet et pointage QR (WALLET, 66 points)
 **Objectif :** Permettre une carte personnelle sécurisée Pro.
 **Sources :** Nouveaux ajouts. **État initial :** nouveau / à développer ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **WALLET-001** — Créer émission de cartes par employé pour le forfait Pro.
@@ -398,6 +404,12 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **WALLET-058** — Exiger une confirmation renforcée du gestionnaire pour « Remplacer » ou « Révoquer », limiter les renvois et les essais (quotas/anti-abus), vérifier permissions/tenant/forfait côté serveur et éviter les multiples cartes actives par erreur selon la politique retenue.
 - [ ] **WALLET-059** — Fournir à l’employé une option personnelle « Ajouter de nouveau à Apple Wallet / Google Wallet » après authentification, sans lui permettre d’émettre la carte d’un collègue; si la carte précédente est révoquée, rediriger vers la nouvelle émission.
 - [ ] **WALLET-060** — Tester **changement Android→Android, iPhone→iPhone, Android→iPhone, iPhone→Android**, téléphone perdu, lien consommé/expiré, mauvais destinataire, deux demandes simultanées, annulation, carte ancienne scannée, salarié désactivé et pointages conservés; ne déclarer « livré » qu’après essais fournisseur/appareil.
+- [ ] **WALLET-061** — Évaluer le mécanisme Google Wallet de **QR/barcode tournant** avec vérification OTP, secret individuel côté serveur et fenêtre de validité courte; ne jamais ajouter un fallback statique qui rendrait la rotation inutile pour la sécurité.
+- [ ] **WALLET-062** — Pour les passes Apple Wallet à code QR statique ou autre format non dynamique, exiger **NIP ou vérification supplémentaire**; ne pas prétendre qu’une carte visible dans Wallet prouve à elle seule la présence ou l’identité de la personne.
+- [ ] **WALLET-063** — Un salarié inscrit à plusieurs compagnies doit obtenir une **carte distincte par compagnie**, avec identifiant, permission, émission, révocation et affichage clairement séparés; aucune carte d’une entreprise ne doit fonctionner sur la borne d’une autre.
+- [ ] **WALLET-064** — Tester la lecture des **écrans Apple et Android** avec la caméra et des lecteurs externes optiques compatibles; privilégier les formats 2D réellement supportés et ne pas supposer qu’un scanner laser lit un écran de téléphone.
+- [ ] **WALLET-065** — Journaliser des **statistiques techniques agrégées** par borne (lectures réussies, permissions caméra refusées, lecteur indisponible, échecs de décodage, délais) sans stocker images, QR bruts ni renseignements personnels dans la télémétrie.
+- [ ] **WALLET-066** — Vérifier après remplacement de téléphone qu’un **ancien pass toujours visible** ou une capture de l’ancien QR n’autorise plus aucun pointage, même si la suppression distante de la carte sur l’ancien appareil n’est pas possible.
 
 ### Parcours de réémission de carte lors d'un changement de téléphone
 1. Dans la fiche Employé, le Boss/Admin autorisé choisit **Carte virtuelle → Renvoyer le lien** (carte valide) ou **Remplacer la carte** (téléphone perdu/volé ou remplacement requis), puis vérifie l'identité et la bonne compagnie.
