@@ -9,7 +9,7 @@ Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/
 - Web Essentiel : https://punch360app.github.io/Punch360/?edition=essential
 - Borne : https://punch360app.github.io/Punch360/kiosk.html
 - Drive source : dossier privé connecté « promt » ; ne pas publier son adresse ou ses fichiers bruts dans ce dépôt public.
-- Références dépôt : `docs/README_COLLABORATEUR_WORK.md`, `docs/PUNCH_MASTER_ROADMAP.md`, `docs/PUNCH_WORK_CONTINUATION.md`, `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md`, `docs/PLATFORM_ACTIONS_AUDIT_20261025.md`, `docs/ESSENTIAL_MIXED_PUNCH_SPEC.md`, les documents de modules et tests. `docs/CONTINUATION_PROMPT_20261025.md` devient un point d'entrée historique, **pas un second prompt actif**. Inspecter les fichiers réellement présents et les nouvelles PR avant toute décision.
+- Références dépôt : `docs/README_COLLABORATEUR_WORK.md`, `docs/PUNCH_MASTER_ROADMAP.md`, `docs/PUNCH_WORK_CONTINUATION.md`, `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md`, `docs/PLATFORM_ACTIONS_AUDIT_20261025.md`, `docs/ESSENTIAL_MIXED_PUNCH_SPEC.md`, les documents de modules et tests. Le giga-prompt de continuation a été consolidé et son fichier redondant supprimé; consulter l'historique Git uniquement si nécessaire. Inspecter les fichiers réellement présents et les nouvelles PR avant toute décision.
 - Deux produits séparés : PUNCH Essentiel (trois forfaits) et PUNCH Construction (fonctionnalités/prix indépendants). Super Admin commun. Protéger données réelles, historisations et contrats.
 - Forfaits Essentiel de référence : 19/39/69 $ CAD mensuels, 5 sièges, suppléments 3/4/5 $/mois, bornes 1/3/illimitées et -15 % annuel. Toujours lire la version contractuelle serveur, ne pas figer ces valeurs dans le front.
 - Développement principalement Essentiel et Super Admin transversal; Construction en tests de non-régression, sans refonte non demandée.
@@ -29,7 +29,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 
 ## Migration contrôlée du giga-prompt de continuation — source unique, sans doublons
 
-La version détaillée de `docs/CONTINUATION_PROMPT_20261025.md` (historique Git, PR #41) a été **intégrée ici**. Ce prompt maître et ses IDs constituent désormais **l'unique liste d'exigences exécutable**; le document ancien ne doit plus être relu comme une seconde série de tâches. Les spécifications techniques (notamment `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md`) détaillent les critères sans créer d'exigence parallèle.
+Le giga-prompt de continuation historique (PR #41, archives Git) a été **intégré ici** et son fichier autonome supprimé de `main`. Ce prompt maître et ses IDs constituent désormais **l'unique liste d'exigences à exécuter**. Les spécifications techniques (notamment `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md`) détaillent les critères sans créer d'exigence parallèle.
 
 | Domaine du giga-prompt transféré | Exigences maîtres correspondantes | Traitement anti-doublons |
 |---|---|---|
