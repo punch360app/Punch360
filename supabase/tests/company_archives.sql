@@ -1,0 +1,48 @@
+begin;
+set local statement_timeout='60s';
+do $$
+declare owner_id uuid;sid uuid:=gen_random_uuid();c uuid;c2 uuid;w uuid:=gen_random_uuid();j uuid:=gen_random_uuid();session uuid:=gen_random_uuid();eid uuid:=gen_random_uuid();iid uuid:=gen_random_uuid();h jsonb;p jsonb;plan jsonb;result jsonb;denied boolean;u uuid:=gen_random_uuid();us uuid:=gen_random_uuid();before_count bigint;after_count bigint;open_session uuid:=gen_random_uuid();req uuid:=gen_random_uuid();
+begin
+ select user_id into owner_id from private.platform_owner;
+ insert into auth.sessions(id,user_id,aal,not_after) values(sid,owner_id,'aal2',clock_timestamp()+interval '10 minutes');
+ perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2','session_id',sid)::text,true);
+ c:=public.platform_create_test_company('Archive fixture A','essential',10);c2:=public.platform_create_test_company('Archive fixture B','essential',10);
+ insert into public.company_workers(id,company_id,employee_number,first_name,role) values(w,c,'ARCHIVE-1','Fixture','boss');
+ insert into public.jobs(id,company_id,number,name) values(j,c,'ARCHIVE-JOB','Fixture job');
+ insert into public.punch_sessions(id,company_id,worker_id,user_id,started_at,ended_at) values(session,c,w,null,'2026-10-20 12:00Z','2026-10-20 20:00Z');
+ insert into public.punch_sessions(id,company_id,worker_id,user_id,started_at) values(open_session,c,w,null,'2026-10-21 12:00Z');
+ execute 'set local role authenticated';
+ h:=public.company_export_create(c,eid,'Fixture export');
+ if h->>'id'<>eid::text or h->>'signature' is null then raise exception 'Missing signed header';end if;
+ if (public.company_export_create(c,eid,'Fixture export'))->>'id'<>eid::text then raise exception 'Export retry changed';end if;
+ execute 'reset role';select payload_text::jsonb into p from private.company_exports where id=eid;
+ if p::text like '%pin_hash%' or p::text like '%token_hash%' then raise exception 'Credential exposure';end if;
+ execute 'set local role authenticated';
+ denied:=false;begin perform public.company_archive_import(p::text,'0000000000000000000000000000000000000000000000000000000000000000',(h->>'key_id')::uuid,'Invalid signature',gen_random_uuid());exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Bad signature accepted';end if;
+ perform public.company_archive_import(p::text,h->>'signature',(h->>'key_id')::uuid,'Fixture import',iid);
+ execute 'reset role';
+ delete from public.punch_sessions where worker_id=w;delete from public.company_workers where id=w;
+ update public.jobs set name='Current job must survive' where id=j;
+ select count(*) into before_count from public.company_workers where company_id=c;
+ execute 'set local role authenticated';plan:=public.company_restore_plan(iid);
+ if (plan->>'missing')::int<2 or (plan->>'conflicts')::int<1 then raise exception 'Incorrect recovery plan: %',plan;end if;
+ execute 'reset role';select count(*) into after_count from public.company_workers where company_id=c;
+ if before_count<>after_count or exists(select 1 from public.punch_sessions where id=session) or exists(select 1 from private.company_restore_context) then raise exception 'Preview wrote data';end if;
+ execute 'set local role authenticated';
+ result:=public.company_restore_missing(iid,plan->>'plan_hash',plan->>'company_name','Fixture recovery',req);
+ if public.company_restore_missing(iid,plan->>'plan_hash',plan->>'company_name','Fixture recovery',req) is distinct from result then raise exception 'Recovery retry changed';end if;
+ execute 'reset role';
+ if exists(select 1 from public.punch_sessions where id=open_session) then raise exception 'Open session reactivated';end if;
+ if not exists(select 1 from public.company_workers where id=w and status='disabled' and role='employee' and auth_user_id is null and not personal_access and not can_mobile_punch and not can_kiosk_punch) then raise exception 'Worker rights restored';end if;
+ if not exists(select 1 from public.punch_sessions where id=session and ended_at is not null) then raise exception 'Closed history not restored: %',result;end if;
+ if (select name from public.jobs where id=j)<>'Current job must survive' then raise exception 'Existing job overwritten';end if;
+ -- Stale preview is rejected after a current business edit.
+ execute 'set local role authenticated';plan:=public.company_restore_plan(iid);execute 'reset role';update public.jobs set address='new address' where id=j;
+ execute 'set local role authenticated';denied:=false;begin perform public.company_restore_missing(iid,plan->>'plan_hash',plan->>'company_name','Stale recovery',gen_random_uuid());exception when raise_exception then denied:=true;end;if not denied then raise exception 'Stale plan accepted';end if;
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2','session_id',sid)::text,true);
+ execute 'set local role authenticated';perform public.company_export_discard(eid);execute 'reset role';if exists(select 1 from private.company_exports where id=eid) then raise exception 'Temporary copy survived discard';end if;
+ delete from auth.sessions where id=sid;execute 'set local role authenticated';denied:=false;begin perform public.company_restore_plan(iid);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Revoked platform allowed';end if;
+ execute 'reset role';
+end $$;
+rollback;

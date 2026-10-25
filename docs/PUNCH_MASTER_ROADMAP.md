@@ -39,3 +39,5 @@
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
+
+> Archives du 25 octobre, PR #14 : interfaces Web Boss/Super Admin, chiffrement/signature, documents privés, prévisualisation et récupération additive développés; 89 tests Node/DOM et quatre scripts SQL archives sur fixtures réussis. Backend appliqué et Edge déployée; CI/Pages à vérifier dans le suivi. Recette authentifiée binaire Storage/appareils, charge/concurrence et PRA infrastructure encore ouverts. Voir COMPANY_ARCHIVES_20261025.md. Les exigences E07/E22/E26/E31 restent EN COURS.
