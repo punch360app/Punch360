@@ -34,6 +34,14 @@ begin
   perform public.platform_member_access_change(c,employee_id,'suspend',0,'wrong-confirmation',reason);
  exception when others then denied:=true;end;
  if not denied then raise exception 'Wrong confirmation accepted';end if;
+ denied:=false;
+ begin perform public.platform_member_access_preview(c,boss_id,reason);
+ exception when others then denied:=true;end;
+ if not denied then raise exception 'Boss account was targetable';end if;
+ denied:=false;
+ begin perform public.platform_member_access_change(c,owner_id,'suspend',0,owner_id::text||':'||c::text,reason);
+ exception when others then denied:=true;end;
+ if not denied then raise exception 'Platform owner was targetable';end if;
  v:=public.platform_member_access_change(c,employee_id,'suspend',0,employee_id::text||':'||c::text,reason);
  if v->>'member_status'<>'disabled' or (v->>'version')::integer<>1 then raise exception 'Suspension failed: %',v;end if;
  execute 'reset role';
