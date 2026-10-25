@@ -1,3 +1,13 @@
+# Reprise active — actions réelles Super Admin par compagnie, 25 octobre 2026
+
+PR #34 `feat/platform-scoped-real-member-controls-20261025` : premier bloc d'action Super Admin réelle ciblée sur **un compte non-Boss d'une entreprise Essentiel réelle**, sans modifier les comptes Auth, les autres compagnies, le salaire, les pointages historiques ni Stripe. Actions `suspend` / `restore`, audit, MFA AAL2/session vivante, raison, UUID exact, version attendue. Le trigger existant `sync_essential_member_worker` désactive automatiquement le salarié : sa restauration doit préserver son état précédent. Compte propriétaire/Boss/test exclu; interventions interrompues si pointage ouvert. UI Web annuaire et tests ajoutés.
+
+La recette SQL sur utilisateurs/entreprises synthétiques dans une transaction `BEGIN/ROLLBACK` a réussi : séparation multi-compagnies, refus Boss/propriétaire/non-MFA, version périmée, mauvais identifiants, audit et indicateurs du salarié restaurés. Aucune compagnie ni compte réel n'a été modifié par cette recette. Document : `docs/PLATFORM_REAL_MEMBER_ACCESS_20261025.md`.
+
+**Prochaines étapes** : CI verte, migration Supabase appliquée version `20261025211947` (0 intervention réelle; privilège anon refusé). Fusionner/publier en ordre sûr, faire une vraie recette MFA sur une compagnie **fictive mais non facturée**. Ensuite contrats/tarifs particuliers par entreprise, puis planning postes exclusifs et intégrations externes. Les droits Boss et l'authentification globale restent des chantiers séparés; ne pas prétendre lire les mots de passe réels. Ne pas confondre l'action réelle ciblée et la suspension de toute l'entreprise. Le prompt global n'est pas terminé.
+
+---
+
 # Reprise active — accès Boss pendant restriction commerciale, 25 octobre 2026
 
 Base main : annuaire des abonnements fusionné au commit `13d2920c9d97`. PR #26 (prompt maître) séparée et préservée.
