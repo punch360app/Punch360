@@ -1,3 +1,13 @@
+# Reprise active — accès Boss pendant restriction commerciale, 25 octobre 2026
+
+Base main : annuaire des abonnements fusionné au commit `13d2920c9d97`. PR #26 (prompt maître) séparée et préservée.
+
+Lot `fix/restricted-boss-access-20261025` : navigation restreinte du Boss Essentiel (Abonnement, Support, propre pointage), interdiction d'afficher les écrans de gestion pendant restriction effective, chargement prioritaire des deux services, et bilan de facturation conservé quand Stripe est indisponible. Aucune table ni donnée Supabase modifiée. Tests de rôle/fournisseur ajoutés; validation CI/Pages et recette authentifiée toujours à confirmer. Détails : `RESTRICTED_BOSS_ACCESS_20261025.md`.
+
+**Prochaine action** : valider CI, tests et accès d'une vraie session **compagnie fictive** restreinte, puis fusion autorisée; reprendre ensuite actions comptes réels et conditions tarifaires particulières du Super Admin. Restent aussi postes exclusifs/affectations, calendriers externes, langues/RTL, apparence, OAuth/Stripe réels en sandbox, push/courriel, appareils/PRA/charge. SMS en dernier. Aucun lot n'est réputé terminé sur la seule base d'une PR.
+
+---
+
 # Reprise active — annuaire des abonnements, 25 octobre 2026
 
 Contrôles de service publiés : PR #30 fusionnée dans `edef3ac9ca11a95ed0c5e2dd64d7c42b6c37af5f`, CI #173 et CI/Pages du merge réussis; platform-directory.js public vérifié identique.
