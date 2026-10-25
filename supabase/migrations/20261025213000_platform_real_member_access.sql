@@ -49,7 +49,7 @@ begin
  'other_active_bosses',other_boss,'scope','company_only',
  'can_suspend',m.status='active' and coalesce(row_controls.suspended,false)=false and worker_count<=1 and punch_count=0 and other_boss>0,
  'can_restore',m.status='disabled' and coalesce(row_controls.suspended,false) and row_controls.saved_role=m.role
-  and worker_count<=1 and coalesce(worker.id,row_controls.saved_worker_id) is not distinct from row_controls.saved_worker_id
+  and worker_count<=1 and worker.id is not distinct from row_controls.saved_worker_id
   and (worker.id is null or (worker.personal_access=false and worker.can_mobile_punch=false and worker.can_kiosk_punch=false)));
 end $$;
 
