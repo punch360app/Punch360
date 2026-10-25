@@ -2,3 +2,19 @@ import test from 'node:test';import assert from 'node:assert/strict';import {Win
 const escape=s=>String(s??'').replaceAll('<','&lt;').replaceAll('"','&quot;');
 test('billing change requires server quote before confirmation and never grants access locally',async()=>{const w=new Window(),calls=[];const sb={rpc:async(name,args)=>{calls.push({name,args});return {data:name==='essential_billing_order'?'order-1':{due_cents:19380}}},functions:{invoke:async(name,args)=>{calls.push({name,...args.body});return {data:args.body.action==='preview'?{preview:{amount_due:400,total:400,effective_at:123}}:{pending_server_confirmation:true}}}}};const ui=createBillingController({sb,redraw(){},escape,document:w.document});ui.state.company='tenant';ui.state.configured=true;ui.state.summary={active_humans:5,seats:5,has_subscription:true};ui.state.plans=[{id:'essential',title:'Essentiel'}];w.document.body.innerHTML=ui.render();await ui.handle({dataset:{action:'bill:confirm'}});assert.match(ui.state.error,/Prévisualisation/);assert.equal(calls.length,0);await ui.handle({dataset:{action:'bill:quote'}});assert.equal(calls[0].name,'essential_billing_order');assert.equal(calls[1].action,'preview');assert.equal(ui.state.order,'order-1');assert.equal(ui.state.preview.amount_due,400);assert.equal(ui.state.summary.status,undefined);await w.happyDOM.close();});
 test('signout invalidates a late billing response',async()=>{let release;const pending=new Promise(r=>{release=r});const ui=createBillingController({sb:{rpc:()=>pending,from:()=>({select:()=>({order:async()=>({data:[]})})}),functions:{invoke:async()=>({data:{configured:false}})}},redraw(){},escape});const loading=ui.load('private-company');ui.reset();release({data:{seats:99}});await loading;assert.equal(ui.state.summary,null);assert.equal(ui.state.company,null);});
+
+test('Boss keeps effective billing status while Stripe provider is unreachable',async()=>{
+ const w=new Window();
+ const sb={
+  rpc:async name=>({data:name==='essential_billing_summary'?{status:'restricted',active_humans:3,seats:5,has_subscription:true,test_company:false}:null}),
+  from:()=>({select:()=>({order:async()=>({data:[{id:'essential',title:'Essentiel'}],error:null})})}),
+  functions:{invoke:async()=>({error:new Error('Provider inaccessible')})}
+ };
+ const ui=createBillingController({sb,redraw(){},escape,document:w.document});
+ await ui.load('company-test');
+ assert.equal(ui.state.summary.status,'restricted');
+ assert.equal(ui.state.configured,false);
+ assert.match(ui.render(),/Service Stripe indisponible/);
+ assert.match(ui.render(),/restricted/);
+ await w.happyDOM.close();
+});
