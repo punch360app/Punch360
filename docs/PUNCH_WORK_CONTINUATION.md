@@ -2,12 +2,12 @@
 
 PR #14 archives fusionnée : commit `9810f1d0498acfbd6240db0ce38257df28d1a68a`. CI #110 réussie avant fusion; CI et Pages réussis sur le commit fusionné; fichiers publics archives.js/archive-codec.js/essential.js/sw.js vérifiés identiques aux fichiers livrés. Page publique chargée dans Chrome cloud sans erreur applicative observée; aucune session authentifiée disponible dans ce navigateur, donc recette complète PDF/boss non exécutée.
 
-Lot suivant : branche `feat/missing-day-approval`. Journées complètes oubliées développées Web/Expo, deux migrations appliquées. 92 tests Node/DOM et TypeScript réussis; deux scripts SQL sur fixtures et régression archives réussis. Voir `ESSENTIAL_MISSING_DAYS_20261025.md`. Déploiement Web : PR/CI à vérifier; Expo : TypeScript seulement, aucun appareil.
+Lot publié : branche `feat/missing-day-approval`, PR #15 fusionnée dans `30baef7810b2b614c486887b73758bbf2858e0b1`. Journées complètes oubliées développées Web/Expo, deux migrations appliquées. 92 tests Node/DOM et TypeScript réussis; deux scripts SQL sur fixtures et régression archives réussis. Voir `ESSENTIAL_MISSING_DAYS_20261025.md`. Déploiement Web : CI #115 puis CI et Pages du commit fusionné réussis, missing-days.js public vérifié identique; Expo : TypeScript seulement, aucun appareil.
 
 | Domaine | Développé | Testé | Déployé | Reste / intervention externe |
 |---|---|---|---|---|
 | Archives applicatives | Oui | Tests et SQL détaillés ci-dessous | Oui, PR #14 + backend + Edge | Recette connectée PDF fictif, appareils, charge/PRA |
-| Journée oubliée et notification interne de décision | Oui, Web/Expo | 92 tests et 2 SQL | Backend oui; Web PR/CI en cours | Appareils, multiconnexion, sélecteur de dates |
+| Journée oubliée et notification interne de décision | Oui, Web/Expo | 92 tests et 2 SQL | Oui, backend et Web PR #15; Expo source seulement | Appareils, multiconnexion, sélecteur de dates |
 | Borne hors ligne sécurisée | Non | Non | Non | Travail de développement, pas un simple accès fournisseur manquant |
 | Google | Flux existant | Fournisseur activé observé | Configuration existante | Connexion complète à exécuter |
 | Apple | Flux existant | Fournisseur désactivé observé | Non activé | Configuration Apple fournisseur et recette |
@@ -32,7 +32,7 @@ Branche `wip/company-archives-handoff-20261025`, PR #14. Main vérifié au dépa
 
 Détails et limites : `COMPANY_ARCHIVES_20261025.md`. Aucune récupération de données officielles pendant les tests. Connexion fournisseur de bout en bout et exécution physique ne sont pas déclarées testées. Région Supabase observée `us-east-1`; traitement des exigences de confidentialité encore ouvert.
 
-Tous les autres lots du prompt demeurent ouverts : borne hors ligne, journée oubliée/politiques/délégations/modèles/budgets/paie, push/courriel, recette OAuth, dix langues/RTL, design complémentaire, audit Super Admin, recette Stripe test, QA et builds signés. SMS toujours en dernier. Prochaine tâche après publication de #14 : borne hors ligne sécurisée. Aucun prompt complet annoncé terminé.
+Tous les autres lots du prompt demeurent ouverts : borne hors ligne, journée oubliée/politiques/délégations/modèles/budgets/paie, push/courriel, recette OAuth, dix langues/RTL, design complémentaire, audit Super Admin, recette Stripe test, QA et builds signés. SMS toujours en dernier. Prochaine tâche de développement : borne hors ligne sécurisée (non livrée). Aucun prompt complet annoncé terminé.
 
 ---
 Historique antérieur :
