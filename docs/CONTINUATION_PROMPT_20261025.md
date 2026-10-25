@@ -1,3 +1,5 @@
+> Mise à jour de reprise : le travail a progressé depuis ce prompt historique. Lire d’abord `PUNCH_WORK_CONTINUATION.md` et `COMPANY_ARCHIVES_20261025.md`. La restauration a désormais cinq migrations appliquées et des tests SQL sur fixtures réussis. L’ancien fichier `20261025112017_company_archive_restore.sql`, jamais appliqué, est remplacé par les migrations `company_archive_restore_foundation`, `engine`, `api`, `document_snapshot` et `pending_cleanup`. Ne pas les rejouer. Les limites de recette sont explicites dans le bilan.
+
 # PUNCH 360° — reprise complète du travail restant
 
 Tu reprends le développement existant de PUNCH 360°. Termine les exigences restantes du cahier des charges. Travaille réellement dans le dépôt et Supabase : aucune simulation annoncée comme fonctionnelle, aucun redémarrage à zéro.
