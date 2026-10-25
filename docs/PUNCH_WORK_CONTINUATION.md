@@ -4,7 +4,7 @@ PR #34 `feat/platform-scoped-real-member-controls-20261025` : premier bloc d'act
 
 La recette SQL sur utilisateurs/entreprises synthétiques dans une transaction `BEGIN/ROLLBACK` a réussi : séparation multi-compagnies, refus Boss/propriétaire/non-MFA, version périmée, mauvais identifiants, audit et indicateurs du salarié restaurés. Aucune compagnie ni compte réel n'a été modifié par cette recette. Document : `docs/PLATFORM_REAL_MEMBER_ACCESS_20261025.md`.
 
-**Prochaines étapes** : obtenir CI verte, appliquer la migration après revue, fusionner/publier en ordre sûr, faire une vraie recette MFA sur une compagnie **fictive mais non facturée**. Ensuite contrats/tarifs particuliers par entreprise, puis planning postes exclusifs et intégrations externes. Les droits Boss et l'authentification globale restent des chantiers séparés; ne pas prétendre lire les mots de passe réels. Ne pas confondre l'action réelle ciblée et la suspension de toute l'entreprise. Le prompt global n'est pas terminé.
+**Prochaines étapes** : CI verte, migration Supabase appliquée version `20261025211947` (0 intervention réelle; privilège anon refusé). Fusionner/publier en ordre sûr, faire une vraie recette MFA sur une compagnie **fictive mais non facturée**. Ensuite contrats/tarifs particuliers par entreprise, puis planning postes exclusifs et intégrations externes. Les droits Boss et l'authentification globale restent des chantiers séparés; ne pas prétendre lire les mots de passe réels. Ne pas confondre l'action réelle ciblée et la suspension de toute l'entreprise. Le prompt global n'est pas terminé.
 
 ---
 
