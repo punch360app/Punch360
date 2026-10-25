@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition du 25 octobre 2026 — 453 exigences identifiées en 27 lots.**
+**Édition consolidée du 25 octobre 2026 — 476 exigences identifiées en 27 lots, après déduplication du giga-prompt de continuation.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -8,8 +8,8 @@ Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/
 - Supabase exclusif : `mlabstdxxwjdpfaxiwmg` (aucun autre projet).
 - Web Essentiel : https://punch360app.github.io/Punch360/?edition=essential
 - Borne : https://punch360app.github.io/Punch360/kiosk.html
-- Drive source : https://drive.google.com/drive/folders/1vnzIYol5OZxV3MySFZQjzcxV-VhRGfD4
-- Références dépôt : `docs/README_COLLABORATEUR_WORK.md`, `docs/PUNCH_MASTER_ROADMAP.md`, `docs/PUNCH_WORK_CONTINUATION.md`, `docs/CONTINUATION_PROMPT_20261025.md`, `docs/PLATFORM_ACTIONS_AUDIT_20261025.md`, `docs/ESSENTIAL_MIXED_PUNCH_SPEC.md`, les documents de modules et tests. Inspecter les fichiers réellement présents et les nouvelles PR avant toute décision.
+- Drive source : dossier privé connecté « promt » ; ne pas publier son adresse ou ses fichiers bruts dans ce dépôt public.
+- Références dépôt : `docs/README_COLLABORATEUR_WORK.md`, `docs/PUNCH_MASTER_ROADMAP.md`, `docs/PUNCH_WORK_CONTINUATION.md`, `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md`, `docs/PLATFORM_ACTIONS_AUDIT_20261025.md`, `docs/ESSENTIAL_MIXED_PUNCH_SPEC.md`, les documents de modules et tests. `docs/CONTINUATION_PROMPT_20261025.md` devient un point d'entrée historique, **pas un second prompt actif**. Inspecter les fichiers réellement présents et les nouvelles PR avant toute décision.
 - Deux produits séparés : PUNCH Essentiel (trois forfaits) et PUNCH Construction (fonctionnalités/prix indépendants). Super Admin commun. Protéger données réelles, historisations et contrats.
 - Forfaits Essentiel de référence : 19/39/69 $ CAD mensuels, 5 sièges, suppléments 3/4/5 $/mois, bornes 1/3/illimitées et -15 % annuel. Toujours lire la version contractuelle serveur, ne pas figer ces valeurs dans le front.
 - Développement principalement Essentiel et Super Admin transversal; Construction en tests de non-régression, sans refonte non demandée.
@@ -27,13 +27,34 @@ Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/
 ## Règles de preuve et clôture
 Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/règles → coder → appliquer contrôles serveur → tester avec données fictives → vérifier CI/déploiement → documenter PR/commit/migration/tests → actualiser la roadmap et le tracker. Conserver **quatre états indépendants** : développé, testé, déployé, intervention externe. « Terminé » seulement si les critères fonctionnels, sécurité et recette pertinente sont démontrés. Ne pas publier de secrets, fichiers RH/GPS ni prompts bruts privés dans le dépôt public. Ne jamais présenter un hash Auth comme mot de passe récupérable. Ne pas lancer de vraies transactions, SMS ou actions destructrices pour tester.
 
-## P0 — Reprise, Drive et traçabilité (GOV, 15 points)
+## Migration contrôlée du giga-prompt de continuation — source unique, sans doublons
+
+La version détaillée de `docs/CONTINUATION_PROMPT_20261025.md` (historique Git, PR #41) a été **intégrée ici**. Ce prompt maître et ses IDs constituent désormais **l'unique liste d'exigences exécutable**; le document ancien ne doit plus être relu comme une seconde série de tâches. Les spécifications techniques (notamment `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md`) détaillent les critères sans créer d'exigence parallèle.
+
+| Domaine du giga-prompt transféré | Exigences maîtres correspondantes | Traitement anti-doublons |
+|---|---|---|
+| Reprise du code, état des PR et Supabase unique | GOV-001–016, SEC-001–015 | Règles reprises une seule fois, priorité à l'état courant et aux migrations appliquées |
+| Archives chiffrées, restauration additive, PDF et PRA | ARCHIVE-001–013, SEC-009/014, QA-015 | Déjà dans le maître : conserver les contrôles, **ne pas rejouer** les vieilles migrations mentionnées historiquement |
+| Borne hors ligne, journées oubliées, pauses, superviseurs | OFFLINE, KIOSK, CORE, HR-001–017, SHIFT-001–015 | Présents dans le maître : comparer à l'existant, pas de deuxième implementation |
+| Stripe, Super Admin, OAuth/courriels, SMS dernier | SAUTH, SACOMP, SACATALOG, STRIPE, INVITE, COMM, SERVICES | Existants, statut fournisseur/appareil à vérifier; ne jamais facturer ni envoyer de SMS réel en recette non autorisée |
+| Langues, design, thèmes, équipes, rôles, données | LOCALE, DESIGN, THEMES, SEC, SHIFT | Réutiliser les sections actuelles sans répétition |
+| Disponibilités récurrentes et besoins par poste Plus/Pro | SHIFT-016–021 | Nouveaux compléments aux disponibilités et modèles déjà codés |
+| Planificateur automatique Pro en trois étapes | SHIFT-022–025 | Nouveau, après modèles/contraintes validés |
+| « Signaler mon absence » et choix de neuf motifs privés | COVER-018–021, HR-018 | Nouveau parcours distinct de demande de congé, d'échange et de quart libre |
+| Banque intelligente, offres par vagues, un gagnant | COVER-008/011/012, COVER-022–025 | Étendre les quarts/candidatures existants, sans deuxième workflow concurrent |
+| Recette du signalement et confidentialité | QA-005, QA-018–020, SEC-001–015 | Compléments de tests sans nouveaux systèmes d'audit/notifications |
+
+**Règle métier absolue :** aucune recherche ni offre de remplacement automatique sans le signalement d'absence **volontaire, explicitement confirmé par l'employé titulaire du quart**. Une absence au punch, un retard ou un GPS absent n'y suppléent jamais. **Un seul remplaçant peut obtenir le quart**, garanti côté serveur. La sélection d'un motif n'est pas une justification de paie.
+
+**Ordre de développement pour les nouveaux manques :** vérification anti-doublons et tests du moteur de temps → SHIFT-016–021 → SHIFT-022–025 → COVER-018–025 et HR-018 → QA-018–020. Cela ne remplace pas la priorité P0 de sécurité/continuité et les blocages fournisseur identifiés. L'UX doit rester très simple; les fonctions livrées séparément sont suivies comme **développées / testées / déployées / intervention externe**.
+
+## P0 — Reprise, Drive et traçabilité (GOV, 16 points)
 **Objectif :** Centraliser les demandes sans perdre les travaux déjà réalisés.
 **Sources :** Drive / prompts + GitHub roadmap. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **GOV-001** — Confirmer le dépôt officiel punch360app/Punch360 et le main réellement actuel.
 - [ ] **GOV-002** — Confirmer l’unique projet Supabase mlabstdxxwjdpfaxiwmg avant toute opération.
 - [ ] **GOV-003** — Lire les sept documents de travail Drive et les deux sous-dossiers de visuels.
-- [ ] **GOV-004** — Lire le README collaborateur, continuation, roadmap et les spécifications pertinentes.
+- [ ] **GOV-004** — Lire ce prompt maître, le README collaborateur, le dernier suivi de continuation, la roadmap et les spécifications techniques pertinentes. Ne pas se servir des instructions historiques périmées du fichier de continuation.
 - [ ] **GOV-005** — Inventorier toutes les PR ouvertes et branches de collaborateurs avant d’écrire.
 - [ ] **GOV-006** — Réconcilier les migrations du dépôt et de Supabase sans rejouer les migrations appliquées.
 - [ ] **GOV-007** — Ne jamais repartir de zéro ou remplacer le moteur de pointage partagé.
@@ -45,6 +66,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **GOV-013** — Garder les prompts bruts et secrets hors du dépôt GitHub public.
 - [ ] **GOV-014** — Différencier développé, testé, déployé et intervention externe pour chaque point.
 - [ ] **GOV-015** — Ne jamais affirmer qu’un prompt est terminé si une de ses sous-exigences manque.
+- [ ] **GOV-016** — Lors de chaque reprise, confronter PR/CI/Pages, schéma Supabase et rapports techniques les plus récents à l'état des exigences; ignorer comme instructions actives les bilans historiques périmés; préserver les migrations déjà appliquées et les contrats.
 
 ## P0 — Sécurité, RLS et isolation (SEC, 15 points)
 **Objectif :** Priorité à la confidentialité et à la protection des données officielles.
@@ -218,7 +240,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **OFFLINE-011** — Tester concurrence avec téléphone et plusieurs bornes pendant interruption.
 - [ ] **OFFLINE-012** — Exiger tests physiques réseau/appareils avant déclaration de livraison.
 
-## P1 — Horaires, équipes, rotations et disponibilités (SHIFT, 15 points)
+## P1 — Horaires, équipes, rotations et disponibilités (SHIFT, 25 points)
 **Objectif :** Achever le moteur de planification sur une source de vérité unique.
 **Sources :** Master / Planning / Remplacements. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **SHIFT-001** — Gérer établissements et départements avec droits par rôle.
@@ -236,8 +258,18 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **SHIFT-013** — Isoler les superviseurs à leurs départements et délégations validées.
 - [ ] **SHIFT-014** — Permettre planification sans visibilité abusive des rémunérations.
 - [ ] **SHIFT-015** — Mettre à jour calendrier immédiatement après affectation confirmée.
+- [ ] **SHIFT-016** — Ajouter des **disponibilités hebdomadaires récurrentes** : jours/plages multiples, matin/soir ou heures exactes, début d'effet et fin optionnelle; saisie unique sans ressaisie chaque semaine.
+- [ ] **SHIFT-017** — Donner priorité aux absences/congés approuvés et aux exceptions datées ou hebdomadaires sur la semaine type; afficher « inconnu » si aucune règle applicable et ne pas fabriquer une disponibilité.
+- [ ] **SHIFT-018** — Permettre à l'employé ou à l'Admin/Boss habilité de saisir les disponibilités d'un salarié sans téléphone/courriel/compte; garder auteur, version, date, fuseau et avertir des conflits sans effacer un quart publié.
+- [ ] **SHIFT-019** — Conserver souhait d'heures/semaine, limites applicables, ancienneté, qualifications, préférences matin/soir/nuit/week-end et volontariat aux quarts supplémentaires; ne pas inventer de règles légales ou conventionnelles.
+- [ ] **SHIFT-020** — Définir **besoins de couverture récurrents** par site, département, poste/qualification, plages, nombre requis et exceptions de semaine; réutiliser modèles et couverture existants, sans deuxième moteur.
+- [ ] **SHIFT-021** — Afficher ensemble besoins, heures à donner, employés disponibles/admissibles, quarts non couverts et conflits dans la console Admin; prévoir rappels de disponibilité et date limite facultatifs sans modifier un horaire publié.
+- [ ] **SHIFT-022** — Construire le planificateur Essentiel Pro en **trois étapes visibles** : « Besoins » → « Employés » → « Générer, prévisualiser et publier »; sur mobile, tablette et PC, depuis modèles existants.
+- [ ] **SHIFT-023** — Générer un brouillon par moteur déterministe/explicable et vérifiable par serveur, sans service IA payant; contraintes dures : congés, indisponibilité, qualifications, sites, chevauchement, repos, max heures, nuit et DST.
+- [ ] **SHIFT-024** — Optimiser les contraintes souples de manière paramétrable : ancienneté, équité, heures souhaitées, rotations soirs/week-ends, stabilité et coûts connus; montrer les raisons des affectations et les quarts impossibles à couvrir.
+- [ ] **SHIFT-025** — Prévoir mode **Simple par défaut** et avancé facultatif, brouillon versionné, ajustements tactiles, verrouillage de quarts, régénération partielle, validation humaine avant publication, notifications et refus de conflits de versions.
 
-## P1 — Quarts disponibles, échanges et remplacements (COVER, 17 points)
+## P1 — Quarts disponibles, échanges et remplacements (COVER, 25 points)
 **Objectif :** Définir trois parcours séparés avec règles d’approbation.
 **Sources :** Remplacements dans Drive / planning. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **COVER-001** — Permettre au responsable de publier un quart libre Plus/Pro.
@@ -247,18 +279,26 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **COVER-005** — Permettre Postuler et Retirer candidature sans doublon.
 - [ ] **COVER-006** — Afficher en attente/accepté/refusé/complet/annulé.
 - [ ] **COVER-007** — Valider disponibilité, congés, conflit, site et qualification avant attribution.
-- [ ] **COVER-008** — Effectuer approbation atomique, sans attribuer dernière place deux fois.
+- [ ] **COVER-008** — Effectuer réservation et affectation atomiques côté serveur, y compris deux acceptations simultanées sur **un seul quart**, sans attribuer la dernière place deux fois; revalider admissibilité, version, identité, société et droits au moment exact.
 - [ ] **COVER-009** — Ajouter le quart à l’horaire et notifier la décision.
-- [ ] **COVER-010** — Permettre à un salarié d’offrir son propre quart à remplacer.
-- [ ] **COVER-011** — Configurer par compagnie remplacement automatique OU approbation obligatoire.
-- [ ] **COVER-012** — Ne jamais effectuer un remplacement automatique sans tous les contrôles serveur.
+- [ ] **COVER-010** — Permettre à un salarié d'offrir volontairement son propre quart à remplacer (échange/libération) **sans confondre ce parcours avec le signalement d'absence**. Une offre volontaire non qualifiée de signalement ne déclenche pas automatiquement les vagues d'absence.
+- [ ] **COVER-011** — Configurer par compagnie remplacement automatique OU approbation obligatoire : premier volontaire admissible réservé puis approuvé, ou affectation immédiate après acceptation admissible; aucun contournement de décision ou d'autorisations.
+- [ ] **COVER-012** — Ne jamais effectuer un remplacement automatique sans contrôles serveur (RLS, tenant, permissions, forfait, qualification, chevauchement, repos, disponibilités); pour une absence, l'événement volontaire confirmé est en plus une condition obligatoire.
 - [ ] **COVER-013** — Permettre échange de quart avec consentement des deux salariés.
 - [ ] **COVER-014** — Distinguer quart vacant, remplacement et échange dans l’interface.
 - [ ] **COVER-015** — Distinguer quart supplémentaire et calcul réel d’heures majorées.
 - [ ] **COVER-016** — Ajouter coûts/couverture des candidats au Pro, jamais classement opaque.
 - [ ] **COVER-017** — Journaliser décisions, erreurs de concurrence et changements de version.
+- [ ] **COVER-018** — Créer « **Signaler mon absence** » sur un quart assigné : confirmation explicite **par l'employé titulaire** pour ce quart avant toute recherche automatique. Retard, no-show, absence de punch, GPS, anomalie et détection prédictive **ne déclenchent jamais d'offre**.
+- [ ] **COVER-019** — Écran d'absence avec **neuf motifs sans présélection** : Maladie, Enfant malade, Rendez-vous médical, Urgence familiale, Obligation familiale ou garde, Problème de transport, Raison personnelle, Autre, Je préfère ne pas préciser; « Autre » ouvre une précision facultative, et aucun diagnostic ou texte personnel n'est exigé.
+- [ ] **COVER-020** — Stocker la catégorie sous code stable et la note facultative limitée/échappée, liées au seul signalement; ne jamais dévoiler motif/note aux remplaçants, SMS/push d'offres ou exports généraux. Lecture réservée RH habilités, RLS, audit et rétention adaptée.
+- [ ] **COVER-021** — Enregistrer signalement, quart/version, identité, horaire, audit et ouverture conditionnelle d'une unique recherche **idempotente au serveur**; double clic/réseau instable ne crée ni nouvelle absence ni seconde vague; le signalement n'est pas un punch OUT.
+- [ ] **COVER-022** — Utiliser la **banque existante** de salariés volontaires pour les remplacements; filtrer et revalider disponibilités/exceptions, site, poste, qualifications, absences/congés, repos, conflits et limites d'heures; classer selon règles entreprise explicables.
+- [ ] **COVER-023** — Proposer les quarts **par vagues** avec délais, relances, expiration, anti-spam et escalade configurable; notifications internes/push en priorité, SMS/Twilio optionnel seulement à la fin et après configuration.
+- [ ] **COVER-024** — Après la première acceptation admissible, réserver OU attribuer exactement une fois selon COVER-011; fermer les autres offres et afficher « Quart déjà attribué » aux arrivants tardifs; si approbation refusée, relancer selon règles sans doubler les quarts.
+- [ ] **COVER-025** — Si banque vide/aucune acceptation, laisser le quart à combler et alerter le responsable; fermeture automatique des offres lors de couverture manuelle/annulation; conserver les punchs, heures et paie déjà enregistrés même si quart commencé.
 
-## P1 — RH, approbations, pauses et rapports paie (HR, 17 points)
+## P1 — RH, approbations, pauses et rapports paie (HR, 18 points)
 **Objectif :** Sécuriser les écritures officielles et dossiers RH.
 **Sources :** Tests / HR Payroll / prompts. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **HR-001** — Permettre demande de correction de punch et de pause avec justificatif.
@@ -278,6 +318,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **HR-015** — Ajouter talons de paie PDF privés Pro, import/association/notification.
 - [ ] **HR-016** — Ne jamais exposer le talon d’un employé à un autre.
 - [ ] **HR-017** — Tester snapshots, périodes, règles rétroactives et retenues non implémentées.
+- [ ] **HR-018** — Séparer le **motif déclaratif d'absence** des congés approuvés, justifications administratives, absences rémunérées, banques d'heures et décisions de paie : une catégorie choisie n'accorde ni ne refuse automatiquement aucun de ces droits.
 
 ## P1 — Budgets et coûts en temps réel (BUDGET, 11 points)
 **Objectif :** Assurer un suivi de main-d’œuvre utilisable pour les Boss.
@@ -574,7 +615,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **LOCALE-010** — Éviter chaînes codées en dur dans Web et Expo.
 - [ ] **LOCALE-011** — Tester écrans compacts avec textes allongés et lecteurs d’écran.
 
-## P3 — QA, vrais appareils, déploiement et lancement (QA, 17 points)
+## P3 — QA, vrais appareils, déploiement et lancement (QA, 20 points)
 **Objectif :** Livrer un produit commercialisable sans confondre compilation et recette.
 **Sources :** Prompt final tests / roadmap. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **QA-001** — Construire matrice exigences → code → test → preuves → verdict.
@@ -594,6 +635,9 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **QA-015** — Exécuter restauration test et exercices d’incident/PRA.
 - [ ] **QA-016** — Protéger les données de production et consigner les actions à faire manuellement.
 - [ ] **QA-017** — Établir verdict GO / GO conditionnel / NO-GO par domaine.
+- [ ] **QA-018** — Tester que retard, no-show, GPS absent, non-punch ou anomalie **sans signalement confirmé** produisent zéro offre; signalement confirmé répété reste une seule demande, sans effacer l'historique d'heures.
+- [ ] **QA-019** — Tester les neuf motifs, aucune valeur présélectionnée, « Autre »/raison personnelle/option privée, notes facultatives malicieuses, annulation, rôles/RLS et absence de fuite vers notifications/offres/exports.
+- [ ] **QA-020** — Tester **deux acceptations en concurrence réelle** en mode approbation et automatique : un seul gagnant, refus tardif explicite, réponse perdue, offre expirée, qualification retirée, site/département, nuit/DST et quart déjà commencé.
 
 ## P4 — Services, intégrations et SMS en dernier (SERVICES, 11 points)
 **Objectif :** Ne pas bloquer les lots prioritaires sur les configurations externes.
