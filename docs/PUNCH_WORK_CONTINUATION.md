@@ -1,3 +1,16 @@
+# Reprise active — borne hors ligne, 25 octobre 2026
+
+Branche `feat/kiosk-offline-secure-v1`, base main `6e9bc97`. Borne PWA : identité limitée à huit heures après PIN en ligne, autorisation chiffrée deux fois, journal IndexedDB signé/chaîné, reprises sans doublons, contrôles serveur de révocation/NIP/horloge, réconciliation distincte Boss/Admin Web et Expo. Les heures restent provisoires avant confirmation. Détails et limites : `KIOSK_OFFLINE_20261025.md`.
+
+Développé : Web/PWA et source Expo de réconciliation. Testé : TypeScript, 102 tests Node/DOM, deux scripts SQL hors ligne et régressions borne/archives sur fixtures en transactions annulées. Déployé : six migrations additives et Edge essential-kiosk-offline v1; publication Web par PR/CI à vérifier. Intervention externe / recette non exécutée : appareils physiques, perte réseau/énergie, quotas/éviction et charge/multiconnexion serveur. Aucune observation officielle réelle créée pour les tests.
+
+La clé d’archives et les moteurs de pointage Construction/en ligne restent préservés. Aucun paiement ou SMS réel. Ne pas rejouer les migrations hors ligne déjà appliquées. Vérifier la table de migration réelle par nom : les horodatages du connecteur peuvent différer des fichiers CLI.
+
+Autres exigences encore ouvertes : politiques de pauses par département; délégations fines; modèles/couverture/coûts/budgets/paie; push/préférences/courriels; recette OAuth (Apple désactivé observé); dix langues/RTL; design complémentaire; audit Super Admin; recette Stripe; builds signés et QA/confidentialité/PRA. SMS en dernier. Le prompt global n’est pas terminé.
+
+---
+Historique des livraisons :
+
 # Reprise active — journées oubliées, 25 octobre 2026
 
 PR #14 archives fusionnée : commit `9810f1d0498acfbd6240db0ce38257df28d1a68a`. CI #110 réussie avant fusion; CI et Pages réussis sur le commit fusionné; fichiers publics archives.js/archive-codec.js/essential.js/sw.js vérifiés identiques aux fichiers livrés. Page publique chargée dans Chrome cloud sans erreur applicative observée; aucune session authentifiée disponible dans ce navigateur, donc recette complète PDF/boss non exécutée.
@@ -8,7 +21,7 @@ Lot publié : branche `feat/missing-day-approval`, PR #15 fusionnée dans `30bae
 |---|---|---|---|---|
 | Archives applicatives | Oui | Tests et SQL détaillés ci-dessous | Oui, PR #14 + backend + Edge | Recette connectée PDF fictif, appareils, charge/PRA |
 | Journée oubliée et notification interne de décision | Oui, Web/Expo | 92 tests et 2 SQL | Oui, backend et Web PR #15; Expo source seulement | Appareils, multiconnexion, sélecteur de dates |
-| Borne hors ligne sécurisée | Non | Non | Non | Travail de développement, pas un simple accès fournisseur manquant |
+| Borne hors ligne sécurisée (état avant ce lot) | Non | Non | Non | Voir le bilan hors ligne en tête pour l’état actuel |
 | Google | Flux existant | Fournisseur activé observé | Configuration existante | Connexion complète à exécuter |
 | Apple | Flux existant | Fournisseur désactivé observé | Non activé | Configuration Apple fournisseur et recette |
 | Infra / confidentialité | Procédure d’archive/PRA | Région observée us-east-1 | Pas de PRA exécuté | Rétention/PITR, copies Storage indépendantes, environnement isolé, RPO/RTO |
