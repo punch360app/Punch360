@@ -14,8 +14,8 @@ Web essential-35 : PR/CI à vérifier. Aucune donnée officielle modifiée par l
 
 | Domaine | État développé et preuves | Manques toujours ouverts |
 |---|---|---|
-| Entreprises | Snapshot, annuaire paginé, filtres, archives signées, entreprises fictives, équipes test | Fiche détaillée complète, paramètres commerciaux par client, suspension/réactivation explicites et sûres |
-| Utilisateurs | Comptes test : création, suspension, suppression d’accès, réinitialisation, coffre chiffré et audit PR #11 | Annuaire global paginé des utilisateurs réels, recherche par entreprise, actions réelles avec gardes et audit |
+| Entreprises | Snapshot, annuaire paginé, filtres, archives signées, entreprises fictives, équipes test | Fiche en consultation développée dans le lot suivant; paramètres commerciaux par client, suspension/réactivation explicites et sûres |
+| Utilisateurs | Comptes test : création, suspension, suppression d’accès, réinitialisation, coffre chiffré et audit PR #11 | Annuaire global et recherche entreprise développés dans le lot suivant; actions réelles avec gardes et audit restantes |
 | Abonnements | Contrats confirmés, factures, états et événements Stripe | Recherche/pagination complètes, recette fournisseur, annulation/reprise/rapprochement |
 | Fonctions et tarifs | Catalogue versionné, motifs, MFA, contrats existants préservés | Conditions particulières par client et recette fournisseur |
 | Support | Demandes/réponses, statuts, pagination et isolation PR #12 | Recette multi-utilisateur terrain et notification externe |
@@ -24,3 +24,13 @@ Web essential-35 : PR/CI à vérifier. Aucune donnée officielle modifiée par l
 | Audit et exports | Recherche/pagination/détails/CSV; rapports Québec réel/test; archives applicatives | Charge/concurrence réelle, exports transverses complets, PRA infrastructure et recette PDF connectée |
 
 Le Super Admin complet et le prompt global ne sont pas déclarés terminés. Prochaine étape : annuaire des utilisateurs réels et fiche d’entreprise, puis actions restantes en préservant paiements, comptes et continuité du pointage.
+
+## Annuaire utilisateurs et fiche entreprise — lot suivant
+
+Web essential-36 : annuaire global paginé des utilisateurs réels/test, recherche courriel/UUID, filtre par entreprise et état. Un motif est obligatoire pour chaque consultation et chaque page est auditée sans enregistrer le texte de recherche ni les courriels dans cet événement. Réponses minimales : UUID, courriel, confirmation, dates de compte/connexion, suspension/suppression, classification test/propriétaire et nombre d’appartenances actives. Aucun hash de mot de passe, téléphone, token ou metadata Auth.
+
+Fiche entreprise : places, membres actifs/désactivés, dossiers salariés avec/sans compte, modules contractuels, état d’abonnement et contrat confirmé. Les données membres/contacts/RH ne sont pas retournées par la fiche. Les lectures ne modifient ni paiement, rôle ni tarif. Les utilisateurs sans date de création historique sont ordonnés avec une date stable (époque), afin de conserver la pagination.
+
+Backend : platform_user_directory et platform_user_legacy_dates appliquées. SQL dédié : 52 utilisateurs fictifs, pages 50+2, motif requis, absence de secrets/métadonnées, filtre entreprise, fiche, audit et refus du membre non propriétaire. 126 tests Node/DOM et TypeScript : motif, filtres appliqués, effacement des résultats après refus de session, sélection/fiche sans mutation. Publication PR/CI à vérifier; console Super Admin développée Web, aucun appareil déclaré validé.
+
+L’annuaire et la fiche sont en consultation. Les actions sur utilisateurs réels, conditions particulières, suspension/réactivation commerciale et pagination des abonnements restent à compléter. Aucun accès utilisateur réel ou tarif officiel n’a été changé pendant les tests.
