@@ -8,7 +8,7 @@ function setup(error=null){
  const sb={rpc:async(name,args)=>{calls.push({name,args});
  if(error&&name===error.name)return {error:error.data};
  if(name==='platform_company_price_list')return {data:{company_id:company,version:calls.filter(v=>v.name==='platform_company_price_draft').length,items:[]}};
- if(name==='platform_company_price_preview')return {data:{company_id:company,monthly_cents:2199,annual_cents:23749,due_cents:2199,status:'draft_pending_stripe',payment_confirmed:false}};
+ if(name==='platform_company_price_preview')return {data:{company_id:company,plan_version:2,monthly_cents:2199,annual_cents:23749,due_cents:2199,status:'draft_pending_stripe',payment_confirmed:false}};
  if(name==='platform_company_price_draft')return {data:{id:'proposal',version:1,status:'draft_pending_stripe',payment_confirmed:false}};
  throw Error(name);
  }};
@@ -46,6 +46,7 @@ test('draft requires exact company confirmation; saved version stays provider-pe
  await ui.handle({dataset:{action:'platform-price:draft'}});
  const m=calls.find(x=>x.name==='platform_company_price_draft');
  assert.equal(m.args.p_expected_version,0);
+ assert.equal(m.args.p_expected_plan_version,2);
  assert.equal(m.args.p_confirmation,company);
  assert.match(ui.state.notice,/Aucune activation Stripe/);
  assert.equal(ui.state.preview,null);
