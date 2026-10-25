@@ -36,11 +36,13 @@ begin
  if not denied then raise exception 'Wrong confirmation accepted';end if;
  v:=public.platform_member_access_change(c,employee_id,'suspend',0,employee_id::text||':'||c::text,reason);
  if v->>'member_status'<>'disabled' or (v->>'version')::integer<>1 then raise exception 'Suspension failed: %',v;end if;
+ execute 'reset role';
  if exists(select 1 from public.company_members where company_id=c and user_id=employee_id and status<>'disabled')
   or exists(select 1 from public.company_workers where id=worker_before.id and (can_mobile_punch or can_kiosk_punch or personal_access))
  then raise exception 'Suspension did not block company access';end if;
  if not exists(select 1 from public.company_members where company_id=other_company and user_id=employee_id and status='active')
  then raise exception 'Other company membership was changed';end if;
+ execute 'set local role authenticated';
  v:=public.platform_member_access_preview(c,employee_id,reason);
  if not (v->>'can_restore')::boolean then raise exception 'Restore preview blocked: %',v;end if;
  denied:=false;begin
@@ -49,6 +51,7 @@ begin
  if not denied then raise exception 'Stale version accepted';end if;
  v:=public.platform_member_access_change(c,employee_id,'restore',1,employee_id::text||':'||c::text,reason);
  if v->>'member_status'<>'active' or (v->>'version')::integer<>2 then raise exception 'Restore failed: %',v;end if;
+ execute 'reset role';
  if not exists(select 1 from public.company_members where company_id=c and user_id=employee_id and status='active')
  then raise exception 'Membership was not restored';end if;
  if exists(select 1 from public.company_workers where id=worker_before.id and (
@@ -58,6 +61,7 @@ begin
  then raise exception 'Original worker flags changed';end if;
  if (select count(*) from private.platform_audit where entity_id=employee_id and action like 'real_member_access_%')<4
  then raise exception 'Expected audit events absent';end if;
+ execute 'set local role authenticated';
  perform set_config('request.jwt.claim.sub',employee_id::text,true);
  denied:=false;
  begin perform public.platform_member_access_preview(c,employee_id,reason);
