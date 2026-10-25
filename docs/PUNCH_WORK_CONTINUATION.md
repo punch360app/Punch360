@@ -1,3 +1,14 @@
+# Reprise active — invitations courriel, 25 octobre 2026
+
+Push publié : PR #22 fusionnée dans `0e8478015c77067514547e8c8e3eb82d2e20c80c`, CI #137 puis CI/Pages réussis, notification-preferences.js et sw.js publics vérifiés identiques. La livraison fournisseur/appareils reste à activer/tester; voir NOTIFICATIONS_20261025.md.
+
+Lot courant `feat/invitation-email` : réglages auto/validité et suivi Web/Expo, file de jetons chiffrés, envoi idempotent et webhook signé, déclenchement nouveau salarié. Cinq migrations appliquées et deux Edge v1 déployées. 122 tests Node/DOM et TypeScript; SQL dédié + régressions invitations/comptes test/archives réussies sur fixtures annulées. Aucun courriel/SMS réel, aucun cron d’envoi. Publication Web PR/CI à vérifier. Interventions exactes : `INVITATION_EMAIL_20261025.md`.
+
+Reste indépendant : OAuth/courriel/redirections réels, dix langues/RTL, audit Super Admin restant, budgets/paie/couverture/postes, design manquant, recette Stripe et sursis, QA/concurrence/charge, builds/appareils et confidentialité/PRA. Les configurations externes vont au-delà de Stripe/Twilio : EAS/FCM/APNs, fournisseur courriel/DNS/SMTP/webhook et appareils notamment. SMS en dernier. Le prompt global reste ouvert.
+
+---
+Historique :
+
 # Reprise active — file push et appareils, 25 octobre 2026
 
 Préférences et routes employé publiées : PR #21 fusionnée dans `ef16fe74c461bb9ba27213b8449483b92006252e`, CI #134 et CI/Pages fusionnés réussis; fichiers publics notification-preferences.js, app.js et sw.js vérifiés identiques.
