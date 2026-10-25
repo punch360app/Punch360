@@ -1,0 +1,15 @@
+# Politiques de pauses par département — 25 octobre 2026
+
+Gestion Web/Expo : nouvelle version par département, type autorisé (choix du salarié / payé / non payé), durée et délai indicatifs facultatifs, motif et date d’effet. Les versions sont immuables; une sauvegarde périmée est refusée. La version enregistrée par les interfaces prend effet dès maintenant. Le serveur permet aussi une date future explicite, jamais une modification rétroactive des anciennes pauses.
+
+La politique est appliquée dans le moteur de pauses via un trigger contrôlé, pas seulement affichée dans l’interface. Une saisie habituelle incompatible est refusée sans reclasser silencieusement une pause ni déduire de temps automatiquement. Une pause autorisée conserve un snapshot de sa politique. Les interfaces personnelles Web, borne et Expo présentent le type autorisé. La borne garde ce contexte dans son identité chiffrée pour ses observations provisoires; une réconciliation reste soumise à l’approbation distincte.
+
+Les corrections historiques approuvées par un administrateur pour une autre personne restent possibles, avec l’audit existant et un marqueur explicite d’exception dans le snapshot; le Boss ne bénéficie pas de cette exception pour pointer ses propres pauses. Les anciennes pauses sont inchangées par une nouvelle version. Construction n’applique pas ces règles Essentiel.
+
+Le chemin mobile payé existant crée puis marque sa pause payée dans une seule transaction. Un contexte interne privé, fermé aux clients et lié à cette transaction, permet au trigger de reconnaître cette opération autorisée sans ouvrir un contournement aux GUC modifiables par le client. Le contexte est retiré immédiatement et les tests vérifient son absence après appel.
+
+Les archives suivantes incluent les versions de politique et les snapshots de pauses. Les politiques ne sont pas réactivées automatiquement par une restauration; les snapshots signés sont préservés. La comparaison de session du hors ligne ignore ce nouveau champ de métadonnées pour ne pas produire de faux conflit sur une autorisation déjà émise.
+
+Validation exécutée : TypeScript et 105 tests Node/DOM. Script SQL `department_break_policies.sql` en transaction annulée : droits, version périmée, règle propre au salarié, refus de changement par un employé/une autre entreprise, refus du mauvais type, vraie pause payée autorisée, snapshot, contexte temporaire nettoyé et historique intact après changement de règle. Régressions SQL corrections de pauses, borne hors ligne et archives réussies. Advisors relus : nouvelles tables privées volontairement fermées et RPC de gestion explicitement contrôlées.
+
+Backend : quatre migrations additives appliquées. Interfaces : Web et source Expo; publication par PR/CI et état exact dans PUNCH_WORK_CONTINUATION. Aucun essai physique ou certification de conformité de paie annoncé. Les durées et délais sont des indications, pas des coupures automatiques de pointage ni un calcul réglementaire complet. Les permissions fines des superviseurs constituent le lot suivant.

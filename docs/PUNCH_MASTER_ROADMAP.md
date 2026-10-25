@@ -23,7 +23,7 @@
 | E17 | Console Boss | EN COURS | Entreprise, bornes, paie, facturation; direction/coûts complets restants |
 | E18 | Superviseurs par département | EN COURS | Lecture/planification et tests; délégations d’approbations fines restantes |
 | E19 | Moteur d’horaires | EN COURS | Nuit/DST/récurrences/rotations/échanges; modèles complexes/postes restants |
-| E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département restantes |
+| E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
 | E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications restantes |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
 | E23 | Communications et notifications | EN COURS | Annonces, lectures, notes, alertes internes; push et préférences restants |
@@ -45,3 +45,5 @@ Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serve
 > Journées oubliées du 25 octobre : demandes Web/Expo, approbation séparée, pauses, anti-chevauchement, verrouillage de semaine et notifications internes développés. Deux migrations appliquées, 92 tests Node/DOM et deux SQL dédiés réussis; Web publié par PR #15, CI/Pages et fichier public vérifiés. Les autres compléments E18/E20/E21 et la borne hors ligne restent ouverts. Détails : ESSENTIAL_MISSING_DAYS_20261025.md.
 
 > Borne hors ligne du 25 octobre : identité expirante, double chiffrement local, HMAC/chaîne, IndexedDB durable, contrôle des révocations, replay idempotent et réconciliation séparée Web/Expo développés. 102 tests Node/DOM et deux SQL dédiés; backend/Edge appliqués. Les observations ne sont officielles qu’après approbation. Recette physique/réseau/énergie/charge restante : E08/E09/E27/E31 restent EN COURS. Voir KIOSK_OFFLINE_20261025.md.
+
+> Politiques de pauses : Web/borne/Expo et contrôle serveur du type payé/non payé, historique immuable et snapshots développés. 105 tests Node/DOM, SQL dédié et régressions pauses/hors ligne/archives réussis; quatre migrations appliquées. Durées/délais indicatifs, aucune déduction automatique. Voir DEPARTMENT_BREAK_POLICIES_20261025.md. E20 reste EN COURS pour recette complète.
