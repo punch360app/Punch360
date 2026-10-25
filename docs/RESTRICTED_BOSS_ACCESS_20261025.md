@@ -28,7 +28,8 @@ La direction doit conserver une porte de sortie même pendant une suspension adm
 - **CI validée** : workflow PUNCH TypeScript, run [40225728289](https://github.com/punch360app/Punch360/actions/runs/40225728289) — 146/146 tests Node/DOM réussis, TypeScript, Expo dependency check et syntaxe de tous les fichiers Web réussis.
 - Vérification lecture seule Supabase : `essential_billing_summary` expose le statut calculé via `private.essential_billing_state` (inclut la suspension manuelle), l'accès Boss est vérifié côté serveur; `support_list_tickets` délègue à `private.assert_support_access` par appartenance. Aucun SQL de mutation appliqué.
 - Aucun test sur session Boss suspendue réelle, aucun règlement Stripe et aucune modification Supabase.
-- Recette navigateur authentifié **Boss actif → suspension test → accès abonnement/support/pointage → accès RH refusé → réactivation** requise avant fermeture complète.
+- **Test SQL transactionnel terminé** : `supabase/tests/restricted_boss_access.sql` exécuté avec succès dans le projet Supabase officiel le 25 octobre 2026. Compagnie + utilisateurs fictifs, suspension calculée, consultation abonnement et support Boss, refus `can_administer`, IN/OUT salarié. Requête de contrôle après ROLLBACK : **0 utilisateur synthétique et 0 compagnie synthétique restants**.
+- Recette navigateur authentifié **Boss actif → suspension test → accès abonnement/support/pointage → accès RH refusé → réactivation** encore requise avant certification terrain.
 - Tester aussi Admin, salariés existants, navigation profonde, panne Stripe, rafraîchissement et basculement d'entreprise.
 - Réexécuter le scénario SQL des contrôles commerciaux sur **fixtures transactionnelles annulées**, puis régression Construction. Ne pas marquer la recette production ou fournisseur terminée sans preuves.
 
