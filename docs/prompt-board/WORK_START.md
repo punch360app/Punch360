@@ -1,6 +1,6 @@
 # Instructions de reprise pour ChatGPT Work — prompts PUNCH
 
-**SOURCE MAÎTRE PRIORITAIRE :** [MASTER_PROMPT_20261025.md](MASTER_PROMPT_20261025.md) — **476 exigences uniques en 27 lots** (giga-prompt de continuation intégré et dédupliqué). Lire intégralement et reprendre dans l'ordre P0 → P4. Sur `main`, ce fichier est la référence active après fusion de la PR #26; vérifier la présence effective du fichier et les nouvelles PR avant chaque séance. Le code de l'application doit toujours partir du `main` le plus récent. L'ancien `docs/CONTINUATION_PROMPT_20261025.md` n'est plus une seconde liste d'exigences.
+**SOURCE MAÎTRE PRIORITAIRE :** [MASTER_PROMPT_20261025.md](MASTER_PROMPT_20261025.md) — **476 exigences uniques en 27 lots** (giga-prompt de continuation intégré et dédupliqué). Lire intégralement et reprendre dans l'ordre P0 → P4. Sur `main`, ce fichier est la référence active après fusion de la PR #26; vérifier la présence effective du fichier et les nouvelles PR avant chaque séance. Le code de l'application doit toujours partir du `main` le plus récent. L'ancien giga-prompt a été supprimé après sa consolidation dans le Prompt maître; ne pas le chercher comme document actif.
 
 Lis **entièrement** :
 1. `docs/prompt-board/MASTER_PROMPT_20261025.md`
