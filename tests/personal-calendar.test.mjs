@@ -29,6 +29,6 @@ test('refuses missing worker identity and never exports an unscoped manager sche
 test('personal calendar is a one-time snapshot, with stable UID and no subscription token',()=>{
  const args={companyId:company,workerId:worker,shifts:[shift()],now:'2026-10-25T16:00:00Z'};
  assert.equal(buildPersonalCalendar(args).content,buildPersonalCalendar(args).content);
- assert.match(buildPersonalCalendar(args).content.replace(/\\r\\n /g,''),/UID:44444444-4444-4444-8444-444444444444@11111111-1111-4111-8111-111111111111\\.punch360\\.app/);
+ assert.match(buildPersonalCalendar(args).content.replace(/\r\n /g,''),/UID:44444444-4444-4444-8444-444444444444@11111111-1111-4111-8111-111111111111\.punch360\.app/);
  assert.doesNotMatch(buildPersonalCalendar(args).content,/URL:|ATTENDEE:|ORGANIZER:|token|Bearer/i);
 });
