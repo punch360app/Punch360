@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition du 25 octobre 2026 — 385 exigences identifiées en 27 lots.**
+**Édition du 25 octobre 2026 — 431 exigences identifiées en 27 lots.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -166,7 +166,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **CORE-017** — Interdire changement de site non autorisé et ne pas mélanger avec un chantier.
 - [ ] **CORE-018** — Faire tenir la page Punch mobile sans scroll vertical en usage normal.
 
-## P0 — Bornes communes et accès Admin/Boss (KIOSK, 16 points)
+## P0 — Bornes communes et accès Admin/Boss (KIOSK, 26 points)
 **Objectif :** Finaliser borne tablette sécurisée, appairage et sessions mixtes.
 **Sources :** Master / intégration 10 thèmes borne. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **KIOSK-001** — Maintenir URL publique kiosk.html sans identifiant secret dans le lien.
@@ -185,6 +185,16 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **KIOSK-014** — Séparer session personnelle Admin/Boss du jeton technique de borne.
 - [ ] **KIOSK-015** — Déconnecter automatiquement le mode Admin/Boss après 5 minutes d’inactivité.
 - [ ] **KIOSK-016** — Conserver PWA installable sur Android et iPad sans promettre de verrouiller l’appareil.
+- [ ] **KIOSK-017** — Ajouter à l’accueil de chaque borne PUNCH Essentiel Pro admissible un **gros bouton primaire « Scanner ma carte »** immédiatement visible, avec pictogramme QR/caméra, sans recherche dans un menu; ne pas le montrer si option non autorisée.
+- [ ] **KIOSK-018** — Garder à l’accueil une option bien visible « Matricule / NIP » indépendante du scanner, fonctionnelle même sans caméra et sans forcer Wallet.
+- [ ] **KIOSK-019** — Respecter les 10 thèmes de borne, orientations tablette et écrans réduits : gros bouton tactile, contraste, libellé lisible, aucun défilement inutile.
+- [ ] **KIOSK-020** — Permettre au Boss/Admin habilité d’activer ou désactiver « Scanner ma carte » par compagnie et par borne compatible; vérifier option, forfait Pro, tenant et borne côté serveur.
+- [ ] **KIOSK-021** — Réutiliser l’identité d’appairage/révocation existante, le moteur IN/OUT/pauses, la session unique et la logique de déconnexion sans ajouter de second registre.
+- [ ] **KIOSK-022** — Définir états de borne explicites : accueil, demande caméra, scan, vérification, confirmation sécurisée, succès/erreur, retour accueil; aucun état bloqué ni donnée d’employé persistante.
+- [ ] **KIOSK-023** — Couper systématiquement caméra/flux et effacer l’aperçu lors de l’annulation, timeout, succès, déconnexion, masquage durable de page et changement d’employé.
+- [ ] **KIOSK-024** — Interdire au lecteur QR d’ouvrir l’administration ou de confondre les sessions Boss/Admin avec l’identité technique de la borne.
+- [ ] **KIOSK-025** — Si QR/WALLET est indisponible, maintenir le matricule/NIP et son mode hors ligne déjà autorisé; ne jamais fabriquer une validation QR hors ligne non sécurisée.
+- [ ] **KIOSK-026** — Valider sur iPad Safari/PWA et tablette Android Chrome/PWA, avec bornes actives/révoquées, touches, caméra et parcours utilisateur réels.
 
 ## P0 — Borne hors ligne et récupération (OFFLINE, 12 points)
 **Objectif :** Valider terrain, sécurité de journal, reprise et réconciliation.
@@ -325,7 +335,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **CAL-010** — Préparer adaptateurs bidirectionnels sans promettre API non connectées.
 - [ ] **CAL-011** — Tester révocation lien et changement de rôle/compagnie.
 
-## P2 — Cartes Wallet et pointage QR (WALLET, 14 points)
+## P2 — Cartes Wallet et pointage QR (WALLET, 50 points)
 **Objectif :** Permettre une carte personnelle sécurisée Pro.
 **Sources :** Nouveaux ajouts. **État initial :** nouveau / à développer ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **WALLET-001** — Créer émission de cartes par employé pour le forfait Pro.
@@ -342,6 +352,56 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **WALLET-012** — Prévoir fonctionnement dégradé matricule/PIN en secours.
 - [ ] **WALLET-013** — Réserver NFC VAS/Smart Tap à un lot ultérieur avec matériel compatible.
 - [ ] **WALLET-014** — Ne pas déclarer Wallet livré avant certifications et essais sur appareils.
+- [ ] **WALLET-015** — Sur l’écran d’accueil de la borne, implémenter réellement un **gros bouton « Scanner ma carte »** immédiatement reconnaissable, et non un simple texte ou lien caché dans les paramètres.
+- [ ] **WALLET-016** — Conserver simultanément un bouton ou pavé **« Matricule / NIP »** aussi accessible pour les employés sans Wallet et comme secours.
+- [ ] **WALLET-017** — Donner au bouton Scanner un format généreux adapté au doigt (cible tactile au moins 48×48 CSS px, idéalement plus grande), icône QR/caméra, contraste accessible et place stable pour les 10 thèmes.
+- [ ] **WALLET-018** — Sur simple appui « Scanner ma carte », ouvrir une vue de scan avec titre « Présentez votre carte PUNCH devant la caméra » et instructions courtes; ne pas exiger une connexion personnelle au compte Boss.
+- [ ] **WALLET-019** — Demander l’autorisation caméra **uniquement au moment du scan**, via API navigateur adaptée, sur origine HTTPS; ne pas activer caméra silencieusement au chargement de la borne.
+- [ ] **WALLET-020** — Privilégier la caméra arrière si elle existe; proposer sélection de caméra avant/arrière ou périphérique lorsque disponible, sans échouer si une seule caméra existe.
+- [ ] **WALLET-021** — Afficher un aperçu caméra fluide, un cadre de visée clair, des conseils distance/éclairage, et un état « Lecture en cours » compréhensible.
+- [ ] **WALLET-022** — Décoder localement les QR de manière efficace, limiter la fréquence d’analyse, filtrer doubles lectures et ne déclencher qu’une vérification à la fois.
+- [ ] **WALLET-023** — Ajouter « Annuler / Retour à la pointeuse » visible pendant tout le scan, utilisable au tactile et clavier, avec arrêt immédiat de la caméra.
+- [ ] **WALLET-024** — Prévoir un délai d’expiration raisonnable du scan, distinct du délai d’inactivité classique de 10 secondes après punch; revenir à l’accueil sans conserver le QR.
+- [ ] **WALLET-025** — En cas de permission refusée ou de caméra occupée, afficher une erreur utile et « Pointer avec matricule/NIP » sans bloquer l’appareil.
+- [ ] **WALLET-026** — Gérer absence de caméra, navigateur non compatible, permission système désactivée, application PWA autonome et coupure caméra pendant le scan.
+- [ ] **WALLET-027** — Traiter seulement le contenu décodé du QR côté serveur, jamais uploader, filmer, conserver ou journaliser le flux vidéo/captures du téléphone ou du visage.
+- [ ] **WALLET-028** — Vérifier que les QR générés dans Apple Wallet et Google Wallet sont réellement lisibles sur les caméras iPad/Android, en conditions variées de luminosité, taille et distance.
+- [ ] **WALLET-029** — Le QR transporte un identifiant opaque ou une preuve cryptographique de portée minimale : **aucun mot de passe, NIP, UUID Auth brut, courriel, secret serveur ou donnée RH**.
+- [ ] **WALLET-030** — Définir et documenter la résistance à la copie/relecture : un QR Wallet statique ou une capture d’écran **ne suffit jamais seul** à enregistrer IN/OUT; exiger une deuxième preuve autorisée (ex. NIP) ou un mécanisme anti-rejeu réellement compatible avec les Wallet.
+- [ ] **WALLET-031** — Vérifier côté serveur à chaque scan compagnie, borne appairée non révoquée, établissement autorisé, employé actif, détenteur de carte, révocation et absence d’accès intercompagnies.
+- [ ] **WALLET-032** — Respecter l’abonnement Essentiel Pro, l’activation explicite du module Wallet par Boss/Admin et les permissions employé; aucune simple modification front ne doit contourner ces contrôles.
+- [ ] **WALLET-033** — Permettre au Boss/Admin autorisé d’émettre, suspendre, révoquer ou réémettre des cartes individuelles, et d’activer Scanner par borne compatible, avec motif/audit.
+- [ ] **WALLET-034** — Après vérification du QR, demander au serveur l’état officiel du salarié et déterminer l’action pertinente **IN ou OUT** selon sa session ouverte; ne pas deviner l’action dans l’interface.
+- [ ] **WALLET-035** — Afficher avant écriture l’action exacte « Commencer ma journée » ou « Terminer ma journée », et demander la confirmation requise par la politique sécurisée; aucun punch silencieux dès la simple détection QR.
+- [ ] **WALLET-036** — Si le QR est statique, demander un NIP personnel sur le pavé protégé avant de confirmer; masquer le NIP, limiter les essais et ne jamais enregistrer le NIP en clair.
+- [ ] **WALLET-037** — Respecter les pauses, l’état « En pause », les actions autorisées et les règles actuelles de la borne; le scan ne doit pas terminer ou modifier une pause implicitement.
+- [ ] **WALLET-038** — Appliquer au scan les mêmes garde-fous serveur que le pointage matricule/NIP : double punch, anti-chevauchement, idempotence, permissions, sessions concurrentes et périodes fermées.
+- [ ] **WALLET-039** — Une confirmation serveur réussie affiche brièvement nom ou initiales minimisées, état IN/OUT et heure confirmée, puis efface toute information personnelle et revient à l’accueil.
+- [ ] **WALLET-040** — Si réponse réseau perdue ou incertaine, présenter « Vérification nécessaire » et consulter l’état officiel avant de proposer un second punch; ne jamais afficher un faux succès.
+- [ ] **WALLET-041** — Pour QR invalide, carte expirée, volée, révoquée, employé désactivé, forfait expiré ou mauvaise compagnie, expliquer « Carte non reconnue / non autorisée » sans révéler les données du salarié.
+- [ ] **WALLET-042** — Quand le réseau manque, refuser la validation QR non prouvable; offrir le flux matricule/NIP existant si son mode hors ligne sécurisé est opérationnel et autorisé.
+- [ ] **WALLET-043** — Garantir arrêt du flux caméra, destruction des données temporaires et retour au pavé partagé après succès, échec, annulation, déconnexion, expiration ou mise en arrière-plan prolongée.
+- [ ] **WALLET-044** — Tester usage successif par plusieurs employés : aucune photo, carte, NIP, sélection, aperçu ou identité du précédent employé ne doit rester accessible.
+- [ ] **WALLET-045** — Gérer la révocation immédiate après perte de téléphone, départ du salarié, changement de compagnie, suspension et rotation de cartes sans effacer l’historique des heures.
+- [ ] **WALLET-046** — Éviter les SDK publicitaires et services externes de reconnaissance vidéo; journaliser seulement événements techniques, refus et pointages nécessaires avec rétention configurée.
+- [ ] **WALLET-047** — Tester appareil tablette réellement : Android/iPad, Safari/Chrome/PWA installée, caméra avant/arrière, permission acceptée/refusée, luminosité, plusieurs QR et écran verrouillé/déverrouillé.
+- [ ] **WALLET-048** — Tester sécurité intercompagnies, QR copié, capture d’écran, QR réutilisé, authentification NIP, essais excessifs, cartes révoquées, borne non appairée et employés non autorisés.
+- [ ] **WALLET-049** — Tester flux complet Wallet → caméra → validation serveur → IN → OUT, pauses, reprise, téléphone/borne croisés, erreurs réseau, simultanéité et double scan.
+- [ ] **WALLET-050** — Tester les dix thèmes de borne, rotations, tailles d’écran, accessibilité, clavier, retours automatiques et absence de faux messages « Fonctionnel » avant certificats Wallet et validation sur appareil.
+
+### Parcours fonctionnel obligatoire — bouton « Scanner ma carte » sur borne
+1. Une borne d’entreprise **Pro**, appairée, autorisée et équipée d’une caméra affiche sur son accueil un **gros bouton « Scanner ma carte »** bien visible, ainsi que le pointage **Matricule/NIP**. Hors Pro ou module désactivé, ne pas afficher un bouton inopérant.
+2. Un employé ouvre **sa carte PUNCH** depuis Apple Wallet ou Google Wallet sur son téléphone. La borne ne demande jamais son mot de passe de compte ou celui du Boss.
+3. L’employé touche **« Scanner ma carte »**; la borne demande la permission caméra à cette étape uniquement, active le bon objectif et montre un cadre de visée avec retour/annulation.
+4. L’employé présente le QR au cadre; la borne lit le contenu en local et lance une **vérification unique côté serveur** contre la compagnie, le forfait Pro, l’activation, la carte et l’appairage de borne.
+5. Pour un **QR statique/copied possible**, la borne demande **une seconde preuve telle qu’un NIP**. Un simple QR ou sa capture d’écran ne peut jamais pointer seul; si un pass dynamique anti-rejeu est proposé, sa compatibilité réelle Apple/Google doit être prouvée.
+6. Le serveur retourne l’état courant de présence et l’action IN ou OUT possible. L’écran demande explicitement de confirmer cette action (selon le flux de sécurité) et réutilise les mêmes RPC/événements officiels que le NIP et le téléphone.
+7. Après confirmation serveur, afficher brièvement « Entrée enregistrée » ou « Sortie enregistrée » et l’heure réelle, fermer caméra, vider identité/PIN/QR temporaire et revenir automatiquement à l’accueil.
+8. En cas de refus caméra, lecteur indisponible, QR invalide, réseau perdu ou permission refusée, montrer une erreur compréhensible avec **« Pointer avec matricule/NIP »**; ne jamais bloquer le pointage normal, inventer un succès ou conserver le flux caméra.
+9. Test de recette : **une vraie tablette iPad + une Android** et des passes **Apple Wallet + Google Wallet**, incluant QR d’une autre compagnie, capture copiée, révocation, timeout, multi-employés et double pointage; noter **non testé** tant que non réalisé.
+
+**Priorisation :** le bouton d’accueil relève du parcours Bornes P0 et ne doit pas modifier le fonctionnement existant. La création des passes, l’intégration QR et la certification des services Wallet sont des tâches Pro P2 dépendantes des protections P0. Conserver intégralement le matricule/NIP.
+
 
 ## P2 — Déplacements professionnels GPS Pro (GPS, 18 points)
 **Objectif :** GPS uniquement pour employeurs admissibles et explicitement activé.
