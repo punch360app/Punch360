@@ -1,0 +1,11 @@
+# Couverture indépendante par qualification — 25 octobre 2026
+
+Plages explicites par département : titre, titre de certificat requis, début/fin locaux dans le fuseau de l’établissement, minimum, activation et version. Les heures locales inexistantes/ambiguës sont refusées par le résolveur existant. Maximum 31 jours écoulés/plage, 100 règles actives par entreprise. Configuration réservée aux gestionnaires Pro autorisés pour Certifications; lecture/rapport gestionnaire Pro, RLS et mutation uniquement par RPC avec motif/audit.
+
+Le rapport découpe aux débuts/fins des quarts et minuits locaux. Seuls les salariés actifs affectés à un quart non annulé couvrant l’intervalle, dont un certificat de titre identique est émis et valide, comptent. Titres comparés sans casse et espaces aux extrémités. Date d’émission requise pour être compté; expiration inclusive jusqu’à la fin du jour local. Congé approuvé sur ce jour exclu. Aucun salarié/document/date de certificat privée n’est retourné, seulement compte agrégé et règle configurée. Quarts vacants exclus. Pas de modification des horaires/heures réels.
+
+Limites explicites : plusieurs qualifications peuvent être satisfaites simultanément par une personne; ce ne sont pas des postes exclusifs. Les postes/affectations de fonctions restent ouverts. Pas de récurrence automatique de règles ni d’heures d’ouverture déduites. Rapport maximal 31 jours et 10 000 quarts; au-delà, réduction de période exigée. Maximum 2000 intervalles affichés avec nombre total et avertissement de troncature. Historique interface limité explicitement à 1000 règles; pas de résultats silencieusement tronqués.
+
+Tests : TypeScript source Expo et 135 tests Node/DOM (localisation à la reprise DST, version attendue, minimum entier, échappement/troncature, double requête et déconnexion). SQL sur fixtures annulées : quart du 31 octobre 23 h au 1er novembre 3 h (5 h réelles), expiration le 31 = manque de 4 h après minuit; renouvellement = couverture complète; congé du 1er = manque de 4 h; refus d’un employé et version périmée. Inclusion de la collection dans le snapshot cohérent et récupération additive testée, règle récupérée désactivée.
+
+Déployé : migration appliquée sur mlabstdxxwjdpfaxiwmg; Web essential-39 PR/CI à vérifier. Aucun appareil ni test de charge réel déclaré validé. Le prompt complet reste ouvert.

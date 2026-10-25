@@ -1,3 +1,14 @@
+# Reprise active — couverture par qualification, 25 octobre 2026
+
+Export de paie publié : PR #28 fusionnée dans `ae380d2b47e3526c2bb68ec7c975d1cc3ccdbc74`. CI #157 puis CI/Pages du merge réussis; payroll-export.js, payroll.js et sw.js publics vérifiés identiques.
+
+Lot courant `feat/qualified-coverage` : plages explicites département/qualification/minimum, versions attendues, configuration gestionnaire Pro + Certifications, rapport agrégé gestionnaire Pro. Le rapport compte les salariés actifs affectés au quart, avec certificat émis et valide à chaque intervalle local, hors congé approuvé. Découpage aux bornes des quarts et minuits locaux (DST inclus). Aucun accès supplémentaire aux dossiers RH privés. Web et source Expo développés, 135 tests Node/DOM et TypeScript; SQL expiration à minuit/DST, renouvellement, congé approuvé, version périmée, RLS et récupération désactivée réussi en rollback. Migration qualified_coverage_windows appliquée. Web essential-39 par PR/CI à vérifier; appareils non testés. Voir QUALIFIED_COVERAGE_20261025.md.
+
+Ce lot traite la couverture indépendante par qualification. Les postes exclusifs et l’affectation d’un salarié à un poste précis ne sont pas implémentés; plusieurs qualifications peuvent être satisfaites par un même salarié. Les créneaux sont explicites (pas de récurrence automatique des exigences de couverture). Autres exigences indépendantes ouvertes : actions Super Admin restantes, langues/RTL, design manquant. Fournisseurs : OAuth réel/Apple, Stripe test, push/courriel, paie nommée. Builds signés/appareils et confidentialité/PRA restent ouverts. SMS en dernier; préserver le travail du collaborateur et la PR documentaire #26.
+
+---
+Historique :
+
 # Reprise active — export configurable de paie, 25 octobre 2026
 
 Budgets publiés : PR #27 fusionnée dans `523049bc5c409b063f64076d11a902c0804ad943`; CI #154 puis CI/Pages du merge réussis. labor-budgets.js, essential.js et sw.js publics vérifiés identiques.
