@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createNotificationPreferencesController} from '../web/live/notification-preferences.js';
+const escape=s=>String(s??'');
+function setup(){const calls=[];let finish;const sb={from(){const q={select(){return q},eq(){return Promise.resolve({data:[{category:'decisions',version:4,push_enabled:true,email_enabled:false}]})}};return q},rpc:async(name,args)=>{calls.push({name,args});return {data:5}}};return {calls,sb,ui:createNotificationPreferencesController({sb,redraw(){},escape})}}
+test('notification preferences use own version and preserve independent channels',async()=>{const {ui,calls}=setup();await ui.load('company');ui.input({id:'notification-pref-decisions-email',checked:true});await ui.handle({dataset:{action:'notification-pref:save',category:'decisions'}});assert.deepEqual(calls[0].args,{p_company:'company',p_category:'decisions',p_push:true,p_email:true,p_expected_version:4});assert.equal(ui.state.rows[0].version,5);assert.match(ui.render(),/ne confirme pas une livraison/);});
+test('preferences ignore response arriving after company change or logout',async()=>{const {ui,sb}=setup();let complete;sb.from=()=>({select(){return this},eq:()=>new Promise(resolve=>{complete=resolve})});const pending=ui.load('old');ui.reset();complete({data:[{category:'decisions',push_enabled:true}]});await pending;assert.deepEqual(ui.state.rows,[]);assert.equal(ui.state.company,null)});

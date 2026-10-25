@@ -1,3 +1,14 @@
+# Reprise active — préférences et notifications, 25 octobre 2026
+
+Modèles publiés : PR #20 fusionnée dans `03b607b97d2e1ae664cf894190b8e9aee5059379`, CI #131 réussie. Fichiers publics schedule-templates.js, planning.js et sw.js vérifiés identiques.
+
+Lot `feat/notification-preferences` : préférences personnelles par entreprise/catégorie/canal, version attendue et isolation RLS Web/Expo. Migration notification_preferences appliquée; SQL transactionnel réussi. Correction de navigation employé vers journées oubliées et supervision (écrans auparavant masqués par la liste de routage); test DOM complet ajouté. La livraison push/courriel ne doit pas être annoncée fonctionnelle par la seule sauvegarde des préférences; UI explicite. Prochaine étape : appareils push, file de livraison et envois/reçus, puis invitations courriel.
+
+Autres exigences toujours ouvertes : couverture par postes, coûts/budgets/paie, OAuth/Apple, dix langues/RTL, design manquant, Super Admin, recette Stripe, builds signés/appareils et confidentialité/PRA. SMS en dernier; conserver Construction et la branche du collaborateur déplacements/portefeuille.
+
+---
+Historique :
+
 # Reprise active — modèles d’horaires, 25 octobre 2026
 
 Approbations déléguées publiées : PR #19 fusionnée dans `140f55b83268359e2b8d1bbb46480e008e464f4f`, CI #128 réussie puis CI/Pages du commit fusionné réussis. Fichiers publics supervisor-approvals.js, planning.js et sw.js vérifiés identiques.
