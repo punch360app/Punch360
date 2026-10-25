@@ -68,15 +68,16 @@ Auditer le dépôt et la base officiels, PR actives et migrations : scheduled_sh
 1. Réutiliser la file de notifications déjà présente, l'audit, les préférences, mécanismes d'expiration et déduplication. Une offre contient établissement, poste, date/heure, durée et délai, mais **jamais le motif de santé/personnel** du collègue absent.
 2. Tester sur fixtures isolées : deux acceptations concurrentes => exactement un gagnant; réponses tardives; retry réseau, appareil fermé, expiration, double clic, changement de disponibilité/qualification, signalement répété, quart annulé/modifié, approbation requise ou automatique, RLS multi-entreprise, employés sans Auth, DST Québec, heures de nuit, période passée, dépassement heures/repos et sessions punch ouvertes. Tester « aucun punch », « retard » et « no show » => **aucune offre**.
 3. **Scénarios motifs/confidentialité** : aucune option par défaut, neuf options utilisables, saisie facultative « Autre » et « Raison personnelle », choix non précisé, note filtrée/limitée, annulation avant confirmation, double clic idempotent, aucune donnée sensible dans les offres/notifications/exports, rôle non autorisé refusé côté serveur.
-3. Tests TypeScript, unitaires, DOM, SQL transactionnels, accessibilité mobile/tactile et parcours réel appareils avant validation; compte rendu distinct « développé / testé / déployé / intervention externe requise ».
-4. SMS/Twilio **à la toute fin**, conformément à la décision actuelle; préparer interfaces/adaptateurs/test doubles sans SMS réel, sans exiger les clés au chat. Ni paiement réel ni message réel pendant recette. Un « envoyé » signifie confirmation fournisseur, pas simplement mise en file.
-5. Rester dans Supabase officiel mlabstdxxwjdpfaxiwmg, réutiliser l'identité et la isolation RLS, ne toucher à aucune entreprise réelle par tests, conserver contrats, archives, historiques et PUNCH Construction.
+4. Tests TypeScript, unitaires, DOM, SQL transactionnels, accessibilité mobile/tactile et parcours réel appareils avant validation; compte rendu distinct « développé / testé / déployé / intervention externe requise ».
+5. SMS/Twilio **à la toute fin**, conformément à la décision actuelle; préparer interfaces/adaptateurs/test doubles sans SMS réel, sans exiger les clés au chat. Ni paiement réel ni message réel pendant recette. Un « envoyé » signifie confirmation fournisseur, pas simplement mise en file.
+6. Rester dans Supabase officiel mlabstdxxwjdpfaxiwmg, réutiliser l'identité et l'isolation RLS, ne toucher à aucune entreprise réelle par tests, conserver contrats, archives, historiques et PUNCH Construction.
 
 ## Critères d'acceptation produit (tous obligatoires)
 
 - Un salarié règle sa semaine type puis une exception sans devoir tout ressaisir; l'admin voit les disponibilités et les besoins dans le même écran.
 - L'admin crée un brouillon d'horaire Pro en trois étapes, revoit conflits/heures/couverture, ajuste et publie avec notification.
 - Aucun remplacement automatique n'est créé pour un salarié absent au punch, en retard ou hors GPS.
+- L'employé sélectionne l'un des neuf motifs ou « Je préfère ne pas préciser », sans valeur présélectionnée; la note reste facultative; les remplaçants et les exports généraux n'accèdent jamais au motif ni à la note.
 - Un signalement d'absence explicite et confirmé sur un quart déclenche une seule recherche; la banque admissible reçoit les offres configurées; exactement une réservation ou affectation réussit malgré concurrence.
 - Le mode « approbation obligatoire » n'affecte pas avant validation; le mode « auto-remplacement » attribue uniquement au gagnant admissible; historique et alertes visibles.
 - Sans remplaçant, quart ouvert + notification manager, jamais d'attribution forcée.
