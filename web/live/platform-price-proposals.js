@@ -56,7 +56,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
     if(a[1]==='draft'){
      if(!s.preview)throw Error('Prévisualiser le devis avant sa création.');
      if(s.confirmation!==params.p_company)throw Error('Confirmation de l’identifiant de la compagnie incorrecte.');
-     const saved=await rpc('platform_company_price_draft',{...params,p_expected_version:s.list.version,p_confirmation:s.confirmation});
+     const saved=await rpc('platform_company_price_draft',{...params,p_expected_version:s.list.version,p_expected_plan_version:s.preview.plan_version,p_confirmation:s.confirmation});
      s.notice='Projet v'+saved.version+' enregistré. Aucune activation Stripe.';
      s.list=await rpc('platform_company_price_list',{p_company:params.p_company,p_reason:params.p_reason});
      s.preview=null;s.confirmation='';
