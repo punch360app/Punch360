@@ -37,3 +37,5 @@ L’annuaire et la fiche sont en consultation. Les actions sur utilisateurs rée
 
 
 Contrôles de service Essentiel développés : suspension/réactivation de gestion et sursis client, MFA/version/UUID/motif, audit, pointage conservé et filtre calculé. Deux migrations appliquées, 137 tests et SQL rollback; publication à vérifier. Voir PLATFORM_SERVICE_CONTROLS_20261025.md. Conditions tarifaires particulières et actions utilisateurs réels non clôturées.
+
+Annuaire des abonnements développé : pages de 50, filtres et indicateurs sur tout le périmètre réel/test, prix manquant signalé; MFA/session/motif/audit. 140 tests/TypeScript et deux SQL annulés; migration appliquée, publication à vérifier. Voir SUBSCRIPTION_DIRECTORY_20261025.md. Annulation/reprise fournisseur et rapprochement restent ouverts.

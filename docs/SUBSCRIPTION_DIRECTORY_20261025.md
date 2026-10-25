@@ -1,0 +1,13 @@
+# Annuaire des abonnements — 25 octobre 2026
+
+Console Web Super Admin, onglet Abonnements : comptes de facturation Essentiel avec recherche nom/UUID, réel/test (réel par défaut), accès calculé, forfait et cadence. Pages de 50 avec curseur date de création de compagnie + UUID; motif exigé pour chaque recherche et repris de façon stable entre les pages. Prix/contrat : dernier contrat confirmé pour l’abonnement courant, sans duplication des anciennes versions. Fournisseur et état d’accès sont affichés séparément. Le tableau ne couvre pas les compagnies sans compte de facturation (elles restent au répertoire des entreprises).
+
+Indicateurs sur tous les résultats filtrés, pas seulement la page visible : comptes/restreints, MRR/ARR contractuels actifs payés et non résiliés (avant promotions Stripe), factures réglées cumulées. Annuel normalisé par 12 avec arrondi en cents. Prix confirmé absent = MRR/ARR incomplets, avec MRR connu partiel et nombre de comptes concernés. Les montants de factures peuvent inclure crédits et ne constituent pas un rapprochement bancaire/remboursements. Les 100 derniers webhooks traités du périmètre sont conservés comme aperçu explicitement borné; pas présentés comme historique complet.
+
+Sécurité : contrôle propriétaire plateforme MFA + session vivante, fonction serveur seule, aucun accès direct aux tables privées; chaque page auditée avec motif et filtres sans conserver le nom recherché. Aucune mutation de compte, prix, abonnement ni paiement par cet annuaire.
+
+Testé : TypeScript et 140 tests Node/DOM (motif, filtre réel par défaut, curseurs/filtres appliqués, échec sans déplacement d’historique, échappement, compte incomplet, effacement MFA/déconnexion). SQL transactionnel : 52 comptes fictifs, pages 50+2 sans doublon, séparation réel/test, refus motif manquant/session expirée, 52 contrats sans prix = MRR inconnu; deuxième scénario avec moteur de facturation simulé serveur, contrat annuel confirmé = MRR montant/12, facture réglée exacte et résiliation exclue du MRR. Aucun appel Stripe réel, toutes les fixtures annulées.
+
+Conseiller sécurité consulté : table privée de contrôles sans politique volontairement inaccessible (tous droits client révoqués); avertissements SECURITY DEFINER sur RPC voulus, autorisation propriétaire/session testée. Cela ne constitue pas un audit indépendant ni une recette appareil/fournisseur.
+
+Déployé : migration appliquée; Web essential-41 à vérifier par PR/CI et fichiers publics. Ancien platform_billing_overview préservé pour compatibilité, plus appelé par cet écran. Les conditions particulières et actions sur utilisateurs réels restent ouvertes.

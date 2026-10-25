@@ -34,7 +34,7 @@
 | E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
 | E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 126 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | 140 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 
@@ -58,3 +58,5 @@ Export de paie configurable (2026-10-25) : profils/correspondances/aperçus Web 
 Couverture indépendante par qualification (2026-10-25) : plages et rapports Web/source Expo développés, 135 tests/TypeScript et SQL fixtures DST/expiration/congés/RLS/restauration; backend appliqué, publication à vérifier. Postes exclusifs/affectations et récurrence des règles ouverts. Voir QUALIFIED_COVERAGE_20261025.md.
 
 Contrôles commerciaux Super Admin (2026-10-25) : suspension/réactivation de gestion Essentiel et sursis particulier développés, MFA/session/audit, pointage conservé. Backend appliqué, 137 tests et SQL fixtures. Publication Web à vérifier; autres actions plateforme et fournisseur restent ouvertes.
+
+Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-test, audit et prix incomplets développés, migration appliquée, 140 tests/TypeScript et deux SQL annulés. Publication Web à vérifier. Voir SUBSCRIPTION_DIRECTORY_20261025.md.

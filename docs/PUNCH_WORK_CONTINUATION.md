@@ -1,3 +1,14 @@
+# Reprise active — annuaire des abonnements, 25 octobre 2026
+
+Contrôles de service publiés : PR #30 fusionnée dans `edef3ac9ca11a95ed0c5e2dd64d7c42b6c37af5f`, CI #173 et CI/Pages du merge réussis; platform-directory.js public vérifié identique.
+
+Lot courant `feat/platform-subscription-directory` : consultation paginée 50 comptes, filtres entreprise/réel-test/accès/forfait/périodicité, motif obligatoire et audit, MFA/session vivante. Totaux calculés sur tous les résultats filtrés, prix non confirmé = MRR/ARR inconnus avec somme partielle connue, contrats résiliés exclus du MRR. Factures réglées cumulées distinctes du rapprochement bancaire. 100 derniers webhooks du périmètre explicitement bornés. Remplace la liste Web sans pagination; ancien RPC conservé pour compatibilité. Corrige aussi la remise à zéro du contrôleur de couverture lors d’un changement de compte/compagnie. Migration platform_subscription_directory appliquée. 140 tests Node/DOM et TypeScript; deux SQL annulés (52 comptes 50+2, filtres, MFA, MRR incomplet, annuel/12 et résiliation) réussis. Web essential-41 PR/CI à vérifier. Voir SUBSCRIPTION_DIRECTORY_20261025.md.
+
+Le prompt global n’est pas terminé : actions sur utilisateurs réels et conditions tarifaires particulières; postes exclusifs/affectations et calendrier externe; dix langues/RTL; références/design restant; recette OAuth/Apple, Stripe test, fournisseurs push/courriel/paie; builds signés/appareils, charge/concurrence/confidentialité/PRA. SMS en dernier. Aucun paiement/message/suspension d’une entreprise réelle pendant la recette. Préserver le travail du collaborateur et la PR documentaire #26.
+
+---
+Historique :
+
 # Reprise active — contrôles de service Super Admin, 25 octobre 2026
 
 Couverture par qualification publiée : PR #29 fusionnée dans `232033935a1848921f9347ed7f13a4f91362c39c`; CI #164 et CI/Pages du merge réussis. qualified-coverage.js et essential.js publics vérifiés identiques.
