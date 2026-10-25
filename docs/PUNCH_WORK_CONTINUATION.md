@@ -1,4 +1,4 @@
-> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 490 exigences en 28 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
+> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 502 exigences en 29 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
 
 # Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
 
