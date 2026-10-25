@@ -1,3 +1,15 @@
+# Reprise officielle — après PR #34 : tarifs particuliers, 25 octobre 2026
+
+État `main` : **PR #32** (Boss restreint Web/Expo), **PR #33** (export personnel iCalendar Web/Expo), **PR #34** (suspension/restauration ciblée d'un membre réel Essentiel) fusionnées. PR #34 au merge `7e504833239fab9d478002d359f44dd2a96c5394`. Migration Supabase active `20261025211947_platform_real_member_access`, tests SQL synthétiques avec `ROLLBACK` réussis et zéro intervention réelle. GitHub CI branche PR #34 : **156/156 tests** (plus TypeScript/Expo/syntaxe Web). CI + Pages de fusion vérifiées réussies.
+
+**Prochaine tâche de code prioritaire** : <https://github.com/punch360app/Punch360/issues/35> — Super Admin : **tarifs négociés par compagnie Essentiel**, devis et contrats immuables, intégration Stripe sandbox + vraies confirmations webhook, sans toucher aux paiements réels lors des tests. Examiner l'existant `private.essential_contracts`, `public.essential_quote`, `public.essential_billing_order`, `supabase/functions/essential-billing`, `web/live/commercial.js`, `web/live/platform-directory.js`, et le dépôt `docs/PLATFORM_COMMERCIAL_20261025.md` avant d'agir. Ne pas recommencer ce qui est déjà livré.
+
+**Autres points toujours ouverts** : action sur accès Boss avec protocole sécurisé de succession, réémission/récupération Auth sans accès à mots de passe réels; postes exclusifs et affectations, calendrier auto abonnable/révocable, langues et RTL, fin du design, recette Stripe/OAuth/Apple/Google, build appareils, charge/PRA, fournisseurs push/courriel/paie, SMS/Twilio en dernier. La PR documentaire #26 qui contient le prompt maître est distincte, non fusionnée et ne doit pas être écrasée.
+
+Les comptes existants, abonnements, heures et PUNCH Construction restent protégés. La recette réelle par interface authentifiée de l'opération membre #34 est encore à faire : ne pas confondre CI/SQL avec validation terrain. Ne jamais modifier ou suspendre un vrai client pendant une recette.
+
+---
+
 # Reprise active — actions réelles Super Admin par compagnie, 25 octobre 2026
 
 PR #34 `feat/platform-scoped-real-member-controls-20261025` : premier bloc d'action Super Admin réelle ciblée sur **un compte non-Boss d'une entreprise Essentiel réelle**, sans modifier les comptes Auth, les autres compagnies, le salaire, les pointages historiques ni Stripe. Actions `suspend` / `restore`, audit, MFA AAL2/session vivante, raison, UUID exact, version attendue. Le trigger existant `sync_essential_member_worker` désactive automatiquement le salarié : sa restauration doit préserver son état précédent. Compte propriétaire/Boss/test exclu; interventions interrompues si pointage ouvert. UI Web annuaire et tests ajoutés.
