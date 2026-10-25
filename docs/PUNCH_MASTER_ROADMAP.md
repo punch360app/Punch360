@@ -26,7 +26,7 @@
 | E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
 | E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications internes livrées; push/recette terrain restants |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
-| E23 | Communications et notifications | EN COURS | Annonces, lectures, notes, alertes internes; push et préférences restants |
+| E23 | Communications et notifications | EN COURS | Annonces/alertes internes; préférences, appareils et file push développés; activation fournisseur/réception réelle et courriels restants |
 | E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements, suppression et coffre des comptes test; support Web/Expo, promotions Stripe et rapports financiers livrés; rapprochement bancaire et recette fournisseur restants |
 | E25 | Stripe et sursis | EN COURS | Backend et interfaces; recette fournisseur, réabonnement et rapprochement restants |
 | E26 | Données et confidentialité | EN COURS | Isolation/audit; Loi 25, région, rétention, restauration à valider |
@@ -34,7 +34,7 @@
 | E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
 | E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 108 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | 116 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 

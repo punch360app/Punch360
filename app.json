@@ -27,7 +27,8 @@
         {
           "locationWhenInUsePermission": "PUNCH utilise votre position lorsque vous le demandez pour proposer les chantiers proches."
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }
