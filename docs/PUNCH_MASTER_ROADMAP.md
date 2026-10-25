@@ -69,7 +69,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source unique des nouvelles exigences : [PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md).** Ce bloc complète **E05/E06/E19/E23** et les quarts vacants/échanges déjà présents; ces fonctions ne doivent pas être recodées. Les états E34–E39 sont « À FAIRE » et ne signifient pas livré.
+**Source officielle des exigences : [PROMPT MAÎTRE — 476 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
