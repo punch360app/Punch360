@@ -43,6 +43,7 @@
 | E37 | Signalement d'absence explicite de l'employé sur un quart | À FAIRE | Aucun no-show, retard, GPS ou absence de punch ne lance une offre; pas d'effacement d'heures. Motifs prédéfinis, note facultative, confidentialité; voir P3 |
 | E38 | Banque de remplaçants, offres par vagues et un seul gagnant | À FAIRE | Réutiliser quarts vacants/candidatures; attribution atomique; mode Boss approbation ou automatique. Voir P3 |
 | E39 | Notifications, concurrence, QA et SMS différé du remplacement | À FAIRE | Push interne selon préférences; SMS/Twilio en dernier. Tests concurrence, multi-tenant, DST, réseau et appareils. Voir P4 |
+| E40 | Tâches de quart, modèles par poste et formations internes Plus/Pro | À FAIRE | TASK-001–010 du Prompt maître; aucune deuxième identité, horaire, formation RH ou notification. UX simple, transfert au remplaçant confirmé, accès mobile et QA. |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
@@ -69,7 +70,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 480 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 490 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
