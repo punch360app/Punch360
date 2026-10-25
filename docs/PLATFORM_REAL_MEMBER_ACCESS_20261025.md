@@ -21,11 +21,12 @@ Première action sur les **comptes réels**, limitée au **rattachement à une c
 - Les places et paiements Stripe ne sont pas modifiés. Le nombre de membres actifs peut évoluer; le nombre de places contractuelles et le montant restent régis par la facturation.
 
 ## Code et validation
-- Migration : `supabase/migrations/20261025213000_platform_real_member_access.sql`
+- Migration : `supabase/migrations/20261025211947_platform_real_member_access.sql`
 - Scénario : `supabase/tests/platform_real_member_access.sql` (fixtures synthétiques, transaction et rollback)
 - Interface : `web/live/platform-users.js` ; tests : `tests/platform-users.test.mjs`
 - Recette SQL sous rollback **réussie** après correction de la synchronisation membre→salarié, avec vérification multi-entreprise, confirmation incorrecte, version périmée, permissions refusées, flags restitués et audit.
-- À la rédaction : CI GitHub et publication encore à confirmer; essais manuels MFA et rôle réel non exécutés. Aucun salarié réel modifié.
+- Migration Supabase **appliquée** dans le seul projet `mlabstdxxwjdpfaxiwmg` comme version `20261025211947`; contrôle du privilège `anon = false`, `authenticated = true` avec garde MFA SQL obligatoire, et **0 intervention réelle** enregistrée.
+- Tests Node/DOM/TypeScript GitHub CI réussis sur la branche; déploiement Web et recette authentifiée en navigateur encore à confirmer. Aucun salarié réel modifié.
 
 ## Restant pour achever Super Admin
 - Traiter les interventions sur **Boss** via un protocole de succession administrative approprié.
