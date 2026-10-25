@@ -25,7 +25,8 @@ La direction doit conserver une porte de sortie même pendant une suspension adm
 - `tests/restricted-management.test.mjs` et `tests/billing-ui.test.mjs` : tests de statuts/rôles/actions et indisponibilité fournisseur.
 
 ## Preuves et limites
-- Tests Node/DOM, contrôle TypeScript et syntaxe Web : **en attente de CI de la PR** au moment de la rédaction.
+- **CI validée** : workflow PUNCH TypeScript, run [40225062044](https://github.com/punch360app/Punch360/actions/runs/40225062044) — 144/144 tests Node/DOM réussis, TypeScript, Expo dependency check et syntaxe de tous les fichiers Web réussis.
+- Vérification lecture seule Supabase : `essential_billing_summary` expose le statut calculé via `private.essential_billing_state` (inclut la suspension manuelle), l'accès Boss est vérifié côté serveur; `support_list_tickets` délègue à `private.assert_support_access` par appartenance. Aucun SQL de mutation appliqué.
 - Aucun test sur session Boss suspendue réelle, aucun règlement Stripe et aucune modification Supabase.
 - Recette navigateur authentifié **Boss actif → suspension test → accès abonnement/support/pointage → accès RH refusé → réactivation** requise avant fermeture complète.
 - Tester aussi Admin, salariés existants, navigation profonde, panne Stripe, rafraîchissement et basculement d'entreprise.
