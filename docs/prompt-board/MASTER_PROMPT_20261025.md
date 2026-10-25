@@ -15,7 +15,7 @@ Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/
 - Développement principalement Essentiel et Super Admin transversal; Construction en tests de non-régression, sans refonte non demandée.
 
 ## Résultats vérifiés au départ et limites
-- PR archives #14 déjà fusionnée ; PR documentation/suivi #26 créée en brouillon : consulter leur état récent.
+- PR archives #14 fusionnée ; **PR #26 (consolidation du présent maître) fusionnée**. Toujours vérifier les PR et statuts les plus récents avant toute tâche.
 - Super Admin partiel : protections MFA, tarification/catalogue, comptes test et coffre, support, promotions, rapports, annuaires en consultation déjà documentés. Ne pas les recoder. Actions commerciales réelles, traitement comptes réels, Stripe fournisseur et recette appareils restent ouverts.
 - Projet Supabase actif, Edge Functions présentes; l’inventaire des migrations Supabase a montré deux migrations de budgets postérieures au main inspecté. **Réconcilier le drift avant toute migration**.
 - Auditeur Supabase a remonté de nombreuses fonctions SECURITY DEFINER exécutables avec rôle authentifié, et protection contre les mots de passe compromis non activée; effectuer revue et remédiation contrôlée, sans révoquer arbitrairement les fonctions métier légitimes.
@@ -62,7 +62,7 @@ La version détaillée de `docs/CONTINUATION_PROMPT_20261025.md` (historique Git
 - [ ] **GOV-009** — Éclater les prompts volumineux en exigences avec identifiants stables et critères vérifiables.
 - [ ] **GOV-010** — Associer chaque exigence à ses fichiers, RPC, Edge Functions, PR et tests.
 - [ ] **GOV-011** — Maintenir GitHub comme source de vérité du suivi; Drive reste boîte d’entrée.
-- [ ] **GOV-012** — Mettre à jour le tracker, la roadmap et la continuation après chaque lot.
+- [ ] **GOV-012** — Mettre à jour le tracker, la roadmap et `PUNCH_WORK_CONTINUATION.md` après chaque lot; l'ancien giga-prompt redirige vers ce maître et ne doit pas redevenir un second registre.
 - [ ] **GOV-013** — Garder les prompts bruts et secrets hors du dépôt GitHub public.
 - [ ] **GOV-014** — Différencier développé, testé, déployé et intervention externe pour chaque point.
 - [ ] **GOV-015** — Ne jamais affirmer qu’un prompt est terminé si une de ses sous-exigences manque.
