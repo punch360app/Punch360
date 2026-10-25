@@ -22,7 +22,7 @@
 | E16 | Console Admin distincte | EN COURS | Gestion sans punch, délégations RH; revue complète des permissions restantes |
 | E17 | Console Boss | EN COURS | Entreprise, bornes, paie, facturation; direction/coûts complets restants |
 | E18 | Superviseurs par département | EN COURS | Lecture/planification et approbations heures/congés indépendantes par département; recette appareils/concurrence restante |
-| E19 | Moteur d’horaires | EN COURS | Nuit/DST/récurrences/rotations/échanges; modèles réutilisables versionnés développés; postes/qualifications et calendrier externe restants |
+| E19 | Moteur d’horaires | EN COURS | Nuit/DST/récurrences/rotations/échanges et modèles versionnés développés; export personnel ICS Web/Expo ajouté en source, import appareils non validé. Abonnement calendrier auto, postes exclusifs et intégrations externes restent ouverts |
 | E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
 | E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications internes livrées; push/recette terrain restants |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
