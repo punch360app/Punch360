@@ -1,3 +1,14 @@
+# Reprise active — modèles d’horaires, 25 octobre 2026
+
+Approbations déléguées publiées : PR #19 fusionnée dans `140f55b83268359e2b8d1bbb46480e008e464f4f`, CI #128 réussie puis CI/Pages du commit fusionné réussis. Fichiers publics supervisor-approvals.js, planning.js et sw.js vérifiés identiques.
+
+Lot courant : `feat/schedule-templates`. Modèles réutilisables de récurrences/rotations Web/Expo, configuration sans salarié/date, version attendue, archivage et périmètre de planification. Deux migrations appliquées. Le moteur existant publie les quarts; les sauvegardes de modèles n’en créent aucun. Voir `SCHEDULE_TEMPLATES_20261025.md`. PR/CI à vérifier.
+
+Restent coûts/budgets/intégrations paie, couverture par postes/qualifications et calendrier externe, push/préférences/courriels, OAuth/Apple, dix langues/RTL, références visuelles manquantes, Super Admin, Stripe test, builds signés/appareils et confidentialité/PRA. Préserver la branche du collaborateur déplacements/portefeuille; SMS en dernier. Le prompt global reste ouvert.
+
+---
+Historique :
+
 # Reprise active — approbations déléguées, 25 octobre 2026
 
 Politiques de pauses publiées : PR #18 fusionnée dans `81313e226d7b6ec80d83415a0c3d5616f3900345`, CI #125 réussie. Fichiers publics break-policies.js, kiosk.js et sw.js vérifiés identiques à la livraison.
