@@ -31,7 +31,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const laborBudgets=createLaborBudgetsController({sb,redraw,escape:e});
  const platformUsers=createPlatformUsersController({sb,redraw,escape:e});
  const platformPriceProposals=createPlatformPriceProposalsController({sb,redraw,escape:e});
- const directory=createPlatformDirectoryController({sb,redraw,escape:e,onArchives:company=>{s.snapshot={...(s.snapshot||{}),companies_list:[company,...(s.snapshot?.companies_list||[]).filter(c=>c.id!==company.id)]};archives.reset(company.id,true);s.tab='archives';redraw()}});
+ const directory=createPlatformDirectoryController({sb,redraw,escape:e,onPriceCompany:company=>{if(platformPriceProposals.choose(company.id))s.tab='specialPrices';redraw();},onArchives:company=>{s.snapshot={...(s.snapshot||{}),companies_list:[company,...(s.snapshot?.companies_list||[]).filter(c=>c.id!==company.id)]};archives.reset(company.id,true);s.tab='archives';redraw()}});
  const invitationEmail=createInvitationEmailController({sb,redraw,escape:e});
  const notificationPreferences=createNotificationPreferencesController({sb,redraw,escape:e});
  const supervision=createSupervisorApprovalsController({sb,redraw,escape:e});
