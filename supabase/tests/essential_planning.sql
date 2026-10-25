@@ -1,6 +1,6 @@
 begin;
 do $$
-declare boss uuid:=gen_random_uuid();supervisor uuid:=gen_random_uuid();employee uuid:=gen_random_uuid();late uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();owner_id uuid;c uuid;other_c uuid;l uuid;l2 uuid;d uuid;d2 uuid;w uuid;sw uuid;nw public.company_workers;v_shift uuid;v_ids uuid[];v_retry uuid[];v_request uuid:=gen_random_uuid();denied boolean;v_roster jsonb;invite jsonb;
+declare sid uuid:=gen_random_uuid();boss uuid:=gen_random_uuid();supervisor uuid:=gen_random_uuid();employee uuid:=gen_random_uuid();late uuid:=gen_random_uuid();outsider uuid:=gen_random_uuid();owner_id uuid;c uuid;other_c uuid;l uuid;l2 uuid;d uuid;d2 uuid;w uuid;sw uuid;nw public.company_workers;v_shift uuid;v_ids uuid[];v_retry uuid[];v_request uuid:=gen_random_uuid();denied boolean;v_roster jsonb;invite jsonb;
 begin
  insert into auth.users(id,email,email_confirmed_at) values(boss,boss||'@test.invalid',now()),(supervisor,supervisor||'@test.invalid',now()),(employee,employee||'@test.invalid',now()),(late,late||'@test.invalid',now()),(outsider,outsider||'@test.invalid',now());
  perform set_config('request.jwt.claim.sub',boss::text,true);
@@ -11,8 +11,8 @@ begin
  execute 'set local role authenticated';
  denied:=false;begin perform public.save_essential_department(c,l,'Production');exception when others then denied:=true;end;if not denied then raise exception 'Base plan obtained departments';end if;
  denied:=false;begin perform public.save_essential_location(c,'Second location');exception when others then denied:=true;end;if not denied then raise exception 'Base plan exceeded location limit';end if;
- execute 'reset role';select user_id into owner_id from private.platform_owner;
- perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2')::text,true);execute 'set local role authenticated';
+ execute 'reset role';select user_id into owner_id from private.platform_owner;insert into auth.sessions(id,user_id,aal,not_after) values(sid,owner_id,'aal2',clock_timestamp()+interval '1 hour');
+ perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'session_id',sid,'aal','aal2')::text,true);execute 'set local role authenticated';
  denied:=false;begin perform public.platform_set_essential_test_plan(c,'essential_pro');exception when others then denied:=true;end;if not denied then raise exception 'Production company received simulated plan';end if;
  execute 'reset role';update public.companies set is_test=true,billing_mode='test_simulated' where id=c;execute 'set local role authenticated';perform public.platform_set_essential_test_plan(c,'essential_pro');
  perform set_config('request.jwt.claim.sub',boss::text,true);

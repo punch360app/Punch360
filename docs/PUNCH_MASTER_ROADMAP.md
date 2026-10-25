@@ -34,7 +34,7 @@
 | E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
 | E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 122 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | 124 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 

@@ -1,3 +1,14 @@
+# Reprise active — audit Super Admin, 25 octobre 2026
+
+Invitations courriel fusionnées : PR #23 dans `0696bbb1a4342cc37850b5716b1f2915fa5c263c`, CI #140 réussie. Vérifier CI/Pages et fichiers publics du merge. Fournisseur/DNS/SMTP/webhook/ordonnanceur et recette réelle restent ouverts; aucun envoi réel.
+
+Lot courant `feat/platform-audit-followup` : vérification de session vivante commune aux endpoints plateforme legacy, annuaire d’entreprises paginé/filtré et sélection d’archives au-delà des 200 du snapshot. Migration platform_session_and_search appliquée; 124 tests Node/DOM et TypeScript, SQL 56 entreprises + sessions expirées/révoquées, huit régressions réussies sur fixtures annulées. Web essential-35 par PR/CI à vérifier. Inventaire des actions restantes : `PLATFORM_ACTIONS_AUDIT_20261025.md`.
+
+Prochaine priorité : annuaire utilisateurs réels et fiche entreprise, puis actions commerciales restantes. Toujours ouverts aussi budgets/paie/couverture, OAuth réel/Apple, langues/RTL, design manquant, Stripe test, QA/builds/appareils et confidentialité/PRA. SMS en dernier. Le prompt global reste ouvert.
+
+---
+Historique :
+
 # Reprise active — invitations courriel, 25 octobre 2026
 
 Push publié : PR #22 fusionnée dans `0e8478015c77067514547e8c8e3eb82d2e20c80c`, CI #137 puis CI/Pages réussis, notification-preferences.js et sw.js publics vérifiés identiques. La livraison fournisseur/appareils reste à activer/tester; voir NOTIFICATIONS_20261025.md.
