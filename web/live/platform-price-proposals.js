@@ -1,7 +1,7 @@
 /** Negotiated commercial quotes: drafts only, never activate Stripe or rewrite contracts. */
 export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
  let generation=0;
- const fresh=()=>({company:'',reason:'',plan:'essential',cadence:'monthly',seats:'5',base:'1900',included:'5',extra:'300',discount:'15',effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),confirmation:'',list:null,preview:null,error:'',notice:'',busy:false});
+ const fresh=()=>({company:'',reason:'',plan:'essential',cadence:'monthly',seats:'5',base:'1900',included:'5',extra:'300',discount:'15',effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),confirmation:'',approveConfirmation:'',approval:null,list:null,preview:null,error:'',notice:'',busy:false});
  const s=fresh();
  const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(Number(n||0)/100);
  const uuid=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x||'');
@@ -15,7 +15,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   if(k==='company'||k==='reason')s.list=null;
   s.preview=null;s.notice='';
  }
- const btn=(title,action,disabled=false)=>`<button type="button" class="ess-btn" data-action="platform-price:${action}" ${disabled||s.busy?'disabled':''}>${title}</button>`;
+ const btn=(title,action,disabled=false,extra='')=>`<button type="button" class="ess-btn" data-action="platform-price:${action}" ${disabled||s.busy?'disabled':''} ${extra}>${title}</button>`;
  function args(){
   if(!uuid(s.company)||s.reason.trim().length<8)throw Error('Entreprise UUID et motif détaillé (8 caractères minimum) requis.');
   if(!/^\d{4}-\d\d-\d\d$/.test(s.effective))throw Error('Date d’effet invalide.');
@@ -31,7 +31,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   <label class="ess-field">Identifiant de compagnie Essentiel réelle<input id="platform-price-company" value="${e(s.company)}" autocomplete="off"></label>
   <label class="ess-field">Motif détaillé<input id="platform-price-reason" value="${e(s.reason)}" maxlength="1000"></label>
   ${btn('Charger les projets et la version','load')}
-  ${s.list?`<p>Version : ${Number(s.list.version)} · Dernières propositions (max. 20)</p>${(s.list.items||[]).map(x=>`<p>v${Number(x.proposal_version)} · ${e(x.plan_id)} · ${money(x.due_cents)} / ${e(x.cadence)} · ${e(x.status)}. Aucune confirmation Stripe.</p>`).join('')}`:''}
+  ${s.list?`<p>Version : ${Number(s.list.version)} · Dernières propositions (max. 20) · approbation v${Number(s.approval?.version||0)}</p>${(s.list.items||[]).map((x,i)=>`<p>v${Number(x.proposal_version)} · ${e(x.plan_id)} · ${money(x.due_cents)} / ${e(x.cadence)} · ${e(x.status)}. ${s.approval?.proposal_id===x.id?'Approuvée, en attente d’acceptation du Boss et de confirmation Stripe.':'Non approuvée.'} ${i===0&&s.approval?.proposal_id!==x.id?btn('Approuver cette proposition pour le Boss','approve',false,`data-id="${e(x.id)}"`):''}</p>`).join('')}<label class="ess-field">Pour approuver, recopier l’identifiant de l’entreprise<input id="platform-price-approveConfirmation" value="${e(s.approveConfirmation)}" autocomplete="off"></label><p>${e(s.company)}</p><p>Cette approbation seule n’effectue aucun paiement. Le Boss devra accepter le devis chez Stripe.</p>`:''}
   <fieldset ${s.busy?'disabled':''}><legend>Créer un devis négocié, sans activation</legend>
   <label class="ess-field">Forfait<select id="platform-price-plan">${[['essential','Essentiel'],['essential_plus','Plus'],['essential_pro','Pro']].map(([v,n])=>`<option value="${v}" ${s.plan===v?'selected':''}>${n}</option>`).join('')}</select></label>
   <label class="ess-field">Périodicité<select id="platform-price-cadence"><option value="monthly" ${s.cadence==='monthly'?'selected':''}>Mensuelle</option><option value="yearly" ${s.cadence==='yearly'?'selected':''}>Annuelle</option></select></label>
@@ -47,9 +47,20 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   const a=el.dataset.action?.split(':');if(a?.[0]!=='platform-price')return false;if(s.busy)return true;
   const n=generation;s.error='';s.busy=true;s.notice='';
   try{
+   if(a[1]==='approve'){
+    if(!uuid(s.company)||s.reason.trim().length<8||!s.list||!s.approval||s.list.company_id!==s.company)throw Error('Charger la compagnie et son état d’approbation.');
+    if(s.approveConfirmation!==s.company)throw Error('Recopier exactement l’UUID entreprise avant approbation.');
+    const proposal=s.list.items?.[0];
+    if(!proposal||proposal.id!==el.dataset.id||s.approval.proposal_id===proposal.id)throw Error('Choisir la proposition la plus récente.');
+    await rpc('platform_company_price_approve',{p_company:s.company,p_proposal:proposal.id,p_expected_approval_version:s.approval.version,p_confirmation:s.approveConfirmation,p_reason:s.reason.trim()});
+    s.approval=await rpc('platform_company_price_approval_status',{p_company:s.company,p_reason:s.reason.trim()});
+    s.approveConfirmation='';
+    s.notice='Tarif proposé au Boss. Aucun prix activé ni paiement prélevé.';
+   }else {
    const params=args();
    if(a[1]==='load'){
     s.list=await rpc('platform_company_price_list',{p_company:params.p_company,p_reason:params.p_reason});
+    s.approval=await rpc('platform_company_price_approval_status',{p_company:params.p_company,p_reason:params.p_reason});
     s.preview=null;
    }else{
     if(!s.list||s.list.company_id!==params.p_company)throw Error('Charger d’abord la version courante.');
@@ -62,6 +73,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
      s.list=await rpc('platform_company_price_list',{p_company:params.p_company,p_reason:params.p_reason});
      s.preview=null;s.confirmation='';
     }
+   }
    }
   }catch(err){if(n===generation){s.error=err.message;if(err.code==='42501'){s.list=null;s.preview=null;}}}
   finally{if(n===generation){s.busy=false;redraw();}}
