@@ -1,7 +1,7 @@
 # PUNCH 360° — Guide de démarrage pour collaborateur et ChatGPT Work
 **Mis à jour : 25 octobre 2026 | dépôt officiel : `punch360app/Punch360`**
 
-> **COMMENCER ICI.** Source unique des exigences : [Prompt maître, 490 points](prompt-board/MASTER_PROMPT_20261025.md). Ce guide explique comment reprendre PUNCH sans repartir de zéro ni endommager les données réelles. Il ne certifie pas la fin du développement. Vérifier le dernier commit, les documents et les tests **avant** d'affirmer qu'une fonction est livrée.
+> **COMMENCER ICI.** Source unique des exigences : [Prompt maître, 502 points](prompt-board/MASTER_PROMPT_20261025.md). Ce guide explique comment reprendre PUNCH sans repartir de zéro ni endommager les données réelles. Il ne certifie pas la fin du développement. Vérifier le dernier commit, les documents et les tests **avant** d'affirmer qu'une fonction est livrée.
 
 ## 1. Accès nécessaires (chaque collaborateur utilise ses propres comptes)
 
@@ -21,7 +21,7 @@ Les invitations peuvent être en attente tant que le collaborateur ne les a pas 
 
 | Produit | Cible et interface | Règle absolue |
 | --- | --- | --- |
-| **PUNCH Essentiel** | Bureaux, commerces, restaurants, manufactures ; design épuré blanc chaud et vert sauge ; employé : **Punch · Heures · Horaire · Plus** | **Aucun** job, plan de chantier, commande de matériel ou visuel Construction dans Essentiel |
+| **PUNCH Essentiel** | Bureaux, commerces, restaurants, manufactures ; design épuré blanc chaud et vert sauge ; employé : **Punch · Heures · Horaire · Plus** | **Aucun** job, plan de chantier, commande de matériel, météo de chantier ou visuel Construction dans Essentiel |
 | **PUNCH Construction** | Chantiers et équipes mobiles ; jobs, transferts, GPS, plans, commandes et messagerie selon les modules autorisés | Conserver ses fonctions, règles de sécurité, interface et prix indépendants |
 | **Super Admin PUNCH 360°** | Console unique pour superviser les deux éditions (clients, abonnements, forfaits, paiements, support) | Authentification forte, rôle plateforme vérifié côté serveur, pas d'accès privé injustifié |
 
@@ -34,8 +34,9 @@ Les invitations peuvent être en attente tant que le collaborateur ne les a pas 
 | `README.md` | Vue générale ; certaines sections historiques sont antérieures aux livraisons récentes |
 | `docs/IMPLEMENTATION_STATUS.md` | État technique général ; lire aussi ses liens d'actualisation en tête |
 | `docs/ESSENTIAL_BILLING_20261024.md` | État récent de Stripe, PWA borne, liens Ouvrir/Copier, minuterie et limites de validation |
-| `docs/prompt-board/MASTER_PROMPT_20261025.md` | **Source unique des 490 exigences** après consolidation de l'ancien giga-prompt |
+| `docs/prompt-board/MASTER_PROMPT_20261025.md` | **Source unique des 502 exigences** après consolidation de l'ancien giga-prompt |
 | `docs/ESSENTIAL_PLANNING_20261024.md` | Horaires, rotations, quarts vacants, candidatures, superviseurs, couverture |
+| `src/messages/MessagesScreen.tsx` | Moteur de conversations à **réutiliser et sécuriser** pour Essentiel Plus/Pro; onglet bas Messages sur ces deux forfaits, sans toucher aux salons privés Construction |
 | `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md` | Nouveaux écarts priorisés : disponibilités récurrentes, optimiseur Pro en trois étapes, signalement d'absence volontaire avec motifs prédéfinis confidentiels et remplaçant unique; aucun no-show automatique, SMS dernier |
 | `docs/ESSENTIAL_THEMES_20261024.md` | Thèmes personnels **11–20** présents, autres thèmes en attente |
 | `docs/ESSENTIAL_PROGRESS_20261024.md` | Identités salariés, appairage, NIP, pointage téléphone/borne, tests et limitations historiques |
