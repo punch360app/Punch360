@@ -21,7 +21,7 @@ revoke all on private.platform_member_access_controls from public,anon,authentic
 
 create function public.platform_member_access_preview(
  p_company uuid,p_user uuid,p_reason text
-) returns jsonb language plpgsql stable security definer set search_path='' as $$
+) returns jsonb language plpgsql security definer set search_path='' as $
 declare c public.companies; m public.company_members; row_controls private.platform_member_access_controls;
  worker_count integer; punch_count integer; other_boss integer; worker public.company_workers;
 begin
