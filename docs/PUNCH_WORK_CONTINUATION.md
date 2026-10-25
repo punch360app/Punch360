@@ -1,3 +1,11 @@
+# Tarifs particuliers — phase A sûre (PR #38)
+
+Migration `20261025214230_platform_company_price_proposals` appliquée dans Supabase exclusif; première phase projets **draft_pending_stripe** seulement : devis serveur en cents CAD, calcul annuel, historique immuable, motif/MFA/session vivante, entreprise réelle Essentiel, version catalogue et proposition attendue, confirmation UUID, audit. Console Super Admin → « Tarifs particuliers », accès direct depuis le répertoire. SQL rollback réussi, aucune proposition ni facture réelle modifiée. Tests Node/DOM CI à confirmer après dernières éditions. Documentation : `docs/PLATFORM_SPECIAL_PRICES_20261025.md`.
+
+**À développer pour clôturer issue #35 et le prompt original :** validation fournisseur Stripe test, devis prorata, soumission idempotente, confirmation webhook, passage actif seulement après paiement confirmé; prix réels jamais testés. Ensuite accès Boss/recouvrement sécurisé, postes/affectations, calendrier abonné, langues/RTL, design, appareils et PRA; SMS en dernier. Ne pas passer au prompt maître de 453 exigences avant la clôture du prompt original.
+
+---
+
 # Reprise officielle — après PR #34 : tarifs particuliers, 25 octobre 2026
 
 État `main` : **PR #32** (Boss restreint Web/Expo), **PR #33** (export personnel iCalendar Web/Expo), **PR #34** (suspension/restauration ciblée d'un membre réel Essentiel) fusionnées. PR #34 au merge `7e504833239fab9d478002d359f44dd2a96c5394`. Migration Supabase active `20261025211947_platform_real_member_access`, tests SQL synthétiques avec `ROLLBACK` réussis et zéro intervention réelle. GitHub CI branche PR #34 : **156/156 tests** (plus TypeScript/Expo/syntaxe Web). CI + Pages de fusion vérifiées réussies.
