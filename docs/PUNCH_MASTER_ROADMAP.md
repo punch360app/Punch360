@@ -56,3 +56,5 @@ Actualisation budgets (2026-10-25) : Web/Expo développés, SQL fixtures annulé
 Export de paie configurable (2026-10-25) : profils/correspondances/aperçus Web et source Expo développés, migration appliquée, 132 tests et SQL annulé. Fournisseur nommé/import réel restent non validés. Voir PAYROLL_EXPORTS_20261025.md.
 
 Couverture indépendante par qualification (2026-10-25) : plages et rapports Web/source Expo développés, 135 tests/TypeScript et SQL fixtures DST/expiration/congés/RLS/restauration; backend appliqué, publication à vérifier. Postes exclusifs/affectations et récurrence des règles ouverts. Voir QUALIFIED_COVERAGE_20261025.md.
+
+Contrôles commerciaux Super Admin (2026-10-25) : suspension/réactivation de gestion Essentiel et sursis particulier développés, MFA/session/audit, pointage conservé. Backend appliqué, 137 tests et SQL fixtures. Publication Web à vérifier; autres actions plateforme et fournisseur restent ouvertes.

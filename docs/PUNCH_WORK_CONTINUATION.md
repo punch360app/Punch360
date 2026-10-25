@@ -1,3 +1,14 @@
+# Reprise active — contrôles de service Super Admin, 25 octobre 2026
+
+Couverture par qualification publiée : PR #29 fusionnée dans `232033935a1848921f9347ed7f13a4f91362c39c`; CI #164 et CI/Pages du merge réussis. qualified-coverage.js et essential.js publics vérifiés identiques.
+
+Lot courant `feat/platform-company-service-controls` : suspension/réactivation de la gestion Essentiel et sursis client 0–365 jours ou héritage du contrat, hors état Stripe. MFA avec session vivante, motif, confirmation UUID exact et version attendue. Pointage des salariés existants conservé. Réactivation = état calculé selon le paiement confirmé, sans fabriquer d’abonnement actif. Fiche et répertoire affichent/filtrent l’état effectif; cache brut et prix/contrats inchangés, Construction préservé. Deux migrations appliquées. Source Web essential-40 développée, 137 tests Node/DOM et TypeScript; SQL complet sur fixtures annulées réussi avant extension du filtre, puis petit scénario dédié du filtre effectif réussi, avec régressions facturation et pagination réussies. Le gros scénario modifié a renvoyé des erreurs de requestState expiré, pas une erreur SQL; il a été séparé plutôt que annoncé réexécuté. Publication PR/CI à vérifier. Voir PLATFORM_SERVICE_CONTROLS_20261025.md.
+
+Prochaines exigences indépendantes : annuaire/pagination abonnements et actions utilisateurs réels, conditions particulières, postes exclusifs/affectations, langues/RTL et design restant. Fournisseurs/recettes : OAuth réel/Apple, Stripe test, push/courriel, paie nommée; builds signés/appareils/confidentialité/PRA. SMS en dernier. Aucune opération réelle de suspension, paiement ou message pendant les tests. Le prompt global reste ouvert.
+
+---
+Historique :
+
 # Reprise active — couverture par qualification, 25 octobre 2026
 
 Export de paie publié : PR #28 fusionnée dans `ae380d2b47e3526c2bb68ec7c975d1cc3ccdbc74`. CI #157 puis CI/Pages du merge réussis; payroll-export.js, payroll.js et sw.js publics vérifiés identiques.

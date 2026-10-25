@@ -34,3 +34,6 @@ Fiche entreprise : places, membres actifs/désactivés, dossiers salariés avec/
 Backend : platform_user_directory et platform_user_legacy_dates appliquées. SQL dédié : 52 utilisateurs fictifs, pages 50+2, motif requis, absence de secrets/métadonnées, filtre entreprise, fiche, audit et refus du membre non propriétaire. 126 tests Node/DOM et TypeScript : motif, filtres appliqués, effacement des résultats après refus de session, sélection/fiche sans mutation. Publication PR/CI à vérifier; console Super Admin développée Web, aucun appareil déclaré validé.
 
 L’annuaire et la fiche sont en consultation. Les actions sur utilisateurs réels, conditions particulières, suspension/réactivation commerciale et pagination des abonnements restent à compléter. Aucun accès utilisateur réel ou tarif officiel n’a été changé pendant les tests.
+
+
+Contrôles de service Essentiel développés : suspension/réactivation de gestion et sursis client, MFA/version/UUID/motif, audit, pointage conservé et filtre calculé. Deux migrations appliquées, 137 tests et SQL rollback; publication à vérifier. Voir PLATFORM_SERVICE_CONTROLS_20261025.md. Conditions tarifaires particulières et actions utilisateurs réels non clôturées.
