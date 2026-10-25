@@ -2,8 +2,8 @@
 -- Does NOT ban an Auth user globally, alter Stripe, delete records or expose credentials.
 -- Run only on the exclusive PUNCH Supabase project mlabstdxxwjdpfaxiwmg.
 create table private.platform_member_access_controls (
- company_id uuid not null references public.companies(id),
- user_id uuid not null references auth.users(id),
+ company_id uuid not null references public.companies(id) on delete cascade,
+ user_id uuid not null, -- never block an Auth account's privacy deletion
  version integer not null default 1 check(version>=1),
  suspended boolean not null,
  saved_role text not null,
