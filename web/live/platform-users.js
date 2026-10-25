@@ -7,7 +7,7 @@ export function createPlatformUsersController({sb,redraw,escape:e,prompt:ask=(..
  const s=initial();
  function reset(){generation++;Object.assign(s,initial());}
  function clearPrivate(){s.items=[];s.pages=[];s.next=null;s.cursor=null;s.selected=null;s.preview=null;}
- const validUuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+ const validUuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
  function input(el){const key={'platform-user-reason':'reason','platform-user-query':'query','platform-user-company':'company','platform-user-test':'test','platform-user-status':'status'}[el.id];if(key)s[key]=el.value;}
  async function rpc(name,args){const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data;}
  function denied(error){s.error=error?.message||'Action impossible.';if(error?.code==='42501')clearPrivate();}
