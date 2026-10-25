@@ -8,9 +8,10 @@ const stamp=value=>{
 };
 const quote=value=>String(value??'').replace(/\\/g,'\\\\').replace(/\r\n?|\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');
 const fold=line=>{
- const enc=new TextEncoder();let rows=[],chunk='',bytes=0;
+ let rows=[],chunk='',bytes=0;
+ const utf8Bytes=c=>{const p=c.codePointAt(0);return p<128?1:p<2048?2:p<65536?3:4;};
  for(const char of line){
-  const n=enc.encode(char).length;
+  const n=utf8Bytes(char);
   if(bytes+n>75){rows.push(chunk);chunk=' '+char;bytes=1+n;}
   else {chunk+=char;bytes+=n;}
  }
