@@ -1,0 +1,33 @@
+begin;
+do $$
+declare owner_id uuid;c uuid;c2 uuid;u uuid:=gen_random_uuid();u2 uuid:=gen_random_uuid();sid uuid:=gen_random_uuid();ticket uuid:=gen_random_uuid();reply uuid:=gen_random_uuid();v integer;denied boolean;data jsonb;
+begin
+ select user_id into owner_id from private.platform_owner;
+ insert into auth.sessions(id,user_id,aal,not_after) values(sid,owner_id,'aal2',clock_timestamp()+interval '10 minutes');
+ perform set_config('request.jwt.claim.sub',owner_id::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2','session_id',sid)::text,true);
+ c:=public.platform_create_test_company('Support fixture A','essential',10);c2:=public.platform_create_test_company('Support fixture B','essential',10);
+ insert into auth.users(id,email,email_confirmed_at) values(u,'test-'||u||'@punch360.test.invalid',now()),(u2,'test-'||u2||'@punch360.test.invalid',now());
+ perform public.platform_register_test_user(owner_id,u,c,'employee');perform public.platform_register_test_user(owner_id,u2,c2,'employee');
+ perform set_config('request.jwt.claim.sub',u::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',u,'aal','aal1')::text,true);
+ execute 'set local role authenticated';
+ perform public.support_create_ticket(c,'Aide horaires','Mon message de support',ticket);
+ perform public.support_create_ticket(c,'Aide horaires','Mon message de support',ticket);
+ data:=public.support_ticket_detail(ticket);if jsonb_array_length(data->'messages')<>1 then raise exception 'Duplicate message';end if;
+ denied:=false;begin perform public.support_list_tickets();exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Employee accessed platform inbox';end if;
+ perform set_config('request.jwt.claim.sub',u2::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',u2,'aal','aal1')::text,true);
+ denied:=false;begin perform public.support_ticket_detail(ticket);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Tenant leak';end if;
+ denied:=false;begin perform public.support_reply(ticket,'Autre compagnie',reply,1);exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Cross tenant reply';end if;
+ perform set_config('request.jwt.claim.sub',owner_id::text,true);perform set_config('request.jwt.claims',jsonb_build_object('sub',owner_id,'aal','aal2','session_id',sid)::text,true);
+ v:=public.support_reply(ticket,'Réponse du support',reply,1);if v<>2 then raise exception 'Version mismatch';end if;
+ perform public.support_reply(ticket,'Réponse du support',reply,1);
+ denied:=false;begin perform public.support_set_status(ticket,'resolved',1);exception when others then denied:=true;end;if not denied then raise exception 'Stale edit allowed';end if;
+ perform public.support_set_status(ticket,'closed',2);
+ denied:=false;begin perform public.support_reply(ticket,'Une réponse fermée',gen_random_uuid(),3);exception when others then denied:=true;end;if not denied then raise exception 'Closed reply allowed';end if;
+ perform public.support_set_status(ticket,'open',3);
+ data:=public.support_ticket_detail(ticket);if jsonb_array_length(data->'messages')<>2 then raise exception 'Lost thread';end if;
+ execute 'reset role';delete from auth.sessions where id=sid;execute 'set local role authenticated';
+ denied:=false;begin perform public.support_list_tickets();exception when insufficient_privilege then denied:=true;end;if not denied then raise exception 'Revoked MFA allowed';end if;
+ execute 'reset role';
+end $$;
+rollback;
