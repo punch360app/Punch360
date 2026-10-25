@@ -1,3 +1,13 @@
+# Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
+
+Après la PR #38 fusionnée (propositions tarifaires immuables), la PR #40 développe : approbation Super Admin MFA d'une proposition (sans facturation), consultation de l'offre **pour le Boss seulement**, création d'une commande Stripe standard **après consentement explicite du Boss**, réutilisation du parcours Stripe existant (checkout/preview/confirm + webhook signé) et sauvegarde des anciens snapshots avant mise à jour des contrats confirmés. Écrans **Web et Expo**; migrations 20261025214230 et 20261025215638 appliquées au seul Supabase `mlabstdxxwjdpfaxiwmg`.
+
+Scénarios SQL synthétiques rollback de consentement/versions/doublons/refus et historique contractuel **réussis avant et après installation**. Aucune offre client réelle, aucun paiement Stripe et aucun contrat réel modifiés. CI TypeScript/Node et Web en cours de vérification après dernières modifications. **Les vrais scénarios Stripe sandbox/Apple/Google/notification et tests sur appareils restent nécessaires**; le prompt original reste incomplet. Issue #35 ne peut pas être close sur la seule base du code.
+
+Prochaines étapes : vérifier dernière CI, fusionner PR #40 si verte, contrôler Pages; demander la configuration Stripe en mode test pour recette réelle. Puis continuer actions Boss/reprise Auth sécurisée, postes exclusifs/affectations, calendrier synchronisé, 10 langues/RTL, design final, tests/recettes fournisseurs, charge/PRA, builds signés. SMS/Twilio à la fin. Le prompt maître #26 de 453 exigences reste distinct et non démarré.
+
+---
+
 # Tarifs particuliers — phase A sûre (PR #38)
 
 Migration `20261025214230_platform_company_price_proposals` appliquée dans Supabase exclusif; première phase projets **draft_pending_stripe** seulement : devis serveur en cents CAD, calcul annuel, historique immuable, motif/MFA/session vivante, entreprise réelle Essentiel, version catalogue et proposition attendue, confirmation UUID, audit. Console Super Admin → « Tarifs particuliers », accès direct depuis le répertoire. SQL rollback réussi, aucune proposition ni facture réelle modifiée. Tests Node/DOM CI à confirmer après dernières éditions. Documentation : `docs/PLATFORM_SPECIAL_PRICES_20261025.md`.

@@ -18,3 +18,36 @@ test('Boss keeps effective billing status while Stripe provider is unreachable',
  assert.match(ui.render(),/restricted/);
  await w.happyDOM.close();
 });
+
+test('Boss sees approved negotiated offer and must preview it in Stripe before confirmation',async()=>{
+ const w=new Window(),calls=[];
+ const sb={
+  rpc:async(name,args)=>{calls.push({name,args});return {data:name==='essential_company_price_order'?'price-order':name==='essential_company_price_offer'?null:null};},
+  functions:{invoke:async(_name,args)=>{calls.push({name:'edge',action:args.body.action,orderId:args.body.orderId});return {data:{preview:{amount_due:225,total:225,effective_at:1780000000,expires_at:1780000600}}};}}
+ };
+ const ui=createBillingController({sb,redraw(){},escape,document:w.document});
+ ui.state.company='tenant';ui.state.configured=true;
+ ui.state.summary={status:'active',active_humans:4,seats:5,has_subscription:true,test_company:false};
+ ui.state.plans=[{id:'essential_plus',title:'Plus'}];
+ ui.state.offer={approval_version:4,plan_id:'essential_plus',title:'Plus',seats:7,due_cents:2199,cadence:'monthly',effective_on:'2026-10-25',available:true};
+ w.document.body.innerHTML=ui.render();
+ assert.ok(w.document.querySelector('[data-action="bill:offer"]'));
+ await ui.handle({dataset:{action:'bill:offer'}});
+ assert.equal(ui.state.order,'price-order');
+ assert.equal(ui.state.preview.amount_due,225);
+ assert.ok(calls.some(c=>c.name==='essential_company_price_order'&&c.args.p_approval_version===4));
+ assert.ok(calls.some(c=>c.name==='edge'&&c.action==='preview'&&c.orderId==='price-order'));
+ assert.equal(calls.filter(c=>c.action==='confirm').length,0);
+ await w.happyDOM.close();
+});
+test('unavailable negotiated offer or disabled Stripe does not create an order',async()=>{
+ const w=new Window(),calls=[];
+ const ui=createBillingController({sb:{rpc:async(name,args)=>{calls.push(name);return {data:null}},functions:{invoke:async()=>({data:{}})}},redraw(){},escape,document:w.document});
+ ui.state.company='tenant';ui.state.summary={status:'active',active_humans:2,seats:5,has_subscription:false,test_company:false};
+ ui.state.offer={approval_version:1,plan_id:'essential',title:'Essentiel',seats:5,due_cents:1900,cadence:'monthly',effective_on:'2026-11-01',available:false};
+ ui.state.configured=false;
+ await ui.handle({dataset:{action:'bill:offer'}});
+ assert.match(ui.state.error,/Offre non disponible/);
+ assert.deepEqual(calls,[]);
+ await w.happyDOM.close();
+});
