@@ -5,3 +5,19 @@ function setup(){const calls=[],opened=[];let failed=false;const sb={rpc:async(n
 test('company directory pages keep applied filters and failed pages do not corrupt history',async()=>{const {ui,calls,setFailed}=setup();ui.input({id:'directory-query',value:'Original'});await ui.handle({dataset:{action:'directory:search'}});ui.input({id:'directory-query',value:'Unsubmitted'});setFailed(true);await ui.handle({dataset:{action:'directory:next'}});assert.equal(ui.state.pages.length,0);setFailed(false);await ui.handle({dataset:{action:'directory:next'}});assert.equal(calls.at(-1).args.p_query,'Original');assert.equal(ui.state.pages.length,1);await ui.handle({dataset:{action:'directory:previous'}});assert.equal(calls.at(-1).args.p_before,null);assert.equal(calls.at(-1).args.p_query,'Original');assert.equal(ui.state.pages.length,0)});
 test('company directory escapes names and opens the selected archive without exporting',async()=>{const {ui,opened}=setup();await ui.load();assert.match(ui.render(),/&lt;Fixture>/);await ui.handle({dataset:{action:'directory:archives',id:'company'}});assert.equal(opened[0].id,'company');ui.reset();assert.deepEqual(ui.state.items,[])});
 test('company details require a consultation purpose and do not issue mutations',async()=>{const calls=[],ui=createPlatformDirectoryController({redraw(){},escape:String,sb:{rpc:async(name,args)=>{calls.push({name,args});return {data:{id:'company',name:'Fixture',seat_limit:5,active_members:2,disabled_members:0,active_workers:3,workers_without_account:1,entitlement:{features:[]}}}}}});await ui.handle({dataset:{action:'directory:detail',id:'company'}});assert.equal(calls.length,0);ui.input({id:'directory-reason',value:'Support consultation'});await ui.handle({dataset:{action:'directory:detail',id:'company'}});assert.equal(calls[0].name,'platform_company_detail');assert.match(ui.render(),/2 membres avec compte actifs/);assert.match(ui.render(),/Aucun abonnement confirmé/);ui.reset();assert.equal(ui.state.detail,null)});
+
+test('price draft entry is limited to real Essentiel companies and opens only its chosen ID',async()=>{
+ const chosen=[],companies=[
+ {id:'real',name:'Commerce',product_edition:'essential',is_test:false,billing_status:'active',seat_limit:5},
+ {id:'test',name:'Test',product_edition:'essential',is_test:true,billing_status:'active',seat_limit:5},
+ {id:'construction',name:'Chantier',product_edition:'construction',is_test:false,billing_status:'active',seat_limit:5}
+ ];
+ const ui=createPlatformDirectoryController({sb:{rpc:async()=>({data:{items:companies,has_more:false}})},redraw(){},escape:String,onPriceCompany:company=>chosen.push(company)});
+ await ui.handle({dataset:{action:'directory:search'}});
+ assert.equal((ui.render().match(/data-action="directory:price"/g)||[]).length,1);
+ await ui.handle({dataset:{action:'directory:price',id:'test'}});
+ await ui.handle({dataset:{action:'directory:price',id:'construction'}});
+ assert.equal(chosen.length,0);
+ await ui.handle({dataset:{action:'directory:price',id:'real'}});
+ assert.deepEqual(chosen.map(c=>c.id),['real']);
+});
