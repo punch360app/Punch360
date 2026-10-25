@@ -1,3 +1,23 @@
+# Reprise active — journées oubliées, 25 octobre 2026
+
+PR #14 archives fusionnée : commit `9810f1d0498acfbd6240db0ce38257df28d1a68a`. CI #110 réussie avant fusion; fichiers publics archives.js/archive-codec.js/essential.js/sw.js vérifiés identiques aux fichiers livrés. Page publique chargée dans Chrome cloud sans erreur applicative observée; aucune session authentifiée disponible dans ce navigateur, donc recette complète PDF/boss non exécutée.
+
+Lot suivant : branche `feat/missing-day-approval`. Journées complètes oubliées développées Web/Expo, deux migrations appliquées. 92 tests Node/DOM et TypeScript réussis; deux scripts SQL sur fixtures et régression archives réussis. Voir `ESSENTIAL_MISSING_DAYS_20261025.md`. Déploiement Web : PR/CI à vérifier; Expo : TypeScript seulement, aucun appareil.
+
+| Domaine | Développé | Testé | Déployé | Reste / intervention externe |
+|---|---|---|---|---|
+| Archives applicatives | Oui | Tests et SQL détaillés ci-dessous | Oui, PR #14 + backend + Edge | Recette connectée PDF fictif, appareils, charge/PRA |
+| Journée oubliée et notification interne de décision | Oui, Web/Expo | 92 tests et 2 SQL | Backend oui; Web PR/CI en cours | Appareils, multiconnexion, sélecteur de dates |
+| Borne hors ligne sécurisée | Non | Non | Non | Travail de développement, pas un simple accès fournisseur manquant |
+| Google | Flux existant | Fournisseur activé observé | Configuration existante | Connexion complète à exécuter |
+| Apple | Flux existant | Fournisseur désactivé observé | Non activé | Configuration Apple fournisseur et recette |
+| Infra / confidentialité | Procédure d’archive/PRA | Région observée us-east-1 | Pas de PRA exécuté | Rétention/PITR, copies Storage indépendantes, environnement isolé, RPO/RTO |
+
+Les autres exigences restent EN COURS : politiques de pauses, délégations fines, modèles/coûts/budgets/paie, push/préférences/courriels, dix langues/RTL, design complémentaire, audit Super Admin, recette Stripe, QA et builds signés. SMS en dernier. Le prompt global n’est pas terminé.
+
+---
+Historique des archives :
+
 # Reprise active — 25 octobre 2026 : archives
 
 Branche `wip/company-archives-handoff-20261025`, PR #14. Main vérifié au départ : `a5f0a43`; seule PR ouverte #14. Les PR #11–13 sont préservées. Le SQL de restauration inachevé a été remplacé par cinq migrations plus petites effectivement appliquées; les trois migrations d’export et la clé Vault n’ont pas été rejouées.
@@ -5,7 +25,7 @@ Branche `wip/company-archives-handoff-20261025`, PR #14. Main vérifié au dépa
 | Domaine | Développé | Testé | Déployé | Intervention externe / recette restante |
 |---|---|---|---|---|
 | Archives SQL, intégrité, signature, prévisualisation et récupération | Oui | Quatre scripts SQL transactionnels sur fixtures; régressions borne/operations/pauses | Oui, Supabase | Charge/concurrence multiconnexion |
-| Chiffrement et interfaces Boss / Super Admin Web | Oui | 89 tests Node/DOM + TypeScript | PR #14, vérifier CI/Pages | Recette navigateur connecté avec PDF fictif et appareils |
+| Chiffrement et interfaces Boss / Super Admin Web | Oui | 89 tests Node/DOM + TypeScript | Oui, PR #14 fusionnée / fichiers publics vérifiés | Recette navigateur connecté avec PDF fictif et appareils |
 | PDF privés signés, conflits sans écrasement | Oui | Handler à transport injecté + preuves SQL | Edge company-archive-files v1 | Recette intégrée Storage/Auth/binaire réel |
 | Copies temporaires et purge | Oui | Suppression/expiration SQL; cron actif 15 min observé | Oui | Observer une exécution planifiée, supervision opérateur |
 | Sauvegarde infrastructure / PRA | Procédure documentée | Aucun exercice de sinistre | Non | Plan/rétention/PITR, stockage indépendant, environnement isolé, RPO/RTO |
