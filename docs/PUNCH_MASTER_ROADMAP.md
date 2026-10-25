@@ -14,7 +14,7 @@
 | E08 | Borne commune sécurisée | EN COURS | Appairage/PIN/révocation/PWA; journal hors ligne signé et réconciliation développés, terrain restant |
 | E09 | Session unique et mixte | EN COURS | SQL borne/téléphone et verrous; concurrence multiconnexions/charge restante |
 | E10 | Salarié sans téléphone/courriel | EN COURS | Identité stable et activation conservant heures; recette sur appareil restante |
-| E11 | Application personnelle facultative | EN COURS | Canaux séparés, consultation; test terrain restant |
+| E11 | Application personnelle facultative même avec borne uniquement | EN COURS | Le Boss peut choisir Borne/Téléphone/Mixte par site, **sans désactiver l'app personnelle** : horaires, heures, absences, tâches/événements et Messages Plus/Pro restent accessibles; Punch mobile refusé **côté serveur** en mode Borne seulement. Même dossier salarié, aucun double siège; recette appareils et API restante. Voir INVITE-005, CORE-001, KIOSK-010, CHAT-001, QA-004. |
 | E12 | Invitations automatiques | EN COURS | File courriel automatique/idempotente et suivi Web/Expo développés; fournisseur/DNS/webhook/recette restants. SMS reportés |
 | E13 | Activation Google/Apple/courriel | EN COURS | Liaison sécurisée; fournisseurs OAuth/SMTP à configurer et tester |
 | E14 | Thèmes personnels | EN COURS | Dix références 11–20 livrées; autres références en attente |
