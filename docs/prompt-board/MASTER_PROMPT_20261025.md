@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition consolidée du 25 octobre 2026 — 476 exigences identifiées en 27 lots, après déduplication du giga-prompt de continuation.**
+**Édition consolidée du 25 octobre 2026 — 480 exigences identifiées en 27 lots, après déduplication du giga-prompt de continuation et ajout ciblé des événements d'entreprise.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -38,6 +38,7 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 | Borne hors ligne, journées oubliées, pauses, superviseurs | OFFLINE, KIOSK, CORE, HR-001–017, SHIFT-001–015 | Présents dans le maître : comparer à l'existant, pas de deuxième implementation |
 | Stripe, Super Admin, OAuth/courriels, SMS dernier | SAUTH, SACOMP, SACATALOG, STRIPE, INVITE, COMM, SERVICES | Existants, statut fournisseur/appareil à vérifier; ne jamais facturer ni envoyer de SMS réel en recette non autorisée |
 | Langues, design, thèmes, équipes, rôles, données | LOCALE, DESIGN, THEMES, SEC, SHIFT | Réutiliser les sections actuelles sans répétition |
+| Événements d'entreprise Boss/Admin, fêtes et visioconférences | COMM-002–007, COMM-013–016; CAL-002/008 | Étendre événements et invitations existants; aucun deuxième calendrier, système d'invitations ou module paie |
 | Disponibilités récurrentes et besoins par poste Plus/Pro | SHIFT-016–021 | Nouveaux compléments aux disponibilités et modèles déjà codés |
 | Planificateur automatique Pro en trois étapes | SHIFT-022–025 | Nouveau, après modèles/contraintes validés |
 | « Signaler mon absence » et choix de neuf motifs privés | COVER-018–021, HR-018 | Nouveau parcours distinct de demande de congé, d'échange et de quart libre |
@@ -351,21 +352,25 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 - [ ] **INVITE-011** — Tester OAuth Google/Apple, redirections et expiration de session physiquement.
 - [ ] **INVITE-012** — Garder SMS/Twilio en toute dernière phase; pas d’envoi sans autorisation.
 
-## P2 — Événements, communications, notifications (COMM, 12 points)
+## P2 — Événements, communications, notifications (COMM, 16 points)
 **Objectif :** Centraliser événements professionnels et communications par équipe.
 **Sources :** Nouveaux ajouts / notifications existantes. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **COMM-001** — Réutiliser annonces existantes avec confirmation de lecture.
-- [ ] **COMM-002** — Créer réunions, formations, fêtes et événements obligatoires Plus/Pro.
-- [ ] **COMM-003** — Permettre invitations compagnie, site, département et @mentions.
-- [ ] **COMM-004** — Distinguer invitation lue, réponse, présence prévue et présence constatée.
-- [ ] **COMM-005** — Autoriser confirmer, refuser avec raison, demander correction.
-- [ ] **COMM-006** — Définir lieux, heures, échéances de réponse et rappels.
-- [ ] **COMM-007** — Historiser modification et annulation avec notifications.
+- [ ] **COMM-002** — Permettre aux **Boss et Admin** autorisés de créer des événements d'entreprise **facultatifs ou obligatoires** : party de Noël, souper/activité d'équipe, réunion, visioconférence, formation; réutiliser le module événements/communications plutôt que créer un second calendrier.
+- [ ] **COMM-003** — Inviter toute la compagnie, certains établissements/départements ou des employés précis, et utiliser les @mentions déjà autorisées; vérifier côté serveur le droit Boss/Admin, l'entreprise et le périmètre d'invitation, sans visibilité interentreprises.
+- [ ] **COMM-004** — Distinguer invitation envoyée/lue, réponse **Je participe / Peut-être / Je ne participe pas**, présence prévue et présence constatée; laisser la réponse facultative ou obligatoire selon la configuration de l'événement.
+- [ ] **COMM-005** — Permettre confirmer, peut-être, refuser ou demander correction; **ne pas obliger un motif de refus pour un événement social facultatif**. Pour une activité professionnelle obligatoire, toute justification suit les règles RH applicables, sans exposer de renseignements privés aux autres invités.
+- [ ] **COMM-006** — Définir titre, catégorie, description courte, début/fin, fuseau de l'établissement, lieu/adresse OU visio OU hybride, échéance de réponse, rappels et documents autorisés; valider date/heure et éviter les chevauchements informatifs sans créer un quart.
+- [ ] **COMM-007** — Permettre événement unique ou récurrent, modification/annulation versionnées (occurrence ou série), suivi des invitations et notifications idempotentes aux personnes concernées; réutiliser les préférences et canaux existants, sans doublon d'événement.
 - [ ] **COMM-008** — Préserver conversation privée équipe séparée des Admin/Boss.
 - [ ] **COMM-009** — Gérer préférences notifications par catégorie et canal.
 - [ ] **COMM-010** — Tester push via FCM/APNs et réception lorsque app fermée.
 - [ ] **COMM-011** — Afficher état fournisseur réellement vérifié et erreurs d’envoi.
 - [ ] **COMM-012** — Respecter consentement et refus de notification.
+- [ ] **COMM-013** — **Création guidée ultra-simple** dans Boss/Admin → Événements : (1) type et détails, (2) invités, (3) aperçu et publication; modèle prêt à l'emploi pour party de Noël, réunion d'équipe, formation ou vidéoconférence; aucun cinquième onglet salarié.
+- [ ] **COMM-014** — Pour visioconférences et réunions hybrides, saisir et valider un **lien HTTPS externe** Teams, Zoom ou Google Meet, avec bouton « Rejoindre » affiché seulement aux invités autorisés à l'approche de l'événement; **ne pas prétendre générer ou héberger un lien automatiquement** sans intégration OAuth/fournisseur configurée.
+- [ ] **COMM-015** — Distinguer clairement événement **social facultatif** et réunion/formation à présence demandée ou obligatoire; participation/RSVP ne modifie **jamais automatiquement punch, horaire, paie, congé ou heures rémunérées**. Avertir l'Admin des conflits potentiels avec un quart sans le modifier; appliquer séparément les règles RH/légales pour les activités obligatoires.
+- [ ] **COMM-016** — Donner au salarié l'accès aux événements qui le concernent depuis **Horaire → Événements** (ou Plus selon design existant), avec détails, réponse rapide, calendrier ICS privé réutilisé, rappels et état de participation; tableau Boss/Admin des réponses avec capacité/places facultative et liste d'attente optionnelle, sans exposition des invités non autorisés.
 
 ## P2 — Calendriers personnels (CAL, 11 points)
 **Objectif :** Permettre aux employés de suivre leurs quarts hors PUNCH.

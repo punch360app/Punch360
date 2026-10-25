@@ -26,7 +26,7 @@
 | E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
 | E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications internes livrées; push/recette terrain restants |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
-| E23 | Communications et notifications | EN COURS | Annonces/alertes internes; préférences, appareils et file push développés; activation fournisseur/réception réelle et courriels restants |
+| E23 | Communications, événements et notifications | EN COURS | Annonces/alertes internes et préférences push partielles; événements Boss/Admin, fêtes, réunions et visio prévus sous COMM-002–007 et COMM-013–016, **non livrés**; fournisseurs/réception réelle restent à valider |
 | E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements, suppression et coffre des comptes test; support Web/Expo, promotions Stripe et rapports financiers livrés; rapprochement bancaire et recette fournisseur restants |
 | E25 | Stripe et sursis | EN COURS | Backend et interfaces; recette fournisseur, réabonnement et rapprochement restants |
 | E26 | Données et confidentialité | EN COURS | Isolation/audit; Loi 25, région, rétention, restauration à valider |
@@ -69,7 +69,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 476 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 480 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.

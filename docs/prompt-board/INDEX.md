@@ -16,7 +16,7 @@ Les documents Drive demeurent à leur emplacement; leur contenu brut n'a pas ét
 
 ## Consolidation du 25 octobre 2026
 
-Le giga-prompt de continuation GitHub a été rapproché du [Prompt maître](MASTER_PROMPT_20261025.md) : **453 IDs initiaux + 23 exigences manquantes = 476 IDs uniques en 27 lots**. Les exigences déjà présentes (sécurité, Stripe, archives, RH, calendriers, quarts vacants, notifications) ont été **référencées**, et non recopiées. Les nouveautés sont intégrées aux groupes GOV/SHIFT/COVER/HR/QA. Les 5 fichiers Drive ci-dessous **ne sont pas automatiquement déclarés audités** par cette consolidation GitHub; ils restent à rapprocher individuellement du code et des tâches.
+Le giga-prompt de continuation GitHub a été rapproché du [Prompt maître](MASTER_PROMPT_20261025.md) : **453 IDs initiaux + 23 exigences de planification/absence + 4 exigences d'événements d'entreprise = 480 IDs uniques en 27 lots**. Les exigences déjà présentes (sécurité, Stripe, archives, RH, calendriers, quarts vacants, notifications) ont été **référencées**, et non recopiées. Les nouveautés sont intégrées aux groupes GOV/SHIFT/COVER/HR/QA. Les 5 fichiers Drive ci-dessous **ne sont pas automatiquement déclarés audités** par cette consolidation GitHub; ils restent à rapprocher individuellement du code et des tâches.
 
 ## Tableau récapitulatif initial
 - Prompts repérés et indexés : **5**
