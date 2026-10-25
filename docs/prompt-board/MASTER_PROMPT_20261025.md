@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition du 25 octobre 2026 — 431 exigences identifiées en 27 lots.**
+**Édition du 25 octobre 2026 — 441 exigences identifiées en 27 lots.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -335,7 +335,7 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **CAL-010** — Préparer adaptateurs bidirectionnels sans promettre API non connectées.
 - [ ] **CAL-011** — Tester révocation lien et changement de rôle/compagnie.
 
-## P2 — Cartes Wallet et pointage QR (WALLET, 50 points)
+## P2 — Cartes Wallet et pointage QR (WALLET, 60 points)
 **Objectif :** Permettre une carte personnelle sécurisée Pro.
 **Sources :** Nouveaux ajouts. **État initial :** nouveau / à développer ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **WALLET-001** — Créer émission de cartes par employé pour le forfait Pro.
@@ -388,6 +388,24 @@ Pour chaque ID ci-dessous : auditer l’existant → choisir fichiers/schéma/r�
 - [ ] **WALLET-048** — Tester sécurité intercompagnies, QR copié, capture d’écran, QR réutilisé, authentification NIP, essais excessifs, cartes révoquées, borne non appairée et employés non autorisés.
 - [ ] **WALLET-049** — Tester flux complet Wallet → caméra → validation serveur → IN → OUT, pauses, reprise, téléphone/borne croisés, erreurs réseau, simultanéité et double scan.
 - [ ] **WALLET-050** — Tester les dix thèmes de borne, rotations, tailles d’écran, accessibilité, clavier, retours automatiques et absence de faux messages « Fonctionnel » avant certificats Wallet et validation sur appareil.
+- [ ] **WALLET-051** — Ajouter dans **Boss/Admin → Employés → Fiche employé → Carte virtuelle** les actions explicites « Envoyer ma carte », « Renvoyer le lien », « Remplacer la carte » et « Révoquer la carte », visibles seulement pour les gestionnaires habilités d’une compagnie Essentiel Pro ayant activé Wallet.
+- [ ] **WALLET-052** — Sur changement de téléphone, proposer deux parcours distincts : **Renvoyer le lien** pour récupérer une carte encore valide selon les capacités du fournisseur, ou **Remplacer la carte** pour émettre une nouvelle version et invalider l’ancienne; décrire clairement les conséquences avant confirmation.
+- [ ] **WALLET-053** — Permettre l’envoi au salarié par **courriel d’invitation sécurisé** si canal configuré; SMS seulement quand Twilio sera réellement activé plus tard; sinon, proposer un lien à usage unique remis via canal de confiance, sans exposer le QR ou l’identifiant dans les notifications.
+- [ ] **WALLET-054** — Le lien d’installation doit être **aléatoire, temporaire, à usage unique, lié au bon salarié et à la bonne compagnie**, avec vérification d’identité appropriée avant l’émission ou l’ajout dans Apple Wallet/Google Wallet; ne jamais utiliser un simple lien public donnant accès à une carte d’autrui.
+- [ ] **WALLET-055** — Au remplacement après perte, vol ou révocation, **désactiver atomiquement l’ancienne génération du jeton/QR côté serveur**; ne jamais considérer qu’une suppression du pass sur l’ancien téléphone est garantie ou suffisante pour invalider la carte.
+- [ ] **WALLET-056** — Conserver exactement le même **dossier salarié, matricule, rôle, permissions, affectations, heures et identité facturable**, sans créer de deuxième employé, de deuxième place payante ou effacer un seul pointage.
+- [ ] **WALLET-057** — Afficher sur la fiche salarié les états **Aucune carte / Active / Invitation envoyée / Lien expiré / Révoquée / Remplacée**, la date de dernière émission, le canal d’envoi et les tentatives sans exposer de NIP, code QR ou secret; consigner dans l’audit les actions et leur auteur.
+- [ ] **WALLET-058** — Exiger une confirmation renforcée du gestionnaire pour « Remplacer » ou « Révoquer », limiter les renvois et les essais (quotas/anti-abus), vérifier permissions/tenant/forfait côté serveur et éviter les multiples cartes actives par erreur selon la politique retenue.
+- [ ] **WALLET-059** — Fournir à l’employé une option personnelle « Ajouter de nouveau à Apple Wallet / Google Wallet » après authentification, sans lui permettre d’émettre la carte d’un collègue; si la carte précédente est révoquée, rediriger vers la nouvelle émission.
+- [ ] **WALLET-060** — Tester **changement Android→Android, iPhone→iPhone, Android→iPhone, iPhone→Android**, téléphone perdu, lien consommé/expiré, mauvais destinataire, deux demandes simultanées, annulation, carte ancienne scannée, salarié désactivé et pointages conservés; ne déclarer « livré » qu’après essais fournisseur/appareil.
+
+### Parcours de réémission de carte lors d'un changement de téléphone
+1. Dans la fiche Employé, le Boss/Admin autorisé choisit **Carte virtuelle → Renvoyer le lien** (carte valide) ou **Remplacer la carte** (téléphone perdu/volé ou remplacement requis), puis vérifie l'identité et la bonne compagnie.
+2. Le serveur crée un lien d'installation sécurisé, limité et temporaire, utilisable uniquement par l'employé visé. L'employé reçoit un courriel si l'envoi est configuré, un SMS quand le service sera disponible, ou un lien transmis de façon sécurisée.
+3. L'employé ouvre le lien sur son nouveau téléphone, valide son identité et ajoute sa carte dans le Wallet compatible. Le lien expire ou se ferme après usage. Les données privées et le QR ne sont pas exposés dans le lien lui-même.
+4. Si **Remplacer** a été choisi, l'ancienne génération de carte et son QR sont **refusés immédiatement par le serveur**, y compris si une copie de l'ancien pass reste affichée dans un ancien téléphone.
+5. Aucune nouvelle place facturable, aucun nouveau dossier salarié et **aucune modification des heures, pauses, horaires ou historiques**. L'Admin voit l'état et le journal de l'opération sans pouvoir découvrir ou récupérer de secret.
+6. Tester renvoi, remplacement, cartes volées, changement iPhone/Android, anciens QR, réémissions simultanées et invitation expirée sur appareils réels.
 
 ### Parcours fonctionnel obligatoire — bouton « Scanner ma carte » sur borne
 1. Une borne d’entreprise **Pro**, appairée, autorisée et équipée d’une caméra affiche sur son accueil un **gros bouton « Scanner ma carte »** bien visible, ainsi que le pointage **Matricule/NIP**. Hors Pro ou module désactivé, ne pas afficher un bouton inopérant.
