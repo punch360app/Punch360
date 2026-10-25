@@ -13,7 +13,7 @@ Données stockées exclusivement dans `private.platform_company_price_proposals`
 Les contrats existants et leurs snapshots historiques continuent de faire autorité pour la facturation. La proposition sauvegarde un snapshot versionné du forfait incluant ses limites/fonctions avec seulement les paramètres financiers négociés; jamais de droits Pro accordés par simple ajout d'un projet. Construction et comptes test sont exclus.
 
 ## Validation
-- Migration : `supabase/migrations/20261025214500_platform_company_price_proposals.sql` (le nom sera aligné sur la version officielle appliquée dans Supabase)
+- Migration : `supabase/migrations/20261025214230_platform_company_price_proposals.sql` (migration appliquée dans Supabase officielle au numéro 20261025214230)
 - Requête transactionnelle : `supabase/tests/platform_company_price_proposals.sql`, `BEGIN`/`ROLLBACK`.
 - Tests : `tests/platform-price-proposals.test.mjs`, vérification compilateur/syntaxe CI GitHub Actions.
 - SQL rollback réussi : prévisualisation mensuelle et annuelle 2199 / 23749 cents, refus confirmation incorrecte, version concurrente et version du catalogue périmée, historique de deux propositions immuable, Construction exclu, membre ordinaire refusé, factures/commandes/contrats inchangés et événements d'audit.
@@ -25,3 +25,9 @@ Créer une **phase fournisseur strictement séparée** qui exige validation comm
 Référence provider : <https://docs.stripe.com/billing/subscriptions/change-price>. Pour les abonnements, le prix doit remplacer explicitement le bon item, sinon Stripe peut ajouter un second item facturable.
 
 Le prompt de **« Validation SQL archives »** est toujours en cours. Ne pas commencer les 453 exigences supplémentaires de la PR documentaire #26 avant la clôture du prompt original.
+
+## Preuves d'installation
+
+Le schéma a été appliqué exclusivement au projet `mlabstdxxwjdpfaxiwmg`, version `20261025214230`. Après installation, le scénario SQL complet a été relancé sur cette version avec rollback et a réussi. Lecture de contrôle : **0 proposition réelle**, permission `anon` à `platform_company_price_draft` refusée. Le design de la fonction ne modifie aucun état Stripe; la mise à disposition du formulaire Web ne vaut pas activation du prix négocié.
+
+Les modèles public et privé ont conservé leur isolation. Les avertissements du conseiller Supabase concernant `SECURITY DEFINER` exécutables par `authenticated` sont intentionnels pour les RPC protégées par `private.assert_live_platform_session`; ils nécessitent une revue régulière, sans élargissement des grants.
