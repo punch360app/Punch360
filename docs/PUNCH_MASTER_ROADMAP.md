@@ -49,3 +49,6 @@ Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serve
 > Politiques de pauses : Web/borne/Expo et contrôle serveur du type payé/non payé, historique immuable et snapshots développés. 105 tests Node/DOM, SQL dédié et régressions pauses/hors ligne/archives réussis; quatre migrations appliquées. Durées/délais indicatifs, aucune déduction automatique. Voir DEPARTMENT_BREAK_POLICIES_20261025.md. E20 reste EN COURS pour recette complète.
 
 > Approbations déléguées : Web/Expo et backend développés; trois migrations appliquées, 108 tests Node/DOM, TypeScript, SQL dédié et quatre régressions réussis. Aucune ouverture RLS des salariés privés. Voir SUPERVISOR_APPROVALS_20261025.md; publication Web à vérifier dans le suivi actif.
+
+
+Actualisation budgets (2026-10-25) : Web/Expo développés, SQL fixtures annulées et tests Node/TypeScript; backend appliqué, publication Web essential-37 en cours. Voir LABOR_BUDGETS_20261025.md. Intégrations paie/couverture par qualifications restent ouvertes.

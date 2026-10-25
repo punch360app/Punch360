@@ -1,3 +1,14 @@
+# Reprise active — budgets de main-d’œuvre, 25 octobre 2026
+
+PR #25 fusionnée dans `3f6343dc20eeede6340e885140ee68d01c794f34`. Branche active `feat/labor-budgets`, base synchronisée avec main. PR documentaire #26 d’un autre collaborateur préservée.
+
+Budgets hebdomadaires entreprise/département Web/Expo, version attendue et audit, comparaison conservée avec le moteur des coûts pointés existant. Coût/écart laissés inconnus si taux absent ou session ouverte. Heures planifiées brutes/vacances séparées du coût réel estimatif. Migrations `essential_labor_budgets` et `essential_labor_budget_read_policy` appliquées; la seconde corrige l’appel du helper privé dans les politiques SELECT sans élargir ses droits. SQL complet sur fixtures annulées réussi après correction. Source Expo validée par TypeScript, aucun appareil physique. Publication Web essential-37 par PR/CI en cours; vérifier avant de la déclarer déployée.
+
+Prochaines tâches : couverture par qualifications/postes, intégrations de paie, actions Super Admin restantes, dix langues et RTL. Toujours ouverts : recette OAuth/Apple, références visuelles manquantes, Stripe test, push/courriel configurés, builds signés/appareils, confidentialité/PRA. SMS en dernier. Le prompt global reste ouvert.
+
+---
+Historique :
+
 # Reprise active — utilisateurs plateforme et fiches, 25 octobre 2026
 
 Sécurité et annuaire entreprises fusionnés : PR #24 dans `7c702399906302c325633ae008d57f9508624825`, CI #143 réussie. Vérification CI/Pages et fichiers publics effectuée dans le lot suivant.
