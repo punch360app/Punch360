@@ -8,6 +8,7 @@ create table private.platform_member_access_controls (
  suspended boolean not null,
  saved_role text not null,
  saved_worker_id uuid,
+ saved_worker_status text,
  saved_mobile boolean,
  saved_kiosk boolean,
  saved_personal boolean,
@@ -50,7 +51,7 @@ begin
  'can_suspend',m.status='active' and coalesce(row_controls.suspended,false)=false and worker_count<=1 and punch_count=0 and other_boss>0,
  'can_restore',m.status='disabled' and coalesce(row_controls.suspended,false) and row_controls.saved_role=m.role
   and worker_count<=1 and worker.id is not distinct from row_controls.saved_worker_id
-  and (worker.id is null or (worker.personal_access=false and worker.can_mobile_punch=false and worker.can_kiosk_punch=false)));
+  and (worker.id is null or (worker.status='disabled' and worker.personal_access=false and worker.can_mobile_punch=false and worker.can_kiosk_punch=false)));
 end $$;
 
 create function public.platform_member_access_change(
@@ -91,11 +92,11 @@ begin
     update public.company_workers set can_mobile_punch=false,can_kiosk_punch=false,personal_access=false where id=worker.id;
    end if;
    insert into private.platform_member_access_controls
-    (company_id,user_id,version,suspended,saved_role,saved_worker_id,saved_mobile,saved_kiosk,saved_personal,updated_by,reason)
-   values(p_company,p_user,coalesce(old.version,0)+1,true,m.role,worker.id,worker.can_mobile_punch,worker.can_kiosk_punch,worker.personal_access,auth.uid(),trim(p_reason))
+    (company_id,user_id,version,suspended,saved_role,saved_worker_id,saved_worker_status,saved_mobile,saved_kiosk,saved_personal,updated_by,reason)
+   values(p_company,p_user,coalesce(old.version,0)+1,true,m.role,worker.id,worker.status,worker.can_mobile_punch,worker.can_kiosk_punch,worker.personal_access,auth.uid(),trim(p_reason))
    on conflict(company_id,user_id) do update set
     version=excluded.version,suspended=true,saved_role=excluded.saved_role,saved_worker_id=excluded.saved_worker_id,
-    saved_mobile=excluded.saved_mobile,saved_kiosk=excluded.saved_kiosk,saved_personal=excluded.saved_personal,
+    saved_worker_status=excluded.saved_worker_status,saved_mobile=excluded.saved_mobile,saved_kiosk=excluded.saved_kiosk,saved_personal=excluded.saved_personal,
     updated_by=excluded.updated_by,updated_at=clock_timestamp(),reason=excluded.reason returning * into result;
  else
    if not coalesce(old.suspended,false) or m.status<>'disabled' or m.role is distinct from old.saved_role
@@ -103,11 +104,11 @@ begin
    if worker.id is distinct from old.saved_worker_id
    then raise exception using errcode='22023',message='Dossier salarié modifié : vérification manuelle requise';end if;
    if worker.id is not null and
-    (worker.personal_access or worker.can_mobile_punch or worker.can_kiosk_punch or worker.status<>'active')
+    (worker.personal_access or worker.can_mobile_punch or worker.can_kiosk_punch or worker.status<>'disabled')
    then raise exception using errcode='22023',message='Dossier salarié modifié ou inactif : rétablissement automatique refusé';end if;
    update public.company_members set status='active' where company_id=p_company and user_id=p_user;
    if worker.id is not null then
-    update public.company_workers set can_mobile_punch=old.saved_mobile,
+    update public.company_workers set status=old.saved_worker_status,can_mobile_punch=old.saved_mobile,
       can_kiosk_punch=old.saved_kiosk,personal_access=old.saved_personal where id=worker.id;
    end if;
    update private.platform_member_access_controls set suspended=false,version=old.version+1,
