@@ -1,6 +1,6 @@
 # Reprise active — journées oubliées, 25 octobre 2026
 
-PR #14 archives fusionnée : commit `9810f1d0498acfbd6240db0ce38257df28d1a68a`. CI #110 réussie avant fusion; fichiers publics archives.js/archive-codec.js/essential.js/sw.js vérifiés identiques aux fichiers livrés. Page publique chargée dans Chrome cloud sans erreur applicative observée; aucune session authentifiée disponible dans ce navigateur, donc recette complète PDF/boss non exécutée.
+PR #14 archives fusionnée : commit `9810f1d0498acfbd6240db0ce38257df28d1a68a`. CI #110 réussie avant fusion; CI et Pages réussis sur le commit fusionné; fichiers publics archives.js/archive-codec.js/essential.js/sw.js vérifiés identiques aux fichiers livrés. Page publique chargée dans Chrome cloud sans erreur applicative observée; aucune session authentifiée disponible dans ce navigateur, donc recette complète PDF/boss non exécutée.
 
 Lot suivant : branche `feat/missing-day-approval`. Journées complètes oubliées développées Web/Expo, deux migrations appliquées. 92 tests Node/DOM et TypeScript réussis; deux scripts SQL sur fixtures et régression archives réussis. Voir `ESSENTIAL_MISSING_DAYS_20261025.md`. Déploiement Web : PR/CI à vérifier; Expo : TypeScript seulement, aucun appareil.
 
@@ -27,7 +27,7 @@ Branche `wip/company-archives-handoff-20261025`, PR #14. Main vérifié au dépa
 | Archives SQL, intégrité, signature, prévisualisation et récupération | Oui | Quatre scripts SQL transactionnels sur fixtures; régressions borne/operations/pauses | Oui, Supabase | Charge/concurrence multiconnexion |
 | Chiffrement et interfaces Boss / Super Admin Web | Oui | 89 tests Node/DOM + TypeScript | Oui, PR #14 fusionnée / fichiers publics vérifiés | Recette navigateur connecté avec PDF fictif et appareils |
 | PDF privés signés, conflits sans écrasement | Oui | Handler à transport injecté + preuves SQL | Edge company-archive-files v1 | Recette intégrée Storage/Auth/binaire réel |
-| Copies temporaires et purge | Oui | Suppression/expiration SQL; cron actif 15 min observé | Oui | Observer une exécution planifiée, supervision opérateur |
+| Copies temporaires et purge | Oui | Suppression/expiration SQL; cron actif 15 min observé | Oui | Deux exécutions planifiées réussies observées (12:15 et 12:30 UTC); supervision opérateur à définir |
 | Sauvegarde infrastructure / PRA | Procédure documentée | Aucun exercice de sinistre | Non | Plan/rétention/PITR, stockage indépendant, environnement isolé, RPO/RTO |
 
 Détails et limites : `COMPANY_ARCHIVES_20261025.md`. Aucune récupération de données officielles pendant les tests. Connexion fournisseur de bout en bout et exécution physique ne sont pas déclarées testées. Région Supabase observée `us-east-1`; traitement des exigences de confidentialité encore ouvert.

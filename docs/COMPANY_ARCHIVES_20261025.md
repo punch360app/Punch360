@@ -26,7 +26,7 @@ Copies temporaires serveur : suppression explicite après téléchargement / ré
 
 ## Déploiement et limites
 
-Cinq migrations additives de restauration/capture/nettoyage appliquées via connecteur. Les trois migrations originales d’export n’ont pas été rejouées; clé Vault intacte. `company-archive-files` v1 ACTIVE, validation JWT activée. Web : publication par PR #14 et suivi CI/Pages, statut final dans PUNCH_WORK_CONTINUATION.
+Cinq migrations additives de restauration/capture/nettoyage appliquées via connecteur. Les trois migrations originales d’export n’ont pas été rejouées; clé Vault intacte. `company-archive-files` v1 ACTIVE, validation JWT activée. Web : PR #14 fusionnée (9810f1d), CI et Pages réussis, fichiers publics vérifiés identiques. Deux exécutions réelles du cron de purge réussies observées, à 12:15 et 12:30 UTC le 25 octobre.
 
 Aucun PDF officiel récupéré ni aucune restauration d’entreprise réelle durant la recette. Pas d’essai physique Android/iPhone/iPad; pas de test de charge ou de concurrence multiconnexion à ce stade. Une recette authentifiée de bout en bout avec un véritable PDF fictif via Storage et appareil reste à exécuter. Le code du transport est testé par injection et ses preuves serveur par SQL, ce qui ne remplace pas cette recette intégrée.
 
