@@ -1,12 +1,15 @@
 # Instructions de reprise pour ChatGPT Work — prompts PUNCH
 
+**SOURCE MAÎTRE PRIORITAIRE :** [MASTER_PROMPT_20261025.md](MASTER_PROMPT_20261025.md) — 385 points de contrôle en 27 lots. Lire intégralement et reprendre dans l'ordre P0 → P4. Ce fichier est dans la PR #26 tant qu'elle n'est pas fusionnée; utiliser la branche `docs/work-prompt-tracker-20261025` pour le lire avant la fusion. Le code de l'application doit toujours partir du `main` le plus récent.
+
 Lis **entièrement** :
-1. `docs/prompt-board/README.md`
-2. `docs/prompt-board/INDEX.md`
-3. `docs/README_COLLABORATEUR_WORK.md`
-4. `docs/PUNCH_MASTER_ROADMAP.md`
-5. `docs/PUNCH_WORK_CONTINUATION.md`
-6. La documentation technique pertinente au prompt traité.
+1. `docs/prompt-board/MASTER_PROMPT_20261025.md`
+2. `docs/prompt-board/README.md`
+3. `docs/prompt-board/INDEX.md`
+4. `docs/README_COLLABORATEUR_WORK.md`
+5. `docs/PUNCH_MASTER_ROADMAP.md`
+6. `docs/PUNCH_WORK_CONTINUATION.md`
+7. La documentation technique pertinente au prompt traité.
 
 ## Mission
 Utilise le Drive du propriétaire, dossier `promt`, comme boîte d'entrée et GitHub `punch360app/Punch360` comme tableau de suivi. Compare la liste Drive à `INDEX.md`, propose les nouvelles entrées après vérification, décompose les prompts en issues indépendantes et reprends l'implémentation du dépôt existant.
