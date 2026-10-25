@@ -25,20 +25,24 @@ begin
  if not denied then raise exception 'Missing exact confirmation accepted';end if;
  v:=public.platform_company_price_draft(c,'essential_pro','monthly',7,1799,5,200,10,current_date+7,0,c::text,reason);
  if v->>'status'<>'draft_pending_stripe' or (v->>'version')::integer<>1 then raise exception 'Draft not created';end if;
+ execute 'reset role';
  select id into row_id from private.platform_company_price_proposals where company_id=c and proposal_version=1;
  if row_id is null then raise exception 'Missing row';end if;
+ execute 'set local role authenticated';
  denied:=false;
  begin perform public.platform_company_price_draft(c,'essential_pro','monthly',7,1799,5,200,10,current_date+7,0,c::text,reason);
  exception when others then denied:=true;end;
  if not denied then raise exception 'Stale revision accepted';end if;
  v:=public.platform_company_price_draft(c,'essential_pro','yearly',8,2999,5,250,15,current_date+14,1,c::text,reason);
  if (v->>'version')::integer<>2 then raise exception 'Second version rejected';end if;
+ execute 'reset role';
  if (select monthly_cents from private.platform_company_price_proposals where id=row_id)<>2199
  then raise exception 'Historical proposal was overwritten';end if;
  if exists(select 1 from private.essential_billing_orders where company_id=c)
  or exists(select 1 from private.essential_contracts where company_id=c)
  or exists(select 1 from private.essential_billing_accounts where company_id=c)
  then raise exception 'Draft unexpectedly created payment/order/contract';end if;
+ execute 'set local role authenticated';
  denied:=false;
  begin perform public.platform_company_price_preview(other_company,'essential_pro','monthly',7,1799,5,200,10,current_date+7,reason);
  exception when others then denied:=true;end;
