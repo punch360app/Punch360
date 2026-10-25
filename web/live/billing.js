@@ -3,7 +3,29 @@ export function createBillingController({sb,redraw,escape:e,document:doc=globalT
  const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(n/100);
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function call(action,extra={}){const r=await sb.functions.invoke('essential-billing',{body:{action,companyId:s.company,...extra}});if(r.error)throw r.error;if(r.data.error)throw Error(r.data.error);return r.data;}
- async function load(company){const n=++revision;s.company=company;s.summary=null;s.preview=null;s.order=null;s.invoices=[];s.error='';try{const [summary,p,provider]=await Promise.all([rpc('essential_billing_summary',{p_company:company}),sb.from('essential_plans').select('*').order('sort_order'),call('status')]);if(n!==revision)return;if(p.error)throw p.error;s.summary=summary;s.plans=p.data;s.configured=provider.configured;if(provider.configured&&!summary.test_company){const invoices=await call('invoices');if(n===revision)s.invoices=invoices.invoices;}}catch(err){if(n===revision)s.error=err.message;}}
+ async function load(company){
+  const n=++revision;
+  Object.assign(s,{company,summary:null,plans:[],configured:false,preview:null,order:null,invoices:[],error:''});
+  try{
+   // The company's effective restriction status must remain visible even when Stripe is down.
+   const summary=await rpc('essential_billing_summary',{p_company:company});
+   if(n!==revision)return;
+   s.summary=summary;
+   const p=await sb.from('essential_plans').select('*').order('sort_order');
+   if(n!==revision)return;
+   if(p.error)throw p.error;
+   s.plans=p.data||[];
+   try{
+    const provider=await call('status');
+    if(n!==revision)return;
+    s.configured=provider.configured===true;
+    if(s.configured&&!summary.test_company){
+     try{const invoices=await call('invoices');if(n===revision)s.invoices=invoices.invoices||[];}
+     catch(err){if(n===revision)s.error='Factures indisponibles : '+err.message;}
+    }
+   }catch(err){if(n===revision)s.error='Service Stripe indisponible : '+err.message;}
+  }catch(err){if(n===revision)s.error=err.message;}
+ }
  function reset(){revision++;s.company=null;s.summary=null;s.invoices=[];s.preview=null;s.order=null;s.error='';}
  function render(){const b=s.summary;return `<h2>Abonnement et factures</h2>${s.error?`<p class="ess-notice" role="alert">${e(s.error)}</p>`:''}${!b?'<p>Chargement…</p>':`<section class="ess-panel"><p>État : <b>${e(b.status)}</b> · ${b.active_humans} personnes actives · ${b.seats} places</p>${b.paid_through?`<p>Période payée jusqu’au ${e(new Date(b.paid_through).toLocaleString('fr-CA'))}</p>`:''}${b.test_company?'<p>Compagnie de test : aucun paiement réel autorisé.</p>':!s.configured?'<p>Stripe attend sa configuration serveur. Aucun paiement ne peut être effectué.</p>':''}${b.contract?`<p>Contrat : ${e(b.contract.snapshot.title)} · ${b.contract.cadence==='yearly'?'Annuel':'Mensuel'} · ${money(b.contract.snapshot.amount_cents)}</p>`:''}<label class="ess-field">Forfait<select id="billing-plan">${s.plans.map(p=>`<option value="${e(p.id)}" ${p.id===b.contract?.plan_id?'selected':''}>${e(p.title)}</option>`).join('')}</select></label><label class="ess-field">Paiement<select id="billing-cadence"><option value="monthly">Mensuel</option><option value="yearly" ${b.contract?.cadence==='yearly'?'selected':''}>Annuel — réduction du forfait</option></select></label><label class="ess-field">Places humaines<input id="billing-seats" type="number" min="${Math.max(1,b.active_humans)}" max="100000" value="${Math.max(1,b.seats)}"></label><button class="ess-btn" data-action="bill:quote" ${s.busy||!s.configured||b.test_company?'disabled':''}>${b.has_subscription?'Prévisualiser le changement':'Vérifier le total'}</button><p class="ess-fine">Prix avant taxes. Les contrats existants gardent leurs tarifs pour un changement de places dans le même forfait. Le paiement annuel couvre douze mois d’avance.</p></section>${s.preview?`<section class="ess-panel"><h3>Votre confirmation</h3><p>${e(s.preview.description)}</p><p>${s.preview.effective_at?'Date d’effet : '+e(new Date(s.preview.effective_at*1000).toLocaleString('fr-CA')):''}</p><button class="ess-btn" data-action="bill:confirm" ${s.busy?'disabled':''}>${b.has_subscription?'Confirmer ce changement':'Continuer vers Stripe'}</button><p class="ess-fine">Les taxes et promotions applicables sont détaillées par Stripe. L’accès change après confirmation serveur du paiement.</p></section>`:''}${b.has_subscription?`<section class="ess-panel"><button class="ess-btn" data-action="bill:portal">Moyen de paiement et portail Stripe</button><button class="ess-btn" data-action="bill:${b.canceled?'resume':'cancel'}">${b.canceled?'Reprendre le renouvellement':'Résilier à la fin de la période payée'}</button></section>`:''}<section class="ess-panel"><h3>Factures</h3>${s.invoices.map(i=>`<article class="ess-person"><div>${e(i.number||i.id)} · ${e(i.status)} · ${money(i.total)}</div>${i.url?`<a href="${e(i.url)}" target="_blank" rel="noopener">Ouvrir chez Stripe</a>`:''}</article>`).join('')||'<p>Aucune facture disponible.</p>'}</section>`}`;}
  async function handle(el){if(!el.dataset.action?.startsWith('bill:'))return false;if(s.busy)return true;s.busy=true;s.error='';try{
