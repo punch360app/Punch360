@@ -41,3 +41,5 @@
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
 > Archives du 25 octobre, PR #14 : interfaces Web Boss/Super Admin, chiffrement/signature, documents privés, prévisualisation et récupération additive développés; 89 tests Node/DOM et quatre scripts SQL archives sur fixtures réussis. Backend appliqué et Edge déployée; CI/Pages à vérifier dans le suivi. Recette authentifiée binaire Storage/appareils, charge/concurrence et PRA infrastructure encore ouverts. Voir COMPANY_ARCHIVES_20261025.md. Les exigences E07/E22/E26/E31 restent EN COURS.
+
+> Journées oubliées du 25 octobre : demandes Web/Expo, approbation séparée, pauses, anti-chevauchement, verrouillage de semaine et notifications internes développés. Deux migrations appliquées, 92 tests Node/DOM et deux SQL dédiés réussis; Web par PR/CI. Les autres compléments E18/E20/E21 et la borne hors ligne restent ouverts. Détails : ESSENTIAL_MISSING_DAYS_20261025.md.
