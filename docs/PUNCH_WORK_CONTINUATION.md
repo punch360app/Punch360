@@ -1,3 +1,14 @@
+# Reprise active — utilisateurs plateforme et fiches, 25 octobre 2026
+
+Sécurité et annuaire entreprises fusionnés : PR #24 dans `7c702399906302c325633ae008d57f9508624825`, CI #143 réussie. Vérification CI/Pages et fichiers publics effectuée dans le lot suivant.
+
+Lot courant `feat/platform-user-directory` : annuaire utilisateurs réels/test en consultation avec motif/audit, filtres/pages; fiche entreprise et aperçu des conditions confirmées. Deux migrations appliquées. 126 tests Node/DOM et TypeScript; SQL dédié sur 52 utilisateurs fictifs et contrôles d’accès/audit réussi en rollback. Web essential-36 par PR/CI à vérifier. Voir `PLATFORM_ACTIONS_AUDIT_20261025.md` pour les actions encore ouvertes.
+
+Prochaine priorité indépendante : conditions/actions entreprise et compléments métier, internationalisation, puis recettes fournisseurs/appareils. Toujours ouverts aussi budgets/paie/couverture, OAuth réel/Apple, design manquant, Stripe test, QA/builds/confidentialité/PRA. SMS en dernier. Le prompt complet reste ouvert.
+
+---
+Historique :
+
 # Reprise active — audit Super Admin, 25 octobre 2026
 
 Invitations courriel fusionnées : PR #23 dans `0696bbb1a4342cc37850b5716b1f2915fa5c263c`, CI #140 réussie. Vérifier CI/Pages et fichiers publics du merge. Fournisseur/DNS/SMTP/webhook/ordonnanceur et recette réelle restent ouverts; aucun envoi réel.
