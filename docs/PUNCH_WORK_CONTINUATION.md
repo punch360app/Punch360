@@ -1,3 +1,14 @@
+# Reprise active — export configurable de paie, 25 octobre 2026
+
+Budgets publiés : PR #27 fusionnée dans `523049bc5c409b063f64076d11a902c0804ad943`; CI #154 puis CI/Pages du merge réussis. labor-budgets.js, essential.js et sw.js publics vérifiés identiques.
+
+Lot courant `feat/payroll-export-profiles` : profils CSV versionnés (colonnes/en-têtes/séparateur/activation), correspondances explicites et uniques des matricules fournisseur, aperçu conservé et audité avec reprise idempotente. Semaine fermée obligatoire; rapport régénéré comparé au snapshot choisi pour refuser les données périmées, taux/sorties manquants refusés. Web/Expo développés, 132 tests Node/DOM et TypeScript réussis; SQL sur fixtures annulées réussi. Migrations essential_payroll_export_profiles et archive_payroll_budget_collections appliquées; restauration profils désactivés et snapshots testée sur fixtures annulées, quatre régressions SQL archives/paie/budgets réussies, fichiers Web essential-38 par PR/CI à vérifier. Aucun envoi vers un fournisseur; aucun format propriétaire certifié. Voir PAYROLL_EXPORTS_20261025.md.
+
+Prochain travail indépendant : couverture par poste/qualification, actions Super Admin et langues/RTL. Fournisseur de paie et spécification d’import restent nécessaires pour une intégration nommée testée. OAuth réel/Apple, design manquant, Stripe test, push/courriel, builds signés/appareils et confidentialité/PRA restent ouverts. SMS en dernier. Préserver PR documentaire #26 et travail déplacements/portefeuille du collaborateur.
+
+---
+Historique :
+
 # Reprise active — budgets de main-d’œuvre, 25 octobre 2026
 
 PR #25 fusionnée dans `3f6343dc20eeede6340e885140ee68d01c794f34`. Branche active `feat/labor-budgets`, base synchronisée avec main. PR documentaire #26 d’un autre collaborateur préservée.
