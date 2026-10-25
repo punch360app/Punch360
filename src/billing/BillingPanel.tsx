@@ -7,7 +7,28 @@ export function BillingPanel({account}:{account:WorkspaceAccount}){
  const money=(n:number)=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(n/100);
  async function rpc(name:string,args:any){const r=await supabase.rpc(name,args);if(r.error)throw r.error;return r.data;}
  async function call(action:string,extra:any={}){const r=await supabase.functions.invoke('essential-billing',{body:{action,companyId:account.companyId,...extra}});if(r.error)throw r.error;if(r.data.error)throw Error(r.data.error);return r.data;}
- async function load(){const n=++epoch.current;try{const [s,p,c]=await Promise.all([rpc('essential_billing_summary',{p_company:account.companyId}),supabase.from('essential_plans').select('*').order('sort_order'),call('status')]);if(n!==epoch.current)return;if(p.error)throw p.error;setSummary(s);setPlans(p.data||[]);setPlan(s.contract?.plan_id||'essential');setCadence(s.contract?.cadence||'monthly');setSeats(String(s.seats));setConfigured(c.configured);if(c.configured){const i=await call('invoices');if(n===epoch.current)setInvoices(i.invoices);}}catch(e:any){if(n===epoch.current)setError(e.message);}}
+ async function load(){
+  const n=++epoch.current;setError('');setConfigured(false);setSummary(null);setPlans([]);setInvoices([]);
+  try{
+   // Keep the server-confirmed access state visible when Stripe is unavailable.
+   const summary=await rpc('essential_billing_summary',{p_company:account.companyId});
+   if(n!==epoch.current)return;
+   setSummary(summary);setPlan(summary.contract?.plan_id||'essential');setCadence(summary.contract?.cadence||'monthly');setSeats(String(summary.seats));
+   const p=await supabase.from('essential_plans').select('*').order('sort_order');
+   if(n!==epoch.current)return;
+   if(p.error)throw p.error;
+   setPlans(p.data||[]);
+   try{
+    const c=await call('status');
+    if(n!==epoch.current)return;
+    setConfigured(c.configured===true);
+    if(c.configured){
+     try{const i=await call('invoices');if(n===epoch.current)setInvoices(i.invoices||[]);}
+     catch(e:any){if(n===epoch.current)setError('Factures indisponibles : '+e.message);}
+    }
+   }catch(e:any){if(n===epoch.current)setError('Service Stripe indisponible : '+e.message);}
+  }catch(e:any){if(n===epoch.current)setError(e.message);}
+ }
  useEffect(()=>{load();return()=>{epoch.current++;}},[account.companyId]);
  async function run(fn:()=>Promise<void>){if(busy)return;setBusy(true);setError('');try{await fn();}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  async function open(url:string){const u=new URL(url);if(u.protocol!=='https:'||!['checkout.stripe.com','billing.stripe.com','invoice.stripe.com','pay.stripe.com'].includes(u.hostname))throw Error('Lien de paiement invalide');await Linking.openURL(url);}

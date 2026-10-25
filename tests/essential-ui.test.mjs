@@ -13,3 +13,29 @@ test('personnel names are escaped and private platform state is cleared at signo
 test('choosing a public plan calls signup navigation without claiming payment',async()=>{const w=new Window();let chosen;const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,onChoose:p=>{chosen=p}});ui.state.plans=[plan];await ui.handle({dataset:{action:'ess:choose',id:'essential_plus'}});assert.equal(chosen.id,'essential_plus');assert.equal(ui.state.checkout,'Essentiel Plus');assert.equal(ui.state.paymentConfirmed,undefined);await w.happyDOM.close();});
 test('late personnel responses cannot repopulate private state after signout',async()=>{const w=new Window();let release;const pending=new Promise(resolve=>{release=resolve});const sb={rpc:async()=>({data:false}),from(table){const q={select(){return q},eq(){return q},order(){return table==='company_workers'?pending:Promise.resolve({data:[plan]})}};return q;}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});const loading=ui.load({id:'old-user'},{company_id:'tenant',role:'employee',companies:{product_edition:'essential'}});await new Promise(r=>setTimeout(r,0));ui.reset();release({data:[{id:'private-worker',auth_user_id:'old-user',first_name:'Private'}]});await loading;assert.equal(ui.state.worker,null);assert.deepEqual(ui.state.workers,[]);assert.equal(ui.state.platform,false);await w.happyDOM.close();});
 test('kiosk navigation uses a static public URL without pairing secrets',async()=>{const {w,ui}=setup();ui.state.devices=[{id:'device',name:'Reception',paired_at:null,revoked_at:null}];ui.state.pairCode='secret-code';w.document.body.innerHTML=ui.renderKiosks();const links=[...w.document.querySelectorAll('a')].filter(a=>a.textContent==='Ouvrir la pointeuse');assert.equal(links.length,1);assert.equal(links[0].getAttribute('href'),'https://punch360app.github.io/Punch360/kiosk.html');assert.equal(new URL(links[0].href).search,'');assert.equal(new URL(links[0].href).hash,'');assert.ok(w.document.querySelector('[data-action="ess:copy-kiosk-link"]'));await w.happyDOM.close();});
+
+test('Admin status uses computed entitlements instead of stale billing_status',async()=>{
+ const w=new Window(),calls=[];
+ const sb={
+  rpc:async(name,args)=>{calls.push(name);return {data:name==='platform_access'?false:name==='essential_entitlements'?{billing_status:'restricted'}:{}};},
+  from:()=>({select:()=>({order:async()=>({data:[plan],error:null}),eq:()=>({order:async()=>({data:null,error:{message:'Management request denied'}})})})})
+ };
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ await ui.load({id:'user'},{company_id:'tenant',role:'admin',companies:{product_edition:'essential',billing_status:'active'}});
+ assert.ok(calls.includes('essential_entitlements'));
+ assert.equal(ui.state.effectiveBillingStatus,'restricted');
+ ui.reset();
+ assert.equal(ui.state.effectiveBillingStatus,null);
+ await w.happyDOM.close();
+});
+test('failed entitlement check cannot silently reopen management',async()=>{
+ const w=new Window();
+ const sb={
+  rpc:async name=>name==='essential_entitlements'?{error:{message:'Not authorized'}}:{data:false},
+  from:()=>({select:()=>({order:async()=>({data:[plan],error:null})})})
+ };
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ await ui.load({id:'user'},{company_id:'tenant',role:'admin',companies:{product_edition:'essential',billing_status:'active'}});
+ assert.equal(ui.state.effectiveBillingStatus,'restricted');
+ await w.happyDOM.close();
+});
