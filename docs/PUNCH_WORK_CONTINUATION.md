@@ -1,3 +1,5 @@
+> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 476 exigences en 27 lots. Le fichier `CONTINUATION_PROMPT_20261025.md` sert seulement de redirection historique. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
+
 # Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
 
 Après la PR #38 fusionnée (propositions tarifaires immuables), la PR #40 développe : approbation Super Admin MFA d'une proposition (sans facturation), consultation de l'offre **pour le Boss seulement**, création d'une commande Stripe standard **après consentement explicite du Boss**, réutilisation du parcours Stripe existant (checkout/preview/confirm + webhook signé) et sauvegarde des anciens snapshots avant mise à jour des contrats confirmés. Écrans **Web et Expo**; migrations 20261025214230 et 20261025215638 appliquées au seul Supabase `mlabstdxxwjdpfaxiwmg`.
