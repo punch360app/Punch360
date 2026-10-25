@@ -37,10 +37,10 @@
 | E31 | Matrice QA complète | EN COURS | 140 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
-| E34 | Disponibilités hebdomadaires récurrentes, exceptions et heures souhaitées Plus/Pro | À FAIRE | Étendre essential_availability déjà présente; aucun doublon de table. Voir SMART_SCHEDULING_CALL_OFF_20261025.md P1 |
+| E34 | Disponibilités hebdomadaires récurrentes, exceptions et heures souhaitées Plus/Pro | À FAIRE | Étendre essential_availability déjà présente; aucun doublon de table. Voir PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md P1 |
 | E35 | Besoins récurrents par poste et tableau des quarts à couvrir Plus/Pro | À FAIRE | Réutiliser modèles d'horaires, couverture Pro et qualifications existants; postes exclusifs/variations restent à concevoir. Voir P1 |
 | E36 | Génération intelligente Pro et interface guidée en 3 étapes | À FAIRE | Brouillon explicable, contraintes, ancienneté, équité, heures, prévisualisation et publication manuelle. Voir P2 |
-| E37 | CALL OFF explicite de l'employé sur un quart | À FAIRE | Aucun no-show, retard, GPS ou absence de punch ne lance une offre; pas d'effacement d'heures. Voir P3 |
+| E37 | Signalement d'absence explicite de l'employé sur un quart | À FAIRE | Aucun no-show, retard, GPS ou absence de punch ne lance une offre; pas d'effacement d'heures. Motifs prédéfinis, note facultative, confidentialité; voir P3 |
 | E38 | Banque de remplaçants, offres par vagues et un seul gagnant | À FAIRE | Réutiliser quarts vacants/candidatures; attribution atomique; mode Boss approbation ou automatique. Voir P3 |
 | E39 | Notifications, concurrence, QA et SMS différé du remplacement | À FAIRE | Push interne selon préférences; SMS/Twilio en dernier. Tests concurrence, multi-tenant, DST, réseau et appareils. Voir P4 |
 
@@ -69,13 +69,13 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source unique des nouvelles exigences : [SMART_SCHEDULING_CALL_OFF_20261025.md](SMART_SCHEDULING_CALL_OFF_20261025.md).** Ce bloc complète **E05/E06/E19/E23** et les quarts vacants/échanges déjà présents; ces fonctions ne doivent pas être recodées. Les états E34–E39 sont « À FAIRE » et ne signifient pas livré.
+**Source unique des nouvelles exigences : [PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md).** Ce bloc complète **E05/E06/E19/E23** et les quarts vacants/échanges déjà présents; ces fonctions ne doivent pas être recodées. Les états E34–E39 sont « À FAIRE » et ne signifient pas livré.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
 2. **P1 — socle Plus/Pro (E34–E35) :** disponibilité récurrente, exceptions ponctuelles, saisie manager et besoins récurrents par poste.
 3. **P2 — expérience Pro (E36) :** trois écrans Besoins → Employés → Générer/prévisualiser/publier, mode simple d'abord, optimisation explicable et publication humaine.
-4. **P3 — CALL OFF (E37–E38) :** **uniquement déclenché par le CALL OFF volontaire confirmé de l'employé concerné**; filtrage de banque, offres par vagues, une seule attribution transactionnelle et mode d'approbation configurable.
+4. **P3 — Signalement d'absence (E37–E38) :** **uniquement déclenché par le signalement d'absence volontaire confirmé de l'employé concerné**; filtrage de banque, offres par vagues, une seule attribution transactionnelle et mode d'approbation configurable.
 5. **P4 — fiabilité (E39) :** notifications internes/push, sécurité, règles locales, réessais, concurrence et recette; **aucun vrai SMS avant l'étape Twilio finale déjà reportée**.
 
 Aucune refonte ni ajout de fonctionnalités payantes silencieux. La conception/les documents ne constituent ni une livraison technique ni une recette.
