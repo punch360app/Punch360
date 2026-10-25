@@ -25,7 +25,7 @@ La direction doit conserver une porte de sortie même pendant une suspension adm
 - `tests/restricted-management.test.mjs` et `tests/billing-ui.test.mjs` : tests de statuts/rôles/actions et indisponibilité fournisseur.
 
 ## Preuves et limites
-- **CI validée** : workflow PUNCH TypeScript, run [40225062044](https://github.com/punch360app/Punch360/actions/runs/40225062044) — 144/144 tests Node/DOM réussis, TypeScript, Expo dependency check et syntaxe de tous les fichiers Web réussis.
+- **CI validée** : workflow PUNCH TypeScript, run [40225728289](https://github.com/punch360app/Punch360/actions/runs/40225728289) — 146/146 tests Node/DOM réussis, TypeScript, Expo dependency check et syntaxe de tous les fichiers Web réussis.
 - Vérification lecture seule Supabase : `essential_billing_summary` expose le statut calculé via `private.essential_billing_state` (inclut la suspension manuelle), l'accès Boss est vérifié côté serveur; `support_list_tickets` délègue à `private.assert_support_access` par appartenance. Aucun SQL de mutation appliqué.
 - Aucun test sur session Boss suspendue réelle, aucun règlement Stripe et aucune modification Supabase.
 - Recette navigateur authentifié **Boss actif → suspension test → accès abonnement/support/pointage → accès RH refusé → réactivation** requise avant fermeture complète.
@@ -34,3 +34,10 @@ La direction doit conserver une porte de sortie même pendant une suspension adm
 
 ## Suite
 Après CI : corriger les erreurs, vérifier la publication de la PR après fusion autorisée, confirmer le statut serveur sur vraie session de **compagnie fictive**, puis poursuivre actions Super Admin sur comptes réels et conditions tarifaires particulières. Garder SMS/Twilio à la fin.
+
+### Extension mobile et garde serveur commune
+- `src/workforce/ManagementWorkspace.tsx` : navigation Expo restreinte Boss/Admin, chargement de l'état calculé avant ouverture des modules de gestion, refus prudent si l'état serveur est indisponible.
+- `src/billing/BillingPanel.tsx` : statut de facturation conservé si l'appel Stripe échoue.
+- `web/live/essential.js` : lecture anticipée de `essential_entitlements`, déjà disponible à tout membre de l'entreprise. Son champ `billing_status` utilise `private.essential_billing_state` et reflète aussi la suspension Super Admin. La fonction n'a pas été changée.
+- `tests/essential-ui.test.mjs` : deux nouvelles vérifications d'accès Admin et de refus prudent.
+- Aucune recette physique Expo, aucun paiement, aucun changement de base. Le prompt global est toujours ouvert.
