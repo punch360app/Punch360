@@ -35,7 +35,7 @@ Les invitations peuvent être en attente tant que le collaborateur ne les a pas 
 | `docs/IMPLEMENTATION_STATUS.md` | État technique général ; lire aussi ses liens d'actualisation en tête |
 | `docs/ESSENTIAL_BILLING_20261024.md` | État récent de Stripe, PWA borne, liens Ouvrir/Copier, minuterie et limites de validation |
 | `docs/ESSENTIAL_PLANNING_20261024.md` | Horaires, rotations, quarts vacants, candidatures, superviseurs, couverture |
-| `docs/SMART_SCHEDULING_CALL_OFF_20261025.md` | Nouveaux écarts priorisés : disponibilités récurrentes, optimiseur Pro en trois étapes, CALL OFF volontaire et remplaçant unique; aucun no-show automatique, SMS dernier |
+| `docs/PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md` | Nouveaux écarts priorisés : disponibilités récurrentes, optimiseur Pro en trois étapes, signalement d'absence volontaire avec motifs prédéfinis confidentiels et remplaçant unique; aucun no-show automatique, SMS dernier |
 | `docs/ESSENTIAL_THEMES_20261024.md` | Thèmes personnels **11–20** présents, autres thèmes en attente |
 | `docs/ESSENTIAL_PROGRESS_20261024.md` | Identités salariés, appairage, NIP, pointage téléphone/borne, tests et limitations historiques |
 | `docs/ESSENTIAL_MIXED_PUNCH_SPEC.md` | Spécification des bornes ; **section 14 : lien public de PWA sans code dans l'URL** |
