@@ -9,6 +9,12 @@ export function missionProgress(items){
  const done=ordered.filter(x=>x.status==='completed').length;
  return {total:ordered.length,done,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
 }
+/** Do not choose a client arbitrarily when two pending stops have identical rank. */
+export function missionAmbiguousNext(items,next){
+ if(!next||next.status!=='published')return false;
+ const rank=Number(next.sort_order);
+ return (Array.isArray(items)?items:[]).filter(m=>m&&m.status==='published'&&Number(m.sort_order)===rank).length>1;
+}
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
 /** A private, bounded projection of today's already-authorized missions.
  * Never includes access notes, contacts, worker IDs or internal fields in the UI.
@@ -194,6 +200,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       '</details>';
   };
   if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>'+renderTour();
+  if(missionAmbiguousNext(s.items,p.next))return '<section class="zen-company" role="alert"><b>Ordre des prochaines missions à confirmer</b><small>Plusieurs missions sont publiées au même rang. Demandez au responsable de clarifier la tournée avant de choisir la prochaine mission.</small></section>'+renderTour();
   const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
   return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
