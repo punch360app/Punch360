@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T18:02:13.302Z",
+  "generated_at": "2026-10-26T18:17:34.220Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 579,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -35,7 +35,8 @@
       "pr": [
         26,
         111,
-        122
+        122,
+        132
       ],
       "note": "578 identifiants dédoublonnés et 29 lots vérifiés par test Node."
     },
@@ -47,7 +48,8 @@
       "pr": [
         111,
         116,
-        122
+        122,
+        132
       ],
       "note": "GitHub choisi comme source de suivi; documentation liée à WORK_START."
     },
@@ -71,7 +73,8 @@
         122,
         124,
         126,
-        128
+        128,
+        132
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -307,7 +310,8 @@
         123,
         124,
         126,
-        128
+        128,
+        132
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -997,9 +1001,33 @@
         130
       ],
       "note": "Travail rattaché à la PR #130. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "GOV-016": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        132
+      ],
+      "note": "Travail rattaché à la PR #132. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 132,
+      "sha": "f52105e72ed3c028fcc985e4cdd817918be5ade3",
+      "ci": "success",
+      "ids": [
+        "GOV-009",
+        "GOV-011",
+        "GOV-012",
+        "GOV-014",
+        "GOV-016"
+      ],
+      "title": "Clarifier le maître et spécifier les membres inclus illimités",
+      "merged_at": "2026-10-26T18:17:25Z"
+    },
     {
       "number": 130,
       "sha": "7057c365a1de704bfc8e2af6cbb3b78fa7ad0326",
@@ -1468,15 +1496,6 @@
       "ids": [],
       "title": "Borne Essentiel : traductions complètes des états de session et de pauses",
       "merged_at": "2026-10-26T04:54:26Z"
-    },
-    {
-      "number": 76,
-      "sha": null,
-      "head_sha": "f93169902a82c61905d4b4be05d3f434b29011f8",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Borne Essentiel : incidents de sécurité et hors ligne traduits (10 langues)",
-      "merged_at": "2026-10-26T04:45:50Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
