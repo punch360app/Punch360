@@ -22,6 +22,10 @@ begin
  where id in (tenant_a,tenant_b);
  insert into public.company_members(company_id,user_id,role) values
   (tenant_a,employee_a,'employee'),(tenant_b,employee_b,'employee');
+ -- Ensure the synthetic company managers are active, independently of onboarding defaults.
+ insert into public.company_members(company_id,user_id,role,status) values
+ (tenant_a,boss_a,'boss','active'),(tenant_b,boss_b,'boss','active')
+ on conflict(company_id,user_id) do update set role='boss',status='active';
  select user_id into owner_id from private.platform_owner;
  insert into auth.sessions(id,user_id,aal,not_after)
  values(sid,owner_id,'aal2',clock_timestamp()+interval '1 hour');
