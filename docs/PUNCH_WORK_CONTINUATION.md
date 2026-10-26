@@ -1,3 +1,11 @@
+# Transfert acté vers le prompt maître — 26 octobre 2026
+
+**Décision officielle :** le **reste** du travail du prompt « Validation SQL archives » est maintenant consigné **uniquement** dans `docs/prompt-board/MASTER_PROMPT_20261025.md`, section **PASSATION DU PROMPT « VALIDATION SQL ARCHIVES »**. Ne plus demander à Work de recommencer cet ancien prompt; lire `docs/prompt-board/WORK_START.md` et avancer sur les IDs existants par priorité. **Départ P0 : Super Admin prix particuliers / issue #35 → Stripe test et facturation → MFA/permissions multi-compagnies → Google/Apple/courriel.** Ensuite P1 : une vraie recette PDF **synthétique** sur Supabase avec Auth/Storage, exercice de sauvegarde/PRA, tests concurrence et vrais Android/iOS/iPad. Puis traductions spécialisées/notifications; **SMS/Twilio en dernier**. Les 578 exigences du maître restent inchangées. Pas de modification des contrats, documents, heures ou paiements réels.
+
+**Ne pas refaire :** PR #14, #75, #80, #83–85 ont livré le code d'archives et les tests; **issue #81 fermée** après #83 (plafond Storage réel de 25 Mio), PR #82 durcissement MFA et PR #87 isolation Super Admin. Comparer la vieille PR brouillon #86 à #83 avant d'y toucher. L'intégration Stripe fournisseur, OAuth/SMTP, PRA, recettes terrain et longue QA restent **non démontrées** malgré des écrans et tests simulés. Les preuves détaillées et limites demeurent ci-dessous pour l'historique, pas comme un deuxième ordre de mission.
+
+---
+
 # Reprise Super Admin — isolation des devis par session (26 octobre 2026)
 
 Après validation des PR d'archives, passage aux priorités visibles de Super Admin : les devis négociés déjà existants ne sont pas reconstruits. **Correctif** dans `web/live/platform-price-proposals.js` : les retours RPC arrivant après logout/changement de compagnie/MFA ne réaffichent plus un ancien client ni ne lancent de lecture supplémentaire. Les diagnostics RPC sensibles sont remplacés par un message neutre; sélection depuis le répertoire affiche le nom échappé de l'entreprise et rappelle qu'aucun abonnement n'est modifié sans le Boss et Stripe. Tests `tests/platform-price-session-isolation.test.mjs`, PWA rafraîchie. Documentation `docs/SUPER_ADMIN_PRICE_SESSION_20261026.md`.
