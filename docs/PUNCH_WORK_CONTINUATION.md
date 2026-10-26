@@ -1,3 +1,13 @@
+# Reprise — récupération personnelle de compte Auth dans Expo (PR #58)
+
+Prompt original **« Validation SQL archives »** : l'interface Web disposait déjà de « Mot de passe oublié ». La PR #58 complète le parcours **Expo Android/iOS** : demande d'un lien `resetPasswordForEmail`, callback deep link PKCE, vérification par l'événement `PASSWORD_RECOVERY`, création d'un nouveau mot de passe par le titulaire via `updateUser`, puis déconnexion globale et purge du cache d'identité. Aucune lecture de mot de passe ni changement administratif d'identité; aucun SQL ni compte réel modifié. Documentation : `docs/EXPO_ACCOUNT_RECOVERY_20261026.md`.
+
+**Validation restante** : CI TypeScript, fusion PR #58, autoriser les URL de redirection de récupération dans Supabase, configurer les courriels et faire une vraie recette sur build Android/iPhone. La succession/transfert de compte **Boss** reste un module séparé, avec preuves de consentement et contrôle de propriété; ne pas le confondre avec un simple reset d'Auth.
+
+Le calendrier personnel PR #55 est fusionné et le service Edge `essential-calendar` v2 déployé; tests SQL, 173 Node/DOM et Pages réussis. La recette avec un calendrier Google/Apple/Outlook authentique reste nécessaire. Continuer ensuite le prompt original : accès Boss sécurisés, cas particuliers d'horaires, langues et RTL, design responsive final, fournisseurs Stripe sandbox/OAuth/notifications/paie, builds natifs et PRA. SMS en dernier. **Ne pas commencer le prompt maître consolidé.**
+
+---
+
 # Reprise — abonnement calendrier personnel privé (PR #55)
 
 Le prompt original **« Validation SQL archives »** continue avec un flux personnel **iCalendar par URL secrète et révocable**, sans connexion OAuth aux comptes Google/Apple/Microsoft. SQL `20261026014802_essential_personal_calendar_feeds` installée dans le projet exclusif Supabase `mlabstdxxwjdpfaxiwmg`. Fonction Edge `essential-calendar` **version 2** déployée, contrôle du secret par empreinte SHA-256 et vérification de l'appartenance active à chaque lecture; aucune lecture directe par `anon` ou `authenticated`. Web et Expo : création, renouvellement et révocation du lien privé. Chaque renouvellement invalide immédiatement l'ancien lien; déclencheurs de révocation sur perte d'accès/changement de rôle; aucun lien créé en réel lors des tests.
