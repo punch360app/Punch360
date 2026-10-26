@@ -24,7 +24,7 @@
 | E18 | Superviseurs par département | EN COURS | Lecture/planification et approbations heures/congés indépendantes par département; recette appareils/concurrence restante |
 | E19 | Moteur d’horaires et postes admissibles | EN COURS | Nuit/DST/récurrences/échanges déjà partiels; **catalogue des postes personnalisés, habilitations multi-postes et équivalences** sous SHIFT-026–028 à développer sans deuxième moteur. Export ICS en source; import appareils et calendrier abonné non validés |
 | E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
-| E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications internes livrées; push/recette terrain restants |
+| E21 | Corrections et approbations | EN COURS | Demandes de corrections de sessions et pauses auditées; journée entièrement oubliée et notifications internes déjà en code. **Flux pendant session ouverte et sortie oubliée jusqu'au lendemain à compléter : HR-021–024, QA-026** (jalon E46). Push/recette appareils restent ouverts. |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
 | E23 | Communications, messagerie Plus/Pro et offres privées dans le chat | EN COURS | Réutiliser `conversations`, `MessagesScreen`, CHAT-001–012. **Onglet bas Messages sur Plus/Pro**, 4 onglets en base; **fiches interactives de proposition de quart**, contre-propositions, paramètres de DM et statuts sous CHAT-013–015 à développer. Les Boss/Admin reçoivent la demande d'approbation sans accès au fil privé. Préserver Construction, événements COMM et notifications existantes |
 | E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements, suppression et coffre des comptes test; support Web/Expo, promotions Stripe et rapports financiers livrés; rapprochement bancaire et recette fournisseur restants |
@@ -49,6 +49,7 @@
 | E43 | Plusieurs plages horaires et horaires spéciaux temporaires | À FAIRE | Jalon des **SHIFT-029–033** : plages chevauchantes matin/midi/soir par poste, fêtes/fermetures, effectif réduit/renforcé, adaptation individuelle datée, reprise de la semaine type sans modifier les quarts publiés. Plus manuel/Pro génération brouillon. |
 | E44 | Finition marketing/UX et QA responsive | À FAIRE | Jalon des **DESIGN-015–020, COMMERCIAL-014–016 et QA-023–024** : audit multi-écrans, navigation simple, visuels génératifs référentiels, landing et comparaison des forfaits, tests 320–1920 px, CTA et prix réels. Les images de référence et l'annexe marketing ne prouvent pas le code déployé. |
 | E45 | Défilement intelligent et écrans fixes prioritaires | À FAIRE | Jalon de **DESIGN-021–022 et QA-025** : Punch mobile et borne sans scroll en usage normal, scroll de secours lorsque nécessaire; listes Messages/Heures/Horaire et site marketing scrollables; tablette/desktop adaptés, navigation accessible, aucun contrôle masqué. Réutiliser CORE-018, KIOSK-019 et QA-023, sans seconde navigation. |
+| E46 | Oublis d'arrivée/de départ/pauses et correction unifiée | À FAIRE | Jalon **HR-021–024, QA-026** : réutiliser les corrections entrée/sortie, pauses et journée oubliée existantes, ajouter signalement IN en cours de quart, sortie oubliée jusqu'au lendemain sans heure fictive, déblocage sûr, raccourcis Punch/Heures, rappels opt-in/configurables et essais Web/Expo/borne. Aucun double système ni autoapprobation. |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
@@ -75,7 +76,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 537 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 542 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
