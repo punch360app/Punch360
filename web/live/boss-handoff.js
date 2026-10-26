@@ -4,19 +4,20 @@ export function createBossHandoffController({
  prompt:ask=(...args)=>globalThis.prompt(...args),onCompleted=()=>{}
 }){
  let generation=0;
- const make=()=>({company:null,role:null,memberId:null,selected:'',reason:'',status:null,busy:false,error:'',notice:''});
+ const make=()=>({company:null,role:null,memberId:null,selected:'',reason:'',status:null,busy:false,error:'',notice:'',mfaLevel:'aal1',factor:null,qr:null,code:''});
  const s=make();
  function reset(){generation++;Object.assign(s,make());}
  const rpc=async(name,args)=>{const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data;};
  async function load(company,role,memberId){
   const n=++generation;
   Object.assign(s,{company,role,memberId,error:'',notice:'',busy:true,status:null});
-  try{if(company&&['boss','admin'].includes(role))s.status=await rpc('essential_boss_handoff_status',{p_company:company});}
+  try{if(company&&['boss','admin'].includes(role)){const m=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(m.error)throw m.error;s.mfaLevel=m.data?.currentLevel||'aal1';if(s.mfaLevel==='aal2')s.status=await rpc('essential_boss_handoff_status',{p_company:company});}}
   catch(err){if(n===generation)s.error=err.message||'Session MFA requise';}
   finally{if(n===generation){s.busy=false;redraw();}}
  }
  function input(el){if(el.id==='boss-handoff-reason')s.reason=el.value;
-  if(el.id==='boss-handoff-successor')s.selected=el.value;}
+  if(el.id==='boss-handoff-successor')s.selected=el.value;
+  if(el.id==='boss-handoff-mfa-code')s.code=el.value;}
  const button=(label,action,disabled=false)=>`<button type="button" class="ess-btn" data-action="boss-handoff:${action}" ${disabled||s.busy?'disabled':''}>${label}</button>`;
  function render(role=s.role){
   if(!s.company)return '<p>Sélectionnez une entreprise.</p>';
@@ -26,6 +27,7 @@ export function createBossHandoffController({
   <p class="ess-fine">Transfert uniquement entre le Boss actuel et un administrateur de la même compagnie. Les deux doivent vérifier leur identité avec MFA. Il n’est jamais possible de consulter un mot de passe.</p>
   ${s.error?`<p role="alert">${e(s.error)}</p>`:''}
   ${s.notice?`<p role="status">${e(s.notice)}</p>`:''}
+  ${s.mfaLevel!=='aal2'?`<div class="ess-panel"><h4>Vérification d'identité obligatoire</h4><p>Activez ou confirmez votre application d'authentification pour gérer la succession.</p>${s.qr?`<img class="ess-qr" src="${e(s.qr)}" alt="Code QR pour application d’authentification">`:''}${button('Configurer ou utiliser mon authentificateur','mfa-enroll')}<label class="ess-field">Code de votre application à 6 chiffres<input id="boss-handoff-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${e(s.code)}"></label>${button('Vérifier mon identité','mfa-verify',!s.factor)} </div>`:''}
   ${button('Actualiser le statut','refresh')}
   ${h?`<p>État : <b>${e(h.status)}</b> · v${Number(h.version)}</p><p>Boss : <code>${e(h.from_user)}</code></p><p>Successeur : <code>${e(h.to_user)}</code></p><p>Date limite : ${e(h.expires_at)}</p>
   ${h.status==='pending'&&h.can_accept?button('Accepter la responsabilité (MFA)','accept'):''}
@@ -45,7 +47,22 @@ export function createBossHandoffController({
   const n=generation;s.error='';s.notice='';s.busy=true;
   try{
    if(!s.company||!['boss','admin'].includes(s.role))throw Error('Gestion Essentiel requise.');
-   if(action[1]==='refresh'){
+   if(!['refresh','mfa-enroll','mfa-verify'].includes(action[1])&&s.mfaLevel!=='aal2')throw Error('Confirmer votre identité MFA avant le transfert.');
+   if(action[1]==='mfa-enroll'){
+    const list=await sb.auth.mfa.listFactors();if(list.error)throw list.error;
+    const known=(list.data?.totp||[]).find(x=>x.status==='verified');
+    if(known){s.factor=known.id;s.qr=null;s.notice='Entrez le code de votre application existante.';}
+    else {const enroll=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Direction PUNCH'});if(enroll.error)throw enroll.error;s.factor=enroll.data.id;s.qr=enroll.data.totp.qr_code;s.notice='Scannez le code QR puis saisissez votre code à six chiffres.';}
+   }else if(action[1]==='mfa-verify'){
+    if(!s.factor||!/^\d{6}$/.test(s.code))throw Error('Code MFA à 6 chiffres requis.');
+    const verified=await sb.auth.mfa.challengeAndVerify({factorId:s.factor,code:s.code});if(verified.error)throw verified.error;
+    s.mfaLevel='aal2';s.factor=null;s.qr=null;s.code='';
+    s.status=await rpc('essential_boss_handoff_status',{p_company:s.company});
+    s.notice='Identité confirmée par MFA.';
+   }else if(action[1]==='refresh'){
+    const level=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(level.error)throw level.error;
+    s.mfaLevel=level.data?.currentLevel||'aal1';
+    s.status=s.mfaLevel==='aal2'?await rpc('essential_boss_handoff_status',{p_company:s.company}):null;
     s.status=await rpc('essential_boss_handoff_status',{p_company:s.company});
    }else if(action[1]==='request'){
     if(s.role!=='boss'||s.status)throw Error('Seul un Boss peut demander un nouveau transfert.');
