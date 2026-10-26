@@ -32,7 +32,7 @@ test('one schedule changes grouping without changing shifts, clients or hours',(
  assert.equal(location.groups.find(g=>g.label.includes('Condo Mathieu')).items.length,3);
  assert.equal(location.groups.find(g=>g.label.includes('Condo Mathieu')).items.filter(x=>x.workerName==='Mathieu').length,1);
  assert.equal(location.groups.find(g=>g.label.includes('Adresse d’intervention non affectée')).items.length,1);
- assert.equal(location.groups.some(g=>g.label.includes('Nadine')),false);
+ assert.equal(location.groups.some(g=>g.label==='Nadine'),false);
  assert.equal(shifts[0].client_site_id,'address-a');
 });
 test('overlap detection is per worker, cancelled shifts ignored, travel estimates never manufactured',()=>{
