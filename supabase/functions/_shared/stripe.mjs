@@ -30,3 +30,28 @@ export async function verifyStripeSignature(raw,signature,secret,now=Date.now())
  if(!match)throw Error('INVALID_SIGNATURE');return JSON.parse(raw);
 }
 export function safeHostedUrl(url){if(typeof url!=='string')throw Error('INVALID_PROVIDER_URL');const u=new URL(url);if(u.protocol!=='https:'||!['checkout.stripe.com','billing.stripe.com','invoice.stripe.com','pay.stripe.com'].includes(u.hostname))throw Error('INVALID_PROVIDER_URL');return u.href;}
+
+/**
+ * Invoice webhooks use the invoice's parent subscription_details on newer
+ * Stripe API versions. Keep the legacy subscription field for older events.
+ * Contradictory fields are rejected rather than guessing a tenant.
+ */
+export function stripeInvoiceSubscriptionId(invoice){
+ const legacy=typeof invoice?.subscription==='string'?invoice.subscription:invoice?.subscription?.id;
+ const parent=invoice?.parent?.subscription_details?.subscription;
+ const modern=typeof parent==='string'?parent:parent?.id;
+ if(legacy&&modern&&legacy!==modern)throw Error('STRIPE_INVOICE_SUBSCRIPTION_MISMATCH');
+ const id=modern||legacy;
+ return typeof id==='string'&&/^sub_[a-zA-Z0-9_]+$/.test(id)?id:null;
+}
+/** Reject invoices unrelated to the subscription/customer being processed. */
+export function verifyStripeWebhookInvoice(invoice,subscription,liveMode){
+ const owner=typeof invoice?.customer==='string'?invoice.customer:invoice?.customer?.id;
+ const customer=typeof subscription?.customer==='string'?subscription.customer:subscription?.customer?.id;
+ if(!invoice||invoice.object!=='invoice'||typeof invoice.id!=='string'||!/^in_[a-zA-Z0-9_]+$/.test(invoice.id)||
+    !subscription||typeof subscription.id!=='string'||!/^sub_[a-zA-Z0-9_]+$/.test(subscription.id)||
+    !customer||owner!==customer||invoice.livemode!==liveMode||subscription.livemode!==liveMode||
+    invoice.currency!=='cad'||stripeInvoiceSubscriptionId(invoice)!==subscription.id)
+   throw Error('STRIPE_INVOICE_TENANT_MISMATCH');
+ return invoice;
+}
