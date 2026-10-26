@@ -33,12 +33,26 @@
 <section class="completion-card" aria-labelledby="completionHeading">
  <div>
   <div class="completion-kicker">Avancement des exigences</div>
-  <h2 class="completion-title" id="completionHeading">Avancement vérifié par Work</h2>
+  <h2 class="completion-title" id="completionHeading">1. Travail documenté par Work</h2>
   <div class="completion-fraction" id="progressFraction">— / 578</div>
   <p class="completion-meta" id="progressRemaining">Chargement du registre officiel GitHub…</p>
  </div>
  <div class="completion-percent" id="progressPercent" aria-live="polite">— %</div>
  <div class="completion-meter" id="progressMeter" role="progressbar" aria-label="Proportion d’exigences avec travail vérifiable dans GitHub" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="completion-meter-fill" id="progressFill"></span></div>
+ <div class="completion-submetrics">
+ <div class="completion-submetric">
+  <strong class="completion-subtitle">2. Développement avec tests</strong>
+  <div class="completion-subvalues"><strong id="progressTestedFraction">— / 578</strong><strong id="progressTestedPercent" aria-live="polite">— %</strong></div>
+  <div class="completion-meter" id="progressTestedMeter" role="progressbar" aria-label="Exigences avec code et tests logiciels attestés" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="completion-meter-fill" id="progressTestedFill"></span></div>
+  <p>Le code peut encore être partiel et non déployé.</p>
+ </div>
+ <div class="completion-submetric">
+  <strong class="completion-subtitle">3. Livré et validé</strong>
+  <div class="completion-subvalues"><strong id="progressDeliveredFraction">— / 578</strong><strong id="progressDeliveredPercent" aria-live="polite">— %</strong></div>
+  <div class="completion-meter" id="progressDeliveredMeter" role="progressbar" aria-label="Exigences développées, testées, déployées et recettées" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="completion-meter-fill" id="progressDeliveredFill"></span></div>
+  <p>Une livraison nécessite code, tests, déploiement et recette prouvés.</p>
+ </div>
+</div>
  <div class="workactivity" id="workRecent" aria-label="Dernières pull requests Work fusionnées">Chargement des dernières PR…</div>
  <p class="completion-note"><strong>Source : travail de Work dans GitHub</strong>, vérifié par PR et CI. Le % principal recense les exigences <strong>avec travail attesté, même partiel</strong> (il ne représente donc pas le pourcentage fonctionnel réalisé). <span id="progressDetail">Livrées et recettées : à vérifier.</span> Les exigences historiques non encore auditées ne sont pas comptées. Les cases cochées localement n'affectent pas ce chiffre. <a href="https://github.com/punch360app/Punch360/blob/main/web/live/work-progress.json" target="_blank" rel="noopener">Voir les preuves et limites</a>.</p>
 </section>
