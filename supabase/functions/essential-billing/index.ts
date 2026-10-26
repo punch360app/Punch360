@@ -1,5 +1,5 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
-import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
+import {billingQuote,checkoutExpiryFromOrder,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
 import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
@@ -43,6 +43,8 @@ Deno.serve(async(req:Request)=>{
   if(!o)throw Error('ORDER_REQUIRED');
   const expected=billingQuote(o.snapshot,o.seats,o.cadence);
   if(expected.amount_cents!==Number(o.amount_cents))throw Error('ORDER_AMOUNT_MISMATCH');
+  // Reject stale Checkout quotes BEFORE /prices or /customers writes.
+  const checkoutExpiry=body.action==='checkout'?checkoutExpiryFromOrder(o.created_at):null;
   // Never infer the Stripe product from amount alone: all six existing IDs belong
   // to distinct plan/cadence pairs, even if a negotiated offer matches another price.
   const keys=planPriceKeys(o.plan_id);
@@ -88,7 +90,7 @@ Deno.serve(async(req:Request)=>{
    verifyStripeCustomerTenant({customer_id:customer.id},customer,body.companyId,liveMode);
    await save({},customer.id);
    await save({status:'creating',preview:{price_id:price.id}},customer.id);
-   const checkout=await stripe('/checkout/sessions',{customer:customer.id,mode:'subscription',line_items:[{price:price.id,quantity:1}],allow_promotion_codes:true,automatic_tax:{enabled:true},billing_address_collection:'required',customer_update:{address:'auto'},client_reference_id:body.companyId,subscription_data:{metadata:{punch_company:body.companyId,punch_order:o.id}},success_url:returnUrl+'&billing=returned',cancel_url:returnUrl+'&billing=cancelled',expires_at:Math.floor(Date.parse(o.created_at)/1000)+3600},`${o.id}:checkout`);
+   const checkout=await stripe('/checkout/sessions',{customer:customer.id,mode:'subscription',line_items:[{price:price.id,quantity:1}],allow_promotion_codes:true,automatic_tax:{enabled:true},billing_address_collection:'required',customer_update:{address:'auto'},client_reference_id:body.companyId,subscription_data:{metadata:{punch_company:body.companyId,punch_order:o.id}},success_url:returnUrl+'&billing=returned',cancel_url:returnUrl+'&billing=cancelled',expires_at:checkoutExpiry},`${o.id}:checkout`);
    await save({status:'checkout',checkout_id:checkout.id},customer.id);return response(200,{url:safeHostedUrl(checkout.url)});
   }
   const prorationDate=Math.floor(Date.now()/1000);
