@@ -70,7 +70,7 @@ begin
    raise exception 'Private data leaked or report unavailable';
  end if;
  select count(*) into manager_notices from public.app_notifications where company_id=tenant_a and kind='shift_absence';
- if manager_notices<>1 then raise exception 'Duplicate manager notification';end if;
+ if manager_notices<>1 then raise exception 'Unexpected manager notifications: %',manager_notices;end if;
  perform set_config('request.jwt.claim.sub',boss_b::text,true);
  denied:=false;
  begin
