@@ -1,3 +1,5 @@
+> **Nouvelles exigences E57–E59 — succession Admin/Boss et comptes multientreprises (documentation seulement).** Un seul compte Auth peut appartenir à plusieurs compagnies avec rôle/dossier salarié/politiques distincts; permissions révoquées côté serveur au départ de l'Admin, transfert sécurisé du Boss, sélecteur d'entreprise et calendrier global personnel sans accès croisé des employeurs. Problème du code actuel à corriger dans `src/auth/AuthGate.tsx` : `.limit(1).maybeSingle()` charge une seule appartenance. Tests QA-031–032 requis avant annonce de livraison.
+
 # Reprise — succession volontaire de direction Essentiel (PR #62)
 
 Le prompt original « Validation SQL archives » poursuit les accès Boss avec une procédure **volontaire à deux participants MFA AAL2**. Le Boss propose le transfert vers un administrateur actif; l'administrateur accepte dans sa session MFA; le Boss initial confirme et devient administrateur. Le successeur devient Boss uniquement après cette dernière confirmation. Blocages serveur : 48 heures, mauvais rôle/tenant, confirmation, version périmée, session MFA expirée, absence de consentement et plusieurs Boss actifs. Audit conservé. Interface Web : `web/live/boss-handoff.js`, depuis la gestion de direction, MFA TOTP inclus. Documentation : `docs/ESSENTIAL_BOSS_HANDOFF_20261026.md`.
@@ -46,7 +48,7 @@ Restent la recette authentifiée Web/Expo et les prochaines étapes du prompt or
 
 ---
 
-> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 568 exigences en 29 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
+> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 578 exigences en 29 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
 
 # Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
 
