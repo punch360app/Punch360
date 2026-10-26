@@ -23,7 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Validate frontend JavaScript
-        run: node --check web/live/app.js
+        run: |
+          node --check web/live/app.js
+          node scripts/validate-tracker-html.mjs
       - name: Diagnose social sign-in providers
         run: node scripts/check-oauth-providers.mjs
       - name: Configure Pages
