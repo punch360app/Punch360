@@ -226,3 +226,17 @@ L'API demande désormais **100 factures maximum** pour ce client Stripe préalab
 - **Testé** : CI PR à confirmer; aucune connexion réelle à Stripe sandbox.
 - **Déployé** : non en Edge et mobile. La page Web pourra suivre la fusion via workflow Pages, à vérifier indépendamment.
 - **Intervention externe** : tester dans Stripe sandbox une entreprise fictive avec plus de 10 puis plus de 100 factures et factures annulées/remboursées; issue #35 toujours ouverte.
+
+## P0-B — Devis Boss obsolète après modification de places/forfait (26 octobre 2026)
+
+**Bug confirmé dans l'interface Web :** le formulaire « Abonnement et factures » gardait son `orderId` et sa prévisualisation après modification des choix de plan, cadence ou sièges. Si un ancien appel de création de commande ou de prévisualisation Stripe revenait pendant la saisie, la confirmation de **l'ancienne commande** pouvait réapparaître. L'Edge serveur valide toujours une commande authentifiée, mais cela ne protège pas le Boss contre une **intention visuelle divergente**.
+
+Le contrôleur Web `web/live/billing.js` incrémente maintenant une révision de devis à chaque modification de `billing-plan`, `billing-cadence` et `billing-seats`. Il supprime la commande et le devis précédents, désactive immédiatement le bouton de confirmation encore présent dans le DOM, refuse les réponses asynchrones dont la révision ne correspond plus et empêche leur seconde requête Stripe ou redirection. Les événements `input` / `change` passent via `web/live/essential.js` et le délégué `web/live/app.js`. La saisie au clavier n'est pas réinitialisée par un redraw à chaque frappe.
+
+- **Développé :** code Web et tests Node/DOM des choix modifiés pendant un RPC, pendant le devis Stripe, pendant une confirmation et avec un devis déjà affiché.
+- **Testé :** GitHub Actions à vérifier avec SHA de la PR; pas d'essai fournisseur/appareil.
+- **Déployé :** GitHub Pages à vérifier après fusion; Edge Supabase non modifiée.
+- **Intervention externe :** recette Boss Web sur deux compagnies avec réponse Stripe lente; no real payments, issue #35 ouverte.
+- **Limite :** une commande déjà transmise à Stripe ne peut pas être annulée rétroactivement par le navigateur; seul le backend et le webhook signé confirment les sièges. Le changement de saisie bloque seulement les **étapes suivantes** et évite de présenter un mauvais devis.
+
+La correction ne touche ni catalogue propriétaire 19/39/69 CAD (20/25/50 inclus, +2 CAD, −15 % annuel), ni les six Price IDs, SQL, contrats réels, édition Construction, ni Twilio.
