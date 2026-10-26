@@ -54,3 +54,17 @@ test('Web employee can inspect both route destinations and mission statuses with
  ui.reset();assert.equal(ui.render(),'');
  await win.happyDOM.close();
 });
+
+test('completed daily tour remains accessible after the final mission, with no extra navigation or punch',async()=>{
+ const win=new Window(),calls=[];
+ const ui=createPersonalMissionController({document:win.document,escape:esc,redraw(){},notify(){},
+  sb:{rpc:async(name,args)=>{calls.push({name,args});return {data:[]}}}});
+ Object.assign(ui.state,{company:'tenant',user:'user',worker:'worker',enabled:true,
+  items:[{...one,status:'completed'},{...two,status:'completed'}],truncated:false});
+ win.document.body.innerHTML=ui.render();
+ assert.match(win.document.body.textContent,/Toutes les missions sont terminées/);
+ assert.match(win.document.body.textContent,/Voir mes interventions de la journée \(2\)/);
+ assert.equal(win.document.querySelectorAll('details a[href]').length,0);
+ assert.equal(calls.length,0);
+ await win.happyDOM.close();
+});
