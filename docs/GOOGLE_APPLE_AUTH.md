@@ -79,3 +79,18 @@ Le composant `AuthGate.tsx` utilise maintenant une **révision d'identité** : c
 - **Testé :** garde structurelle automatisée TypeScript/AST et tests logiciels CI à confirmer. La vraie concurrence de deux comptes et le hors-ligne sur appareil restent à recetter.
 - **Déployé :** non prouvé sur build Android/iOS signé; la fusion GitHub ne démontre pas le déploiement natif.
 - **Intervention externe :** tester déconnexion pendant chargement, changement rapide de compte, choix entre deux compagnies, coupure réseau et redémarrage du téléphone, en s'assurant qu'aucune donnée d'ancien employeur ne s'affiche.
+
+## P0-C — Identité Auth vérifiée côté serveur avant accès entreprise (26 octobre 2026)
+
+Dans l'application native, `getSession()` lit une session persistée sur l'appareil. Selon la documentation de Supabase, **la session stockée ne constitue pas une preuve fraîche d'identité**. Elle ne doit pas devenir l'autorité qui permet d'afficher les rôles et données d'une entreprise. Avant cette modification, `AuthGate.refresh()` utilisait `data.session.user` pour charger les memberships, sélectionner l'espace et préparer le cache hors ligne sans vérification indépendante de la session courante auprès de Supabase Auth.
+
+Le chemin **en ligne** appelle maintenant `supabase.auth.getUser(data.session.access_token)` et exige la concordance de l'identifiant utilisateur Auth retourné avec celui de la session, sans erreur serveur. Ce contrôle est exécuté **avant** la requête RLS `company_members`, le choix d'entreprise et l'écriture de l'identité locale. Une réponse absente, révoquée, incohérente ou tardive refuse l'accès en ligne sans utiliser un rôle stocké. Le chemin de fonctionnement hors ligne préexistant reste distinct : il ne vérifie pas de nouveau l'identité tant qu'Internet est réellement absent et doit être validé sur appareils avec sa politique de données locales et de revocation différée.
+
+- **Développé :** garde d'identité dans `AuthGate`, helper pur testable et tests négatifs d'identité.
+- **Testé :** simulations Node/TypeScript et vérification de l'ordre des opérations en CI (à confirmer dans la PR); tests réels de révocation et de réseau non effectués.
+- **Déployé :** modification du dépôt seulement; aucune installation Android ou iOS signée confirmée.
+- **Intervention externe :** QA Auth réelle avec session valide/révoquée, changement de compte et de compagnie pendant le chargement, récupération et absence de connexion (issue #102).
+
+Sources de l'API : https://supabase.com/docs/reference/javascript/auth-getuser et https://supabase.com/docs/reference/javascript/auth-getsession.
+
+Aucune modification de rôles RLS, bases de données, identités client, forfaits ou de l'édition Construction n'est effectuée par ce garde de présentation natif.
