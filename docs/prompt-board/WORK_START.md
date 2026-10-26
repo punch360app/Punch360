@@ -2,6 +2,8 @@
 
 **SOURCE MAÎTRE PRIORITAIRE :** [MASTER_PROMPT_20261025.md](MASTER_PROMPT_20261025.md) — **578 exigences uniques en 29 lots** (giga-prompt de continuation intégré et dédupliqué). Lire intégralement et reprendre dans l'ordre P0 → P4. Sur `main`, ce fichier est la référence active après fusion de la PR #26; vérifier la présence effective du fichier et les nouvelles PR avant chaque séance. Le code de l'application doit toujours partir du `main` le plus récent. L'ancien giga-prompt a été supprimé après sa consolidation dans le Prompt maître; ne pas le chercher comme document actif.
 
+**Reprise mise à jour le 26 octobre 2026 :** le reste du prompt historique « Validation SQL archives » est désormais intégré **dans le maître**, section `PASSATION DU PROMPT « VALIDATION SQL ARCHIVES »`. Ne plus ouvrir cet ancien prompt comme flux de travail indépendant. Commencer par **Super Admin : tarifs particuliers (#35), Stripe sandbox, comptes et authentification**, puis les recettes réelles d'archives/PRA et QA appareils. PR #83 a déjà corrigé le plafond PDF Storage; ne pas rejouer ce lot. Conserver les 578 IDs existants; chaque test fournisseur ou appareil manquant reste distinctement signalé. **Cette passation ne signifie pas que tout le maître est terminé.**
+
 Lis **entièrement** :
 1. `docs/prompt-board/MASTER_PROMPT_20261025.md`
 2. `docs/prompt-board/README.md`
