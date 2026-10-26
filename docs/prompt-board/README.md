@@ -1,5 +1,6 @@
 # PUNCH 360° — Centre de suivi des prompts
 
+> **Tableau de bord HTML du 26 octobre 2026 :** [Centre de suivi PUNCH 360° — 578 exigences / 29 lots](https://punch360app.github.io/Punch360/suivi.html). Le fichier source est [\`web/live/suivi.html\`](../../web/live/suivi.html). Il reprend le design du \`SUIVI_PUNCH360.html\` créé le 25 octobre et remplace son ancien inventaire de 389 points par la liste officielle du prompt maître. **C'est un instantané documenté, pas un tableau synchronisé en direct** : les notes « validées » dans l'interface restent locales au navigateur; seul GitHub et les preuves de test/déploiement permettent de clôturer une exigence. Aucun document brut ni lien direct du Drive privé n'y est publié. Les tests vérifient 578 IDs uniques et 29 lots.\n\n
 Ce répertoire définit le fonctionnement **Drive → GitHub → ChatGPT Work → statut vérifié**. Il ne change ni l'application ni Supabase.
 
 ## Source de vérité après consolidation
