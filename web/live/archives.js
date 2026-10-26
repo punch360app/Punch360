@@ -34,7 +34,21 @@ export function createArchivesController({sb,redraw,escape:e,document:doc=global
   }else if(action==='restore'){
    if(!s.plan||!s.header||s.confirmation!==s.plan.company_name||reason.length<3)throw Error('Confirmez le nom actuel et indiquez le motif');
    s.restoreRequest??=crypto.randomUUID();const result=await rpc('company_restore_missing',{p_id:s.header.id,p_plan_hash:s.plan.plan_hash,p_confirmation:s.confirmation,p_reason:reason,p_request:s.restoreRequest});active();s.result=result;s.plan=null;s.archive=null;s.files=[];await clean(s.header.id);s.header=null;s.restoreRequest=null;
-  }else if(action==='close'){if(s.company){const pending=await rpc('company_archive_pending',{p_company:s.company});active();s.cleanup=[...new Set([...s.cleanup,...pending.map(x=>x.id)])]}for(const id of [...s.cleanup])await clean(id);active();if(!s.cleanup.length)reset(s.company,s.platform)}
+  }else if(action==='close'){
+   // A failed remote discard must never keep decrypted PDF bytes or archive payload
+   // in the UI. Retain only opaque temporary copy IDs for a later cleanup retry.
+   try{
+    if(s.company){const pending=await rpc('company_archive_pending',{p_company:s.company});active();s.cleanup=[...new Set([...s.cleanup,...pending.map(x=>x.id)])]}
+    for(const id of [...s.cleanup])await clean(id);
+    active();
+   }finally{
+    if(current()){
+     s.archive=null;s.files=[];s.summary=null;s.plan=null;s.header=null;s.result=null;
+     s.restoreRequest=null;s.confirmation='';s.reason='';
+     if(!s.cleanup.length)reset(s.company,s.platform);
+    }
+   }
+  }
  }catch(err){if(current())s.error=err.message}finally{password='';if(current()){const pw=doc?.getElementById('archive-password');if(pw)pw.value='';s.busy=false;redraw()}}return true;
  }
  return {state:s,reset,input,render,handle};
