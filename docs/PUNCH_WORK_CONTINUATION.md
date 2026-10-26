@@ -1,3 +1,21 @@
+# P0 — Affichage du suivi bloqué sur « Chargement… » — 26 octobre 2026
+
+**Symptôme réel :** sur le Samsung Android, l'URL publique `/Punch360/suivi.html` affichait `— / 578` et `Chargement du registre officiel GitHub…` pour les trois compteurs. Ce n'était pas un état de 0 % déployé.
+
+**Cause confirmée :** la fonction `init()` contenait l'expression JavaScript invalide `mod.reduce((a,s)=>(a[s.priority]??=[]).push(s),a),{})`, d'où `SyntaxError: Missing initializer in destructuring declaration`. Le navigateur refusait donc de **parser tout le script interactif avant même d'appeler fetch()**. Le registre GitHub existe et contient des preuves.
+
+**Correctif :** corriger le fallback de regroupement des lots avec un vrai accumulateur; lancer le rendu instantané des trois compteurs depuis une copie compacte du registre GitHub inclus dans le HTML (données Work vérifiables et horodatées, 82/578 / 26/578 / 0/578 à ce commit), puis rafraîchir depuis `main` en réseau. Si le navigateur bloque la lecture distante, conserver l'instantané et afficher son statut, au lieu d'une page figée. Ajout d'un contrôle syntaxique `scripts/validate-tracker-html.mjs` exécuté **avant chaque déploiement GitHub Pages**, plus un test Node/DOM qui exécute effectivement le script embarqué et contrôle les compteurs en ligne/hors ligne.
+
+**Déploiement du produit :** `.github/workflows/deploy-web.yml` publie déjà automatiquement `web/live/**` sur GitHub Pages **lors d'un push sur main**. Dans cette PR, le contrôle de syntaxe fait échouer la publication plutôt que de déployer un tableau cassé; fusionner seulement CI verte et vérifier que le workflow **PUNCH 360 Web** finit sur SUCCESS. Les changements Web de Work peuvent suivre cette livraison continue. Les mises à jour de schéma/Edge Supabase et les nouvelles versions Android/iOS ne doivent pas être confondues avec le déploiement Pages : effectuer leurs tests et déploiements coordonnés, sans activer automatiquement des mutations financières ou destructives. La migration `20261026110100` et Stripe sandbox restent bloqués tant que leur recette n'est pas documentée (issue #35).
+
+| Développé | Testé | Déployé | Intervention externe |
+|---|---|---|---|
+| Syntaxe tracker + instantané de secours + validation avant Pages | Node VM parse + simulation navigateur, CI à confirmer | Pages à vérifier après fusion ; Edge/Expo inchangés | Facultatif : ouverture du site sur navigateur intégré Android pour vérifier l'affichage |
+
+**Prochaine action :** obtenir conclusion CI, corriger si nécessaire, fusionner PR, suivre workflow Pages jusqu'au statut terminal et vérifier le déploiement du bon SHA. Les 578 IDs, les PR précédentes, la grille 19/39/69 (20/25/50 +2 et -15 %), les six Price IDs Stripe et l'édition Construction restent inchangés.
+
+---
+
 # Tableau Work : trois compteurs distincts — 26 octobre 2026
 
 Pour éviter que le 0 % semble signifier « rien n'a été développé », le haut de `web/live/suivi.html` affiche **trois indicateurs séparés**, calculés automatiquement depuis `web/live/work-progress.json` et les **578 identifiants** du maître :

@@ -28,7 +28,9 @@ test('Work progress is sourced from GitHub, NOT owner localStorage checkboxes',(
  assert.ok(html.includes('setInterval(()=>{if(!document.hidden)void loadWorkProgress();},60000)'));
  assert.match(html,/id="workRecent"/);
  assert.ok(html.indexOf('id="progressFraction"')<html.indexOf('id="reqCount"'));
- assert.ok(html.indexOf('init();void loadWorkProgress();')>0);
+ assert.ok(html.indexOf('init();')>0 && html.indexOf('void loadWorkProgress();')>0);
+ assert.ok(html.includes('id="workProgressSnapshot"'));
+ assert.ok(html.includes('renderWorkProgress(offline)'));
  const summaryBlock=html.slice(html.indexOf('function totalValidated()'),html.indexOf('function renderWorkProgress('));
  assert.ok(!summaryBlock.includes("document.getElementById('progressFraction')"));
  assert.ok(!summaryBlock.includes("document.getElementById('progressPercent')"));
