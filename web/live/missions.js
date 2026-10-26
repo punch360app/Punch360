@@ -16,7 +16,7 @@ export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.reg
  */
 /** @param {Record<string,any>|null|undefined} m @param {string} platform @param {string|null} preferred */
 export function missionNavigationOptions(m,platform='web',preferred=null){
- if(!m?.address_line||!m?.city)return {choices:[],preferred:null};
+ if(String(m?.address_line||'').trim().length<3||String(m?.city||'').trim().length<2)return {choices:[],preferred:null};
  try{
   const addr=missionAddress(m);
   const choices=navigationProviders(platform).map(p=>({id:p.id,label:p.label,url:navigationUrl(p.id,addr,platform)}));
