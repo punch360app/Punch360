@@ -25,10 +25,10 @@ test('kiosk active view translates policy, pending queue, provisional status and
  const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
  w.document.body.innerHTML='<main id="kiosk"></main>';
  const mock='const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error("no grant")},sync:async()=>[]});';
- w.eval(mock+'\n'+lang+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+\`
+ w.eval(mock+'\n'+lang+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+`
 state.device={device_id:'test',token:'not-stored',company_name:'Test',name:'Accueil'};
 state.person={name:'Pat',active:true,paused:false,started_at:'2026-10-26T11:00:00Z',break_policy:{paid_mode:'paid'}};
-state.queued=2;locale.select('en');draw();window.__screen={state,locale,draw,clearPerson};\`);
+state.queued=2;locale.select('en');draw();window.__screen={state,locale,draw,clearPerson};`);
  assert.match(w.document.body.textContent,/Hello, Pat/);
  assert.match(w.document.body.textContent,/Policy: paid breaks/);
  assert.match(w.document.body.textContent,/Provisional records: 2/);
