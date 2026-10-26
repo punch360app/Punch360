@@ -1,13 +1,14 @@
 # PUNCH 360° — État courant unique
 
-## Parcours en cours — préférences du salarié (SHIFT-019)
+## Lot actif — besoins de couverture et copie de plages (SHIFT-021, SHIFT-029 partiels)
 
-**PR [#131](https://github.com/punch360app/Punch360/pull/131)** — souhaits d'heures hebdomadaires, préférences jour/soir/nuit/week-end et volontariat distinct des heures gagnées; saisie Boss/Admin pour salariés sans compte. Ancienneté/minimum/maximum déclarés saisis exclusivement par gestionnaire avec version et audit; qualifications lues dans `essential_certifications`, sans double source ni règle légale inventée. Web et Expo, garde d'identité multi-compagnie, tests Node/DOM et deux entreprises fictives en transaction rollback.
+**Branche** `feat/qualified-coverage-consolidated-view-20261026` ; PR à ouvrir. Réutilise `essential_qualified_coverage`, `qualified_coverage_report` et `essential_planning_report` déjà en production, sans migration SQL. Un Boss/Admin Pro peut consulter dans une vue commune les déficits par qualification, les heures-personnes de déficit, le nombre de quarts vacants, les heures planifiées et les déficits par département, ou copier une plage datée pour en créer une nouvelle indépendante après édition et enregistrement explicites. Les chiffres absents restent « Non disponible », jamais zéro implicite. La copie ne modifie ni la source, ni le planning publié. Web et Expo; tests Node de calcul, rendu, copie indépendante, retards de requêtes et régression.
 
-**Supabase appliqué :** `20261026181713_essential_worker_schedule_preferences` dans le seul projet `mlabstdxxwjdpfaxiwmg`; contrôle de confidentialité RLS et refus des appels anonymes. **Recette :** test `supabase/tests/essential_worker_schedule_preferences.sql` réussi sur le schéma installé, avec ROLLBACK : droits du salarié/manager, double demande idempotente, version concurrente, écriture RH séparée et isolation des entreprises. CI finale à rattacher à la tête de la PR avant fusion; GitHub Pages et Expo restent distincts, recettes physiques non encore attestées.
+**Critères avant fusion :** réussite de la CI complète sur la tête définitive; code Web publié via GitHub Pages après fusion, vérifier le workflow sur le SHA exact. Recette Web authentifiée et Expo physique toujours non prouvées. Le moteur récurrent de besoins, les exceptions des Fêtes, la gestion de tous les postes et la génération automatique SHIFT-020/022–025/030–033 ne sont pas livrés par cette vue partielle.
 
-Ce lot ne couvre pas la planification optimisée ni les obligations légales non modélisées. Il ne modifie ni prix ni places incluses, ni Stripe, Construction, Twilio ou contrat historique; il préserve la nouvelle demande `SACATALOG-016` spécifiée par la PR #132.
+## Dernier lot fusionné et publié — préférences du salarié (SHIFT-019)
 
+PR [#131](https://github.com/punch360app/Punch360/pull/131) fusionnée, commit `f5490672fab5612d8c04701f1099edc376b28727`, CI post-fusion [#40376947911](https://github.com/punch360app/Punch360/actions/runs/40376947911) **SUCCESS**, Pages [#40376947912](https://github.com/punch360app/Punch360/actions/runs/40376947912) **SUCCESS**, migration appliquée `20261026181713_essential_worker_schedule_preferences` uniquement dans `mlabstdxxwjdpfaxiwmg`. Employé : heures souhaitées, jour/soir/nuit/week-end, volontariat sans banque de temps gagnée. Gestionnaire : saisie déléguée et date d'ancienneté/minimum/maximum déclarés, audit; certifications existantes réutilisées. SQL multi-entreprise en ROLLBACK validé. **Recette mobile authentifiée/appareils non attestée.**
 
 **Mise à jour : 26 octobre 2026.** Les décisions et l’ordre global sont dans le [maître](prompt-board/MASTER_PROMPT_20261025.md); point d’entrée [WORK_START](prompt-board/WORK_START.md). Les anciens états sont [archivés](prompt-board/history/CONTINUATION_BEFORE_CLEANUP_20261026.md), sans consigne de reprise active.
 
@@ -37,10 +38,7 @@ Branche `docs/master-execution-cleanup-20261026`. Nettoyage demandé par le prop
 
 ## Prochaine action exécutable
 
-1. Vérifier le dernier `main`, les PR et leurs workflows; préserver tout lot parallèle. #130 est **déjà fusionnée avec CI et Pages vertes** : ne pas reprendre l’ancienne instruction « attendre puis fusionner #130 ».
-2. Terminer la PR documentaire de cette branche si encore ouverte : invariants d’IDs/preuves, synchronisation HTML, contrôles obligatoires, fusion puis vérification Pages. Elle ne modifie ni code produit ni Stripe/Supabase.
-3. Reprendre le prochain parcours Plus réalisable, après inspection des briques existantes : **postes/habilitations SHIFT-011/026–028 et besoins/plages SHIFT-020/029–033**, puis l’aperçu de couverture `SHIFT-021` avant génération `SHIFT-022–025`. Choisir un parcours cohérent manquant prouvé; ne pas recoder les disponibilités #130 ni bloquer toute la planification sur Stripe/OAuth.
-4. Tester les droits et le comportement du lot, suivre CI puis publication sur son SHA exact, actualiser cet état courant. Un défaut critique confirmé interrompt cette sélection selon le maître.
+Finaliser la branche `feat/qualified-coverage-consolidated-view-20261026` : vérifier la CI complète après les derniers tests, créer et fusionner une PR avec `PUNCH-PROGRESS: SHIFT-021, SHIFT-029` seulement (travail partiel), vérifier Pages sur SHA fusionné et le registre de progression. Ensuite inspecter la fondation existante des besoins récurrents et des postes SHIFT-020/026–033 avant d'étendre le moteur. Préserver Stripe #35, OAuth #102, Super Admin `SACATALOG-016` non implémenté, éditions et prix actifs. Ne pas refaire de diagnostic fournisseur sans changement démontré.
 
 ## Coordination et protections
 
