@@ -1,3 +1,11 @@
+# Vérification après fusion Super Admin P0 (26 octobre 2026)
+
+PR **#89 fusionnée** sur `main` : les anciennes réponses de la facturation Boss sont isolées; tests CI Node/DOM, TypeScript, syntaxe Web **verts**; publication Web **réussie**. Edge `essential-billing` **v2 ACTIVE**, `verify_jwt=true`, code d'erreur d'accès stabilisé. Son adaptateur Stripe partagé préexistant a été conservé inchangé au déploiement ciblé; sa source déployée diffère toujours de la version plus récente du dépôt par la validation des chaînes de requête : réconcilier/tester séparément avant livraison Stripe. Aucun test fournisseur ni paiement réel. L'issue **#35** reste ouverte.
+
+**Nouvelle vigilance issue [#90](https://github.com/punch360app/Punch360/issues/90)** : catalogue actif inclusions 20/25/50 places à +2 $ et historiques d'édition avec acteur, versus 5 places +3/4/5 dans maître/seed. Six Price IDs CAD enregistrés mais pas encore vérifiés en API Stripe sandbox. **Aucune réécriture silencieuse**, résolution par parcours Super Admin versionné après audit. Inventaire Drive `promt` inchangé (5 prompts et deux dossiers visuels). Voir [rapport Super Admin](SUPER_ADMIN_BOSS_BILLING_RACE_20261026.md).
+
+---
+
 # Lot courant — P0-A Boss / facturation, garde anti-réponses tardives (26 octobre 2026)
 
 Après lecture de `docs/prompt-board/WORK_START.md`, du maître de 578 IDs et de l'issue #35, le prochain correctif **ciblé** protège `web/live/billing.js` quand le Boss change d'entreprise ou se déconnecte pendant une offre négociée, un devis Stripe ou l'ouverture d'un portail. Une ancienne réponse n'ouvre plus le portail ni ne remplit une autre société. Le serveur `essential-billing` masque maintenant les erreurs internes d'autorisation. Tests `tests/billing-tenant-isolation.test.mjs` (trois scénarios).
