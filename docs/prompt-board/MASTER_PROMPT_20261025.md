@@ -1444,3 +1444,27 @@ Ces quatre sections détaillées ci-dessus sont les **sources fonctionnelles com
 7. **Intégrations avancées** : transmissions fiscales, versements et remises via fournisseurs autorisés; ne jamais les simuler comme des opérations réellement effectuées.
 
 **Règles de livraison :** privilégier un parcours bout-en-bout opérationnel à chaque jalon; conserver des identifiants de tâches et tests de non-régression; ne jamais exposer les images originales de paie ou d'impôt fournies par l'utilisateur; ne pas qualifier « terminé » une exigence seulement écrite. Les images de référence sont décrites dans les sections concernées mais leurs originaux privés ne sont pas stockés dans ce dépôt.
+
+
+## MODULE PRO — DOSSIER EMPLOYÉ RH, AVANTAGES ET RÉGIMES CCQ (DEMANDE 2026-10-26)
+
+**Constat :** les talons CCQ et retenues étaient spécifiés, mais la fiche employé devait devenir la source structurée des paramètres RH et des avantages. Ce module doit être réalisé **avant le calcul natif de paie**, en lien avec la préparation des heures, les factures et le calcul du coût de main-d'œuvre.
+
+### Fiche employé complète (administration autorisée)
+- Identité professionnelle, date d'embauche, statut, ancienneté, métier, secteur, classification et historique des affectations, avec dates d'effet.
+- Rémunération : taux horaire et historique, règles d'heures supplémentaires, primes (soir, nuit, équipe, chantier, déplacement, ancienneté), bonus de rendement/présence/exceptionnels, commissions, remboursements et allocations; distinguer revenu imposable, avantage imposable, remboursement et dépense selon juridiction.
+- **Construction Québec / CCQ :** affiliation syndicale et local, convention et secteur, statut CCQ, taux/cotisations syndicales, assurance collective MÉDIC Construction et autres régimes applicables, retraite/fonds de pension CCQ, contributions employé et employeur, indemnités de vacances/jours fériés/congés, cotisations et autres prélèvements applicables. Ne pas supposer que tous les employés relèvent des mêmes régimes.
+- Autres avantages sociaux : assurance santé/dentaire/invalidité/vie, couverture familiale selon régime, régime d'épargne/retraite, contribution patronale, véhicule, téléphone, repas, logement, équipement et avantages personnalisés.
+- Retenues : fiscales et sociales calculées par moteur validé, autres retenues autorisées (p. ex. saisies) avec base légale, consentements si requis, dates d'effet, plafonds et priorités; jamais de déduction arbitraire.
+- Certifications : carte de compétence, ASP Construction, formations, habilitations, dates d'expiration et alertes.
+- Documents RH : contrat, formulaires d'adhésion, attestations, autorisations, pièces justificatives et signatures si applicables; conserver historique des modifications, auteur, date d'effet et raison.
+
+### Expérience et sécurité
+- Fiche mobile et bureau organisée par onglets : Profil, Emploi/CCQ, Salaire et primes, Assurances, Retraite, Syndicat, Avantages, Retenues, Documents, Historique.
+- Admin/Boss **expressément habilité** peut consulter/modifier selon permissions fines; employé peut voir ses propres informations autorisées et demander une correction, sans modifier ses retenues ou droits lui-même. Le rôle Admin général n'accorde pas automatiquement l'accès aux données médicales, salariales ou bancaires.
+- RLS par entreprise, chiffrement des données sensibles, stockage privé des justificatifs, journal d'audit, minimisation des renseignements personnels; ne pas enregistrer de diagnostics médicaux ni de données de santé non nécessaires.
+- Moteur de règles datées par pays, province, secteur, métier, classification, convention et régime; valeurs préremplies **seulement après validation des sources officielles**. Les dérogations manuelles sont explicites, motivées et auditables.
+- Calcul séparé du coût complet employeur (salaire, charges patronales, cotisations, assurances, avantages, primes) pour le tableau de bord et la marge de sous-traitance; jamais exposer ce coût sur une facture client.
+- Tests : changements de syndicat/secteur en cours de période, rétroactivité, changement de régime, bonus imposable, contribution patronale distincte de retenue salariale, certificat expiré, permissions RH, multientreprise et absence de fuite dans PDF/exports.
+
+**Ordre de dépendance :** construire la fiche RH et ses règles avant la phase 2 de calcul de paie CCQ et avant le calcul définitif du coût complet; la facturation peut utiliser des coûts estimés explicitement identifiés avant cette intégration. Spécification seulement, pas fonctionnalité livrée.
