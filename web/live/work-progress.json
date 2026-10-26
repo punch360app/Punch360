@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T14:52:34.508Z",
+  "generated_at": "2026-10-26T15:55:14.607Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -69,7 +69,8 @@
       "pr": [
         116,
         122,
-        124
+        124,
+        126
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -287,7 +288,8 @@
       "pr": [
         122,
         123,
-        124
+        124,
+        126
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -299,7 +301,8 @@
       "pr": [
         122,
         123,
-        124
+        124,
+        126
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -902,6 +905,18 @@
   },
   "activity": [
     {
+      "number": 126,
+      "sha": "37f831dc089bb3d680c689c5a895324697c55b17",
+      "ci": "success",
+      "ids": [
+        "GOV-010",
+        "GOV-012",
+        "GOV-014"
+      ],
+      "title": "P0 Suivi HTML — réparer le JavaScript bloqué et protéger les prochains déploiements Pages",
+      "merged_at": "2026-10-26T15:55:04Z"
+    },
+    {
       "number": 124,
       "sha": "db67c3a8338bc7c94e6fe520676b3c672df5b1c7",
       "ci": "success",
@@ -1351,15 +1366,6 @@
       "ids": [],
       "title": "Recette SQL : isolement réel des rôles et horaires entre deux commerces",
       "merged_at": "2026-10-26T04:12:43Z"
-    },
-    {
-      "number": 69,
-      "sha": null,
-      "head_sha": "992746fd2e9c6eb9ebb36cb4fe2f83ae782f0fb1",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Essentiel Expo — 10 langues de navigation et direction RTL par compte",
-      "merged_at": "2026-10-26T04:06:05Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
