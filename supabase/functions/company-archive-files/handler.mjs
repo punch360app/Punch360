@@ -3,6 +3,29 @@ const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Header
 const MAX=25*1024*1024;
 const hex=b=>Array.from(new Uint8Array(b),n=>n.toString(16).padStart(2,'0')).join('');
 const base64=b=>{let s='';for(let i=0;i<b.length;i+=16384)s+=String.fromCharCode(...b.subarray(i,i+16384));return btoa(s)};
+/** Read at most MAX actual Storage bytes, even when Content-Length is absent or lies.
+ * Return null on overflow and cancel the upstream stream; never call arrayBuffer().
+ */
+export async function readStorageBounded(response){
+ const n=Number(response.headers.get('content-length'));
+ if(Number.isFinite(n)&&n>MAX){await response.body?.cancel().catch(()=>{});return null;}
+ const reader=response.body?.getReader();if(!reader)throw Error('STORAGE_STREAM_UNAVAILABLE');
+ let total=0,parts=[],overflow=false;
+ try{
+  for(;;){
+   const {done,value}=await reader.read();
+   if(done)break;
+   if(!(value instanceof Uint8Array))throw Error('STORAGE_CHUNK_INVALID');
+   total+=value.byteLength;
+   if(total>MAX){overflow=true;parts=[];await reader.cancel().catch(()=>{});break;}
+   parts.push(value);
+  }
+ }finally{reader.releaseLock();}
+ if(overflow)return null;
+ const bytes=new Uint8Array(total);
+ let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.byteLength}
+ return bytes;
+}
 export function createArchiveFilesHandler({env,fetch:request=globalThis.fetch,crypto=globalThis.crypto}){
  return async req=>{
   const reply=(s,d)=>new Response(JSON.stringify(d),{status:s,headers});
@@ -29,8 +52,8 @@ export function createArchiveFilesHandler({env,fetch:request=globalThis.fetch,cr
    const objectUrl=url+'/storage/v1/object/'+body.bucket+'/'+body.path.split('/').map(encodeURIComponent).join('/');
    if(body.action==='download'){
     const r=await request(objectUrl,{headers:adminHeaders,signal:AbortSignal.timeout(30000)});if(!r.ok)return reply(409,{error:'DOCUMENT_UNAVAILABLE'});
-    if(Number(r.headers.get('content-length'))>MAX)return reply(413,{error:'DOCUMENT_TOO_LARGE'});
-    const content=new Uint8Array(await r.arrayBuffer());if(content.length!==ctx.file.size||content.length>MAX)return reply(409,{error:'DOCUMENT_CHANGED_SINCE_SNAPSHOT'});
+    const content=await readStorageBounded(r);if(!content)return reply(413,{error:'DOCUMENT_TOO_LARGE'});
+    if(content.length!==ctx.file.size)return reply(409,{error:'DOCUMENT_CHANGED_SINCE_SNAPSHOT'});
     const hash=hex(await crypto.subtle.digest('SHA-256',content));
     await rpc('company_archive_file_context',params);
     const signature=await rpc('company_archive_file_proof',{p_actor:actor,...params,p_sha256:hash},true);
@@ -41,7 +64,7 @@ export function createArchiveFilesHandler({env,fetch:request=globalThis.fetch,cr
    const hash=hex(await crypto.subtle.digest('SHA-256',content));if(hash!==body.sha256||typeof body.signature!=='string')return reply(400,{error:'DOCUMENT_HASH_MISMATCH'});
    await rpc('company_archive_file_proof',{p_actor:actor,...params,p_sha256:hash,p_signature:body.signature},true);
    const existing=await request(objectUrl,{headers:adminHeaders,signal:AbortSignal.timeout(30000)});
-   if(existing.ok){const current=new Uint8Array(await existing.arrayBuffer());const unchanged=current.length===content.length&&hex(await crypto.subtle.digest('SHA-256',current))===hash;return reply(200,{status:unchanged?'unchanged':'conflict',preserved:true})}
+   if(existing.ok){const current=await readStorageBounded(existing);if(!current)return reply(413,{error:'DOCUMENT_TOO_LARGE'});const unchanged=current.length===content.length&&hex(await crypto.subtle.digest('SHA-256',current))===hash;return reply(200,{status:unchanged?'unchanged':'conflict',preserved:true})}
    // Supabase Storage uses JSON statusCode 404 (sometimes HTTP 400) for a missing key.
    let missing=false;try{const d=await existing.json();missing=String(d.statusCode)==='404'}catch{}if(!missing)return reply(409,{error:'DOCUMENT_LOOKUP_FAILED'});
    if(body.action==='preview')return reply(200,{status:'missing'});
