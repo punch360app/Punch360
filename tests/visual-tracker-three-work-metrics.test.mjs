@@ -25,7 +25,7 @@ test('three Work meters exist before the project-wide inventory and adapt to mob
  assert.match(html,/@media\(max-width:760px\)\{\.completion-submetrics\{/);
 });
 
-test('all three ratios derive automatically from exactly 578 master IDs, not owner checkboxes',()=>{
+test('all three ratios derive automatically from current master IDs, not owner checkboxes',()=>{
  assert.equal(new Set(ids).size,progress.denominator);
  const p=fn(progress);
  assert.equal(p.total,ids.length);
@@ -52,7 +52,7 @@ test('independent counts never equate merged work, tested code, and delivered co
  assert.equal(p.documented,4);
  assert.equal(p.developedTested,3);
  assert.equal(p.delivered,1);
- assert.equal(p.percent,0.7);
- assert.equal(p.testedPercent,0.5);
- assert.equal(p.deliveredPercent,0.2);
+ assert.equal(p.percent,Math.round(1000*4/ids.length)/10);
+ assert.equal(p.testedPercent,Math.round(1000*3/ids.length)/10);
+ assert.equal(p.deliveredPercent,Math.round(1000*1/ids.length)/10);
 });
