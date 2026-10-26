@@ -72,3 +72,24 @@ export function verifyStripeWebhookInvoice(invoice,subscription,liveMode){
    throw Error('STRIPE_INVOICE_TENANT_MISMATCH');
  return invoice;
 }
+
+/**
+ * PUNCH Essentiel bills exactly one Stripe subscription item with quantity 1.
+ * Never resolve an order from items.data[0] if another item can be billed:
+ * that would let a paid webhook activate a seat limit for an unverified basket.
+ * This guard is intentionally read-only and independent of Stripe credentials.
+ */
+export function stripeWebhookSubscriptionPrice(subscription){
+ const items=subscription?.items;
+ if(!Array.isArray(items?.data)||items.data.length!==1||items.has_more===true)
+  throw Error('STRIPE_SUBSCRIPTION_ITEMS_UNVERIFIED');
+ const item=items.data[0],price=item?.price;
+ if(typeof item?.id!=='string'||!/^si_[a-zA-Z0-9_]+$/.test(item.id)||
+    item.quantity!==1||!price||typeof price.id!=='string'||
+    !/^price_[a-zA-Z0-9_]+$/.test(price.id)||price.type!=='recurring'||
+    price.currency!=='cad'||!Number.isSafeInteger(price.unit_amount)||
+    price.unit_amount<1||price.recurring?.interval!=='month'&&price.recurring?.interval!=='year'||
+    price.livemode!==subscription.livemode)
+  throw Error('STRIPE_SUBSCRIPTION_ITEMS_UNVERIFIED');
+ return price.id;
+}
