@@ -50,7 +50,7 @@ test('overlap detection is per worker, cancelled shifts ignored, travel estimate
  assert.throws(()=>overviewRange('2026-13-33'),/Jour et période/);
 });
 test('overnight shifts appear on both days, without phantom assignments',()=>{
- const overnight=[{...make('overnight','nadine','23:00','23:30',null),ends_at:'2026-11-03T05:00:00Z'}];
+ const overnight=[{...make('overnight','nadine','23:00','23:30',null),ends_at:'2026-11-03T08:00:00Z'}];
  const monday=buildMultiSiteOverview({day:'2026-11-02',shifts:overnight,assignedSites:[],roster});
  const tuesday=buildMultiSiteOverview({day:'2026-11-03',shifts:overnight,assignedSites:[],roster});
  assert.equal(monday.shown,1);assert.equal(tuesday.shown,1);
