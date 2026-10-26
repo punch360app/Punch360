@@ -94,3 +94,16 @@ Le chemin **en ligne** appelle maintenant `supabase.auth.getUser(data.session.ac
 Sources de l'API : https://supabase.com/docs/reference/javascript/auth-getuser et https://supabase.com/docs/reference/javascript/auth-getsession.
 
 Aucune modification de rôles RLS, bases de données, identités client, forfaits ou de l'édition Construction n'est effectuée par ce garde de présentation natif.
+
+## P0-C — Isolation identité pour punchs et caches locaux (26 octobre 2026)
+
+Les fonctions mobiles `src/punch/journal.ts`, `src/punch/api.ts` et `src/jobs/api.ts` utilisent `getLocalIdentity()`. L'ancien comportement acceptait `getSession().user` sans vérification serveur et, si la session échouait alors que le téléphone était **connecté**, pouvait prendre l'identité enregistrée dans AsyncStorage. Cela contourne la vérification de l'écran d'accueil ajoutée dans la PR #104 au niveau de la sélection de cache des heures, jobs et journaux.
+
+**Nouvelle frontière :** lorsqu'Expo détecte explicitement l'absence de connexion ou d'accès Internet, conserver la possibilité de sélectionner l'identité locale précédemment enregistrée pour les événements de punch hors ligne (et contrôler la présence d'un UUID cohérent). Sinon, même si la connexion Auth échoue ou si son jeton est périmé, l'application exige `supabase.auth.getUser(access_token)` et vérifie que le compte reçu correspond à la session. **Aucun repli sur un cache local en présence d'un état réseau connecté ou indéterminé.** La sélection de cache n'accorde jamais un rôle ni une permission SQL.
+
+- **Développé :** garde d'identité mobile partagée et sélection hors ligne explicite; JSON d'identité locale corrompu traité comme cache absent.
+- **Testé :** tests Node simulés (pas de réseau, identité connectée validée, erreur Auth, identifiant cache invalide) et analyse statique du chemin réel; CI à confirmer sur PR.
+- **Déployé :** pas de nouvelle version native Android/iOS distribuée depuis ce correctif.
+- **Intervention externe :** vrais essais avec jeton révoqué en ligne, mode avion, connectivité fluctuante, journal de punch en attente, redémarrage, deux comptes et deux entreprises. Préserver les heures en attente et vérifier RLS. Issue #102 ouverte.
+
+La fermeture de session et la purge des caches d'identité pendant une sauvegarde concurrente font l'objet d'une revue distincte; cette modification ne prétend pas rendre le mode hors ligne sûr après une révocation distante survenue pendant l'absence de réseau. Aucune modification à Stripe, Supabase SQL, aux données client, aux contrats ou à Construction.
