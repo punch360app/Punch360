@@ -1,13 +1,15 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference} from './navigation-choices.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
+import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel,missionIssueState} from './mission-issues.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 /** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
 export function missionWarningEligible(previousEnabled,sameWorkspace){return !!previousEnabled&&!!sameWorkspace;}
 export function missionProgress(items){
- const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
+ const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed','impossible'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
  const done=ordered.filter(x=>x.status==='completed').length;
- return {total:ordered.length,done,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
+ const blocked=ordered.filter(x=>x.status==='impossible').length;
+ return {total:ordered.length,done,blocked,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
 }
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
 /** @param {string} company @param {Record<string,any>} form @param {{id?:string,version?:number}|null} [existing] @param {boolean} [publish] */
@@ -61,7 +63,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<p class="ess-fine">Statuts explicites; une mission non terminée n’est pas une absence ou un retard. Aucun temps de travail ni trajet n’est inféré.</p>'+
     '<p role="status">À faire : '+analysis.counts.published+
     ' · Terminées : '+analysis.counts.completed+' · Brouillons : '+analysis.counts.draft+
-    ' · Annulées : '+analysis.counts.cancelled+'</p>'+
+    ' · Impossible : '+analysis.counts.impossible+' · Annulées : '+analysis.counts.cancelled+'</p>'+
     select('Filtrer par salarié','review-worker',s.review.worker,[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
     select('Filtrer par état','review-status',s.review.status,MISSION_STATES)+
     field('Rechercher un client','review-client',s.review.client)+
@@ -71,12 +73,12 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<div style="overflow-x:auto"><table><thead><tr><th>Ordre</th><th>Salarié</th><th>Client</th><th>Lieu</th><th>Mission</th><th>État</th></tr></thead><tbody>'+
     analysis.visible.map(x=>'<tr><td>'+e(x.sort_order)+'</td><td>'+e([x.first_name,x.last_name].filter(Boolean).join(' '))+
      '</td><td>'+e(x.client_name)+'</td><td>'+e(x.site_name)+'</td><td>'+e(x.title)+'</td><td>'+
-      e(MISSION_STATES.find(s=>s[0]===x.status)?.[1]||x.status)+'</td></tr>').join('')+
+      e(MISSION_STATES.find(s=>s[0]===x.status)?.[1]||x.status)+(x.status==='impossible'?' · '+e(missionIssueLabel(x.issue_reason)):'')+'</td></tr>').join('')+
     '</tbody></table></div></section>';
    body+='<h4>Interventions du '+e(s.day)+'</h4>'+
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
-      ' · '+e(x.status)+'</small></div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+'</article>').join('');
+      ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée pour les responsables : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+'</article>').join('');
    if(s.truncated)body+='<p role="alert">Plus de 200 interventions : liste tronquée.</p>';
    if(s.sites.length>=100)body+='<p>Adresses limitées à 100 par chargement; un carnet très volumineux exige un filtre avant attribution.</p>';
   }
@@ -120,10 +122,11 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map()};
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null};
  let generation=0;
  async function load(company,user,worker,day=missionDate()){
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,s.company===company&&s.user===user&&s.worker===worker);
+  if(s.company!==company||s.user!==user||s.worker!==worker){s.pending.clear();s.issue=null;}
   const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
   try{
@@ -133,7 +136,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    s.items=response.data?.items||[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:''});s.pending.clear();}
+ function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:'',issue:null});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker)return '';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
@@ -142,6 +145,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   const p=missionProgress(s.items);
   if(!p.total)return '';
   if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>';
+  if(!p.next)return '<section class="zen-company"><b>'+e(p.blocked)+' mission(s) nécessitent un suivi.</b><small>Votre pointage reste actif indépendamment des problèmes signalés.</small></section>';
   const x=p.next,addr=missionAddress(x);
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
   let pref=null;try{pref=chooseNavigationPreference(doc.defaultView.localStorage.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
@@ -149,7 +153,41 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
    (route?'<a href="'+e(route)+'" target="_blank" rel="noopener noreferrer">Itinéraire ↗</a>':'')+
-   '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
+   '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button>'+
+   '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler une mission impossible</button>'+
+   (s.issue?.id===x.id?'<div class="ess-panel"><p class="ess-fine">Choisissez un motif. Aucune absence, sortie ou retard ne sera enregistré.</p>'+
+    '<label>Motif<select id="mission-issue-reason"><option value="">Choisir un motif</option>'+MISSION_ISSUE_REASONS.map(([key,label])=>'<option value="'+e(key)+'" '+(s.issue.reason===key?'selected':'')+'>'+e(label)+'</option>').join('')+'</select></label>'+
+    '<label>Précision privée (facultative)<textarea id="mission-issue-note" maxlength="300">'+e(s.issue.note||'')+'</textarea></label>'+
+    '<button type="button" class="ess-btn" data-action="mission:issue-submit" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Confirmer le signalement</button>'+
+    '<button type="button" class="ess-btn" data-action="mission:issue-close" data-id="'+e(x.id)+'">Annuler</button></div>':'')+
+   '</div></section>';
+ }
+ async function handleIssue(action,id){
+  if(!s.company||!s.worker||!s.enabled||s.busy)return false;
+  const x=s.items.find(m=>m.id===id&&m.status==='published');
+  if(!x)throw Error('Cette mission a changé. Actualisez avant de signaler.');
+  if(action==='issue-open'){s.issue={id,reason:'',note:''};redraw();return true;}
+  if(action==='issue-close'){s.issue=null;redraw();return true;}
+  if(action!=='issue-submit'||s.issue?.id!==id)throw Error('Ouvrez le signalement de cette mission.');
+  const reason=doc.getElementById('mission-issue-reason')?.value||'';
+  const note=doc.getElementById('mission-issue-note')?.value||'';
+  if(!MISSION_ISSUE_REASONS.some(z=>z[0]===reason))throw Error('Choisissez un motif de signalement.');
+  if(String(note).trim().length>300)throw Error('Précision trop longue (300 caractères maximum).');
+  s.issue={id,reason,note};
+  if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise. Signalement non confirmé.');
+  if(!doc.defaultView.confirm('Signaler cette mission impossible ? Le responsable sera averti. Aucun pointage ne changera.'))return false;
+  const key='issue:'+id,request=s.pending.get(key)||doc.defaultView.crypto.randomUUID();
+  s.pending.set(key,request);s.busy=true;s.error='';
+  try{
+   const args=missionIssueArgs(s.company,x,reason,note,request);
+   const resp=await sb.rpc('report_essential_mission_issue',args);
+   if(resp.error)throw resp.error;
+   s.pending.delete(key);s.issue=null;
+   await load(s.company,s.user,s.worker,s.day);
+   notify('Mission signalée au responsable. Votre pointage reste inchangé.');
+   return true;
+  }catch{ s.error='Signalement non confirmé : reconnectez-vous et réessayez sans changer de motif.';return false;}
+  finally{s.busy=false;redraw();}
  }
  async function finish(id){
   if(!s.company||!s.worker||!s.enabled||s.busy)throw Error('Mission non autorisée.');
@@ -165,5 +203,5 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{s.error='Fin non confirmée : réessayez la même demande après vérification.';return false;}
   finally{s.busy=false;redraw();}
  }
- return {state:s,load,render,finish,reset};
+ return {state:s,load,render,finish,handleIssue,reset};
 }
