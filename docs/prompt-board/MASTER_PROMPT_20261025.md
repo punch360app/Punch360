@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition consolidée du 25 octobre 2026 — 502 exigences uniques en 29 lots, incluant une messagerie intégrée Essentiel Plus/Pro, sans dupliquer le système de chat existant.**
+**Édition consolidée du 25 octobre 2026 — 518 exigences uniques en 29 lots. Nouveautés : postes admissibles, échanges privés de quarts via Messages, banque de volontaires pour l'over et gestion du solde d'heures accumulées, sans dupliquer chat/horaires/RH.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -41,6 +41,8 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 | Événements d'entreprise Boss/Admin, fêtes et visioconférences | COMM-002–007, COMM-013–016; CAL-002/008 | Étendre événements et invitations existants; aucun deuxième calendrier, système d'invitations ou module paie |
 | Gestion des tâches employé et des formations de quart | TASK-001–010; SHIFT-011/025, COVER-018–025, HR-009/010, COMM-002/009–016 | Dix critères nouveaux; réutiliser horaires, documents RH, invitations, notifications et remplacements sans deuxième système |
 | Messagerie intégrée Essentiel Plus/Pro et paramètres « Vu » | CHAT-001–012; CORE-001, COMM-008–012, SEC-001–015 | Réutiliser le chat Supabase/Expo existant; 5 onglets Plus/Pro, 4 base; accès privé strict et confidentialité configurable |
+| Postes métiers, proposition privée de quart dans Messages et contre-propositions | SHIFT-011/026–028, COVER-013/026–028, CHAT-011/013–015 | Étendre postes/qualification, échanges et conversation existants; approbation de la demande sans espionner le DM |
+| Banque de volontaires à l'over et banque d'heures acquises | SHIFT-019, COVER-015/029–031, HR-008/012/019–020, QA-021–022 | **Deux choses distinctes** : volonté de faire des quarts vs solde de temps réellement gagné; aucun second registre de paie |
 | Disponibilités récurrentes et besoins par poste Plus/Pro | SHIFT-016–021 | Nouveaux compléments aux disponibilités et modèles déjà codés |
 | Planificateur automatique Pro en trois étapes | SHIFT-022–025 | Nouveau, après modèles/contraintes validés |
 | « Signaler mon absence » et choix de neuf motifs privés | COVER-018–021, HR-018 | Nouveau parcours distinct de demande de congé, d'échange et de quart libre |
@@ -49,7 +51,7 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 
 **Règle métier absolue :** aucune recherche ni offre de remplacement automatique sans le signalement d'absence **volontaire, explicitement confirmé par l'employé titulaire du quart**. Une absence au punch, un retard ou un GPS absent n'y suppléent jamais. **Un seul remplaçant peut obtenir le quart**, garanti côté serveur. La sélection d'un motif n'est pas une justification de paie.
 
-**Ordre de développement pour les nouveaux manques :** vérification anti-doublons et tests du moteur de temps → SHIFT-016–021 → SHIFT-022–025 → COVER-018–025 et HR-018 → QA-018–020. Cela ne remplace pas la priorité P0 de sécurité/continuité et les blocages fournisseur identifiés. L'UX doit rester très simple; les fonctions livrées séparément sont suivies comme **développées / testées / déployées / intervention externe**.
+**Ordre de développement pour les nouveaux manques :** P0 audit anti-doublons, sécurité et tests du moteur de temps → **P1 postes et admissibilité SHIFT-011/026–028** → **P1 échanges/over COVER-026–031** et banques RH HR-019–020, en parallèle du socle SHIFT-016–021 → **P2 cartes de quarts dans Messages CHAT-013–015**, sans refaire CHAT-001–012 → finalisation planning Pro SHIFT-022–025, absences COVER-018–025 et QA-018–022 selon leurs dépendances. **Les échanges privés ne sont pas des signalements d'absence.** Cette extension ne remplace pas la priorité P0 de sécurité/continuité ni les blocages fournisseur; SMS/Twilio à la fin. États distincts : **développé / testé / déployé / intervention externe**.
 
 ## P0 — Reprise, Drive et traçabilité (GOV, 16 points)
 **Objectif :** Centraliser les demandes sans perdre les travaux déjà réalisés.
@@ -249,7 +251,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **OFFLINE-011** — Tester concurrence avec téléphone et plusieurs bornes pendant interruption.
 - [ ] **OFFLINE-012** — Exiger tests physiques réseau/appareils avant déclaration de livraison.
 
-## P1 — Horaires, équipes, rotations et disponibilités (SHIFT, 25 points)
+## P1 — Horaires, équipes, rotations et disponibilités (SHIFT, 28 points)
 **Objectif :** Achever le moteur de planification sur une source de vérité unique.
 **Sources :** Master / Planning / Remplacements. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **SHIFT-001** — Gérer établissements et départements avec droits par rôle.
@@ -262,7 +264,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **SHIFT-008** — Conserver annulation/édition versionnées et motifs.
 - [ ] **SHIFT-009** — Prévenir chevauchements et conflits d’affectations.
 - [ ] **SHIFT-010** — Gérer modèles d’horaires réutilisables, leur archivage et versions.
-- [ ] **SHIFT-011** — Compléter affectations par poste et qualification.
+- [ ] **SHIFT-011** — Compléter affectations par poste et qualification en tenant compte des capacités du salarié et de la version du quart; **réutiliser le catalogue établissement/département et la couverture qualifiée existants**, sans confondre métier/poste de quart avec rôle logiciel Employé/Admin/Boss.
 - [ ] **SHIFT-012** — Gérer plusieurs établissements Pro et limites contractuelles.
 - [ ] **SHIFT-013** — Isoler les superviseurs à leurs départements et délégations validées.
 - [ ] **SHIFT-014** — Permettre planification sans visibilité abusive des rémunérations.
@@ -277,8 +279,11 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **SHIFT-023** — Générer un brouillon par moteur déterministe/explicable et vérifiable par serveur, sans service IA payant; contraintes dures : congés, indisponibilité, qualifications, sites, chevauchement, repos, max heures, nuit et DST.
 - [ ] **SHIFT-024** — Optimiser les contraintes souples de manière paramétrable : ancienneté, équité, heures souhaitées, rotations soirs/week-ends, stabilité et coûts connus; montrer les raisons des affectations et les quarts impossibles à couvrir.
 - [ ] **SHIFT-025** — Prévoir mode **Simple par défaut** et avancé facultatif, brouillon versionné, ajustements tactiles, verrouillage de quarts, régénération partielle, validation humaine avant publication, notifications et refus de conflits de versions.
+- [ ] **SHIFT-026** — **Créer des postes personnalisés** dans Boss/Admin → Établissements/Départements → Postes (ex. caissier, responsable fruits et légumes, poissonnier), avec nom, description, département, établissements autorisés, état actif/archivé et compétences/formation requises. Un poste de quart n'est **pas** un rôle de sécurité PUNCH. Réutiliser l'identité de poste/qualification de la planification Pro plutôt que créer un second annuaire.
+- [ ] **SHIFT-027** — **Habilitations réelles par employé et équivalences** : Boss/Admin autorisé attribue à chaque salarié zéro, un ou plusieurs postes admissibles et les certifications nécessaires; tenir compte des expirations, limites de département/site et éventuelles équivalences de poste explicites et traçables. Ex. un salarié uniquement affecté à la poissonnerie ne peut recevoir le quart « responsable fruits et légumes »; s'il est dûment habilité aux deux, il est admissible. Ne jamais laisser une simple préférence « disponible » accorder une qualification.
+- [ ] **SHIFT-028** — **Validations de postes à chaque étape** : lors de génération, proposition privée, échange, candidature de quart libre, recherche après « Signaler mon absence », offre d'over, approbation et publication, revérifier **côté serveur** site, poste, qualification, disponibilité, conflit, repos et version du quart. En cas d'incompatibilité, afficher une explication simple (« Poste non autorisé ») **sans transmettre le quart au nouveau titulaire**; conserver historique et droits existants.
 
-## P1 — Quarts disponibles, échanges et remplacements (COVER, 25 points)
+## P1 — Quarts disponibles, échanges et remplacements (COVER, 31 points)
 **Objectif :** Définir trois parcours séparés avec règles d’approbation.
 **Sources :** Remplacements dans Drive / planning. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **COVER-001** — Permettre au responsable de publier un quart libre Plus/Pro.
@@ -293,9 +298,9 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **COVER-010** — Permettre à un salarié d'offrir volontairement son propre quart à remplacer (échange/libération) **sans confondre ce parcours avec le signalement d'absence**. Une offre volontaire non qualifiée de signalement ne déclenche pas automatiquement les vagues d'absence.
 - [ ] **COVER-011** — Configurer par compagnie remplacement automatique OU approbation obligatoire : premier volontaire admissible réservé puis approuvé, ou affectation immédiate après acceptation admissible; aucun contournement de décision ou d'autorisations.
 - [ ] **COVER-012** — Ne jamais effectuer un remplacement automatique sans contrôles serveur (RLS, tenant, permissions, forfait, qualification, chevauchement, repos, disponibilités); pour une absence, l'événement volontaire confirmé est en plus une condition obligatoire.
-- [ ] **COVER-013** — Permettre échange de quart avec consentement des deux salariés.
+- [ ] **COVER-013** — Permettre échange de quart avec consentement explicite des deux salariés via le moteur existant. Une acceptation privée peut être recueillie dans Messages, mais **n'est pas une affectation officielle** avant vérifications et approbation du responsable habilité selon la politique de l'entreprise.
 - [ ] **COVER-014** — Distinguer quart vacant, remplacement et échange dans l’interface.
-- [ ] **COVER-015** — Distinguer quart supplémentaire et calcul réel d’heures majorées.
+- [ ] **COVER-015** — Distinguer **offre de quart supplémentaire**, souhait de faire de l'over, **heures supplémentaires réellement constatées** et **banque de temps compensatoire créditée**; une candidature ou acceptation ne fabrique ni heures travaillées ni majoration de paie.
 - [ ] **COVER-016** — Ajouter coûts/couverture des candidats au Pro, jamais classement opaque.
 - [ ] **COVER-017** — Journaliser décisions, erreurs de concurrence et changements de version.
 - [ ] **COVER-018** — Créer « **Signaler mon absence** » sur un quart assigné : confirmation explicite **par l'employé titulaire** pour ce quart avant toute recherche automatique. Retard, no-show, absence de punch, GPS, anomalie et détection prédictive **ne déclenchent jamais d'offre**.
@@ -306,8 +311,14 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **COVER-023** — Proposer les quarts **par vagues** avec délais, relances, expiration, anti-spam et escalade configurable; notifications internes/push en priorité, SMS/Twilio optionnel seulement à la fin et après configuration.
 - [ ] **COVER-024** — Après la première acceptation admissible, réserver OU attribuer exactement une fois selon COVER-011; fermer les autres offres et afficher « Quart déjà attribué » aux arrivants tardifs; si approbation refusée, relancer selon règles sans doubler les quarts.
 - [ ] **COVER-025** — Si banque vide/aucune acceptation, laisser le quart à combler et alerter le responsable; fermeture automatique des offres lors de couverture manuelle/annulation; conserver les punchs, heures et paie déjà enregistrés même si quart commencé.
+- [ ] **COVER-026** — **Proposition privée de quart à un collègue précis (Plus/Pro)** : depuis son propre Horaire, l'employé choisit « Proposer mon quart » puis le collègue autorisé; cela envoie via Messages une fiche **structurée reliée à l'ID/version réelle du quart**, sans publication à tous les employés. La compagnie peut activer/désactiver ces propositions. La simple création de ce message n'est **pas** un « Signaler mon absence » et ne déclenche aucune recherche automatique de remplacement.
+- [ ] **COVER-027** — **Réponse au quart dans Messages** : le destinataire peut cliquer **Accepter / Refuser / Faire une contre-proposition**, après vérifications d'admissibilité et de disponibilité. Un « oui » écrit, une réaction, un message vocal ou un « Vu » ne vaut **jamais acceptation officielle**; consentement structuré et horodaté, revalidation lors de l'action. En cas de poste incompatible, expliciter le refus sans ouvrir une demande d'approbation invalide.
+- [ ] **COVER-028** — **Échange de deux quarts ou transfert d'un seul** : permettre à Jacob d'offrir samedi à Mathieu et éventuellement à Mathieu de proposer dimanche en retour; validation des deux salariés (et des deux quarts le cas échéant), édition/versionnage et transaction serveur **tout ou rien** pour l'échange réciproque, sans double attribution. Envoyer au Boss/Admin habilité **une seule demande privée d'approbation** avec aperçu avant/après; aucune modification officielle avant sa décision. Rejet, retrait, expiration ou quart annulé = historique préservé, calendrier inchangé, participants notifiés.
+- [ ] **COVER-029** — **Banque de volontaires pour faire de l'over (Plus/Pro)** distincte d'une banque d'heures gagnées : chacun peut adhérer/se retirer, indiquer plages de disponibilité pour cette semaine ou chaque semaine, limites d'heures supplémentaires **souhaitées** (non garanties), postes admissibles, dernière minute oui/non et préférences de notifications. Réutiliser `essential_availability`, `SHIFT-016–019` et les profils existants; une disponibilité volontaire n'attribue aucun quart et ne crédite aucune heure.
+- [ ] **COVER-030** — **Offres d'over ciblées** : le responsable crée un besoin supplémentaire lié à un poste/site/plage, PUNCH filtre les volontaires habilités (quarts existants, congés, qualification, repos, plafonds, règles applicables), envoie des offres ciblées (individuelles ou par vagues configurées), gère expiration/refus/rappels et **garantit une seule attribution par place** via les transactions existantes. Pas d'affectation automatique simplement parce que le salarié était volontaire. Pour Pro, choix transparent de priorité : ancienneté applicable, équité, heures déjà travaillées, volontariat, besoins ou coûts, sans classement opaque.
+- [ ] **COVER-031** — **Paramétrage Boss/Admin unifié** dans Horaires → Échanges et heures supplémentaires : autoriser propositions privées et échanges, fixer rôles habilités, restrictions par département/site, approbation du responsable pour les propositions privées, contre-propositions, délais avant le début du quart, banque de volontaires, fenêtres d'offres, priorité d'over et alertes. Utiliser les droits/entitlements **serveur** déjà présents; ne pas créer une deuxième politique d'absences ni altérer le mode configurable de `COVER-011` (ce dernier reste distinct pour remplacement après absence déclarée).
 
-## P1 — RH, approbations, pauses et rapports paie (HR, 18 points)
+## P1 — RH, approbations, pauses et rapports paie (HR, 20 points)
 **Objectif :** Sécuriser les écritures officielles et dossiers RH.
 **Sources :** Tests / HR Payroll / prompts. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **HR-001** — Permettre demande de correction de punch et de pause avec justificatif.
@@ -317,17 +328,19 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **HR-005** — Refuser corrections d’une semaine verrouillée sans parcours spécial autorisé.
 - [ ] **HR-006** — Appliquer pauses payées/non payées sans réduire les heures incorrectement.
 - [ ] **HR-007** — Configurer politiques de pauses par département et version applicable.
-- [ ] **HR-008** — Gérer fériés, vacances, absences et banques d’heures auditables.
+- [ ] **HR-008** — Gérer fériés, vacances, absences et **registre unique des banques d'heures** auditable : soldes calculés côté serveur à partir des mouvements signés existants, permissions de débit/crédit et séparation des fonds/temps de congé.
 - [ ] **HR-009** — Conserver certificats/formations versionnés et échéances.
 - [ ] **HR-010** — Gérer documents RH privés et confirmations de lecture par version.
 - [ ] **HR-011** — Isoler permission Documents, Certifications et Rémunération des autres rôles.
-- [ ] **HR-012** — Gérer taux datés, primes soir/nuit, banques, règles d’heures sup.
+- [ ] **HR-012** — Gérer taux datés, primes soir/nuit, banques et règles d'heures supplémentaires **par régime contractuel applicable**, sans présumer qu'un seuil unique ou une conversion automatique s'applique à tous; périodes, approbations et salaires cachés aux non-habilités.
 - [ ] **HR-013** — Préparer exports de paie fondés sur périodes approuvées et fermées.
 - [ ] **HR-014** — Afficher toute estimation salariale comme estimation, pas bulletin officiel.
 - [ ] **HR-015** — Ajouter talons de paie PDF privés Pro, import/association/notification.
 - [ ] **HR-016** — Ne jamais exposer le talon d’un employé à un autre.
 - [ ] **HR-017** — Tester snapshots, périodes, règles rétroactives et retenues non implémentées.
 - [ ] **HR-018** — Séparer le **motif déclaratif d'absence** des congés approuvés, justifications administratives, absences rémunérées, banques d'heures et décisions de paie : une catégorie choisie n'accorde ni ne refuse automatiquement aucun de ces droits.
+- [ ] **HR-019** — **Banque d'heures réellement accumulées** (Pro, à partir du registre RH existant) : espace personnel clair affichant crédits approuvés, heures compensées/utilisées, solde disponible, historique par période et demandes de prise de congé à partir du solde; statut de chaque demande, approbation par responsable autorisé, impossibilité de débit excédentaire ou d'ajustement sauvage. Le salarié ne voit que sa banque, sans détenir les droits d'écriture RH.
+- [ ] **HR-020** — **Conversion contrôlée over → banque de congé compensatoire** : ne jamais convertir automatiquement les heures supplémentaires parce qu'un salarié a travaillé au-delà d'un seuil. Distinguer calcul d'heures majorées, paiement, mise en banque et usage futur; documenter la demande/accord requis, les exceptions et taux applicables (loi, catégorie, contrat/convention), la période de conservation/utilisation et l'historique d'approbation. Solde serveur sur mouvements signés, confirmations auditables, régularisation/annulation sans double crédit ni mutation silencieuse d'une paie déjà clôturée.
 
 ## P1 — Budgets et coûts en temps réel (BUDGET, 11 points)
 **Objectif :** Assurer un suivi de main-d’œuvre utilisable pour les Boss.
@@ -380,7 +393,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **COMM-015** — Distinguer clairement événement **social facultatif** et réunion/formation à présence demandée ou obligatoire; participation/RSVP ne modifie **jamais automatiquement punch, horaire, paie, congé ou heures rémunérées**. Avertir l'Admin des conflits potentiels avec un quart sans le modifier; appliquer séparément les règles RH/légales pour les activités obligatoires.
 - [ ] **COMM-016** — Donner au salarié l'accès aux événements qui le concernent depuis **Horaire → Événements** (ou Plus selon design existant), avec détails, réponse rapide, calendrier ICS privé réutilisé, rappels et état de participation; tableau Boss/Admin des réponses avec capacité/places facultative et liste d'attente optionnelle, sans exposition des invités non autorisés.
 
-## P2 — Messagerie intégrée Essentiel Plus/Pro — expérience proche de Messenger (CHAT, 12 points)
+## P2 — Messagerie intégrée Essentiel Plus/Pro — expérience proche de Messenger (CHAT, 15 points)
 
 **But :** offrir une messagerie professionnelle aussi simple que Messenger dans PUNCH Essentiel Plus et Pro : conversations individuelles, groupes, bulles, avatars, photos, fichiers, vocaux (si possibles), réactions, non-lus et confidentialité configurable. Le chat ne doit pas imposer de présence permanente en dehors du travail.
 
@@ -398,8 +411,11 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **CHAT-008** — **Pièces jointes et vocaux :** autoriser photos, images et PDF, aperçus et téléchargements via **Storage privé / URL éphémère**, limites taille/type et vérifications serveur; messages vocaux avec lecture simple en option selon permissions natives et coûts, sans bloquer la V1 texte. Prévenir pièces jointes malveillantes et fuites entre sociétés; pas d'images privées dans notifications si préférences interdisent.
 - [ ] **CHAT-009** — **Notifications personnalisables :** alertes in-app/push pour messages, @mentions et groupes; **aperçu sur écran verrouillé activable/désactivable**, discussions mises en sourdine, horaires silencieux / mode tranquille hors travail, préférences individuelles et états d'envoi réels. Réutiliser les notifications existantes sans doublon ni spam; **SMS/Twilio à la fin** et seulement si opt-in/configuré.
 - [ ] **CHAT-010** — **Contrôle des messages et sécurité :** permettre modifier ou retirer ses propres messages selon politique de rétention, archiver/masquer la conversation, bloquer/signalement d'abus selon règles de l'entreprise; suppression logique/version et audit technique minimal. RLS/tenant/role/participant et révocation immédiate au départ/changement de service/fin d'accès; **aucun Boss/Admin/Super Admin ne peut lire automatiquement les conversations privées**, et aucun motif d'absence, document RH ou salaire ne fuit dans les messages/suggestions.
-- [ ] **CHAT-011** — **Intégration utile aux fonctions existantes :** bouton « Écrire au responsable » sur les tâches, quarts, événements et demandes autorisées; ouverture ou création de discussion seulement entre membres autorisés, sans partager automatiquement le détail RH ni inscrire sans accord dans un groupe privé. Séparer annonces entreprise, messagerie privée et commentaires de tâches; ne pas créer de doubles notifications.
+- [ ] **CHAT-011** — **Intégration utile aux fonctions existantes :** boutons « Écrire au responsable » et « Proposer mon quart à un collègue » depuis Horaire/Mon quart, ainsi que contacts contextuels sur tâches et événements; ouverture d'une discussion autorisée et insertion d'une proposition de quart structurée **sans joindre des données RH privées**. Conserver séparément annonces entreprise, messages et commentaires de tâches; aucune double notification.
 - [ ] **CHAT-012** — **QA / disponibilité réelle :** tester Web/Expo/PWA sur 5 onglets et 4 onglets selon forfait, petits écrans, thèmes et safe-areas; confidentialité « Vu » des deux côtés, présence/écriture, groupes/droits, changement Plus→base/Pro, concurrence, duplications, déconnexion/réessai, pièces jointes, push réellement reçus, RLS et groupe privé Construction. Détailler **développé / testé / déployé / intervention externe**; ne pas déclarer Messenger fonctionnel à partir du seul écran, et ne pas utiliser les conversations privées d'une compagnie réelle pour la recette.
+- [ ] **CHAT-013** — **Fiches de quarts interactives de type Messenger** dans la conversation privée : carte compacte avec poste, département/site, date, heure et durée, lien vers le quart autorisé, badges « Proposition reçue / Acceptée par le collègue / En attente du Boss / Approuvée / Refusée / Expirée / Quart modifié ». Actions Accepter, Refuser, Contre-proposer uniquement aux personnes habilitées, mise à jour temps réel/rafraîchissement; ne pas faire confiance au contenu d'un message texte pour valider une transaction.
+- [ ] **CHAT-014** — **Discussions employé ↔ employé selon politique de compagnie** : Boss/Admin peut autoriser les DM entre tous les collègues actifs, les restreindre aux équipes/départements ou désactiver la création de nouveaux DM (sans accès patronal aux conversations privées déjà autorisées). La recherche affiche seulement les destinataires autorisés; contrôles RLS serveur et révocation au changement d'équipe/compagnie. Garder les groupes existants, le cinquième onglet bas Messages pour Plus/Pro, les « Vu », les pièces jointes et les préférences individuelles `CHAT-001–012`.
+- [ ] **CHAT-015** — **Demandes et notifications distinctes du clavardage** : PUNCH génère des cartes système sûres et des notifications aux deux collègues et au responsable lors de la proposition, du consentement, de l'approbation et de la mise à jour d'horaire. Ne pas donner au Boss l'accès à tout le fil privé : il reçoit seulement la demande officielle minimale et les quarts concernés. Les accusés « Vu » paramétrables demeurent séparés de l'acceptation; ne jamais écrire ou partager automatiquement un motif personnel d'absence; idempotence pour éviter doubles messages ou doubles demandes.
 
 **Critères d'acceptation :** dans Essentiel Plus/Pro, un salarié touche l'onglet **Messages au bas**, retrouve Marie, lui écrit et reçoit sa réponse. Il peut désactiver « Vu », masquer son état en ligne, désactiver « Écrit… », limiter l'aperçu des notifications et silencer ses groupes. Le Boss peut discuter dans les groupes dont il est membre mais **pas espionner les groupes privés**. Essentiel base reste à quatre onglets; borne de pointage reste sans chat. Aucun deuxième moteur de messagerie ni contournement des forfaits.
 
@@ -669,7 +685,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **LOCALE-010** — Éviter chaînes codées en dur dans Web et Expo.
 - [ ] **LOCALE-011** — Tester écrans compacts avec textes allongés et lecteurs d’écran.
 
-## P3 — QA, vrais appareils, déploiement et lancement (QA, 20 points)
+## P3 — QA, vrais appareils, déploiement et lancement (QA, 22 points)
 **Objectif :** Livrer un produit commercialisable sans confondre compilation et recette.
 **Sources :** Prompt final tests / roadmap. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **QA-001** — Construire matrice exigences → code → test → preuves → verdict.
@@ -692,6 +708,8 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **QA-018** — Tester que retard, no-show, GPS absent, non-punch ou anomalie **sans signalement confirmé** produisent zéro offre; signalement confirmé répété reste une seule demande, sans effacer l'historique d'heures.
 - [ ] **QA-019** — Tester les neuf motifs, aucune valeur présélectionnée, « Autre »/raison personnelle/option privée, notes facultatives malicieuses, annulation, rôles/RLS et absence de fuite vers notifications/offres/exports.
 - [ ] **QA-020** — Tester **deux acceptations en concurrence réelle** en mode approbation et automatique : un seul gagnant, refus tardif explicite, réponse perdue, offre expirée, qualification retirée, site/département, nuit/DST et quart déjà commencé.
+- [ ] **QA-021** — **Postes et échanges dans Messages** : tester Jacob (fruits et légumes) → Mathieu (poissonnerie) **refusé** sans habilitation, puis admissible après habilitation explicite; plusieurs postes par salarié, qualification expirée, autre établissement/tenant, contre-proposition de dimanche, deux acceptations simultanées, consentement sans approbation, approbation après conflit/annulation, double appui/réseau hors ligne et échange de deux quarts atomique. « Oui » dans le texte/« Vu » ne change pas l'horaire; pas de fuite du fil privé au Boss.
+- [ ] **QA-022** — **Over et banque de temps** : tester volonté ponctuelle/récurrente, retrait, préférences, heures souhaitées, filtrage repos/poste/qualifications, offre par vagues, refus/expiration et une seule attribution par place; puis distinguer heure proposée, réellement travaillée, rémunérée et mise en banque. Tester conversion interdite sans demande/accord/règle applicable, crédits/débits auditables, soldes serveur sur tout l'historique, dépassement refusé, autorisations RH, multi-tenant et modes Borne seulement/Mixte.
 
 ## P4 — Services, intégrations et SMS en dernier (SERVICES, 11 points)
 **Objectif :** Ne pas bloquer les lots prioritaires sur les configurations externes.

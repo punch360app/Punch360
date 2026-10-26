@@ -18,15 +18,15 @@
 | E12 | Invitations automatiques | EN COURS | File courriel automatique/idempotente et suivi Web/Expo développés; fournisseur/DNS/webhook/recette restants. SMS reportés |
 | E13 | Activation Google/Apple/courriel | EN COURS | Liaison sécurisée; fournisseurs OAuth/SMTP à configurer et tester |
 | E14 | Thèmes personnels | EN COURS | Dix références 11–20 livrées; autres références en attente |
-| E15 | Quatre onglets Employé | EN COURS | Web/Expo, thèmes, modules; petites tailles/accessibilité physique restantes |
+| E15 | Navigation employé selon forfait : 4 ou 5 onglets | EN COURS | Essentiel base : Punch/Heures/Horaire/Plus (4); Plus/Pro : + Messages entre Horaire et Plus (5). App personnelle complète en mode borne uniquement, sans punch mobile; recette mobile et droits côté serveur restants |
 | E16 | Console Admin distincte | EN COURS | Gestion sans punch, délégations RH; revue complète des permissions restantes |
 | E17 | Console Boss | EN COURS | Entreprise, bornes, paie, facturation; direction/coûts complets restants |
 | E18 | Superviseurs par département | EN COURS | Lecture/planification et approbations heures/congés indépendantes par département; recette appareils/concurrence restante |
-| E19 | Moteur d’horaires | EN COURS | Nuit/DST/récurrences/rotations/échanges et modèles versionnés développés; export personnel ICS Web/Expo ajouté en source, import appareils non validé. Abonnement calendrier auto, postes exclusifs et intégrations externes restent ouverts |
+| E19 | Moteur d’horaires et postes admissibles | EN COURS | Nuit/DST/récurrences/échanges déjà partiels; **catalogue des postes personnalisés, habilitations multi-postes et équivalences** sous SHIFT-026–028 à développer sans deuxième moteur. Export ICS en source; import appareils et calendrier abonné non validés |
 | E20 | Pauses et règles de temps | EN COURS | Payées/non payées, demandes/corrections et offline mobile; politiques par département versionnées et appliquées au moteur; terrain restant |
 | E21 | Corrections et approbations | EN COURS | Sessions et pauses auditées; journée intégrale oubliée et notifications internes livrées; push/recette terrain restants |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
-| E23 | Communications, messagerie Plus/Pro, événements et notifications | EN COURS | Réutiliser le chat existant (`conversations`, `MessagesScreen`) : **onglet bas Messages sur Plus/Pro**, 4 onglets conservés sur Essentiel base; confidentialité « Vu », présence, saisie et notifications configurables sous CHAT-001–012 **à développer/valider**. Annonces/push partiels; événements Boss/Admin sous COMM-002–016 non livrés. Protéger les conversations privées Construction |
+| E23 | Communications, messagerie Plus/Pro et offres privées dans le chat | EN COURS | Réutiliser `conversations`, `MessagesScreen`, CHAT-001–012. **Onglet bas Messages sur Plus/Pro**, 4 onglets en base; **fiches interactives de proposition de quart**, contre-propositions, paramètres de DM et statuts sous CHAT-013–015 à développer. Les Boss/Admin reçoivent la demande d'approbation sans accès au fil privé. Préserver Construction, événements COMM et notifications existantes |
 | E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements, suppression et coffre des comptes test; support Web/Expo, promotions Stripe et rapports financiers livrés; rapprochement bancaire et recette fournisseur restants |
 | E25 | Stripe et sursis | EN COURS | Backend et interfaces; recette fournisseur, réabonnement et rapprochement restants |
 | E26 | Données et confidentialité | EN COURS | Isolation/audit; Loi 25, région, rétention, restauration à valider |
@@ -44,6 +44,8 @@
 | E38 | Banque de remplaçants, offres par vagues et un seul gagnant | À FAIRE | Réutiliser quarts vacants/candidatures; attribution atomique; mode Boss approbation ou automatique. Voir P3 |
 | E39 | Notifications, concurrence, QA et SMS différé du remplacement | À FAIRE | Push interne selon préférences; SMS/Twilio en dernier. Tests concurrence, multi-tenant, DST, réseau et appareils. Voir P4 |
 | E40 | Tâches de quart, modèles par poste et formations internes Plus/Pro | À FAIRE | TASK-001–010 du Prompt maître; aucune deuxième identité, horaire, formation RH ou notification. UX simple, transfert au remplaçant confirmé, accès mobile et QA. |
+| E41 | Propositions/échanges privés dans Messages et compatibilité des postes | À FAIRE | Jalon de suivi **uniquement** des IDs SHIFT-026–028, COVER-026–028, CHAT-013–015, QA-021; ce ne sont pas des fonctions indépendantes à recoder. Consentement privé puis approbation, qualification et attribution atomique |
+| E42 | Banque de volontaires pour l’over et temps compensatoire acquis | À FAIRE | Jalon de suivi **uniquement** des IDs COVER-029–031, HR-019–020, QA-022; disponibilité volontaire ≠ heures gagnées. Réutiliser le registre RH et les offres de quarts; aucune conversion automatique en banque |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
@@ -70,7 +72,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 502 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 518 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
