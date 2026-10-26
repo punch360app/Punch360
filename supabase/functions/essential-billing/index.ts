@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,checkoutExpiryFromOrder,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,preflightStripeOrderCustomer,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -69,6 +69,10 @@ Deno.serve(async(req:Request)=>{
    verifyStripeSubscriptionTenant(a,sub,body.companyId,secret.startsWith('sk_live_'));
    item=preflightBillingAction(body.action,a,sub);
   }
+  // Fail before /prices for wrong/missing provider Customer. Existing
+  // customer validation is reused for Checkout, preview and confirm.
+  const existingCustomer=await preflightStripeOrderCustomer(
+   body.action,a,body.companyId,liveMode,stripe);
   const interval=o.cadence==='yearly'?'year':'month';
   const registeredPrice=selectRegisteredPrice(registered,o.cadence,o.amount_cents);
   const strategy=orderPriceStrategy(body.action,registeredPrice,o.preview);
@@ -86,7 +90,7 @@ Deno.serve(async(req:Request)=>{
     productId,liveMode:secret.startsWith('sk_live_')
   });
   if(body.action==='checkout'){
-   const customer=a?.customer_id?await verifiedCustomer():await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
+   const customer=existingCustomer??await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
    verifyStripeCustomerTenant({customer_id:customer.id},customer,body.companyId,liveMode);
    await save({},customer.id);
    await save({status:'creating',preview:{price_id:price.id}},customer.id);

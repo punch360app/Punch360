@@ -71,6 +71,22 @@ export function verifyStripeCustomerTenant(account,customer,companyId,liveMode){
  return customer;
 }
 /**
+ * Read an existing Stripe Customer *before* any price or session creation.
+ * The dependency is injected so the same sequence can be tested offline.
+ * Initial Checkout is the only action allowed without a saved Customer.
+ */
+export async function preflightStripeOrderCustomer(action,account,companyId,liveMode,stripe){
+ if(!['checkout','preview','confirm'].includes(action))throw Error('INVALID_BILLING_ACTION');
+ if(!account?.customer_id){
+  if(action==='checkout')return null;
+  throw Error('NO_CUSTOMER');
+ }
+ if(typeof stripe!=='function')throw Error('STRIPE_CUSTOMER_TENANT_MISMATCH');
+ const customer=await stripe(`/customers/${account.customer_id}`);
+ return verifyStripeCustomerTenant(account,customer,companyId,liveMode);
+}
+
+/**
  * A list filtered by a customer ID must not return an invoice owned by
  * another Stripe customer or one originating from the other Stripe mode.
  */
