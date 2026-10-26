@@ -59,4 +59,7 @@ test('summary never calls incomplete coverage numbers zero and respects truncati
  assert.equal(s.missingStaffHours,4);
  assert.equal(s.vacantShifts,null);
  assert.equal(s.truncated,true);
+ const incomplete=summarizeCoverageDemand({gap_count:0,gaps:[],truncated:false},{vacant_shifts:null,planned_gross_ms:null});
+ assert.equal(incomplete.vacantShifts,null);
+ assert.equal(incomplete.plannedHours,null);
 });
