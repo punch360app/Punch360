@@ -1,3 +1,15 @@
+# Tableau Work : trois compteurs distincts — 26 octobre 2026
+
+Pour éviter que le 0 % semble signifier « rien n'a été développé », le haut de `web/live/suivi.html` affiche **trois indicateurs séparés**, calculés automatiquement depuis `web/live/work-progress.json` et les **578 identifiants** du maître :
+
+- **Travail documenté** : au moins une intervention réelle de Work rattachée à une exigence par preuve GitHub. Actuellement **82 / 578 = 14,2 %**.
+- **Développement avec tests** : code au moins partiel + tests logiciels enregistrés. Actuellement **26 / 578 = 4,5 %**.
+- **Livré et validé** : développement entièrement vérifié + tests + déploiement prouvé + aucune recette externe encore exigée. Actuellement **0 / 578 = 0,0 % attesté dans le registre**, **pas** zéro fonction opérationnelle.
+
+L'audit des anciennes PR et le rapprochement des 496 autres exigences restent en cours. Les valeurs se recalculent automatiquement lors des mises à jour du JSON par Work ; elles ne dépendent jamais des cases cochées par le propriétaire. Ne modifier les statuts `developed/tested/deployed/external_required` que lorsque les preuves correspondantes sont retrouvées. La PR #118 brouillon Auth native reste indépendante; aucun paiement/SQL production/contrat Stripe modifié ici.
+
+---
+
 # Rétroactivité du suivi Work — audit historique élargi (26 octobre 2026)
 
 Le compteur public lié à `web/live/work-progress.json` a maintenant **82 exigences sur 578 avec des preuves d'intervention de développement identifiées** : 26 liées à une CI logicielle documentée, plus **56 autres IDs dont un travail partiel est attesté par de vieilles PR fusionnées** (#1–#84 principalement). Ces 56 IDs portent `tested: not_verified` et `deployed: false` : les anciens intitulés de PR ne prouvent ni une recette complète ni un déploiement. Le pourcentage **14,2 %** est une **couverture d'audit rétrospectif** et un minimum de travaux rattachés, **pas un taux de tâches finies**. Les 496 IDs restants ne sont pas déclarés non développés ; leur audit est à poursuivre sans attribution inventée.
