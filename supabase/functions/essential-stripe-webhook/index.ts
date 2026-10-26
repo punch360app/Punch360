@@ -1,10 +1,15 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {stripeClient,verifyStripeSignature,stripeInvoiceSubscriptionId,verifyStripeWebhookInvoice,stripeWebhookSubscriptionPrice} from '../_shared/stripe.mjs';
+import {readLimitedUtf8Request} from '../_shared/limited-body.mjs';
 Deno.serve(async(req:Request)=>{
  if(req.method!=='POST')return new Response('METHOD_NOT_ALLOWED',{status:405});
  const secret=Deno.env.get('STRIPE_SECRET_KEY'),signing=Deno.env.get('STRIPE_WEBHOOK_SECRET');
  if(!secret||!signing||Deno.env.get('PUNCH_STRIPE_ENABLED')!=='true')return new Response('NOT_CONFIGURED',{status:503});
- let event:any;try{const raw=await req.text();if(raw.length>1048576)return new Response('TOO_LARGE',{status:413});event=await verifyStripeSignature(raw,req.headers.get('stripe-signature'),signing);}catch{return new Response('BAD_SIGNATURE',{status:400});}
+ let event:any,raw:string;
+ try{raw=await readLimitedUtf8Request(req,1048576);}
+ catch(err){return err instanceof Error&&err.message==='BODY_TOO_LARGE'?new Response('TOO_LARGE',{status:413}):new Response('BAD_REQUEST',{status:400});}
+ try{event=await verifyStripeSignature(raw,req.headers.get('stripe-signature'),signing);}
+ catch{return new Response('BAD_SIGNATURE',{status:400});}
  if(event.livemode!==secret.startsWith('sk_live_'))return new Response('WRONG_MODE',{status:400});
  const obj=event.data?.object;
  const allowed=['customer.subscription.created','customer.subscription.updated','customer.subscription.deleted','invoice.paid','invoice.payment_failed','invoice.finalized'];
