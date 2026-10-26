@@ -240,3 +240,18 @@ Le contrôleur Web `web/live/billing.js` incrémente maintenant une révision de
 - **Limite :** une commande déjà transmise à Stripe ne peut pas être annulée rétroactivement par le navigateur; seul le backend et le webhook signé confirment les sièges. Le changement de saisie bloque seulement les **étapes suivantes** et évite de présenter un mauvais devis.
 
 La correction ne touche ni catalogue propriétaire 19/39/69 CAD (20/25/50 inclus, +2 CAD, −15 % annuel), ni les six Price IDs, SQL, contrats réels, édition Construction, ni Twilio.
+
+## P0-B — Expo : choix modifié pendant une prévisualisation Stripe (26 octobre 2026)
+
+La version Android/iOS annulait visuellement le devis lorsque l'on changeait de forfait, cadence ou sièges, mais ne révoquait pas l'identifiant de commande (`order`) et ne vérifiait pas les réponses tardives de RPC et `essential-billing` par génération de devis. Une ancienne prévisualisation pouvait réapparaître et permettre une nouvelle action sur une commande qui ne correspondait plus aux champs visibles.
+
+Le helper pur `src/billing/nativeBillingQuoteGuard.ts` et le composant `src/billing/BillingPanel.tsx` apportent une génération dédiée aux choix du devis, **indépendante** de la génération de compte/compagnie de #110 :
+- Une modification de forfait, période ou places invalide le devis **et** la commande précédente.
+- Les appels de création de commande, devis, confirmation Checkout et ouverture d'URL sont contrôlés **avant et après** chaque `await`, sans seconde requête si le devis a changé.
+- La réponse annulée est ignorée, sans afficher une fausse erreur Stripe au Boss.
+- À l'ouverture de l'écran, la valeur indicative de places passe de 5 à **20**, le nombre réel restant chargé du serveur; cela ne crée **aucun tarif** et ne remplace **aucun contrat historique**.
+- Un appel Stripe déjà envoyé ne peut pas être annulé par le téléphone : seules les étapes suivantes et la redirection périmée sont empêchées.
+
+**Développé :** code Expo + helper et tests Node avec promesses différées. **Testé :** CI TypeScript/Node à confirmer sur la PR, aucun véritable appareil. **Déployé :** non, version native signée non publiée. **Intervention externe :** validation Android/iPhone avec deux commerces et réponses réseau lentes; Stripe sandbox toujours ouvert (issues #35/#102).
+
+Les prix 19/39/69 CAD, les inclusions 20/25/50, +2 $, annuel −15 %, les six Price IDs, Supabase et Construction ne sont pas modifiés.
