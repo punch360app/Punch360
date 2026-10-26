@@ -1,3 +1,13 @@
+# Reprise du prompt original — langues de base Expo Android/iOS (nouvelle PR)
+
+Après PR #67 (navigation Essentiel Web, 10 langues + RTL), le prochain bloc du **prompt original « Validation SQL archives »** élargit le même dictionnaire à Expo : `src/i18n/essential-native-locale.js`, gestion des préférences AsyncStorage par compte, sélecteurs de langue pour Boss/Admin et employés, navigation/onglets/pointage essentiel traduits, RTL arabe limité aux conteneurs pertinents. `web/live/essential-locale.js` contient les mêmes clés pour Web et Expo. Tests `tests/essential-native-locale.test.mjs`; documentation `docs/ESSENTIAL_EXPO_NATIVE_LOCALE_20261026.md`. CI et publication Web à confirmer avant fusion. **Aucune migration Supabase, aucun compte ou abonnement réel modifié.**
+
+Le prompt original n'est **pas terminé** : traductions des sous-pages spécialisées et borne, juridique/paie, QA linguistique et RTL terrain; tests du calendrier Google/Apple/Outlook, transfert Boss deux comptes MFA, Stripe sandbox/webhooks, horaires avancés, notifications/OAuth, tests de charge/PRA et builds signés. SMS/Twilio en dernier.
+
+Le prompt maître consolidé existe déjà dans GitHub mais reste **hors portée** jusqu'à la clôture complète du prompt original.
+
+---
+
 # Reprise — dix langues Essentiel et premier socle RTL
 
 Étape suivante du **prompt original « Validation SQL archives »** : fichier `web/live/essential-locale.js` proposant FR, EN, ES, PT, IT, DE, AR (RTL), ZH, HI, TL, avec dictionnaire complet **des clés de navigation et actions essentielles**. Les préférences sont enregistrées par identifiant utilisateur sur l'appareil, sans affecter une autre compagnie et sans modifier la borne ni Construction. `web/live/app.js` ajoute un choix de langue dans les paramètres Essentiel, traduit la barre d'onglets et les principales commandes de pointage et applique le RTL à la page personnelle. `web/live/styles.css` conserve les horaires et identifiants numériques en LTR. Tests `tests/essential-locale.test.mjs` et DOM `tests/ui.test.mjs`. Documentation `docs/ESSENTIAL_MULTILINGUAL_NAV_20261026.md`.
