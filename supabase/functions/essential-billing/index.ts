@@ -1,5 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -30,12 +31,32 @@ Deno.serve(async(req:Request)=>{
    if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');const sub=await stripe(`/subscriptions/${a.subscription_id}`,{cancel_at_period_end:body.action==='cancel'},`${body.companyId}:${body.action}:${body.requestId}`);return response(200,{cancel_at_period_end:sub.cancel_at_period_end,effective_at:sub.current_period_end,pending_server_confirmation:true});
   }
   if(!o)throw Error('ORDER_REQUIRED');billingQuote(o.snapshot,o.seats,o.cadence);
-  const interval=o.cadence==='yearly'?'year':'month',productKey=`punch-${o.plan_id}`;
-  let price:any;
-  if(ctx.configured_price){const candidate=await stripe(`/prices/${ctx.configured_price}`);if(candidate.active&&candidate.currency==='cad'&&candidate.unit_amount===o.amount_cents&&candidate.recurring?.interval===interval&&candidate.livemode===secret.startsWith('sk_live_'))price=candidate;}
-  if(!price){
-   let product:any;try{product=await stripe(`/products/${productKey}`);}catch(err){if(!String(err).includes('STRIPE_404'))throw err;product=await stripe('/products',{id:productKey,name:o.snapshot.title},productKey);}
-   price=await stripe('/prices',{currency:'cad',unit_amount:o.amount_cents,recurring:{interval},product:product.id,metadata:{punch_order:o.id}},`${o.id}:price`);
+  // Never infer the Stripe product from amount alone: all six existing IDs belong
+  // to distinct plan/cadence pairs, even if a negotiated offer matches another price.
+  const keys=planPriceKeys(o.plan_id);
+  const catalog=await admin.from('essential_stripe_prices')
+    .select('id,stripe_price_id,amount_cents,currency,billing_interval,active')
+    .in('id',[keys.monthly,keys.yearly]);
+  if(catalog.error)throw Error('STRIPE_CATALOG_UNAVAILABLE');
+  const registered=checkRegisteredPrices(o.plan_id,catalog.data);
+  const remote=await Promise.all([
+   stripe(`/prices/${registered.monthly.stripe_price_id}`),
+   stripe(`/prices/${registered.yearly.stripe_price_id}`)
+  ]);
+  const productId=checkStripeProductPair(registered,{monthly:remote[0],yearly:remote[1]},secret.startsWith('sk_live_'));
+  const interval=o.cadence==='yearly'?'year':'month';
+  const registeredPrice=selectRegisteredPrice(registered,o.cadence,o.amount_cents);
+  // Existing base rates always reuse their exact Price ID. Additional seats and
+  // negotiated prices use an idempotent new Price ON THE EXISTING Stripe Product.
+  const price:any=registeredPrice?remote[o.cadence==='yearly'?1:0]:
+    await stripe('/prices',{
+      currency:'cad',unit_amount:o.amount_cents,recurring:{interval},product:productId,
+      metadata:{punch_order:o.id,punch_plan:o.plan_id,punch_company:body.companyId}
+    },`${o.id}:price`);
+  if(!/^price_[a-zA-Z0-9]{8,80}$/.test(price.id||'')||price.currency!=='cad'||
+     price.unit_amount!==o.amount_cents||price.livemode!==secret.startsWith('sk_live_')||
+     price.recurring?.interval!==interval||price.product!==productId){
+    throw Error('STRIPE_CREATED_PRICE_MISMATCH');
   }
   if(body.action==='checkout'){
    if(a?.subscription_id)throw Error('SUBSCRIPTION_EXISTS_USE_PREVIEW');
