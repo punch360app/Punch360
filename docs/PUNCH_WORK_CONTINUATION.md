@@ -1,3 +1,13 @@
+# Rétroactivité du suivi Work — audit historique élargi (26 octobre 2026)
+
+Le compteur public lié à `web/live/work-progress.json` a maintenant **82 exigences sur 578 avec des preuves d'intervention de développement identifiées** : 26 liées à une CI logicielle documentée, plus **56 autres IDs dont un travail partiel est attesté par de vieilles PR fusionnées** (#1–#84 principalement). Ces 56 IDs portent `tested: not_verified` et `deployed: false` : les anciens intitulés de PR ne prouvent ni une recette complète ni un déploiement. Le pourcentage **14,2 %** est une **couverture d'audit rétrospectif** et un minimum de travaux rattachés, **pas un taux de tâches finies**. Les 496 IDs restants ne sont pas déclarés non développés ; leur audit est à poursuivre sans attribution inventée.
+
+La page affiche en parallèle les exigences avec tests attestés et celles complètement développées/testées/déployées/recettées. L'automatisation déclenchée après fusion de la PR #122 a effectivement enregistré sa CI et ses IDs GOV dans le JSON publié sur `main`. Les prochaines PR associent automatiquement leurs IDs grâce à `PUNCH-PROGRESS: ...` et ne sont jamais déclarées déployées sur simple fusion.
+
+**Prochain audit historique :** compléter les lots SHIFT/OFFLINE/CORE, paie/budget et rôles avec des preuves de PR/CI exactes, puis vérifier Pages/Edge et vraie QA physique séparément. Ne pas retirer les blocs anciens simplement parce que leur recette est incomplète. Protéger toutes les données réelles et les six Price IDs Stripe.
+
+---
+
 # Suivi Work automatique par exigences — 26 octobre 2026
 
 **Correction du compteur 0 % mal interprété** : `web/live/suivi.html` n'utilise plus les validations locales du propriétaire pour afficher le progrès global. `web/live/work-progress.json` contient un inventaire rétrospectif conservateur **de 24 IDs avec preuves de PR déjà fusionnées, tests logiciels et limites précises** (ce n'est PAS l'exhaustivité du travail déjà fait); `activity` contient jusqu'aux 50 PR historiques vérifiées fusionnées. Le compteur indique la **couverture de travail documentée dans GitHub**, pas les exigences commerciales entièrement livrées. Le nombre livré et recetté est séparé. L'audit des autres 554 IDs reste à exécuter, sans les assimiler à « zéro développement ».
