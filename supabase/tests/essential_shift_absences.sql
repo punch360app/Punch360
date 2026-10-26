@@ -73,7 +73,10 @@ begin
  if jsonb_array_length(items)<>1 or items::text like '%private note%' or items::text like '%reason_code%' then
    raise exception 'Private data leaked or report unavailable';
  end if;
+ -- Read as the transactional test owner: employee RLS rightly hides a manager's inbox.
+ execute 'reset role';
  select count(*) into manager_notices from public.app_notifications where company_id=tenant_a and kind='shift_absence';
+ execute 'set local role authenticated';
  if manager_notices<>1 then raise exception 'Unexpected manager notifications: %',manager_notices;end if;
  perform set_config('request.jwt.claim.sub',boss_b::text,true);
  denied:=false;
