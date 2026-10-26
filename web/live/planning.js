@@ -5,13 +5,14 @@ import {weeklyArgs,weeklyDaysLabel,weeklyPreviewLabel} from './weekly-availabili
 import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodLabel} from './schedule-preferences.js';
 import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availability-reminders.js';
 import {createClientDirectoryController} from './client-directory.js';
+import {buildMultiSiteOverview} from './multi-site-overview.js';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from './shift-client-sites.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
 export function createPlanningController({sb,redraw,notify,escape:e,document:doc,exportIcs=downloadCalendarIcs}){
  let generation=0;
  const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const future=()=>{const d=new Date();d.setDate(d.getDate()+31);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
- const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,siteChoices:[],siteHasMore:false,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
+ const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,siteChoices:[],siteHasMore:false,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',overviewDay:today(),overviewPeriod:'day',overviewView:'employee',overviewWorker:'',overviewSite:'',overviewDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
  const clientDirectory=createClientDirectoryController({sb,escape:e,document:doc,redraw,notify});
  const manager=()=>['boss','admin'].includes(s.role),feature=f=>Array.isArray(s.entitlement.features)&&s.entitlement.features.includes(f);
  const canPlan=d=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan&&g.department_id===d));
@@ -125,7 +126,37 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    ${btn('Fermer','site-close')}
   </div>`;
  }
- function renderCalendar(){const visible=s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));return `<section class="ess-panel"><h3>Quarts publiés</h3>${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
+ function renderMultiSiteOverview(){
+  if(!manager())return '';
+  const sites=s.assignedSites||[];
+  const unique=new Map(sites.filter(x=>x.client_site_id).map(x=>[x.client_site_id,[x.client_site_id,x.client_name+' · '+x.site_name]]));
+  const overview=buildMultiSiteOverview({shifts:s.shifts,assignedSites:sites,roster:s.roster,
+   day:s.form.overviewDay,period:s.form.overviewPeriod,view:s.form.overviewView,
+   worker:s.form.overviewWorker,site:s.form.overviewSite,department:s.form.overviewDepartment});
+  const viewButton=(label,id)=>btn(label,'overview-view',`data-id="${id}" aria-pressed="${s.form.overviewView===id}"`);
+  return `<section class="ess-panel" aria-label="Vue multiemplacements">
+   <h3>Calendrier des interventions</h3>
+   <p class="ess-fine">Deux vues du même horaire publié, sans double saisie. Les durées des trajets ne sont pas connues et ne sont jamais facturées automatiquement.</p>
+   <div class="plan-tabs">${viewButton('Par employé','employee')}${viewButton('Par emplacement','location')}</div>
+   <div class="ess-form-grid">
+    ${field('Date de référence','overviewDay','date')}
+    ${select('Période','overviewPeriod',[['day','Jour'],['week','Semaine']])}
+    ${select('Salarié','overviewWorker',[['','Tous les salariés'],...s.roster.filter(x=>x.status==='active').map(x=>[x.id,x.name])])}
+    ${select('Département','overviewDepartment',[['','Tous les départements'],...s.departments.filter(x=>x.active).map(x=>[x.id,x.name])])}
+    ${select('Lieu du client','overviewSite',[['','Toutes les adresses'],...unique.values()]])}
+   </div>${btn('Appliquer les filtres','overview-apply')}
+   <p role="status">${overview.shown} quart(s) visibles · ${overview.noWorker} sans salarié · ${overview.noSite} sans adresse client · ${overview.overlapShifts} quart(s) dans des chevauchements de salariés.</p>
+   ${overview.travelCheckShifts?'<p>Trajets entre lieux distincts à vérifier : la durée de déplacement réelle est inconnue; aucun trajet ni retard n’est calculé.</p>':''}
+   ${overview.incomplete||s.assignedSitesUnavailable?'<p role="alert">Résultats potentiellement incomplets (limite de 1 000 quarts ou adresses). Réduisez la période et rechargez l’horaire avant toute décision.</p>':''}
+   ${overview.groups.map(group=>`<section class="ess-panel"><h4>${e(group.label)}</h4>${group.items.map(item=>`<article class="ess-person"><div>
+    <b>${e(item.workerName)}</b><small>${e(date(item.shift.starts_at,item.shift.timezone))} → ${e(date(item.shift.ends_at,item.shift.timezone))}</small>
+    <small>${e(item.clientName||'Client non attribué')} · ${e(item.placeName)} ${item.address?'· '+e(item.address):''}</small>
+    ${item.overlap?'<p role="alert">Conflit : ce salarié a deux quarts qui se chevauchent.</p>':''}
+    ${item.travelCheck?'<small>Déplacement à confirmer; aucune durée supposée.</small>':''}
+   </div></article>`).join('')}</section>`).join('')||'<p>Aucun quart pour ces filtres.</p>'}
+  </section>`;
+ }
+ function renderCalendar(){const visible=s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));return `<section class="ess-panel"><h3>Quarts publiés</h3>${renderMultiSiteOverview()}${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
  ${s.own?`<details class="ess-panel"><summary>Synchroniser mon horaire avec mon calendrier</summary>
  <p class="ess-fine">Lien privé iCalendar compatible avec les calendriers qui acceptent un abonnement par URL. Les mises à jour dépendent de la fréquence de synchronisation du calendrier.</p>
  <p class="ess-fine"><b>Confidentialité :</b> toute personne détenant le lien pourra consulter vos quarts jusqu'à sa révocation. Ne le publiez pas.</p>
@@ -251,6 +282,8 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    }
   if(a==='absence-open'){const shift=s.shifts.find(x=>x.id===id),already=absenceForShift(s.absences,id);if(!feature('advanced_schedules')||s.absenceUnavailable||!canReportShift(shift,s.own,already)){s.error='Ce quart ne peut plus être signalé.';}else{s.absenceShift=id;s.form.absenceReason='';s.form.absenceNote='';s.absenceRequest=null;}redraw();return true;}
   if(a==='absence-cancel'){s.absenceShift=null;s.absenceRequest=null;redraw();return true;}
+  if(a==='overview-view'){if(!manager())return true;s.form.overviewView=id==='location'?'location':'employee';redraw();return true;}
+  if(a==='overview-apply'){if(!manager())return true;for(const key of ['overviewDay','overviewPeriod','overviewWorker','overviewSite','overviewDepartment'])s.form[key]=val(key);redraw();return true;}
   if(a==='template-load'){const t=s.templates.find(t=>t.id===id&&t.active);if(!t)return true;Object.assign(s.form,scheduleTemplateForm(t));s.template=t;s.batch=null;s.editing=null;s.showForm=true;redraw();return true;}if(a==='toggle'){s.showForm=!s.showForm;s.editing=null;redraw();return true;}if(a==='tab'){s.tab=id;redraw();return true;}if(a==='edit'){edit(id);redraw();return true;}
   s.busy=true;try{
    if(a==='site-open'){
