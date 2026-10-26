@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T18:50:07.078Z",
+  "generated_at": "2026-10-26T19:02:25.828Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 579,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1028,7 +1028,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        133
+        133,
+        134
       ],
       "note": "Travail rattaché à la PR #133. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1044,6 +1045,16 @@
     }
   },
   "activity": [
+    {
+      "number": 134,
+      "sha": "c5e4deb47f9fe152e34f2f96aa45737de56f469b",
+      "ci": "success",
+      "ids": [
+        "SHIFT-021"
+      ],
+      "title": "Essentiel Pro — salariés admissibles pour combler les besoins certifiés",
+      "merged_at": "2026-10-26T19:02:12Z"
+    },
     {
       "number": 133,
       "sha": "238d4b03f1788936aef9ef385675447d8221888b",
@@ -1520,15 +1531,6 @@
       "ids": [],
       "title": "Validation archives : test PDF binaire intégré et fermeture confidentielle",
       "merged_at": "2026-10-26T05:22:36Z"
-    },
-    {
-      "number": 79,
-      "sha": null,
-      "head_sha": "4f47c9b81a5e7da0f2f433350545869ada1555e7",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Console Essentiel : paramètres de bornes en 10 langues, liens secrets protégés",
-      "merged_at": "2026-10-26T05:09:21Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
