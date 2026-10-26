@@ -10,6 +10,26 @@ export function missionProgress(items){
  return {total:ordered.length,done,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
 }
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
+/** A private, bounded projection of today's already-authorized missions.
+ * Never includes access notes, contacts, worker IDs or internal fields in the UI.
+ */
+export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
+ if(!workerId)return {rows:[],total:0,hasMore:false,ambiguous:false};
+ if(!Number.isInteger(limit)||limit<1||limit>50)throw Error('Limite de tournée invalide');
+ const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
+  ['published','completed'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
+  .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
+ const ambiguity=eligible.some((m,i)=>i>0&&m.status==='published'&&eligible[i-1].status==='published'
+  &&m.sort_order===eligible[i-1].sort_order);
+ const rows=eligible.slice(0,limit).map(m=>({
+  id:m.id,title:m.title||'Mission',client_name:m.client_name||'Client',
+  site_name:m.site_name||'Lieu',status:m.status,sort_order:m.sort_order,
+  address_line:m.address_line||'',unit:m.unit||'',city:m.city||'',
+  region:m.region||'',postal_code:m.postal_code||'',country:m.country||''
+ }));
+ return {rows,total:eligible.length,hasMore:eligible.length>limit,ambiguous:ambiguity};
+}
+
 /** Voluntary, provider-specific directions for the single mission already authorized by the server.
  * Only address fields reach the map URL: never notes, entry codes, phone or worker identity.
  * Missing/invalid destinations are unavailable, not silently replaced with the office.
@@ -155,10 +175,26 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
   const p=missionProgress(s.items);
   if(!p.total)return '';
-  if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>';
-  const x=p.next,addr=missionAddress(x);
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
   let pref=null;try{pref=chooseNavigationPreference(doc.defaultView.localStorage.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
+  const renderTour=()=>{
+    const tour=personalMissionTour(s.items,s.worker);
+    return '<details class="ess-panel"><summary>Voir mes interventions de la journée ('+tour.total+')</summary>'+
+      '<p>Ordre publié par votre responsable, sans calcul automatique de trajet ni changement de pointage.</p>'+
+      (tour.ambiguous?'<p role="alert">Deux étapes ont le même rang : ordre à confirmer avec le responsable.</p>':'')+
+      tour.rows.map(stop=>{
+       const options=missionNavigationOptions(stop,platform,pref).choices;
+       return '<article class="ess-person"><b>'+e(stop.title)+'</b><small>'+
+        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':'À faire')+
+        '</small><small>'+e(missionAddress(stop))+'</small>'+
+        (stop.status==='published'?options.map(route=>'<a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+
+        e(route.label)+' · cette étape ↗</a>').join(''):'')+'</article>';
+      }).join('')+
+      (tour.hasMore?'<p>Seules les 25 premières étapes sont affichées; demander une tournée segmentée au responsable.</p>':'')+
+      '</details>';
+  };
+  if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>'+renderTour();
+  const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
   return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
@@ -167,6 +203,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
      '<p>Adresse de cette mission seulement. Aucun GPS PUNCH, temps de trajet ou pointage déclenché.</p>'+
      routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
      '</details>':'')+
+   renderTour()+
    '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
  }
  async function finish(id){
