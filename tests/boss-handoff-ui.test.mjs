@@ -65,3 +65,29 @@ test('viewer cannot start transfer if not Boss',async()=>{
  await ctrl.handle({dataset:{action:'boss-handoff:request'}});
  assert.equal(calls.some(x=>x.name==='essential_boss_handoff_request'),false);
 });
+
+test('unverified Boss cannot request handoff until TOTP verification',async()=>{
+ const {ctrl,calls,setPrompt}=setup({mfaLevel:'aal1'});
+ await ctrl.load(c,'boss',boss);
+ ctrl.input({id:'boss-handoff-successor',value:admin});
+ ctrl.input({id:'boss-handoff-reason',value:'Proposition volontaire de succession'});
+ setPrompt(c+':'+admin);
+ await ctrl.handle({dataset:{action:'boss-handoff:request'}});
+ assert.equal(calls.some(v=>v.name==='essential_boss_handoff_request'),false);
+ await ctrl.handle({dataset:{action:'boss-handoff:mfa-enroll'}});
+ assert.equal(ctrl.state.factor,'factor');
+ ctrl.input({id:'boss-handoff-mfa-code',value:'111111'});
+ await ctrl.handle({dataset:{action:'boss-handoff:mfa-verify'}});
+ assert.equal(ctrl.state.mfaLevel,'aal2');
+ await ctrl.handle({dataset:{action:'boss-handoff:request'}});
+ assert.equal(calls.filter(v=>v.name==='essential_boss_handoff_request').length,1);
+});
+test('expired handoff does not block a new Boss request',async()=>{
+ const {ctrl,calls,setPrompt}=setup({status:{id:'old',status:'expired',version:1}});
+ await ctrl.load(c,'boss',boss);
+ ctrl.input({id:'boss-handoff-successor',value:admin});
+ ctrl.input({id:'boss-handoff-reason',value:'Nouvelle demande de succession'});
+ setPrompt(c+':'+admin);
+ await ctrl.handle({dataset:{action:'boss-handoff:request'}});
+ assert.equal(calls.filter(v=>v.name==='essential_boss_handoff_request').length,1);
+});
