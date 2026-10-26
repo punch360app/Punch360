@@ -130,3 +130,14 @@ Avant de transmettre une facture au RPC d'application, le serveur récupère la 
 - **Testé :** CI GitHub Actions à vérifier sur la PR; scénarios mockés ancien/nouveau schéma, autre client, abonnement différent, devise et mode erronés. Aucun événement réel Stripe sandbox testé.
 - **Déployé :** non pour ce nouveau correctif, jusqu'à recette fournisseur et publication Edge contrôlée.
 - **Intervention externe :** livrer et rejouer des événements Stripe sandbox signés (ancien/nouveau format), confirmer les états après paiement/échec et les factures réelles, puis déployer; issue #35 maintenue ouverte. Les autres risques de concurrence webhook et de rapprochement restent à valider.
+
+## P0-B — Devis Checkout trop ancien (26 octobre 2026)
+
+L'expiration Stripe Checkout doit être comprise entre 30 minutes et 24 heures **à compter de la création de la session Stripe**, pas de celle du devis PUNCH. L'ancienne formule fixait `expires_at` à `order.created_at + 3600 s`, ce qui rendait l'ouverture d'un devis de plus de 30 minutes incompatible avec Stripe et risquait de créer des Price personnalisés inutilisés avant le refus du fournisseur.
+
+La vérification serveur garde la limite contractuelle d'une heure pour le devis et exige, avant tout appel de création de Price ou Customer, une fenêtre **d'au moins 31 minutes restantes** (30 minutes Stripe + 60 secondes de marge réseau). Si le devis est trop ancien, renvoyer `CHECKOUT_ORDER_TOO_OLD` et demander au Boss un **nouveau devis**, sans créer de session Stripe ni modifier l'ancien contrat.
+
+- **Développé :** utilitaire pur, précontrôle Edge `essential-billing` et tests de frontières (0, 20, 29 et 29 min + 1 s), dates malformées et ordre des appels.
+- **Testé :** tests Node/CI GitHub Actions à confirmer dans la PR; le fournisseur Stripe sandbox n'est pas testé.
+- **Déployé :** non pour ce correctif Edge; la version active Supabase doit être vérifiée avant publication.
+- **Intervention externe :** valider le scénario de devis neuf/périmé avec Stripe en mode test et l'interaction avec les webhooks; issue #35 reste ouverte.

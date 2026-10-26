@@ -8,6 +8,23 @@ export function billingQuote(p,seats,cadence){
  if(!Number.isSafeInteger(amount)||amount>99999999)throw Error('PRICE_TOO_LARGE');
  return {monthly_cents:monthly,amount_cents:amount,cadence,seats};
 }
+/**
+ * A Checkout expires one hour after the server-side order was created.
+ * Stripe requires expires_at to be at least 30 minutes in the future.
+ * Leave 60 seconds for the provider request; refuse old orders BEFORE
+ * creating any custom Price or Customer. The Boss can request a fresh quote.
+ */
+export function checkoutExpiryFromOrder(createdAt,nowMillis=Date.now()){
+ const createdMillis=typeof createdAt==='string'?Date.parse(createdAt):NaN;
+ if(!Number.isFinite(createdMillis)||!Number.isSafeInteger(nowMillis)||nowMillis<0)
+  throw Error('INVALID_CHECKOUT_ORDER_TIME');
+ const createdSeconds=Math.floor(createdMillis/1000),nowSeconds=Math.floor(nowMillis/1000);
+ if(createdSeconds>nowSeconds+60)throw Error('INVALID_CHECKOUT_ORDER_TIME');
+ const expiresAt=createdSeconds+3600;
+ if(!Number.isSafeInteger(expiresAt)||expiresAt-nowSeconds<1860)
+  throw Error('CHECKOUT_ORDER_TOO_OLD');
+ return expiresAt;
+}
 export function stripeClient(secret,fetcher=fetch){
  if(!/^sk_(test|live)_/.test(secret||''))throw Error('STRIPE_NOT_CONFIGURED');
  /** @param {string} path @param {any} params @param {string|null} key */
