@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T20:50:34.050Z",
+  "generated_at": "2026-10-26T21:02:06.011Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 649,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1084,7 +1084,8 @@
       "external_required": true,
       "pr": [
         135,
-        138
+        138,
+        141
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1131,6 +1132,16 @@
     }
   },
   "activity": [
+    {
+      "number": 141,
+      "sha": "da08c78371b4a24ee2d9f1277c45a8d58ad609e6",
+      "ci": "success",
+      "ids": [
+        "MLOC-004"
+      ],
+      "title": "Essentiel — prochaine intervention personnelle sur Accueil Punch",
+      "merged_at": "2026-10-26T21:01:52Z"
+    },
     {
       "number": 140,
       "sha": "3bf769b09bff8b9800e3caec488356f33e018e49",
@@ -1621,15 +1632,6 @@
       "ids": [],
       "title": "P0 Super Admin #35 : isoler le devis Boss et le portail Stripe entre compagnies",
       "merged_at": "2026-10-26T06:21:16Z"
-    },
-    {
-      "number": 88,
-      "sha": null,
-      "head_sha": "e1ca2ec232f13bc57202c2abcf82f0e7f4458eb7",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Prompt maître : intégrer tout le reste du chantier Validation SQL archives",
-      "merged_at": "2026-10-26T06:04:50Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
