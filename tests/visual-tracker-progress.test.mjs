@@ -23,7 +23,10 @@ test('Work progress is sourced from GitHub, NOT owner localStorage checkboxes',(
   assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(html,/Avancement vérifié par Work/);
  assert.match(html,/async function loadWorkProgress\(\)/);
- assert.match(html,/fetch\('\.\/work-progress\.json\?t='\+Date\.now\(\),\{cache:'no-store'\}\)/);
+ assert.match(html,/raw\\.githubusercontent\\.com\\/punch360app\\/Punch360\\/main\\/web\\/live\\/work-progress\\.json/);
+ assert.match(html,/'.\\/work-progress\\.json\\?t='\\+stamp/);
+ assert.match(html,/setInterval\\(\\(\\)=>\\{if\\(!document\\.hidden\\)void loadWorkProgress\\(\\);\\},60000\\)/);
+ assert.match(html,/id="workRecent"/);
  assert.ok(html.indexOf('id="progressFraction"')<html.indexOf('id="reqCount"'));
  assert.ok(html.indexOf('init();void loadWorkProgress();')>0);
  const summaryBlock=html.slice(html.indexOf('function totalValidated()'),html.indexOf('function card(s)'));
