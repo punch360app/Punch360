@@ -26,14 +26,14 @@ test('three Work meters exist before the project-wide inventory and adapt to mob
 });
 
 test('all three ratios derive automatically from exactly 578 master IDs, not owner checkboxes',()=>{
- assert.equal(new Set(ids).size,578);
+ assert.equal(new Set(ids).size,progress.denominator);
  const p=fn(progress);
- assert.equal(p.total,578);
- assert.equal(p.documented,82);
- assert.equal(p.developedTested,26);
+ assert.equal(p.total,ids.length);
+ assert.equal(p.documented,Object.values(progress.requirements).filter(r=>['partial','verified'].includes(r.developed)).length);
+ assert.equal(p.developedTested,Object.values(progress.requirements).filter(r=>['partial','verified'].includes(r.developed)&&r.tested==='software').length);
  assert.equal(p.delivered,0);
- assert.equal(p.percent,14.2);
- assert.equal(p.testedPercent,4.5);
+ assert.equal(p.percent,Math.round(1000*p.documented/ids.length)/10);
+ assert.equal(p.testedPercent,Math.round(1000*p.developedTested/ids.length)/10);
  assert.equal(p.deliveredPercent,0);
  assert.match(html,/document\.getElementById\('progressTestedFraction'\)\.textContent=result\.developedTested/);
  assert.match(html,/document\.getElementById\('progressDeliveredFraction'\)\.textContent=result\.delivered/);

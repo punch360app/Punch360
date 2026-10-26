@@ -5,6 +5,8 @@ on:
     paths:
       - "web/live/**"
       - ".github/workflows/deploy-web.yml"
+      - "docs/prompt-board/MASTER_PROMPT_20261025.md"
+      - "scripts/sync-tracker-master.mjs"
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,6 +24,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Generate tracker from current master
+        run: node scripts/sync-tracker-master.mjs
       - name: Validate frontend JavaScript
         run: |
           node --check web/live/app.js

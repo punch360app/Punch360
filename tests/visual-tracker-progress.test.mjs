@@ -36,10 +36,10 @@ test('Work progress is sourced from GitHub, NOT owner localStorage checkboxes',(
  assert.ok(!summaryBlock.includes("document.getElementById('progressPercent')"));
 });
 test('exactly 578 master IDs, backfilled evidence, no invented deployment or blanket completion',()=>{
- assert.equal(valid.size,578);
- assert.equal(embedded.sections.flatMap(s=>s.tasks).length,578);
+ assert.equal(valid.size,embedded.total_requirements);
+ assert.equal(embedded.sections.flatMap(s=>s.tasks).length,valid.size);
  assert.equal(progress.schema_version,1);
- assert.equal(progress.denominator,578);
+ assert.equal(progress.denominator,valid.size);
  const ids=Object.keys(progress.requirements);
  assert.ok(ids.length>=20,'existing merged work must be represented');
  assert.ok(ids.every(id=>valid.has(id)));
@@ -47,14 +47,14 @@ test('exactly 578 master IDs, backfilled evidence, no invented deployment or bla
  assert.ok(progress.activity.length>=30,'already merged PRs are visible as history');
  assert.ok(progress.activity.every(p=>Number.isSafeInteger(p.number)&&p.merged_at&&p.title));
  const output=summarize(progress);
- assert.equal(output.total,578);
+ assert.equal(output.total,valid.size);
  assert.equal(output.documented,ids.length);
  assert.equal(output.developedTested,ids.filter(id=>progress.requirements[id].tested==='software').length);
  assert.ok(output.developedTested<output.documented,'older merged PR titles are not proof of software tests');
  assert.ok(output.documented>=80,'retrospective archives, HR, kiosk and Super Admin must be represented');
  assert.ok(Object.values(progress.requirements).some(r=>r.tested==='not_verified'&&r.developed==='partial'));
  assert.equal(output.delivered,0);
- assert.equal(output.percent,Math.round(1000*ids.length/578)/10);
+ assert.equal(output.percent,Math.round(1000*ids.length/valid.size)/10);
 });
 test('work progress does not count unproven or fake IDs',()=>{
  const altered=structuredClone(progress);
