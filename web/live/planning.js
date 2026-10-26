@@ -3,12 +3,13 @@ import {buildPersonalCalendar,downloadCalendarIcs} from './personal-calendar.js'
 import {ABSENCE_REASONS,absenceForShift,absenceStatus,canReportShift,prepareAbsence} from './shift-absence.js';
 import {weeklyArgs,weeklyDaysLabel,weeklyPreviewLabel} from './weekly-availability.js';
 import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodLabel} from './schedule-preferences.js';
+import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availability-reminders.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
 export function createPlanningController({sb,redraw,notify,escape:e,document:doc,exportIcs=downloadCalendarIcs}){
  let generation=0;
  const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const future=()=>{const d=new Date();d.setDate(d.getDate()+31);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
- const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:''}};
+ const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:''}};
  const manager=()=>['boss','admin'].includes(s.role),feature=f=>Array.isArray(s.entitlement.features)&&s.entitlement.features.includes(f);
  const canPlan=d=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan&&g.department_id===d));
  const anyPlan=()=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan));
@@ -24,7 +25,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  const val=key=>doc.getElementById('plan-'+key)?.value.trim()??s.form[key]??'';
  async function rpc(name,args){const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data;}
  async function rows(table){const r=await sb.from(table).select('*').eq('company_id',s.company);if(r.error)throw r.error;return Array.isArray(r.data)?r.data:[];}
- async function load(account,user,own,workers=[]){const revision=++generation;const company=account.company_id;if(s.company!==account.company_id||s.user!==user){s.feedUrl=null;s.feedStatus=null;s.absenceShift=null;s.absenceRequest=null;s.absences=[];s.weeklyRules=[];s.weeklyPreview=[];s.weeklyRequest=null;s.workerPrefs=[];s.prefLoadedWorker=null;s.prefLoadedVersion=0;s.prefRequest=null;s.form.prefWorker='';}s.company=account.company_id;s.role=account.role;s.user=user;s.own=own;s.workers=workers;s.error='';
+ async function load(account,user,own,workers=[]){const revision=++generation;const company=account.company_id;if(s.company!==account.company_id||s.user!==user){s.feedUrl=null;s.feedStatus=null;s.absenceShift=null;s.absenceRequest=null;s.absences=[];s.weeklyRules=[];s.weeklyPreview=[];s.weeklyRequest=null;s.workerPrefs=[];s.prefLoadedWorker=null;s.prefLoadedVersion=0;s.prefRequest=null;s.form.prefWorker='';s.reminderPreview=null;s.reminderKey=null;}s.company=account.company_id;s.role=account.role;s.user=user;s.own=own;s.workers=workers;s.error='';
   const results=await Promise.all([rpc('essential_entitlements',{p_company:s.company}),rows('essential_locations'),rows('essential_departments'),rows('essential_supervisors'),rpc('essential_team_roster',{p_company:s.company}),sb.from('scheduled_shifts').select('*').eq('company_id',s.company).gt('ends_at',s.form.calendarFrom+'T00:00:00Z').lt('starts_at',s.form.calendarTo+'T00:00:00Z').order('starts_at').limit(1000),rows('essential_shift_requests'),rows('essential_availability'),rows('essential_schedule_templates')]);
   if(revision!==generation)return;s.entitlement=results[0]||{};s.locations=results[1];s.departments=results[2];s.scopes=results[3];s.roster=Array.isArray(results[4])?results[4]:[];
   if(results[5].error)throw results[5].error;s.shifts=Array.isArray(results[5].data)?results[5].data:[];s.requests=results[6];s.availability=results[7];s.templates=results[8];s.absences=[];s.absenceUnavailable=false;
@@ -110,6 +111,21 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    contractMax:row?.contracted_max_weekly_hours??'',
    contractSeniority:row?.seniority_from||''});
  }
+ function renderAvailabilityReminders(){
+  if(!manager()||!feature('availability'))return '';
+  const departments=[['','Toute la compagnie'],...s.departments.filter(d=>d.active).map(d=>[d.id,d.name])];
+  return `<section class="ess-panel"><h3>Demander les disponibilités de la semaine</h3>
+   <p class="ess-fine">Aperçu avant envoi. Seuls les employés actifs qui n’ont aucune règle hebdomadaire ni exception datée pour cette semaine sont ciblés. Une seule notification interne par salarié et par semaine; aucun SMS et aucune modification aux quarts. Les salariés sans compte ne peuvent pas recevoir de notification.</p>
+   <div class="ess-form-grid">
+    ${field('Semaine du (lundi)','reminderWeek','date')}
+    ${field('Date limite de réponse','reminderDue','date')}
+    ${select('Département','reminderDepartment',departments)}
+   </div>
+   ${btn('Prévisualiser les rappels','reminder-preview')}
+   ${s.reminderPreview?`<p role="status">${e(reminderResultLabel(s.reminderPreview))}</p>
+    ${!s.reminderPreview.confirmed&&s.reminderPreview.pending>0?btn('Confirmer l’envoi interne','reminder-send'):''}`:''}
+   </section>`;
+ }
  function renderWorkerPreferences(){
   if(!feature('availability'))return '';
   if(s.prefsUnavailable)return '<p role="alert">Préférences personnelles temporairement indisponibles.</p>';
@@ -162,7 +178,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    ${e(weeklyPreviewLabel(p))}${p.conflict?' · Conflit à examiner':''} (${e(p.source)})
   </p>`).join('')||'<p>Aucun quart dans cette période.</p>'}</section>`;
  }
- function renderAvailability(){return `<div>${renderWorkerPreferences()}${renderWeeklyAvailability()}<section class="ess-panel"><h3>Exceptions datées</h3><p class="ess-fine">Une indisponibilité déclarée ne supprime pas un quart déjà publié. Prévenez votre responsable pour le faire modifier.</p><div class="ess-form-grid">${locationSelect('avLocation')}${field('Du (heure locale)','avStart','datetime-local')}${field('Au (heure locale)','avEnd','datetime-local')}${select('Statut','available',[['false','Indisponible'],['true','Disponible']])}${field('Note facultative','avNote')}</div>${btn('Enregistrer','availability')}${s.availability.map(a=>`<article class="ess-person"><div><b>${e(workerName(a.worker_id))} · ${a.available?'Disponible':'Indisponible'}</b><small>${e(date(a.starts_at))} → ${e(date(a.ends_at))}</small></div>${a.worker_id===s.own?btn('Retirer','remove-availability',`data-id="${e(a.id)}"`):''}</article>`).join('')}</section></div>`;}
+ function renderAvailability(){return `<div>${renderAvailabilityReminders()}${renderWorkerPreferences()}${renderWeeklyAvailability()}<section class="ess-panel"><h3>Exceptions datées</h3><p class="ess-fine">Une indisponibilité déclarée ne supprime pas un quart déjà publié. Prévenez votre responsable pour le faire modifier.</p><div class="ess-form-grid">${locationSelect('avLocation')}${field('Du (heure locale)','avStart','datetime-local')}${field('Au (heure locale)','avEnd','datetime-local')}${select('Statut','available',[['false','Indisponible'],['true','Disponible']])}${field('Note facultative','avNote')}</div>${btn('Enregistrer','availability')}${s.availability.map(a=>`<article class="ess-person"><div><b>${e(workerName(a.worker_id))} · ${a.available?'Disponible':'Indisponible'}</b><small>${e(date(a.starts_at))} → ${e(date(a.ends_at))}</small></div>${a.worker_id===s.own?btn('Retirer','remove-availability',`data-id="${e(a.id)}"`):''}</article>`).join('')}</section></div>`;}
  function renderRequests(){const labels={claim:'Prise de quart vacant',release:'Remplacement demandé',swap:'Échange de quarts'},statuses={pending:'En attente',accepted:'Accord du collègue reçu',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'};return `<section class="ess-panel"><h3>Demandes de changement</h3>${anyPlan()?field('Motif de décision obligatoire','decisionNote'):''}${s.requests.map(r=>{const source=s.shifts.find(x=>x.id===r.shift_id);return `<article class="plan-shift"><div><b>${labels[r.kind]||e(r.kind)} · ${e(workerName(r.worker_id))}</b><small>${source?e(date(source.starts_at,source.timezone)):''} · ${statuses[r.status]||e(r.status)}</small>${r.review_note?`<p>${e(r.review_note)}</p>`:''}</div><div class="plan-actions">${r.status==='pending'&&r.other_worker_id===s.own?btn('Accepter la proposition','accept-swap',`data-id="${e(r.id)}"`)+btn('Refuser la proposition','decline-swap',`data-id="${e(r.id)}"`):''}${['pending','accepted'].includes(r.status)&&canPlan(source?.department_id)&&r.worker_id!==s.own&&r.other_worker_id!==s.own?btn('Approuver','approve',`data-id="${e(r.id)}"`)+btn('Refuser','reject',`data-id="${e(r.id)}"`):''}${['pending','accepted'].includes(r.status)&&r.worker_id===s.own?btn('Annuler ma demande','cancel-request',`data-id="${e(r.id)}"`):''}</div></article>`;}).join('')||'<p>Aucune demande.</p>'}</section>`;}
  function renderReport(){const r=s.report;return `<section class="ess-panel"><h3>Heures brutes prévues et réelles</h3><div class="ess-form-grid">${field('Du (date ISO)','reportFrom','date')}${field('Au (date de fin exclusive)','reportTo','date')}</div><p class="ess-fine">Période UTC, maximum 31 jours. Les durées sont brutes et ne constituent pas une paie calculée.</p>${btn('Calculer le rapport','report')}${r?`<div class="ess-metrics"><div><small>Planifiées</small><strong>${(r.planned_gross_ms/3600000).toFixed(2)} h</strong></div><div><small>Réelles</small><strong>${(r.actual_gross_ms/3600000).toFixed(2)} h</strong></div></div><p>${r.vacant_shifts} quart(s) à combler</p>${r.coverage_included?`<h3>Couverture insuffisante</h3><p class="ess-fine">Minimum configuré appliqué sur toute la période sélectionnée; choisir vos heures d’ouverture pour éviter les alertes hors activité.</p>${r.coverage_gaps.map(g=>`<p>${e(g.name)} · ${e(date(g.starts_at))} → ${e(date(g.ends_at))} : ${g.staffed}/${g.minimum_staff}</p>`).join('')||'<p>Aucun manque dans cette période.</p>'}`:'<p class="ess-fine">Couverture minimale disponible avec Pro.</p>'}`:''}</section>`;}
  function edit(id){const x=s.shifts.find(x=>x.id===id);if(!x)return;s.editing={id:x.id,version:x.version};Object.assign(s.form,{worker:x.worker_id||'',location:x.location_id,department:x.department_id||'',mode:'single',start:local(x.starts_at,x.timezone),end:local(x.ends_at,x.timezone),note:x.note});s.showForm=true;s.tab='calendar';}
@@ -246,6 +262,18 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    else if(a==='accept-swap'||a==='decline-swap')await rpc('answer_essential_swap',{p_request:id,p_accept:a==='accept-swap'});
    else if(a==='approve'||a==='reject'){if(val('decisionNote').length<3)throw Error('Un motif de décision est requis.');await rpc('review_essential_shift_request',{p_request:id,p_approve:a==='approve',p_note:val('decisionNote')});}
    else if(a==='cancel-request')await rpc('cancel_essential_shift_request',{p_request:id});
+   else if(a==='reminder-preview'||a==='reminder-send'){
+    if(!manager()||!feature('availability'))throw Error('Rappels réservés au responsable.');
+    const form={reminderWeek:val('reminderWeek'),reminderDue:val('reminderDue'),reminderDepartment:val('reminderDepartment')};
+    const args=reminderSelection(form),key=JSON.stringify(args);
+    if(a==='reminder-send'){
+      if(!s.reminderPreview||s.reminderPreview.confirmed||s.reminderKey!==key)throw Error('Actualisez l’aperçu avant l’envoi.');
+      if(!doc.defaultView.confirm('Envoyer '+s.reminderPreview.pending+' rappel(s) internes pour la semaine du '+args.p_week+' ? Aucun SMS ne sera envoyé.'))return true;
+    }
+    const result=await rpc('essential_availability_reminder_batch',{p_company:s.company,...args,p_confirm:a==='reminder-send'});
+    s.reminderPreview=result;s.reminderKey=a==='reminder-preview'?key:null;
+    if(a==='reminder-send')notify(result.sent+' notification(s) internes créées. Aucune relance en double.');
+   }
    else if(a==='pref-load'){
     const worker=manager()?val('prefWorker'):s.own;
     if(!worker||!s.workerPrefs.some(x=>x.worker_id===worker))throw Error('Dossier salarié inconnu. Actualisez.');
@@ -295,6 +323,6 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }catch(err){s.error=err.message;notify(err.message);}finally{s.busy=false;redraw();}return true;
  }
  function input(el){if(!el?.id?.startsWith('plan-'))return;s.form[el.id.slice(5)]=el.type==='checkbox'?el.checked:el.value;if(['plan-location','plan-assignLocation','plan-mode'].includes(el.id)){if(el.id==='plan-location')s.form.department='';if(el.id==='plan-assignLocation')s.form.assignDepartment='';redraw();}}
- function reset(){generation++;s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.report=null;s.options=[];s.editing=null;s.batch=null;}
+ function reset(){generation++;s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.report=null;s.options=[];s.editing=null;s.batch=null;}
  return {state:s,load,reload,renderOrganization,renderSchedule,handle,input,reset};
 }
