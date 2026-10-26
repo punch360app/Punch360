@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {parseMaster} from '../scripts/sync-tracker-master.mjs';
+const sections=parseMaster(readFileSync('docs/prompt-board/MASTER_PROMPT_20261025.md','utf8'));
+const count=sections.reduce((n,s)=>n+s.tasks.length,0);
 
 const html=readFileSync(new URL('../web/live/suivi.html',import.meta.url),'utf8');
 const script=html.match(/<script type="application\/json" id="dataBundle">([\s\S]*?)<\/script>/);
@@ -8,18 +11,18 @@ if(!script)throw Error('Data bundle missing');
 const data=JSON.parse(script[1]);
 
 test('visual tracker has exactly 578 uniquely identified requirements in 29 master lots',()=>{
- assert.equal(data.total_requirements,578);
- assert.equal(data.sections.length,29);
+ assert.equal(data.total_requirements,count);
+ assert.equal(data.sections.length,sections.length);
  const tasks=data.sections.flatMap(s=>s.tasks);
- assert.equal(tasks.length,578);
- assert.equal(new Set(tasks.map(t=>t.id)).size,578);
+ assert.equal(tasks.length,count);
+ assert.equal(new Set(tasks.map(t=>t.id)).size,count);
  for(const s of data.sections){
   assert.equal(s.total,s.tasks.length,'mismatched count for '+s.code);
   assert.ok(s.tasks.every(t=>t.id.startsWith(s.code+'-')));
  }
  assert.deepEqual(Object.fromEntries(['P0','P1','P2','P3','P4'].map(p=>[p,
   data.sections.filter(s=>s.priority===p).reduce((sum,s)=>sum+s.tasks.length,0)])),
- {P0:164,P1:140,P2:220,P3:43,P4:11});
+ Object.fromEntries(['P0','P1','P2','P3','P4'].map(p=>[p,sections.filter(s=>s.priority===p).reduce((n,s)=>n+s.tasks.length,0)])));
 });
 
 test('source is dated 26 October 2026; no invented completion or sensitive Drive link',()=>{

@@ -1,10 +1,11 @@
 import {readFileSync,writeFileSync} from 'node:fs';
+import {parseMaster} from './sync-tracker-master.mjs';
 
 const MASTER='docs/prompt-board/MASTER_PROMPT_20261025.md';
 const REGISTER='web/live/work-progress.json';
 
 export function masterIds(master){
- return new Set([...master.matchAll(/^- \[ \] \*\*([A-Z]+-\d{3})\*\* — /gm)].map(m=>m[1]));
+ return new Set(parseMaster(master).flatMap(s=>s.tasks.map(t=>t.id)));
 }
 /** Only explicit, verifiable PR metadata can map a change to requirements. */
 export function pullProgressIds(body){
@@ -14,10 +15,11 @@ export function pullProgressIds(body){
 export function updateWorkRegister(manifest,pull,ciVerified,validIds,now){
  if(!pull?.merged||!Number.isSafeInteger(pull.number)||!pull.merge_commit_sha)
   throw Error('MERGED_PR_REQUIRED');
- if(manifest.denominator!==validIds.size||validIds.size!==578)throw Error('MASTER_COUNT_DRIFT');
+ if(!validIds.size)throw Error('EMPTY_MASTER');
  const ids=pullProgressIds(pull.body);
  for(const id of ids)if(!validIds.has(id))throw Error('UNKNOWN_PROGRESS_ID: '+id);
  const updated=structuredClone(manifest);
+ updated.denominator=validIds.size;
  updated.requirements??={};
  updated.activity??=[];
  const number=pull.number;

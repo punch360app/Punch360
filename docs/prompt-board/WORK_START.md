@@ -1,3 +1,7 @@
+## Total automatique du suivi
+
+À chaque modification du prompt maître publiée sur main, Pages exécute `node scripts/sync-tracker-master.mjs` : liste HTML, lots, total, registre publié et instantané sont synchronisés. Ajouter chaque demande comme exigence identifiée `- [ ] **CODE-001** — Description` sous un titre `## P2 — Titre (CODE, 1 points)`. Les cases cochées restent dans le total; elles ne certifient pas une livraison. Les IDs doivent rester uniques et stables. Les nouvelles exigences n’acquièrent aucune preuve de réalisation automatiquement. Ne plus maintenir un total fixe de 578 dans les scripts ou tests.
+
 > **Audit initial du suivi Work élargi :** 82/578 exigences rattachées à des PR fusionnées (travail souvent partiel), dont 26 avec tests logiciels attestés et 56 dont la CI historique reste à vérifier. Ce n'est pas 82 fonctions terminées. L'horodatage et les comptes sont fournis dans `web/live/work-progress.json`; le site recalcule toujours depuis ce registre. Si le total progresse, vérifier les IDs et ne pas en déduire une livraison sans preuves d'appareils/fournisseurs.
 
 ## Suivi automatique Work — obligatoire depuis le 26 octobre 2026
