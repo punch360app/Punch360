@@ -165,3 +165,16 @@ La migration **20261026110100_billing_confirm_intent.sql** étend le rapprocheme
 - **Intervention externe** : recette Stripe mode test (refus provider, timeout, double clic, webhook avant réponse POST, paiement en attente, puis facture payée), tests de débit et vérification manuelle des Customers historiques avant publication.
 
 Décision propriétaire conservée : Essentiel 19 $/20, Plus 39 $/25, Pro 69 $/50, +2 $/personne, 15 % annuel; six Price IDs et les contrats existants sont intacts.
+
+## P0-B — Identité des demandes Résilier/Reprendre (26 octobre 2026)
+
+Les actions de renouvellement `cancel` et `resume` doivent fournir un **UUID v4 généré de façon cryptographique** pour identifier chaque décision. Avant ce correctif, la version Expo envoyait `Date.now().toString()`, et la fonction Edge acceptait `body.requestId` manquant, produisant notamment des clés contenant littéralement `undefined`. Stripe pouvant réutiliser la réponse associée à une clé d'idempotence pendant une période de conservation, ces collisions pouvaient masquer une nouvelle action légitime. Source : https://docs.stripe.com/api/idempotent_requests.
+
+Le serveur refuse désormais `INVALID_RENEWAL_REQUEST_ID` **avant tout appel Stripe** si l'identifiant manque, est trop court, n'est pas un UUID v4 ou contient des caractères supplémentaires. Une clé validée regroupe explicitement **compagnie + abonnement + action + UUID v4**. La version Web continue d'utiliser `crypto.randomUUID()`; l'application Expo utilise `expo-crypto` / `Crypto.randomUUID()` plutôt que l'heure. Les deux interfaces réutilisent l'identifiant d'une même action lors d'une réponse fournisseur incertaine, puis en obtiennent un nouveau lorsque l'action réussit ou change. La version Web l'oublie aussi quand la compagnie est réinitialisée.
+
+- **Développé :** helper serveur, contrôle Edge, clients Web et Expo, et tests de non-collision, rejet et réessai.
+- **Testé :** tests Node/DOM et TypeScript/CI de la PR à confirmer; pas de mutation Stripe exécutée chez le fournisseur.
+- **Déployé :** aucune publication Edge ni mise à jour mobile présumée. La branche GitHub fusionnée ne remplace pas la version active de Supabase.
+- **Intervention externe :** vérifier avec Stripe sandbox résiliation, reprise immédiate, double clic, réponse réseau perdue et réessai, notamment les webhooks synchronisant l'état; issue #35 ouverte.
+
+**Attention à l'ordre de livraison :** publier l'Edge validant les UUID et la version Web/Expo fournissant les UUID de façon coordonnée; les vieux clients mobiles avec `Date.now()` recevront un refus jusqu'à mise à jour. Ne déployer cette nouvelle validation qu'après les recettes et la stratégie de compatibilité. Les six Price IDs et contrats existants ne sont pas touchés.
