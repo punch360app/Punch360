@@ -1,3 +1,11 @@
+# Reprise — postes exclusifs Essentiel Pro (PR #51)
+
+Travail original « Validation SQL archives » : SQL poste exclusif associé à l'établissement/département, certification facultative, verrou transactionnel contre double réservation de plages, changement avec version/motif/audit, interface Web + Expo. Migration officielle **`20261026011451_essential_exclusive_positions` appliquée dans Supabase `mlabstdxxwjdpfaxiwmg`**. Test SQL transactionnel sur fixtures avec rollback réussi après installation; contrôle `0` poste et `0` affectation réelle, `anon` refusé. Tests DOM/Node **167/167 réussis avant la dernière addition Expo**; CI suivante à vérifier. PR : <https://github.com/punch360app/Punch360/pull/51>. Construction inchangé.
+
+À confirmer avant publication : CI TypeScript mobile, fusion PR #51, GitHub Pages et recette réelle sur téléphones/bornes. Restent ensuite : vérification certification lors de sa révocation, synchronisation calendrier auto, gestion Boss/récupération Auth, langues/RTL, design et fournisseurs Stripe sandbox/OAuth/notification/paie, charge/PRA/builds signés. SMS/Twilio en dernier. Prompt maître #26 encore séparé, ne pas y passer avant de clore le prompt original.
+
+---
+
 # Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
 
 Après la PR #38 fusionnée (propositions tarifaires immuables), la PR #40 développe : approbation Super Admin MFA d'une proposition (sans facturation), consultation de l'offre **pour le Boss seulement**, création d'une commande Stripe standard **après consentement explicite du Boss**, réutilisation du parcours Stripe existant (checkout/preview/confirm + webhook signé) et sauvegarde des anciens snapshots avant mise à jour des contrats confirmés. Écrans **Web et Expo**; migrations 20261025214230 et 20261025215638 appliquées au seul Supabase `mlabstdxxwjdpfaxiwmg`.
