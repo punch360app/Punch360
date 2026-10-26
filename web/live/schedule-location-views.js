@@ -49,7 +49,7 @@ export function scheduleViewOptions(shifts,assignedSites){
   sites:[...sites].map(([id,label])=>({id,label})).sort((a,b)=>a.label.localeCompare(b.label,'fr-CA')),
   workerIds:[...workers.keys()]};
 }
-export function buildScheduleView({shifts=[],assignedSites=[],mode='employee',period='all',day='',department='',client='',site='',worker='',workerName=()=>'',branchName=()=>''}={}){
+export function buildScheduleView({shifts=[],assignedSites=[],mode='employee',period='all',day='',department='',client='',site='',worker='',workerName=(id)=>'',branchName=(id)=>''}={}){
  if(!['employee','site'].includes(mode))throw Error('Vue calendrier inconnue.');
  const window=scheduleViewWindow(day,period);
  const byId=new Map(assignedSites.map(s=>[s.shift_id,s]));
