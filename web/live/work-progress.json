@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:18:30.136Z",
+  "generated_at": "2026-10-26T21:29:49.107Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 661,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1137,7 +1137,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1147,7 +1148,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1157,7 +1159,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1167,7 +1170,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1177,7 +1181,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1217,7 +1222,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1227,7 +1233,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        144
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1253,6 +1260,22 @@
     }
   },
   "activity": [
+    {
+      "number": 144,
+      "sha": "e2c3e6c690db24f9ef4c67148dab8e20034b07e5",
+      "ci": "success",
+      "ids": [
+        "NAV-001",
+        "NAV-002",
+        "NAV-003",
+        "NAV-004",
+        "NAV-005",
+        "NAV-009",
+        "NAV-010"
+      ],
+      "title": "Essentiel — itinéraire vers client ou lieu habituel, choix Maps/Waze/Plans",
+      "merged_at": "2026-10-26T21:29:36Z"
+    },
     {
       "number": 143,
       "sha": "0f70f8aae1ddd28b449e3f7ba64abc12c55246f5",
@@ -1757,15 +1780,6 @@
       "ids": [],
       "title": "P0-B Stripe : refuser confirmation de devis périmé ou d'un autre Price ID",
       "merged_at": "2026-10-26T07:10:04Z"
-    },
-    {
-      "number": 92,
-      "sha": null,
-      "head_sha": "22adc8f05dbb4eb392194f4990889123414de0e7",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0 Stripe : préserver les forfaits du propriétaire et réutiliser les 6 prix existants",
-      "merged_at": "2026-10-26T06:46:10Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
