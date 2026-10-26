@@ -1336,3 +1336,37 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 **Scénarios d'acceptation :** (a) Mathieu travaille 24 h chez client A à Saint-Augustin et 16 h chez client B à Charlesbourg : deux lots facturables séparés; (b) correction approuvée avant facturation recalculée sans doublon; (c) correction après émission produit un ajustement/avoir traçable; (d) taux coût 30 $, marge cible 25 % donne 40 $ de vente et non 37,50 $; (e) un client invité ne voit jamais les coûts ni les marges; (f) les heures d'une autre compagnie sont inaccessibles. Tests unitaires calculs et arrondis, intégration RLS, flux complet mobile et PDF.
 
 **Livraison :** implémenter par parcours complets avec migrations et tests, documenter dans le suivi officiel, ne jamais annoncer « terminé » sans validation fonctionnelle et CI. Cette section est une exigence du prompt maître, non une preuve d'implémentation.
+
+
+## MODULE PRO — FACTURATION PROFESSIONNELLE MULTIPAYS (DEMANDE 2026-10-26)
+
+**Mission :** étendre le module « Sous-traitance, prêt de personnel et facturation des heures » avec une facturation professionnelle personnalisable, multidevise et prête pour des règles fiscales multipays. Préserver les pointages, validations, horaires multi-emplacements, permissions et isolation par compagnie déjà définis. Fonctionnalité du forfait Pro; activation explicite par entreprise.
+
+### Paramétrage de l'entreprise
+- Identité légale, nom commercial, adresse complète, pays/région, contacts, logo haute définition (SVG/PNG si compatibles), numéro d'entreprise et identifiants fiscaux par juridiction (ex. TPS/TVQ), devise, langue, fuseau horaire et coordonnées de paiement.
+- Vérifier les champs obligatoires avant émission, sans inventer de numéro fiscal; autoriser une entreprise non inscrite à certaines taxes avec mention adaptée et sans afficher de faux numéros.
+- Paramètres par client/contrat : adresse de facturation, contact, référence de bon de commande, conditions de paiement, devise, langue, échéance et règles d'approbation.
+
+### Six modèles de factures
+- Fournir six modèles PDF réels, prévisualisables et adaptables : Minimaliste (vert sauge), Entreprise (bleu marine), Prestige (noir et blanc), Chantier, Services, Personnalisé.
+- Personnalisation : logo, couleurs, en-tête/pied de page, numérotation, notes, modalités, mentions fiscales, visibilité du détail par employé/lieu/date, regroupements et annexe de relevé d'heures. Formats A4 et Lettre, impression lisible, responsive pour l'aperçu mobile.
+- Ne pas se contenter de maquettes : produire des factures PDF téléchargeables et testées, sans chevauchement, même avec plusieurs pages et longs noms.
+
+### Taxes et conformité
+- Moteur de taxes **configurable et versionné** par date, pays, province/État, nature du service, lieu de fourniture, statut d'inscription et régime fiscal; aucune détermination fondée uniquement sur l'adresse du client.
+- Canada : TPS, TVQ, TVH et taxes provinciales pertinentes; international : TVA, taxes de vente et cas de reverse charge/autoliquidation, détaxation, exonération, hors champ et absence de perception selon les conditions applicables.
+- Afficher distinctement base taxable, taux, montants de chaque taxe, total, devise, identifiants fiscaux et mentions requises. Gérer arrondis décimaux de façon déterministe, taxes incluses/exclues, dates d'entrée en vigueur et changements futurs.
+- **Ne jamais présumer qu'une table d'exemples est une source légale à jour.** Prévoir validation réglementaire locale, mise à jour administrative des règles, avertissements en cas de configuration incomplète et tests par juridiction. Préparer l'intégration de formats de facturation électronique lorsque légalement requis.
+
+### Cycle de facturation
+1. Sélectionner les heures **approuvées, facturables et non déjà facturées**, filtrées par compagnie, client, contrat, chantier, emplacement et période; supporter taux distincts (régulier, supplémentaire, métier), frais de déplacement, minimums, arrondis contractuels, remises et autres postes.
+2. Action « Facturer les heures approuvées » : générer un **brouillon** éditable avec détail, calcul des taxes, marge brute interne et prévisualisation PDF. Aucune émission/envoi automatique sans validation explicite de l'utilisateur autorisé.
+3. Émission : numéro unique par compagnie et séquence, horodatage, instantané immuable des taux, taxes, lignes et pièces; états brouillon/émise/partiellement payée/payée/en retard/annulée selon règles; interdiction de double facturation même avec actions concurrentes.
+4. Après émission, corrections par avoir/note de crédit ou document d'ajustement lié et auditable; ne pas modifier silencieusement une facture émise. Conserver liens vers les segments de pointage d'origine.
+5. PDF, téléchargement, envoi par courriel avec suivi, relevé des heures en annexe, export CSV, historique, journal d'audit, paiements partiels, acomptes, échéances et rappels configurables. Ne pas prétendre que le paiement est reçu sans preuve; intégrations comptables/paiement éventuelles clairement séparées du socle.
+6. Vue Boss/Admin : montants HT, taxes, TTC, impayés, coûts internes estimés, marge brute $ et %, sans exposer coûts/marges au client ni à l'employé. Les coûts internes ne doivent **jamais** figurer dans le PDF client.
+7. Client externe pouvant consulter/approuver son relevé par accès limité sécurisé, sans devoir être membre Punch; aucune visibilité sur autres contrats ou compagnies.
+
+### Critères d'acceptation et priorité
+- Tester : facture Québec 40 h × 40 $ = 1 600 $ HT; TPS 5 % = 80 $, TVQ 9,975 % = 159,60 $, total 1 839,60 $ CAD **uniquement si ces taxes sont applicables**; facture sans taxes si légitime; autre province/pays; taxes incluses; plusieurs devises; logo absent/présent; PDF multipage; numéro fiscal absent; note de crédit; paiement partiel; changement de taux historique; protection contre doublons; isolation RLS; approbation externe sans fuite de marge.
+- Priorité : livraison Québec/Canada robuste d'abord, architecture extensible multipays ensuite. Les taux d'exemple ne remplacent pas la vérification des règles en vigueur. Ajouter tests de calcul, sécurité et rendu PDF, mettre à jour suivi public avec preuves concrètes; ne déclarer « terminé » qu'après validation réelle.
