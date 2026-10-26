@@ -1405,3 +1405,27 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 - **Phase 2 :** moteur de paie Québec/CCQ vérifié (retenues, cumuls, indemnités, cas particuliers, rétroactivité), talons PDF natifs et rapprochement des calculs avec cas de référence indépendants.
 - **Phase 3 :** intégration partenaire pour versements, remises et documents annuels; international par juridiction après vérification.
 - Tests obligatoires : périodes avec heures supplémentaires, classifications/secteurs différents, primes, vacances, changements de taux, corrections après clôture, cumuls, confidentialité RLS, PDF multipage, mobile, absence de fuite de données bancaires, cohérence entre pointage/paie/facture. Mettre à jour le suivi officiel avec statut honnête : « spécifié » ne signifie pas « développé ».
+
+
+## MODULE PRO — DOCUMENTS FISCAUX ANNUELS MULTIPAYS (DEMANDE 2026-10-26)
+
+**Objectif :** compléter le module « Préparation de paie et talons CCQ » par des documents fiscaux annuels **et des talons de paie multipays**. L'interface, les PDF, les retenues, les cumuls et les formulaires doivent s'adapter au pays et à la juridiction de l'employeur/employé et aux obligations applicables, sans supposer que les règles du Québec s'appliquent ailleurs.
+
+**Références visuelles fournies :** l'utilisateur a partagé le 26 octobre 2026 deux captures de formulaires personnels : un **Relevé 1 (RL-1)** de Revenu Québec et un **T4** de l'Agence du revenu du Canada, en plus d'un talon Nethris CCQ précédent. Ces images sont des **références de structure visuelle et de champs**, pas des modèles légaux, ni des données de test. **Ne pas copier les originaux dans le dépôt GitHub, les artefacts CI ou le site public** : ils contiennent des identifiants personnels, fiscaux et financiers. Des versions expurgées ou des maquettes entièrement fictives peuvent servir de référence, après vérification qu'aucune donnée personnelle n'est lisible ou récupérable.
+
+### Fonctionnalités
+1. Paramétrer pays, province/État, langue, devise, année fiscale, identifiants fiscaux, régimes de paie et statut d'employeur. Chaque juridiction possède ses règles, ses formulaires et ses périodes d'entrée en vigueur.
+2. **Canada/Québec en priorité :** produire les données de T4 et Relevé 1, avec cases officielles, cumuls et rapprochement des paies, et prévoir T4A, RL-2 et autres relevés seulement lorsqu'ils sont applicables. Gérer les corrections, annulations, duplicatas et historiques par année.
+3. **International :** architecture modulaire pour documents locaux (p. ex. W-2 américain et équivalents pertinents), en distinguant les régimes réellement pris en charge des pays non encore certifiés. Aucune émission de document prétendument officiel sans conformité locale vérifiée.
+4. **Talons multipays :** moteur de mise en page et données normalisées, champs obligatoires spécifiques à chaque juridiction, gains, heures, retenues, contributions, cumuls et net, avec modèles personnalisables, logo et PDF; masquer les champs CCQ hors contexte construction Québec.
+5. Prévoir génération de PDF officiels ou conformes au format prescrit lorsque permis, exports structurés et transmission électronique **uniquement** selon les spécifications actuelles de chaque autorité et les permissions/intégrations disponibles. Prévoir un parcours de dépôt manuel si la transmission directe n'est pas disponible; ne jamais déclarer une transmission accomplie sans accusé de réception.
+6. Tableau Boss/Admin : contrôle des données annuelles, rapprochement paies/relevés, avertissements de cases manquantes, approbation, émission, rectification, journal d'audit. Portail employé : accès sécurisé à ses propres talons et relevés, téléchargement, notification de disponibilité.
+7. Protection renforcée : NAS/SIN et identifiants équivalents chiffrés, affichage masqué par défaut, accès limité, Supabase RLS, documents privés, liens expirables, règles de conservation/destruction et aucun renseignement réel dans les logs ou tests.
+8. Moteur réglementaire versionné et tests de référence : règles fiscales et formats par année et juridiction, vérification contre documentation officielle Revenu Québec/ARC/autorités locales; gestion des changements et correction rétroactive. Ne pas coder les taux à partir de captures d'écran.
+
+### Phasage et critères d'acceptation
+- Phase 1 : cumuls, exports et import des documents d'un fournisseur de paie; stockage et consultation sécurisés; préparation de T4/RL-1 sans transmission automatisée.
+- Phase 2 : génération vérifiée T4/RL-1 et fichiers prescrits, corrections et validation; talons Québec/CCQ natifs.
+- Phase 3 : modules par pays, talons locaux et formulaires équivalents après validation légale et technique.
+- Tests : T4/RL-1 cohérents avec paies annuelles, employé avec plusieurs employeurs, rectificatifs, pays et devises différents, droits d'accès et absence de fuite de NAS, PDF imprimable, accès mobile, formats électroniques et accusés de réception.
+- Documenter l'état réel au suivi officiel. Cette section est une **exigence à développer**, non une fonctionnalité déjà livrée.
