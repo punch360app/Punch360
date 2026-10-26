@@ -109,3 +109,12 @@ Le flux de modification de forfait, la prévisualisation et la confirmation cont
 - **Testé :** tests Node avec deux entreprises fictives, ID client erroné, abonnement étranger, métadonnées manquantes et mode test/live; CI GitHub à vérifier sur la PR.
 - **Déployé :** non pour cette modification Edge; état actif Supabase à revérifier, aucun déploiement automatique déclaré.
 - **Intervention externe :** revue des métadonnées des abonnements de test, recette Stripe sandbox, webhooks, proratas, taxes et déploiement Edge contrôlé; issue #35 maintenue ouverte.
+
+## P0-B — Isolement Stripe client / portail / factures (26 octobre 2026)
+
+Le portail Stripe, l'historique des factures et la réutilisation d'un Customer pendant Checkout sont protégés par une **lecture du Customer réel chez Stripe**. Son ID, sa métadonnée d'entreprise `punch_company`, l'environnement test/live et l'état non supprimé doivent correspondre au compte privé du Boss. La liste des factures est également contrôlée élément par élément contre ce Customer et cet environnement avant de rendre les liens hébergés. Un mauvais rattachement refuse l'opération; le code ne réattribue jamais silencieusement un client Stripe.
+
+- **Développé :** helper partagé + contrôles dans Edge `essential-billing` + tests unitaires; aucun changement du catalogue, des six Price IDs, des contrats, de Construction ou de SQL.
+- **Testé :** CI GitHub Actions TypeScript/Node et syntaxe Web à confirmer sur la PR; Stripe sandbox fournisseur non testé.
+- **Déployé :** non pour ce correctif Edge, tant que la recette Stripe sandbox n'a pas été faite et le déploiement confirmé.
+- **Intervention externe :** vérifier les Customers de test et leurs métadonnées chez Stripe, le portail, les factures, Checkout, prorata et webhooks; issue #35 reste ouverte. Les anciens Customers sans métadonnée exigent une revue manuelle et ne sont pas réparés automatiquement.
