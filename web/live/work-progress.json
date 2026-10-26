@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T22:19:36.284Z",
+  "generated_at": "2026-10-26T22:26:34.005Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1341,9 +1341,29 @@
         152
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-011": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        153
+      ],
+      "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 153,
+      "sha": "806c95a678ead84f1e2c62bcf5fe2b8a4248091b",
+      "ci": "success",
+      "ids": [
+        "MISSION-011"
+      ],
+      "title": "Essentiel — tableau du jour Missions : statuts, filtres et CSV sans données privées",
+      "merged_at": "2026-10-26T22:26:10Z"
+    },
     {
       "number": 152,
       "sha": "6d1fc33e2de3cd02e374cc74e172c639c1eed535",
@@ -1866,15 +1886,6 @@
       "ids": [],
       "title": "P0-B Stripe : vérifier le client existant avant toute création de prix personnalisé",
       "merged_at": "2026-10-26T10:12:25Z"
-    },
-    {
-      "number": 99,
-      "sha": null,
-      "head_sha": "9a366e2afaf72816cf38ec9c8cc994e10c20998b",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : refuser les devis Checkout trop anciens avant toute création de Price",
-      "merged_at": "2026-10-26T10:04:58Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
