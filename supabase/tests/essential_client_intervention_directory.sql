@@ -67,8 +67,10 @@ begin
    raise exception 'Next page incorrect: %',nextpage;end if;
  if exists(select 1 from jsonb_array_elements(nextpage->'items') item where (item->>'id')::uuid<=firstlast)
  then raise exception 'Keyset pagination overlaps';end if;
+ execute 'reset role';
  select count(*) into customer_count from public.essential_client_sites where company_id=company;
  if customer_count<>107 then raise exception 'Unexpected site count';end if;
+ execute 'set local role authenticated';
  -- A customer at another company is never selectable.
  perform set_config('request.jwt.claim.sub',other_boss::text,true);
  row:=public.save_essential_client(company_b,null,0,'Other client','','','',true);
@@ -99,6 +101,7 @@ begin
  denied:=false;begin perform public.save_essential_client(company,client_id,1,'Clinique Sourire','','','',false);
  exception when invalid_parameter_value then denied:=true;end;
  if not denied then raise exception 'Client archive bypassed other active sites';end if;
+ execute 'reset role';
  if (select count(*) from public.essential_locations where company_id=company)<>branches_before or
     (select count(*) from public.jobs where company_id=company)<>jobs_before or
     (select count(*) from public.scheduled_shifts where company_id=company)<>shifts_before then
