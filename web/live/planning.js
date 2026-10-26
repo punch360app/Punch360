@@ -259,12 +259,12 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    ${select('Salarié','clientReportWorker',[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])}
    ${select('Adresse client','clientReportSite',[['','Toutes les adresses'],...places])}
    ${select('Département','clientReportDepartment',[['','Tous les départements'],...s.departments.filter(d=>d.active).map(d=>[d.id,d.name])])}
-   </div>${btn('Calculer par client','client-planned-report')}
+   </div>${btn('Calculer par client','planned-client-report')}
    ${r?`<p role="status">Heures prévues attribuables : ${r.totalHours.toFixed(2)} h · créneaux en conflit non attribués : ${r.conflictHours.toFixed(2)} h · chevauchements du même lieu dédupliqués : ${r.sameSiteOverlapHours.toFixed(2)} h · quarts sans salarié : ${r.vacantHours.toFixed(2)} h.</p>
     <p class="ess-fine">Période UTC ${e(r.from)} au ${e(r.to)} (fin exclusive). Heures réellement travaillées par client : non attribuées (aucune estimation).</p>
     <div style="overflow-x:auto"><table><thead><tr><th>Client</th><th>Adresse</th><th>Ville</th><th>Heures prévues</th><th>Salariés</th></tr></thead>
     <tbody>${r.rows.map(x=>`<tr><td>${e(x.client)}</td><td>${e(x.site)}</td><td>${e(x.city)}</td><td>${x.scheduledHours.toFixed(2)} h</td><td>${x.workers}</td></tr>`).join('')}</tbody></table></div>
-    ${btn('Exporter ces heures prévues (CSV)','client-planned-csv')}`:''}
+    ${btn('Exporter ces heures prévues (CSV)','planned-client-csv')}`:''}
    </section>`;
  }
  function renderReport(){const r=s.report;return `<section class="ess-panel"><h3>Heures brutes prévues et réelles</h3><div class="ess-form-grid">${field('Du (date ISO)','reportFrom','date')}${field('Au (date de fin exclusive)','reportTo','date')}</div><p class="ess-fine">Période UTC, maximum 31 jours. Les durées sont brutes et ne constituent pas une paie calculée.</p>${btn('Calculer le rapport','report')}${r?`<div class="ess-metrics"><div><small>Planifiées</small><strong>${(r.planned_gross_ms/3600000).toFixed(2)} h</strong></div><div><small>Réelles</small><strong>${(r.actual_gross_ms/3600000).toFixed(2)} h</strong></div></div><p>${r.vacant_shifts} quart(s) à combler</p>${r.coverage_included?`<h3>Couverture insuffisante</h3><p class="ess-fine">Minimum configuré appliqué sur toute la période sélectionnée; choisir vos heures d’ouverture pour éviter les alertes hors activité.</p>${r.coverage_gaps.map(g=>`<p>${e(g.name)} · ${e(date(g.starts_at))} → ${e(date(g.ends_at))} : ${g.staffed}/${g.minimum_staff}</p>`).join('')||'<p>Aucun manque dans cette période.</p>'}`:'<p class="ess-fine">Couverture minimale disponible avec Pro.</p>'}`:''}</section>`;}
@@ -305,13 +305,13 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   if(a==='overview-apply'){if(!manager())return true;for(const key of ['overviewDay','overviewPeriod','overviewWorker','overviewSite','overviewDepartment'])s.form[key]=val(key);redraw();return true;}
   if(a==='template-load'){const t=s.templates.find(t=>t.id===id&&t.active);if(!t)return true;Object.assign(s.form,scheduleTemplateForm(t));s.template=t;s.batch=null;s.editing=null;s.showForm=true;redraw();return true;}if(a==='toggle'){s.showForm=!s.showForm;s.editing=null;redraw();return true;}if(a==='tab'){s.tab=id;redraw();return true;}if(a==='edit'){edit(id);redraw();return true;}
   s.busy=true;try{
-   if(a==='client-planned-report'){
+   if(a==='planned-client-report'){
     if(!manager())throw Error('Rapport réservé au responsable.');
     const from=val('reportFrom'),to=val('reportTo'),worker=val('clientReportWorker'),site=val('clientReportSite'),department=val('clientReportDepartment');
     await reload();
     s.clientPlannedReport=plannedClientReport({shifts:s.shifts,assignedSites:s.assignedSites,from,to,worker,site,department,loadedFrom:s.form.calendarFrom,loadedTo:s.form.calendarTo,incomplete:s.assignedSitesUnavailable});
     return true;
-   }else if(a==='client-planned-csv'){
+   }else if(a==='planned-client-csv'){
     if(!manager()||!s.clientPlannedReport)throw Error('Rapport autorisé à calculer avant export.');
     const text=plannedClientReportCsv(s.clientPlannedReport);
     const objectUrl=doc.defaultView.URL.createObjectURL(new doc.defaultView.Blob([text],{type:'text/csv;charset=utf-8'}));
