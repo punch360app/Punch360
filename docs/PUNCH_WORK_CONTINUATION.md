@@ -1,3 +1,19 @@
+# Reprise vérifiée — comptes multi-entreprises, rôle et heures séparés (PR #68, #70, #71)
+
+Le prompt original **« Validation SQL archives »** progresse sans relancer le prompt maître. Trois fusions supplémentaires sont terminées :
+
+- **PR #68** : sélecteur d'entreprise Web et Expo pour une même identité Auth appartenant à plusieurs employeurs. L'ancien chargement Expo `.limit(1).maybeSingle()` est remplacé par la liste d'appartenances actives. Le rôle et l'édition de chaque compagnie sont confirmés côté serveur à chaque sélection. Les caches Expo et Web sont isolés par `userId:companyId`. Impossible de changer de compagnie si des punchs hors ligne attendent encore leur synchronisation.
+- **PR #70** : test SQL `supabase/tests/multicompany_rls_isolation.sql`, exécuté avec succès sur le seul Supabase officiel `mlabstdxxwjdpfaxiwmg` dans `BEGIN`/`ROLLBACK`. Boss A ne peut voir ni créer de quart B; Boss B ne voit pas A; un utilisateur avec rôle employé A et admin B retrouve ses deux dossiers; un salarié B ne voit pas les quarts privés d'autres personnes; un compte extérieur n'a pas de données. Contrôle après rollback : **zéro utilisateur et zéro compagnie fictive conservés**.
+- **PR #71** : la dernière job sélectionnée dans le navigateur est enregistrée sous la clé `utilisateur:compagnie` dans les trois chemins de lecture/écriture (retour session, GPS, sélection manuelle), évitant les contaminations de préférences entre deux employeurs.
+
+Documentation de ce bloc : `docs/MULTICOMPANY_IDENTITY_SELECTOR_20261026.md` et `docs/MULTICOMPANY_SQL_VALIDATION_20261026.md`. La CI TypeScript/Expo et Web/Node était verte sur les branches fusionnées; confirmer le dernier déploiement `main` avant recette sur appareil. Aucune mutation de client réel.
+
+**Restant du prompt original** : recette authentifiée Web/Expo avec deux vrais comptes de test dans deux entreprises, notifications/push et chats tenant-scoped, suivi hors ligne entre deux entreprises, horaires de nuit et passage d'heure, traductions complètes des écrans spécialisés, responsive sur appareil, test Stripe sandbox et taxes/prorata, fournisseurs Google/Apple et SMTP, paie et exports, tests de charge et PRA, builds Android/iOS signés, parcours borne tablette et GPS. SMS/Twilio toujours en dernier, conformément à la priorité validée.
+
+**Ne pas commencer le prompt maître documentaire tant que le prompt original n'est pas clos.** Aucun pourcentage de finition globale ne doit être affirmé sans audit du code et recette fournisseurs.
+
+---
+
 # Reprise du prompt original — langues de base Expo Android/iOS (nouvelle PR)
 
 Après PR #67 (navigation Essentiel Web, 10 langues + RTL), le prochain bloc du **prompt original « Validation SQL archives »** élargit le même dictionnaire à Expo : `src/i18n/essential-native-locale.js`, gestion des préférences AsyncStorage par compte, sélecteurs de langue pour Boss/Admin et employés, navigation/onglets/pointage essentiel traduits, RTL arabe limité aux conteneurs pertinents. `web/live/essential-locale.js` contient les mêmes clés pour Web et Expo. Tests `tests/essential-native-locale.test.mjs`; documentation `docs/ESSENTIAL_EXPO_NATIVE_LOCALE_20261026.md`. CI et publication Web à confirmer avant fusion. **Aucune migration Supabase, aucun compte ou abonnement réel modifié.**
