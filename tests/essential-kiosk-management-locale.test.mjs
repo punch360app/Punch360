@@ -29,8 +29,8 @@ test('kiosk Boss page follows personal language without leaking codes into publi
  assert.equal(w.document.querySelector('script'),null);
  assert.equal(w.document.querySelectorAll('a').length,2);
  for(const link of w.document.querySelectorAll('a')){
-  assert.equal(new URL(link.href).search.includes('TEST-SECRET-PAIRING-CODE'),false);
-  assert.equal(new URL(link.href).hash.includes('TEST-SECRET-PAIRING-CODE'),false);
+  assert.equal(new URL(link.getAttribute('href'),'https://punch.test/').search.includes('TEST-SECRET-PAIRING-CODE'),false);
+  assert.equal(new URL(link.getAttribute('href'),'https://punch.test/').hash.includes('TEST-SECRET-PAIRING-CODE'),false);
  }
  assert.ok(w.document.querySelector('[data-action="ess:revoke-device"]'));
  locale.select('ar');
