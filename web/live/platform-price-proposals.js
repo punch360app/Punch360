@@ -1,7 +1,16 @@
 /** Negotiated commercial quotes: drafts only, never activate Stripe or rewrite contracts. */
 export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
  let generation=0;
- const fresh=()=>({company:'',companyName:'',reason:'',plan:'essential',cadence:'monthly',seats:'5',base:'1900',included:'5',extra:'300',discount:'15',effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),confirmation:'',approveConfirmation:'',approval:null,list:null,preview:null,error:'',notice:'',busy:false});
+ // Owner-approved public starting values. These ONLY prefill a negotiation form;
+ // contracts and Stripe's six saved Price IDs remain authoritative and untouched.
+ const approved=Object.freeze({
+  essential:Object.freeze({seats:'20',base:'1900',included:'20',extra:'200'}),
+  essential_plus:Object.freeze({seats:'25',base:'3900',included:'25',extra:'200'}),
+  essential_pro:Object.freeze({seats:'50',base:'6900',included:'50',extra:'200'})
+ });
+ const fresh=()=>({company:'',companyName:'',reason:'',plan:'essential',cadence:'monthly',...approved.essential,
+  discount:'15',pricingEdited:false,effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),
+  confirmation:'',approveConfirmation:'',approval:null,list:null,preview:null,error:'',notice:'',busy:false});
  const s=fresh();
  const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(Number(n||0)/100);
  const uuid=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x||'');
@@ -12,9 +21,14 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   const k=el.id?.replace(/^platform-price-/,'');
   if(!k||!(k in s))return;
   s[k]=el.value;
+  if(k==='plan'&&approved[s.plan]){
+   if(!s.pricingEdited)Object.assign(s,approved[s.plan]);
+   else s.notice='Valeurs négociées conservées : vérifiez les places et les prix pour ce forfait.';
+  }
+  if(['seats','base','included','extra','discount'].includes(k))s.pricingEdited=true;
   if(k==='company')s.companyName='';
   if(k==='company'||k==='reason'){s.list=null;s.approval=null;s.confirmation='';s.approveConfirmation='';}
-  s.preview=null;s.notice='';
+  s.preview=null;if(k!=='plan')s.notice='';
  }
  const btn=(title,action,disabled=false,extra='')=>`<button type="button" class="ess-btn" data-action="platform-price:${action}" ${disabled||s.busy?'disabled':''} ${extra}>${title}</button>`;
  function args(){
@@ -34,7 +48,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   <label class="ess-field">Motif détaillé<input id="platform-price-reason" value="${e(s.reason)}" maxlength="1000"></label>
   ${btn('Charger les projets et la version','load')}
   ${s.list?`<p>Version : ${Number(s.list.version)} · Dernières propositions (max. 20) · approbation v${Number(s.approval?.version||0)}</p>${(s.list.items||[]).map((x,i)=>`<p>v${Number(x.proposal_version)} · ${e(x.plan_id)} · ${money(x.due_cents)} / ${e(x.cadence)} · ${e(x.status)}. ${s.approval?.proposal_id===x.id?'Approuvée, en attente d’acceptation du Boss et de confirmation Stripe.':'Non approuvée.'} ${i===0&&s.approval?.proposal_id!==x.id?btn('Approuver cette proposition pour le Boss','approve',false,`data-id="${e(x.id)}"`):''}</p>`).join('')}<label class="ess-field">Pour approuver, recopier l’identifiant de l’entreprise<input id="platform-price-approveConfirmation" value="${e(s.approveConfirmation)}" autocomplete="off"></label><p>${e(s.company)}</p><p>Cette approbation seule n’effectue aucun paiement. Le Boss devra accepter le devis chez Stripe.</p>`:''}
-  <fieldset ${s.busy?'disabled':''}><legend>Créer un devis négocié, sans activation</legend>
+  <fieldset ${s.busy?'disabled':''}><legend>Créer un devis négocié, sans activation</legend><p class="ess-fine">Valeurs de départ : Essentiel 19 $ / 20 places, Plus 39 $ / 25 places, Pro 69 $ / 50 places, +2 $ par personne supplémentaire et −15 % annuel. Vous pouvez personnaliser le devis; les contrats et prix Stripe déjà enregistrés ne sont pas modifiés.</p>
   <label class="ess-field">Forfait<select id="platform-price-plan">${[['essential','Essentiel'],['essential_plus','Plus'],['essential_pro','Pro']].map(([v,n])=>`<option value="${v}" ${s.plan===v?'selected':''}>${n}</option>`).join('')}</select></label>
   <label class="ess-field">Périodicité<select id="platform-price-cadence"><option value="monthly" ${s.cadence==='monthly'?'selected':''}>Mensuelle</option><option value="yearly" ${s.cadence==='yearly'?'selected':''}>Annuelle</option></select></label>
   ${[['seats','Nombre de places'],['base','Prix de base mensuel (cents CAD)'],['included','Places incluses'],['extra','Supplément par place (cents CAD)'],['discount','Réduction annuelle (%)']].map(([key,title])=>`<label class="ess-field">${title}<input id="platform-price-${key}" type="number" min="0" step="1" value="${e(s[key])}"></label>`).join('')}
