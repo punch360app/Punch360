@@ -33,9 +33,11 @@ test('source is dated 26 October 2026; no invented completion or sensitive Drive
 });
 
 test('links to verified PRs and open provider/device QA issues are visible',()=>{
- for(const n of [104,106,108,109,110]){
+ for(const n of [104,106,108,109,110,112,113,114,115]){
   assert.ok(html.includes('https://github.com/punch360app/Punch360/pull/'+n),'missing PR '+n);
  }
+ assert.ok(html.includes('AUTOPILOT_HANDOFF_20261026.md'));
+ assert.match(html,/migration de confirmation 20261026110100 absente/);
  for(const n of [35,102]){
   assert.ok(html.includes('https://github.com/punch360app/Punch360/issues/'+n));
  }
