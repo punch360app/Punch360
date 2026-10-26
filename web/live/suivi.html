@@ -20,6 +20,7 @@
 .completion-meter-fill{display:block;width:0;height:100%;background:#4d9870;border-radius:50px;transition:width .25s ease}
 .completion-note{grid-column:1/-1;font-size:12px;color:#667e6b;margin:0}
 @media(max-width:760px){.completion-card{padding:18px 17px;gap:11px 9px;border-radius:17px;margin-top:14px}.completion-title{font-size:17px}.completion-fraction{font-size:18px}.completion-percent{font-size:clamp(32px,10vw,44px)}.completion-meta,.completion-note{font-size:11px}.completion-meter{height:13px}}
+.workactivity{grid-column:1/-1;display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11px;color:#65806d}.workactivity a{font-size:11px;color:#3c7550;font-weight:800;text-decoration:underline}.workactivity-label{font-weight:900;color:#476d50}
 </style>
 </head><body>
 <div class="mobilehead"><div class="brand"><div class="brandmark">P</div><div><div class="brandtitle">PUNCH <em>360°</em></div></div></div><span style="font-size:11px;color:#b9d8be">CENTRE DE SUIVI</span></div>
@@ -38,6 +39,7 @@
  </div>
  <div class="completion-percent" id="progressPercent" aria-live="polite">— %</div>
  <div class="completion-meter" id="progressMeter" role="progressbar" aria-label="Proportion d’exigences avec travail vérifiable dans GitHub" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="completion-meter-fill" id="progressFill"></span></div>
+ <div class="workactivity" id="workRecent" aria-label="Dernières pull requests Work fusionnées">Chargement des dernières PR…</div>
  <p class="completion-note"><strong>Source : travail de Work dans GitHub</strong>, vérifié par PR et CI. Le % principal recense les exigences <strong>avec travail attesté, même partiel</strong> (il ne représente donc pas le pourcentage fonctionnel réalisé). <span id="progressDetail">Livrées et recettées : à vérifier.</span> Les exigences historiques non encore auditées ne sont pas comptées. Les cases cochées localement n'affectent pas ce chiffre. <a href="https://github.com/punch360app/Punch360/blob/main/web/live/work-progress.json" target="_blank" rel="noopener">Voir les preuves et limites</a>.</p>
 </section>
 <div class="alert"><span style="font-size:18px">◉</span><span><b>Suivi automatique de Work.</b> Le registre de travail vient du dépôt GitHub (PR, tests et étapes de livraison). Il se met à jour après publication des modifications GitHub; recharge la page pour voir le dernier état. Tes notes locales demeurent séparées. <span id="progressSync" aria-live="polite">Synchronisation en attente…</span></span></div>
@@ -104,6 +106,17 @@ function renderWorkProgress(manifest){
  document.getElementById('progressFill').style.width=result.percent+'%';
  document.getElementById('progressMeter').setAttribute('aria-valuenow',String(result.percent));
  document.getElementById('progressSync').textContent='Registre GitHub actualisé : '+(manifest.generated_at||'date non renseignée');
+ const recent=document.getElementById('workRecent');
+ recent.replaceChildren();
+ const label=document.createElement('span');label.className='workactivity-label';label.textContent='Dernières PR fusionnées :';recent.appendChild(label);
+ for(const pr of (manifest.activity||[]).filter(p=>Number.isSafeInteger(p.number)&&p.number>0).slice(0,7)){
+  const link=document.createElement('a');
+  link.href='https://github.com/punch360app/Punch360/pull/'+pr.number;
+  link.target='_blank';link.rel='noopener noreferrer';
+  link.textContent='#'+pr.number+(pr.ci==='success'?' ✓':'');
+  link.title=pr.title||'PR fusionnée';
+  recent.appendChild(link);
+ }
 }
 async function loadWorkProgress(){
  try{
@@ -134,6 +147,6 @@ const ss=D.source_documents;document.getElementById('sourceGrid').innerHTML=ss.m
 for(const id of ['searchInput','priorityFilter','statusFilter'])document.getElementById(id).addEventListener(id==='searchInput'?'input':'change',()=>{document.getElementById('taskDetail').innerHTML='';renderModules()});
 document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('Effacer uniquement vos notes locales sur cet appareil ?')){notes={};localStorage.removeItem(SK);totalValidated();if(lastDetail)showDetail(lastDetail);else renderModules()}});
 document.getElementById('exportBtn').addEventListener('click',()=>{let payload={project:D.project,generated_at:new Date().toISOString(),notice:'Notes locales non vérifiées, non synchronisées automatiquement avec GitHub',task_statuses:notes};let blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PUNCH360_notes_suivi.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
-init();void loadWorkProgress();})();
+init();void loadWorkProgress();setInterval(()=>{if(!document.hidden)void loadWorkProgress();},60000);})();
 </script>
 </body></html>
