@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:14:22.194Z",
+  "generated_at": "2026-10-26T21:18:30.136Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 661,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1116,7 +1116,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        135
+        135,
+        143
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1252,6 +1253,16 @@
     }
   },
   "activity": [
+    {
+      "number": 143,
+      "sha": "0f70f8aae1ddd28b449e3f7ba64abc12c55246f5",
+      "ci": "success",
+      "ids": [
+        "MLOC-007"
+      ],
+      "title": "Essentiel — heures prévues par client et adresse, conflits dédupliqués",
+      "merged_at": "2026-10-26T21:18:17Z"
+    },
     {
       "number": 142,
       "sha": "88a67422cb5bc9ee8b2b614e09c7ae4b3c417f08",
@@ -1755,15 +1766,6 @@
       "ids": [],
       "title": "P0 Stripe : préserver les forfaits du propriétaire et réutiliser les 6 prix existants",
       "merged_at": "2026-10-26T06:46:10Z"
-    },
-    {
-      "number": 91,
-      "sha": null,
-      "head_sha": "543d1c29d741664d2fc60fda0904d8aab6d42f80",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0 — État déployé vérifié et divergence de catalogue #90",
-      "merged_at": "2026-10-26T06:32:03Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
