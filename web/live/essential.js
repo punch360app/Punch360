@@ -25,7 +25,7 @@ import {createAppearanceController} from './appearance.js';
 import {createBillingController} from './billing.js';
 import {createPlanningController} from './planning.js';
 /** Real Essentiel screens; all mutations go through checked server RPCs. */
-export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{}}) {
+export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{},getLocale=()=> 'fr'}) {
  const subscriptions=createSubscriptionDirectoryController({sb,redraw,escape:e});
  const qualifiedCoverage=createQualifiedCoverageController({sb,redraw,escape:e});
  const laborBudgets=createLaborBudgetsController({sb,redraw,escape:e});
@@ -36,7 +36,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const notificationPreferences=createNotificationPreferencesController({sb,redraw,escape:e});
  const supervision=createSupervisorApprovalsController({sb,redraw,escape:e});
  const breakPolicies=createBreakPoliciesController({sb,redraw,escape:e});
- const offlineReview=createOfflineReviewController({sb,redraw,escape:e});
+ const offlineReview=createOfflineReviewController({sb,redraw,escape:e,getLocale});
  const missingDays=createMissingDaysController({sb,redraw,escape:e});
  const archives=createArchivesController({sb,redraw,escape:e,document:doc,companies:()=>s.snapshot?.companies_list||[]});
  const finance=createPlatformFinanceController({sb,redraw,escape:e,companies:()=>s.snapshot?.companies_list||[]});
