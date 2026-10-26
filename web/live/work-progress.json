@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:42:03.932Z",
+  "generated_at": "2026-10-26T21:45:51.660Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 661,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1171,7 +1171,8 @@
       "external_required": true,
       "pr": [
         142,
-        144
+        144,
+        148
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1262,6 +1263,16 @@
     }
   },
   "activity": [
+    {
+      "number": 148,
+      "sha": "d5edea2e954d3f225f412852aa6e7cf86d8860c7",
+      "ci": "success",
+      "ids": [
+        "NAV-004"
+      ],
+      "title": "Essentiel — choisir et effacer sa navigation dans Plus → Réglages",
+      "merged_at": "2026-10-26T21:45:42Z"
+    },
     {
       "number": 147,
       "sha": "a40297bd29cb7722dd3a81e257cc7021ae132138",
@@ -1775,15 +1786,6 @@
       "ids": [],
       "title": "P0-B Stripe : vérifier l'entreprise et le client avant toute mutation d'abonnement",
       "merged_at": "2026-10-26T09:12:10Z"
-    },
-    {
-      "number": 95,
-      "sha": null,
-      "head_sha": "a6651b17f9eb480c98fbe3da2694466ca4fcdef4",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : précontrôle des abonnements avant création d'un Price",
-      "merged_at": "2026-10-26T08:07:09Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
