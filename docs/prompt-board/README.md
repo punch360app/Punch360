@@ -1,5 +1,8 @@
 # PUNCH 360° — Centre de suivi des prompts
 
+> **Affichage d'avancement :** la page [suivi.html](https://punch360app.github.io/Punch360/suivi.html) montre désormais au début le nombre d'exigences **marquées « Validé » localement** (ex. `110 / 578`), le pourcentage calculé (`19,0 %`) et une barre de progression qui se mettent à jour à chaque modification de statut. Le calcul utilise les **578 identifiants uniques du maître**, ignore les clés de notes étrangères, et conserve les notes déjà présentes dans le navigateur. **Ce chiffre n'est pas un pourcentage d'avancement technique certifié** : aucune case n'est cochée automatiquement par une PR, et les états développé / testé / déployé / intervention externe restent séparés dans le suivi GitHub. Une exigence sans note locale peut déjà avoir du code. Les données ne sont pas synchronisées entre appareils.
+
+
 > **Tableau de bord HTML du 26 octobre 2026 :** [Centre de suivi PUNCH 360° — 578 exigences / 29 lots](https://punch360app.github.io/Punch360/suivi.html). Le fichier source est [\`web/live/suivi.html\`](../../web/live/suivi.html). Il reprend le design du \`SUIVI_PUNCH360.html\` créé le 25 octobre et remplace son ancien inventaire de 389 points par la liste officielle du prompt maître. **C'est un instantané documenté, pas un tableau synchronisé en direct** : les notes « validées » dans l'interface restent locales au navigateur; seul GitHub et les preuves de test/déploiement permettent de clôturer une exigence. Aucun document brut ni lien direct du Drive privé n'y est publié. Les tests vérifient 578 IDs uniques et 29 lots.\n\n
 Ce répertoire définit le fonctionnement **Drive → GitHub → ChatGPT Work → statut vérifié**. Il ne change ni l'application ni Supabase.
 
