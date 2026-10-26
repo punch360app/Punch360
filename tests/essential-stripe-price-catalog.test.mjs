@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {billingQuote} from '../supabase/functions/_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice} from '../supabase/functions/_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
 
 const cases=[
  ['essential',1900,19380,20],
@@ -70,4 +70,22 @@ test('unknown/negative prices never fall through to a fabricated Stripe subscrip
  assert.throws(()=>selectRegisteredPrice(rows,'weekly',6900),/INVALID_ORDER_PRICE/);
  assert.throws(()=>selectRegisteredPrice(rows,'monthly',-1),/INVALID_ORDER_PRICE/);
  assert.throws(()=>selectRegisteredPrice(rows,'yearly',Number.MAX_SAFE_INTEGER),/INVALID_ORDER_PRICE/);
+});
+
+test('subscription confirmation accepts only the exact, fresh, previously previewed Stripe price',()=>{
+ const now=1_800_000_000,subscription={id:'sub_test_1',pending_update:null,items:{data:[{id:'si_1',price:{id:'price_old_12345678'}}]}};
+ const item=subscription.items.data[0],price='price_new_12345678';
+ const preview={price_id:price,subscription_id:subscription.id,item_id:item.id,subscription_price:item.price.id,proration_date:now-30,expires_at:now+570};
+ assert.equal(verifySubscriptionPreview(preview,subscription,item,price,now),preview);
+ const changes=[
+  {price_id:'price_other_12345678'}, {subscription_id:'sub_other'},
+  {item_id:'si_other'}, {subscription_price:'price_changed_12345678'},
+  {expires_at:now-1}, {expires_at:now+571}, {proration_date:now+1}
+ ];
+ for(const change of changes)assert.throws(()=>verifySubscriptionPreview({...preview,...change},subscription,item,price,now),/PREVIEW_EXPIRED/,JSON.stringify(change));
+ assert.throws(()=>verifySubscriptionPreview(preview,subscription,item,'price_different_12345678',now),/PREVIEW_EXPIRED/);
+ assert.throws(()=>verifySubscriptionPreview(preview,subscription,item,price,now+570),/PREVIEW_EXPIRED/);
+ assert.throws(()=>verifySubscriptionPreview(preview,{...subscription,pending_update:{}},item,price,now),/PREVIEW_EXPIRED/);
+ assert.throws(()=>verifySubscriptionPreview(preview,{...subscription,items:{data:[item,item]}},item,price,now),/PREVIEW_EXPIRED/);
+ assert.throws(()=>verifySubscriptionPreview(null,subscription,item,price,now),/PREVIEW_EXPIRED/);
 });
