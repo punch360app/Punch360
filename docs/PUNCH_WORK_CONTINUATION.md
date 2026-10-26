@@ -1,3 +1,13 @@
+# Reprise — archives binaires fictives et nettoyage en cas d'échec (26 octobre 2026)
+
+Après les PR #77–79 fusionnées (langues borne et console, CI/Pages vertes), retour au **cœur du prompt original « Validation SQL archives »**. Ce lot ajoute un test intégrant réellement le contrôleur Web, AES-GCM, le handler Edge testé et les RPC/Storage **synthétiques** (pas d'accès client réel) : export en blocs, téléchargement et vérification du PDF fictif, chiffrement, prévisualisation après suppression simulée, restauration sans écrasement puis plan et lignes simulés; mauvais mot de passe interdit toute importation. `tests/archive-binary-flow.test.mjs`.
+
+Correction dans `web/live/archives.js` : Fermer efface les octets et données déchiffrés même si le serveur échoue à supprimer ou lister les copies temporaires; conserver seulement l'ID opaque pour réessai; ne plus exposer de diagnostic SQL brut. `tests/archive-cleanup-failure.test.mjs`. Détails : `docs/ARCHIVE_BINARY_TESTS_AND_CLEANUP_20261026.md`.
+
+**Blocage technique non réglé** : lecture `arrayBuffer()` non bornée lorsque Storage ment ou omet `Content-Length` dans `company-archive-files/handler.mjs`. Tentative directe bloquée par contrôle de sécurité GitHub; aucune modification Edge revendiquée. Nécessite lecteur à taille réelle bornée + test. Restent surtout la vraie recette PDF avec authentification Boss/Super Admin, test de charge, PRA, Stripe test, OAuth et appareils. **Pas de migration ni de données client modifiées. SMS/Twilio toujours à la fin, prompt maître séparé.** Vérifier CI/PR avant annonce de déploiement.
+
+---
+
 # Reprise — gestion des bornes Boss/Admin en 10 langues (26 octobre 2026)
 
 La PR #78 a été fusionnée (CI/Pages réussies). Suite du prompt original « Validation SQL archives » : page Boss/Admin de gestion des bornes (`essential.js`) désormais traduite dans la langue Essentiel existante en 10 langues, avec vingt clés ajoutées, horodatage RTL isolé, identifiants HTML échappés, URLs PWA sans code secret et actions de sécurité inchangées. Nouveau test `tests/essential-kiosk-management-locale.test.mjs`, PWA v41; documentation `docs/ESSENTIAL_KIOSK_MANAGEMENT_LOCALE_20261026.md`. Vérifier CI/fusion/Pages de cette nouvelle branche avant annonce de déploiement. Aucune mutation Supabase ni client réel.
