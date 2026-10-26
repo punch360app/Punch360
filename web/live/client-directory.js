@@ -67,11 +67,13 @@ export function createClientDirectoryController({sb,escape:e,document:doc,redraw
  const activeChoice=(key,value)=>'<label class="ess-field">Statut<select id="directory-'+key+'"><option value="true" '+(value?'selected':'')+'>Actif</option><option value="false" '+(!value?'selected':'')+'>Archivé</option></select></label>';
  const button=(title,action,attrs='')=>'<button type="button" class="ess-btn" data-action="ess:plan-client-'+action+'" '+(state.busy?'disabled':'')+' '+attrs+'>'+e(title)+'</button>';
  const rpc=async(name,args)=>{const res=await sb.rpc(name,args);if(res.error)throw res.error;return res.data;};
- async function page(kind,more=false){
+ async function page(kind,more=false,expectedRevision=revision){
+  const requestCompany=state.company;
   const isClient=kind==='clients',name=isClient?'list_essential_clients':'list_essential_client_sites';
   const key=isClient?'clients':'sites',hasMore=isClient?'clientMore':'siteMore';
   const list=state[key],last=more&&list.length?list[list.length-1].id:null;
-  const answer=await rpc(name,{p_company:state.company,p_search:state[isClient?'clientSearch':'siteSearch'],p_after:last,p_limit:50});
+  const answer=await rpc(name,{p_company:requestCompany,p_search:state[isClient?'clientSearch':'siteSearch'],p_after:last,p_limit:50});
+  if(expectedRevision!==revision||state.company!==requestCompany)return;
   state[key]=more?[...list,...(answer.items||[])]:answer.items||[];
   state[hasMore]=!!answer.has_more;
  }
