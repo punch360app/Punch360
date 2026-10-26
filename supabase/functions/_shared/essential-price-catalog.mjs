@@ -58,6 +58,34 @@ export function selectRegisteredPrice(registered,cadence,amount){
 
 
 /**
+ * Stripe's Customer ID stored in the company account is not sufficient to
+ * authorize opening a billing portal or disclosing invoice history. Verify
+ * the actual provider's tenant marker and test/live mode first.
+ */
+export function verifyStripeCustomerTenant(account,customer,companyId,liveMode){
+ if(typeof account?.customer_id!=='string'||!account.customer_id||
+    typeof companyId!=='string'||!companyId||typeof liveMode!=='boolean'||
+    !customer||customer.object!=='customer'||customer.deleted===true||
+    customer.id!==account.customer_id||customer.metadata?.punch_company!==companyId||
+    customer.livemode!==liveMode)throw Error('STRIPE_CUSTOMER_TENANT_MISMATCH');
+ return customer;
+}
+/**
+ * A list filtered by a customer ID must not return an invoice owned by
+ * another Stripe customer or one originating from the other Stripe mode.
+ */
+export function verifyStripeInvoiceListTenant(list,customerId,liveMode){
+ if(!Array.isArray(list?.data)||typeof customerId!=='string'||!customerId||
+    typeof liveMode!=='boolean')throw Error('STRIPE_INVOICE_TENANT_MISMATCH');
+ for(const invoice of list.data){
+  const owner=typeof invoice?.customer==='string'?invoice.customer:invoice?.customer?.id;
+  if(owner!==customerId||invoice.livemode!==liveMode)
+   throw Error('STRIPE_INVOICE_TENANT_MISMATCH');
+ }
+ return list.data;
+}
+
+/**
  * Verify Stripe's own subscription-to-customer and tenant binding before any
  * customer-facing mutation. The private DB subscription ID alone is not proof
  * that the provider object still belongs to this Essentiel company.
