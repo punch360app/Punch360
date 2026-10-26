@@ -21,7 +21,7 @@ Exécuter le fichier intégral dans SQL Editor ou via un outil SQL autorisé **s
 ## Statut
 
 - **Développé :** test de posture et documentation versionnés dans la PR de ce lot.
-- **Testé :** noter ici uniquement après exécution vérifiable; aucune conclusion sur les clients réels ne peut être tirée d'un test de catalogue.
+- **Testé :** **réussi le 26 octobre 2026** via le connecteur Supabase sur le projet exact `mlabstdxxwjdpfaxiwmg` : script SQL entier exécuté sans exception, 20 RPC vérifiées, 4 tables RLS et permissions, 2 buckets privés et cron actif. Transaction `BEGIN READ ONLY` terminée par `ROLLBACK`. Le connecteur renvoie un jeu de résultats vide, sans erreur; les notices `RAISE NOTICE` ne sont pas exposées par son résultat. Cette validation du catalogue ne constitue pas une recette de restauration réelle.
 - **Déployé :** aucun changement de base ou Edge Function requis; le test appartient au dépôt.
 - **Intervention externe :** toujours nécessaires pour la recette réelle PDF binaire navigateur↔Storage↔Edge, validation de restore en environnement de test isolé, charge/concurrence, exercices de reprise PostgreSQL/PITR et contrôles de confidentialité.
 
