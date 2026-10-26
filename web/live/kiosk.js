@@ -8,9 +8,50 @@ const root=document.getElementById('kiosk');
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={device:null,person:null,number:'',pin:'',mode:'identify',notice:'',busy:false,pending:null,offlineIdentity:null,provisional:false,queued:0};let timer;let generation=0;
 const field=(label,id,type='text',extra='')=>`<label>${label}<input id="${id}" type="${type}" autocomplete="off" ${extra}></label>`;
+// The app only shows a limited, translated error vocabulary. Raw provider errors stay hidden.
+const kioskError=key=>{const err=Error(tr(key));err.kioskKey=key;return err};
+const LOCAL_ERROR_KEYS=Object.freeze({
+ 'Matricule et NIP de 6 à 12 chiffres requis.':'errorInput',
+ 'Les NIP ne correspondent pas.':'errorPinMismatch',
+ 'Une journée provisoire est déjà active':'errorActive',
+ 'Aucune journée provisoire active':'errorNoSession',
+ 'Aucune pause provisoire active':'errorNoSession',
+ 'Une pause est déjà active':'errorActive',
+ 'NIP requis':'errorInput',
+ 'Trop de tentatives : réessayez dans cinq minutes':'errorRate',
+ 'Une identification en ligne est requise sur cette borne':'errorOfflineIdentity',
+ 'Identification hors ligne refusée':'errorOfflineIdentity',
+ 'Identité hors ligne expirée : connexion requise':'errorOfflineIdentity',
+ 'Identité expirée : aucun pointage ajouté':'errorOfflineIdentity',
+ 'Identité serveur invalide':'errorOfflineIdentity',
+ 'Protection de l’appareil indisponible':'errorOfflineIdentity',
+ 'Journal local indisponible':'errorOfflineIdentity',
+ 'Écriture locale annulée':'errorOfflineIdentity',
+ 'Stockage appareil indisponible':'errorOfflineIdentity',
+ 'Action invalide':'errorOperation',
+ 'Type de pause incompatible avec la politique du département':'errorPolicy',
+ 'Journée provisoire terminée : connexion requise avant une nouvelle entrée':'errorPending',
+ 'Horloge reculée : connexion requise':'errorClock',
+ 'Horloge incohérente':'errorClock',
+ 'Observations provisoires en attente : connexion et réconciliation requises':'errorPending',
+ 'Identification en ligne préalable requise pour le hors ligne.':'errorOfflineIdentity',
+ 'Réessayez d’abord la même opération.':'errorRetry',
+ 'Réconciliation refusée':'errorOfflineConflict'
+});
+const localizedError=err=>{
+ if(err?.kioskKey)return tr(err.kioskKey);
+ const message=String(err?.message||'');
+ if(/fetch|timeout|abort|network/i.test(message))return tr('errorNetwork');
+ return tr(LOCAL_ERROR_KEYS[message]||'errorOperation');
+};
 function db(){return new Promise((resolve,reject)=>{const r=indexedDB.open('punch-essential-kiosk',1);r.onupgradeneeded=()=>r.result.createObjectStore('device');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(Error('Stockage appareil indisponible'));});}
 async function storage(action,value){const d=await db();try{return await new Promise((resolve,reject)=>{const t=d.transaction('device',action==='get'?'readonly':'readwrite'),o=t.objectStore('device');const r=action==='get'?o.get('paired'):action==='set'?o.put(value,'paired'):o.delete('paired');let result;r.onsuccess=()=>{result=r.result};t.oncomplete=()=>resolve(result);t.onerror=()=>reject(Error('Stockage appareil indisponible'));});}finally{d.close();}}
-async function request(params){const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(params),signal:AbortSignal.timeout(15000)});const data=await r.json();if(!data.ok)throw Error(({DEVICE_DENIED:'Borne révoquée ou non autorisée.',TRY_LATER:'Trop de tentatives. Réessayez dans quelques minutes.',IDENTITY_DENIED:'Identification refusée.',PIN_POLICY:'Choisissez un NIP de 6 à 12 chiffres moins prévisible.',ALREADY_ACTIVE:'Une journée est déjà active.',NO_ACTIVE_SESSION:'Aucune journée active.',OPERATION_REFUSED:'Opération refusée. Contactez votre responsable.'})[data.error]||'Opération refusée. Vérifiez vos informations.');return data;}
+async function request(params){
+ const r=await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(params),signal:AbortSignal.timeout(15000)});
+ const data=await r.json();
+ if(!data.ok){const key=({DEVICE_DENIED:'errorDenied',TRY_LATER:'errorRate',IDENTITY_DENIED:'errorDenied',PIN_POLICY:'errorPinPolicy',ALREADY_ACTIVE:'errorActive',NO_ACTIVE_SESSION:'errorNoSession',OPERATION_REFUSED:'errorOperation'})[data.error]||'errorOperation';throw kioskError(key)}
+ return data;
+}
 function clearPerson(message=''){generation++;clearTimeout(timer);state.person=null;state.offlineIdentity=null;state.provisional=false;state.pin='';state.number='';state.pending=null;state.notice=message;state.mode='identify';locale.select('fr');draw();}
 function arm(){clearTimeout(timer);timer=setTimeout(()=>clearPerson(),(state.device?.idle_seconds||10)*1000);}
 function draw(){document.documentElement.lang=locale.code;root.setAttribute('dir',locale.dir);root.innerHTML=`<header><strong>PUNCH <span>360°</span></strong><div><label class="kiosk-language"><span>Langue / Language</span><select id="kiosk-language" aria-label="Langue / Language">${KIOSK_LANGUAGES.map(x=>`<option value="${x.code}" ${x.code===locale.code?'selected':''}>${e(x.name)}</option>`).join('')}</select></label><span class="ess-badge">${navigator.onLine?tr('online'):tr('offline')}</span><time>${e(new Date().toLocaleString(intlLocale(),{dateStyle:'medium',timeStyle:'short'}))}</time></div></header>${state.device?`<section class="kiosk-content"><p class="kiosk-company">${e(state.device.company_name)} · ${e(state.device.name)}</p>${state.person?renderPerson():renderIdentity()}</section>`:`<section class="kiosk-content"><h1>${e(tr('pairTitle'))}</h1><p>${e(tr('pairHelp'))}</p>${field(e(tr('pairCode')),'pairCode')}<button data-action="pair">${e(tr('pairButton'))}</button><p>${e(tr('pairLimit'))}</p></section>`}${state.device&&state.queued?`<button data-action="sync-offline">${e(tr('syncPending'))}</button>`:''}<div class="kiosk-notice" role="status">${e(state.notice)}</div><footer>${state.queued?state.queued+' observation(s) provisoire(s), approbation requise. ':''}${e(tr('privacy'))} ${state.person?e(tr('autoReturn'))+' '+(state.device?.idle_seconds||10)+' s.':e(tr('identifyAgain'))}</footer>`;for(const button of root.querySelectorAll('button'))button.disabled=state.busy;
@@ -19,9 +60,14 @@ function draw(){document.documentElement.lang=locale.code;root.setAttribute('dir
 function renderIdentity(){return `<h1>${state.mode==='enroll'?e(tr('enrollTitle')):e(tr('welcome'))}</h1><p>${state.mode==='enroll'?e(tr('enrollHint')):e(tr('identifyHint'))}</p>${field(e(tr('employeeNumber')),'number','text','maxlength="40"')}${state.mode==='enroll'?field(e(tr('enrollCode')),'enrollment','text','maxlength="64"'):''}${field(e(tr('personalPin')),'pin','password','inputmode="numeric" minlength="6" maxlength="12"')}${state.mode==='enroll'?field(e(tr('confirmPin')),'pinConfirm','password','inputmode="numeric" minlength="6" maxlength="12"'):''}<div class="kiosk-keypad">${['1','2','3','4','5','6','7','8','9','C','0','OK'].map(k=>`<button data-key="${k}" ${k==='OK'?'class="primary"':''}>${k}</button>`).join('')}</div><button class="kiosk-link" data-action="toggle-enroll">${state.mode==='enroll'?e(tr('backIdentify')):e(tr('configurePin'))}</button>`;}
 function renderPerson(){const p=state.person,mode=p.break_policy?.paid_mode||'choice';return `<h1>Bonjour, ${e(p.name)}</h1><p>${p.active?(p.paused?e(tr('paused')):e(tr('workSince'))+' '+e(new Date(p.started_at).toLocaleTimeString(intlLocale(),{hour:'2-digit',minute:'2-digit'}))) :e(tr('ready'))}</p><div class="kiosk-active">${state.provisional||!navigator.onLine?'PROVISOIRE · conservé sur cette borne, puis vérifié et approuvé au retour du réseau.':p.active?e(tr('activeDevice')):'Votre pointage sera horodaté par le serveur.'}</div><p>${mode==='paid'?'Politique : pauses payées.':mode==='unpaid'?'Politique : pauses non payées.':''}</p><div class="kiosk-actions">${p.active?(p.paused?`<button data-action="break_end">${e(tr('breakEnd'))}</button>`:(mode!=='paid'?`<button data-action="break_start">${e(tr('breakUnpaid'))}</button>`:'')+(mode!=='unpaid'?`<button data-action="break_start_paid">${e(tr('breakPaid'))}</button>`:''))+`<button class="out" data-action="out">${e(tr('endDay'))}</button>`:`<button data-action="in">${e(tr('startDay'))}</button>`}</div><button class="kiosk-link" data-action="cancel" >${e(tr('cancelReturn'))}</button>`;}
 
-async function offlineRequest(params){const r=await fetch('https://mlabstdxxwjdpfaxiwmg.supabase.co/functions/v1/essential-kiosk-offline',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(params),signal:AbortSignal.timeout(15000)});const data=await r.json();if(!data.ok)throw Error(({DEVICE_DENIED:'Borne révoquée : contactez le responsable.',GRANT_REVOKED_OR_EXPIRED:'Identité expirée ou révoquée. Les observations restent sur cet appareil.',CLOCK_OR_EXPIRY_CONFLICT:'Horloge ou autorisation expirée : vérification du responsable requise.',CHAIN_CONFLICT:'Ordre des observations à vérifier. Ne supprimez pas le journal.',EVENT_CONFLICT:'Observation déjà reçue avec un contenu différent.',GRANT_ALREADY_REVIEWED:'Lot déjà traité : vérification du responsable requise.'})[data.error]||'Réconciliation temporairement refusée. Les observations restent sur la borne.');return data}
+async function offlineRequest(params){
+ const r=await fetch('https://mlabstdxxwjdpfaxiwmg.supabase.co/functions/v1/essential-kiosk-offline',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(params),signal:AbortSignal.timeout(15000)});
+ const data=await r.json();
+ if(!data.ok){const key=({DEVICE_DENIED:'errorDenied',GRANT_REVOKED_OR_EXPIRED:'errorOfflineIdentity',CLOCK_OR_EXPIRY_CONFLICT:'errorClock',CHAIN_CONFLICT:'errorOfflineConflict',EVENT_CONFLICT:'errorOfflineConflict',GRANT_ALREADY_REVIEWED:'errorOfflineConflict'})[data.error]||'errorOfflineConflict';throw kioskError(key)}
+ return data;
+}
 async function refreshOffline(number,pin){const response=await offlineRequest({action:'issue',deviceId:state.device.device_id,token:state.device.token,number,pin});await offline.remember(number,pin,response,state.device.device_id);return offline.unlock(number,pin,state.device.device_id)}
-async function syncOffline(quiet=false){if(!state.device||!navigator.onLine)return;const r=await offline.sync(state.device,offlineRequest);state.queued=(await offline.list()).filter(x=>!['approved','rejected'].includes(x.state)).length;if(r.some(x=>x.error))state.notice='Synchronisation en attente ou conflit. Les observations restent sur cette borne; contactez le responsable.';if(!quiet)draw()}
+async function syncOffline(quiet=false){if(!state.device||!navigator.onLine)return;const r=await offline.sync(state.device,offlineRequest);state.queued=(await offline.list()).filter(x=>!['approved','rejected'].includes(x.state)).length;if(r.some(x=>x.error))state.notice=tr('errorOfflineConflict');if(!quiet)draw()}
 
 async function identify(){const number=root.querySelector('#number')?.value.trim(),pin=root.querySelector('#pin')?.value;if(!number||!/^\d{6,12}$/.test(pin||''))throw Error('Matricule et NIP de 6 à 12 chiffres requis.');const params={deviceId:state.device.device_id,token:state.device.token,number,pin};
  if(state.mode==='enroll'){if(pin!==root.querySelector('#pinConfirm')?.value)throw Error('Les NIP ne correspondent pas.');await request({...params,action:'enroll',enrollment:root.querySelector('#enrollment')?.value.trim()});clearPerson('NIP configuré. Vous pouvez maintenant vous identifier.');return;}
@@ -40,7 +86,7 @@ root.addEventListener('click',async ev=>{const button=ev.target.closest('button'
    const number=state.number,pin=state.pin,revision=generation,onlineParams={deviceId:state.device.device_id,token:state.device.token,number,pin,...state.pending};await offline.forget(number).catch(()=>{});if(revision!==generation)return;
    await request(onlineParams);if(revision!==generation)return;try{await refreshOffline(number,pin)}catch{}clearPerson('Pointage enregistré et synchronisé.');
   }
- }catch(err){state.notice=/fetch|timeout|abort|network/i.test(err.message)?'Connexion interrompue. Résultat non confirmé. Réessayez la même opération ou contactez votre responsable.':err.message;if(state.person)arm();}
+ }catch(err){state.notice=localizedError(err);if(state.person)arm();}
  finally{state.busy=false;draw();if(state.person)arm();}
 });
 root.addEventListener('change',ev=>{
