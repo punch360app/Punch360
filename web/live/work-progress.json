@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T22:10:15.273Z",
+  "generated_at": "2026-10-26T22:19:36.284Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1261,9 +1261,106 @@
         142
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-001": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-002": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-003": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-005": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-006": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-013": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-014": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        152
+      ],
+      "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 152,
+      "sha": "6d1fc33e2de3cd02e374cc74e172c639c1eed535",
+      "ci": "success",
+      "ids": [
+        "MISSION-001",
+        "MISSION-002",
+        "MISSION-003",
+        "MISSION-004",
+        "MISSION-005",
+        "MISSION-006",
+        "MISSION-013",
+        "MISSION-014"
+      ],
+      "title": "Essentiel — missions manuelles : brouillon, publication et Terminer sans sortie",
+      "merged_at": "2026-10-26T22:19:27Z"
+    },
     {
       "number": 151,
       "sha": "277e9999ea733981e96bcef3ca89bb0b4c94bf1b",
@@ -1778,15 +1875,6 @@
       "ids": [],
       "title": "P0-B Stripe : refuser les devis Checkout trop anciens avant toute création de Price",
       "merged_at": "2026-10-26T10:04:58Z"
-    },
-    {
-      "number": 98,
-      "sha": null,
-      "head_sha": "eb234cc99584d27a2a422f3d38fd63c722272a76",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : reconnaître les factures webhook modernes et vérifier leur rattachement",
-      "merged_at": "2026-10-26T09:59:19Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
