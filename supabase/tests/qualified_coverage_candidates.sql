@@ -29,8 +29,8 @@ begin
  starts:=(day::timestamp+time '09:00') at time zone 'America/Toronto';
  ends:=(day::timestamp+time '12:00') at time zone 'America/Toronto';
  execute 'set local role authenticated';
- perform public.save_essential_certification(c,wa,'First aid','certification',current_date-interval '1 day',current_date+interval '30 days');
- perform public.save_essential_certification(c,wb,'first AID','certification',current_date-interval '1 day',current_date+interval '30 days');
+ perform public.save_essential_certification(c,wa,'First aid','certification',current_date-1,current_date+30);
+ perform public.save_essential_certification(c,wb,'first AID','certification',current_date-1,current_date+30);
  need:=public.save_qualified_coverage(c,dept,'Team qualified','First aid',day::timestamp+time '09:00',day::timestamp+time '12:00',1,true,null,0,'Coverage candidates test');
  data:=public.qualified_coverage_candidates(need,starts,ends);
  if data->>'available'<>'0' or data->>'unknown'<>'2' or jsonb_array_length(data->'candidates')<>2 then
