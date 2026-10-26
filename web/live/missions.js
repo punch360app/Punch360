@@ -1,4 +1,4 @@
-import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference} from './navigation-choices.js';
+import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
@@ -10,6 +10,20 @@ export function missionProgress(items){
  return {total:ordered.length,done,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
 }
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
+/** Voluntary, provider-specific directions for the single mission already authorized by the server.
+ * Only address fields reach the map URL: never notes, entry codes, phone or worker identity.
+ * Missing/invalid destinations are unavailable, not silently replaced with the office.
+ */
+/** @param {Record<string,any>|null|undefined} m @param {string} platform @param {string|null} preferred */
+export function missionNavigationOptions(m,platform='web',preferred=null){
+ if(String(m?.address_line||'').trim().length<3||String(m?.city||'').trim().length<2)return {choices:[],preferred:null};
+ try{
+  const addr=missionAddress(m);
+  const choices=navigationProviders(platform).map(p=>({id:p.id,label:p.label,url:navigationUrl(p.id,addr,platform)}));
+  const selected=chooseNavigationPreference(preferred,platform);
+  return {choices,preferred:choices.find(c=>c.id===selected)||null};
+ }catch{return {choices:[],preferred:null};}
+}
 /** @param {string} company @param {Record<string,any>} form @param {{id?:string,version?:number}|null} [existing] @param {boolean} [publish] */
 export function missionArgs(company,form,existing=null,publish=false){
  const day=String(form.day||''),order=Number(form.order),title=String(form.title||'').trim();
@@ -145,10 +159,14 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   const x=p.next,addr=missionAddress(x);
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
   let pref=null;try{pref=chooseNavigationPreference(doc.defaultView.localStorage.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
-  const route=addr?navigationUrl(pref||'google',addr,platform):null;
+  const routes=missionNavigationOptions(x,platform,pref);
   return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
-   (route?'<a href="'+e(route)+'" target="_blank" rel="noopener noreferrer">Itinéraire ↗</a>':'')+
+   (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
+   (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
+     '<p>Adresse de cette mission seulement. Aucun GPS PUNCH, temps de trajet ou pointage déclenché.</p>'+
+     routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
+     '</details>':'')+
    '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
  }
  async function finish(id){

@@ -3,9 +3,8 @@ import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-
 import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
-import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible} from '../../web/live/missions.js';
+import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
-import {navigationUrl,chooseNavigationPreference} from '../../web/live/navigation-choices.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
 async function rpc(name:string,args:Row):Promise<Row>{
@@ -150,7 +149,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[busy,setBusy]=useState(false),
   [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
- const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false);
+ const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false);
  async function refresh(){
   if(!workerId||!companyId)return;
   const gen=++current.current;
@@ -160,12 +159,13 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    setEnabled(!!res.enabled);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
   }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setItems([]);setEnabled(false);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setItems([]);setEnabled(false);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;subscription.remove()};
  },[companyId,workerId]);
  const progress=missionProgress(items),next=progress.next;
+ useEffect(()=>{setNavOpen(false)},[next?.id]);
  const complete=()=>{
   if(!next||busy)return;
   Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
@@ -190,11 +190,18 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  if(!enabled)return null;
  if(!progress.total&& !message)return null;
  const address=missionAddress(next);
- const provider=chooseNavigationPreference(navProvider,Platform.OS)||'google';
+ const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
   {title(progress.allDone?'Toutes les missions sont terminées':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
   {next?<>{title(next.title+' · '+next.client_name)}{label(next.site_name+' · '+address)}
-   {!!address?button('Itinéraire',()=>{void Linking.openURL(navigationUrl(provider,address,Platform.OS))}):null}
+   {routes.preferred?button('Itinéraire avec '+routes.preferred.label,
+    ()=>{const route=routes.preferred;if(route)void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))}):null}
+   {routes.choices.length?button(routes.preferred?"Changer d’application d’itinéraire":"Choisir l’application d’itinéraire",()=>setNavOpen(v=>!v)):null}
+   {navOpen?<View style={{gap:4}}>
+    {label('Destination de cette mission seulement. Aucun trajet, GPS PUNCH ou pointage déclenché.')}
+    {routes.choices.map(route=><View key={route.id}>{button(route.label+' · juste cette fois',
+      ()=>{void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))})}</View>)}
+   </View>:null}
    {button('Terminer',complete,busy)}
    {label('Terminer une mission ne pointe jamais la sortie.')}
   </>:null}
