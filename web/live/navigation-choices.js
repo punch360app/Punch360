@@ -72,3 +72,18 @@ export function navigationStopChoices(site,platform='web'){
   id:provider.id,label:provider.label,url:navigationUrl(provider.id,destination.address,platform)
  }));
 }
+
+/** Save or clear a user's current-company navigation provider; never store the address.
+ * Supports both synchronous browser storage and asynchronous React Native AsyncStorage.
+ * @param {{setItem:(key:string,value:string)=>any,removeItem:(key:string)=>any}} storage
+ * @param {string} userId @param {string} companyId
+ * @param {string|null} provider @param {string} platform
+ */
+export async function writeNavigationPreference(storage,userId,companyId,provider,platform='web'){
+ const key=navigationPreferenceKey(userId,companyId);
+ if(provider===null){await storage.removeItem(key);return null;}
+ const selected=chooseNavigationPreference(provider,platform);
+ if(!selected||selected!==provider)throw Error('Application de navigation incompatible avec cet appareil.');
+ await storage.setItem(key,provider);
+ return provider;
+}
