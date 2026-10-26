@@ -10,7 +10,7 @@ const reject=x=>assert.throws(()=>stripeWebhookSubscriptionPrice(x),/STRIPE_SUBS
 test('P0-B webhook resolves only a single CAD subscription item with quantity one',()=>{
  assert.equal(stripeWebhookSubscriptionPrice(sub),item.price.id);
  assert.equal(stripeWebhookSubscriptionPrice({...sub,livemode:true,items:{...sub.items,data:[{...item,price:{...item.price,livemode:true}}]}}),item.price.id);
- assert.equal(stripeWebhookSubscriptionPrice({...sub,items:{...sub.items,data:[{...item,price:{...item.price,recurring:{interval:'year'}}]}}),item.price.id);
+ assert.equal(stripeWebhookSubscriptionPrice({...sub,items:{...sub.items,data:[{...item,price:{...item.price,recurring:{interval:'year'}}}]}}),item.price.id);
 });
 
 test('P0-B rejects extra, missing, paginated, or multi-quantity Stripe items',()=>{
