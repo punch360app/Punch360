@@ -2,7 +2,7 @@ import * as Network from 'expo-network';
 import {cachedLocalIdentity,rememberLocalIdentity,forgetLocalIdentity} from './localIdentity';
 import {processNativeOAuthCallback} from './nativeOAuthCallback';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import type {Session} from '@supabase/supabase-js';
 import {supabase} from '../lib/supabase';
@@ -31,6 +31,8 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  const [inviteToken,setInviteToken]=useState('');
  const [loginMode,setLoginMode]=useState<'login'|'signup'>('login');
  const [error,setError]=useState('');
+ // An older membership query must never revive another user's workspace.
+ const authRevision=useRef(0);
  async function cachedWorkspace(id:string){
   const selected=await AsyncStorage.getItem('punch-last-company:'+id);
   if(!selected)return null;
@@ -40,64 +42,92 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   catch{return null;}
  }
  async function refresh(){
+  const revision=++authRevision.current;
+  const current=()=>revision===authRevision.current;
   setError('');
   try{
    const network=await Network.getNetworkStateAsync();
+   if(!current())return;
    if(network.isConnected===false||network.isInternetReachable===false){
-    const local=await cachedLocalIdentity();const cache=local?await cachedWorkspace(local.id):null;
+    const local=await cachedLocalIdentity();if(!current())return;
+    const cache=local?await cachedWorkspace(local.id):null;if(!current())return;
     setWorkspaces([]);setAccount(cache);setShowWorkspacePicker(false);setSession(null);
     setError(cache?'Mode hors ligne — espace sélectionné seulement. Les changements d’entreprise nécessitent Internet.':'Connexion Internet requise.');return;
    }
    const {data,error:sessionError}=await supabase.auth.getSession();
+   if(!current())return;
    setSession(data.session);
    if(!data.session){
-    if(sessionError){setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);setError('Session non vérifiée — reconnecte-toi en ligne.');}
-    else {setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);}
+    setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);
+    if(sessionError)setError('Session non vérifiée — reconnecte-toi en ligne.');
     return;
    }
-   const u=data.session.user;await rememberLocalIdentity(u);
+   const u=data.session.user;
    const {data:memberships,error:e}=await supabase.from('company_members')
     .select(MEMBERSHIP_COLUMNS).eq('user_id',u.id).eq('status','active').order('company_id').limit(100);
+   if(!current())return;
    if(e){setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);setError('Impossible de vérifier vos accès. Réessayez.');return;}
    const verified=listVerifiedWorkspaces(memberships||[],u) as WorkspaceAccount[];
-   setWorkspaces(verified);
    const stored=await AsyncStorage.getItem('punch-last-company:'+u.id);
+   if(!current())return;
    const chosen=chooseVerifiedWorkspace(verified,stored) as WorkspaceAccount|null;
    if(chosen){
-    setAccount(chosen);setShowWorkspacePicker(false);
-    await AsyncStorage.setItem('punch-last-company:'+u.id,chosen.companyId);
+    await AsyncStorage.setItem('punch-last-company:'+u.id,chosen.companyId);if(!current())return;
     await AsyncStorage.setItem('punch-workspace:'+u.id+':'+chosen.companyId,JSON.stringify(chosen));
-   }else{setAccount(null);setShowWorkspacePicker(verified.length>1);}
-   if(!verified.length)await AsyncStorage.removeItem('punch-last-company:'+u.id);
-  }catch(err:any){setAccount(null);setWorkspaces([]);setError('Erreur de vérification des entreprises. '+(err?.message||''));}
-  finally{setBoot(false);}
+    if(!current())return;
+    await rememberLocalIdentity(u);if(!current())return;
+    setAccount(chosen);setShowWorkspacePicker(false);
+   }else{
+    setAccount(null);setShowWorkspacePicker(verified.length>1);
+    if(!verified.length){
+     await AsyncStorage.removeItem('punch-last-company:'+u.id);if(!current())return;
+    }
+   }
+   if(current())setWorkspaces(verified);
+  }catch{
+   if(!current())return;
+   setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);
+   setError('Erreur de vérification des entreprises. Réessaie.');
+  }finally{if(current())setBoot(false);}
  }
  async function selectWorkspace(companyId:string){
   if(busy)return;
+  const revision=authRevision.current;
+  const current=()=>revision===authRevision.current;
   setBusy(true);setError('');
   try{
    const {data,error:authError}=await supabase.auth.getUser();
+   if(!current())return;
    if(authError||!data.user)throw Error('Reconnecte-toi pour choisir une entreprise.');
    const user=data.user;
    const {data:memberships,error:memberError}=await supabase.from('company_members')
     .select(MEMBERSHIP_COLUMNS).eq('user_id',user.id).eq('status','active').order('company_id').limit(100);
+   if(!current())return;
    if(memberError)throw Error('Impossible de confirmer cet accès.');
    const verified=listVerifiedWorkspaces(memberships||[],user) as WorkspaceAccount[];
-   setWorkspaces(verified);
    const selected=verified.find(w=>w.companyId===companyId);
-   if(!selected){setAccount(null);setShowWorkspacePicker(verified.length>1);throw Error('Accès retiré : cette entreprise n’est plus accessible.');}
-   // Before switching, save only a previously server-verified workspace, scoped to this user.
+   if(!selected){setAccount(null);setWorkspaces(verified);setShowWorkspacePicker(verified.length>1);throw Error('Accès retiré : cette entreprise n’est plus accessible.');}
+   // Persist only a verified workspace. Never display it after the auth generation changes.
    await AsyncStorage.setItem('punch-last-company:'+user.id,selected.companyId);
+   if(!current())return;
    await AsyncStorage.setItem('punch-workspace:'+user.id+':'+selected.companyId,JSON.stringify(selected));
-   setAccount(selected);setShowWorkspacePicker(false);
-  }catch(e:any){setError(e.message||'Changement d’entreprise refusé.');}
-  finally{setBusy(false);}
+   if(!current())return;
+   setWorkspaces(verified);setAccount(selected);setShowWorkspacePicker(false);
+  }catch(e:any){if(current())setError(e.message||'Changement d’entreprise refusé.');}
+  finally{if(current())setBusy(false);}
  }
  useEffect(()=>{
   refresh();
   const {data:sub}=supabase.auth.onAuthStateChange((_event,newSession)=>{
+   // Invalidate membership queries immediately, before async local storage calls.
+   ++authRevision.current;
+   setBusy(false);
+   if(_event==='SIGNED_OUT'){
+    void forgetLocalIdentity();
+    setIsRecovering(false);setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);
+    setSession(null);setBoot(false);setError('');return;
+   }
    if(_event==='PASSWORD_RECOVERY')setIsRecovering(true);
-   if(_event==='SIGNED_OUT'){forgetLocalIdentity();setIsRecovering(false);setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);}
    setSession(newSession);
    setBoot(true);
    // Différer l'appel asynchrone au prochain tour pour éviter un deadlock Supabase Auth.
