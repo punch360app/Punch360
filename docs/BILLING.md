@@ -100,3 +100,12 @@ Pour les tarifs personnalisés, la fonction Edge vérifie désormais **avant** u
 - **Testé :** tests Node mockés et CI GitHub à vérifier sur la PR; recette fournisseur Stripe test mode non exécutée.
 - **Déployé :** non pour cette nouvelle version Edge (état fournisseur à revérifier avant déploiement).
 - **Intervention externe :** essais Stripe sandbox et validation du déploiement; issue #35 ouverte.
+
+## P0-B — Liaison fournisseur abonnement ↔ entreprise (26 octobre 2026)
+
+Le flux de modification de forfait, la prévisualisation et la confirmation contrôlent désormais **avant toute mutation Stripe** que l'abonnement retourné par Stripe appartient bien au `subscription_id` et au `customer_id` du compte privé, que `metadata.punch_company` correspond à l'entreprise Boss authentifiée, et que `livemode` correspond à la clé utilisée. Le même contrôle s'applique **avant annulation et reprise** du renouvellement. Une métadonnée d'entreprise absente, un compte client différent ou un mélange test/live provoquent un refus fermé. Les références d'abonnement historiques dépourvues de la métadonnée ne sont pas réparées automatiquement : elles nécessitent une revue fournisseur autorisée.
+
+- **Développé :** helper partagé + vérification Edge pour preview/confirm/cancel/resume, sans changement de catalogue, contrat, Price IDs ni SQL.
+- **Testé :** tests Node avec deux entreprises fictives, ID client erroné, abonnement étranger, métadonnées manquantes et mode test/live; CI GitHub à vérifier sur la PR.
+- **Déployé :** non pour cette modification Edge; état actif Supabase à revérifier, aucun déploiement automatique déclaré.
+- **Intervention externe :** revue des métadonnées des abonnements de test, recette Stripe sandbox, webhooks, proratas, taxes et déploiement Edge contrôlé; issue #35 maintenue ouverte.

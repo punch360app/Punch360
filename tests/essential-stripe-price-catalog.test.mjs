@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {billingQuote} from '../supabase/functions/_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
 
 const cases=[
  ['essential',1900,19380,20],
@@ -147,4 +147,26 @@ test('P0-B preflight rejects invalid subscription BEFORE Stripe Price creation',
   assert.throws(()=>preflightBillingAction(action,account,{...sub,items:{data:[item,item]}}),/UNSUPPORTED_SUBSCRIPTION_ITEMS/);
   assert.throws(()=>preflightBillingAction(action,account,{...sub,items:{data:[{id:item.id,price:{}}]}}),/UNSUPPORTED_SUBSCRIPTION_ITEMS/);
  }
+});
+
+test('P0-B Stripe subscription is bound to exact company, customer and test/live mode',()=>{
+ const account={subscription_id:'sub_12345678',customer_id:'cus_12345678'};
+ const companyA='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const companyB='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ const sub={id:account.subscription_id,customer:account.customer_id,livemode:false,
+  metadata:{punch_company:companyA},items:{data:[{id:'si_12345678',price:{id:'price_12345678'}}]}};
+ assert.equal(verifyStripeSubscriptionTenant(account,sub,companyA,false),sub);
+ assert.equal(verifyStripeSubscriptionTenant(account,{...sub,customer:{id:account.customer_id}},companyA,false).id,sub.id);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,sub,companyB,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,{...sub,customer:'cus_other123'},companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,{...sub,id:'sub_other123'},companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,{...sub,metadata:{}},companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,{...sub,metadata:{punch_company:companyB}},companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,{...sub,livemode:true},companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,sub,companyA,true),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant({...account,customer_id:null},sub,companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,null,companyA,false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,sub,'',false),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeSubscriptionTenant(account,sub,companyA,'test'),/SUBSCRIPTION_TENANT_MISMATCH/);
+ assert.equal(verifyStripeSubscriptionTenant(account,{...sub,livemode:true},companyA,true).livemode,true);
 });

@@ -57,6 +57,21 @@ export function selectRegisteredPrice(registered,cadence,amount){
 
 
 
+/**
+ * Verify Stripe's own subscription-to-customer and tenant binding before any
+ * customer-facing mutation. The private DB subscription ID alone is not proof
+ * that the provider object still belongs to this Essentiel company.
+ * A missing company marker fails closed; do not infer ownership from price.
+ */
+export function verifyStripeSubscriptionTenant(account,subscription,companyId,liveMode){
+ const customer=typeof subscription?.customer==='string'?subscription.customer:subscription?.customer?.id;
+ if(typeof companyId!=='string'||!companyId||typeof liveMode!=='boolean'||
+    typeof account?.subscription_id!=='string'||typeof account?.customer_id!=='string'||
+    !subscription||subscription.id!==account.subscription_id||
+    customer!==account.customer_id||subscription.metadata?.punch_company!==companyId||
+    subscription.livemode!==liveMode)throw Error('SUBSCRIPTION_TENANT_MISMATCH');
+ return subscription;
+}
 // A provider Price must never be created until the action is known to be
 // eligible. For an existing subscription, validate its identity and pending
 // update state before any POST /prices or POST /invoices/create_preview.

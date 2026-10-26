@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -28,7 +28,12 @@ Deno.serve(async(req:Request)=>{
    if(!a?.customer_id)throw Error('NO_CUSTOMER');const p=await stripe('/billing_portal/sessions',{customer:a.customer_id,return_url:returnUrl});return response(200,{url:safeHostedUrl(p.url)});
   }
   if(['cancel','resume'].includes(body.action)){
-   if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');const sub=await stripe(`/subscriptions/${a.subscription_id}`,{cancel_at_period_end:body.action==='cancel'},`${body.companyId}:${body.action}:${body.requestId}`);return response(200,{cancel_at_period_end:sub.cancel_at_period_end,effective_at:sub.current_period_end,pending_server_confirmation:true});
+   if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');
+      // A private mapping alone is insufficient: confirm the provider's customer,
+      // company metadata and mode before changing a subscription.
+      const current=await stripe(`/subscriptions/${a.subscription_id}`);
+      verifyStripeSubscriptionTenant(a,current,body.companyId,secret.startsWith('sk_live_'));
+      const sub=await stripe(`/subscriptions/${a.subscription_id}`,{cancel_at_period_end:body.action==='cancel'},`${body.companyId}:${body.action}:${body.requestId}`);return response(200,{cancel_at_period_end:sub.cancel_at_period_end,effective_at:sub.current_period_end,pending_server_confirmation:true});
   }
   if(!o)throw Error('ORDER_REQUIRED');
   const expected=billingQuote(o.snapshot,o.seats,o.cadence);
@@ -54,6 +59,7 @@ Deno.serve(async(req:Request)=>{
   else {
    if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');
    sub=await stripe(`/subscriptions/${a.subscription_id}`);
+   verifyStripeSubscriptionTenant(a,sub,body.companyId,secret.startsWith('sk_live_'));
    item=preflightBillingAction(body.action,a,sub);
   }
   const interval=o.cadence==='yearly'?'year':'month';
