@@ -105,7 +105,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
  function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,error:''});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker||!s.enabled)return '';
-  if(s.error||s.truncated)return '<section class="zen-company"><p role="alert">'+e(s.error||'Tournée incomplète; contactez le responsable.')+'</p></section>';
+  if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
   const p=missionProgress(s.items);
   if(!p.total)return '';
   if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>';
@@ -113,7 +113,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
   let pref=null;try{pref=chooseNavigationPreference(doc.defaultView.localStorage.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
   const route=addr?navigationUrl(pref||'google',addr,platform):null;
-  return '<section class="zen-company" aria-label="Prochaine mission"><div><small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
+  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
    (route?'<a href="'+e(route)+'" target="_blank" rel="noopener noreferrer">Itinéraire ↗</a>':'')+
    '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
