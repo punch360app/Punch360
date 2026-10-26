@@ -1,0 +1,10 @@
+export type NativeEssentialLanguage={code:string;name:string;dir:'ltr'|'rtl'};
+export const nativeEssentialLanguages:readonly NativeEssentialLanguage[];
+export function validateNativeLocale(code:string):string;
+export function nativeEssentialText(code:string,key:string):string;
+export function nativeLocaleDirection(code:string):'ltr'|'rtl';
+export function nativeLocaleKey(userId:string):string;
+export function readNativeLocale(storage:{getItem:(key:string)=>Promise<string|null>},userId:string|null|undefined):Promise<string>;
+export function writeNativeLocale(storage:{setItem:(key:string,value:string)=>Promise<unknown>},userId:string|null|undefined,code:string):Promise<string>;
+export const nativeManagementKeys:Readonly<Record<string,string>>;
+export function nativeManagementLabel(code:string,id:string,fallback:string):string;
