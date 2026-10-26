@@ -69,6 +69,11 @@ Deno.serve(async(req:Request)=>{
    verifyStripeSubscriptionTenant(a,sub,body.companyId,secret.startsWith('sk_live_'));
    item=preflightBillingAction(body.action,a,sub);
   }
+  // Verify an existing Customer before POST /prices: a stale or cross-company
+  // customer mapping must not leave an orphan custom Price at Stripe.
+  // For preview/confirm, a verified Customer is mandatory.
+  const existingCustomer=a?.customer_id?await verifiedCustomer():null;
+  if(body.action!=='checkout'&&!existingCustomer)throw Error('NO_CUSTOMER');
   const interval=o.cadence==='yearly'?'year':'month';
   const registeredPrice=selectRegisteredPrice(registered,o.cadence,o.amount_cents);
   const strategy=orderPriceStrategy(body.action,registeredPrice,o.preview);
@@ -86,7 +91,7 @@ Deno.serve(async(req:Request)=>{
     productId,liveMode:secret.startsWith('sk_live_')
   });
   if(body.action==='checkout'){
-   const customer=a?.customer_id?await verifiedCustomer():await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
+   const customer=existingCustomer??await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
    verifyStripeCustomerTenant({customer_id:customer.id},customer,body.companyId,liveMode);
    await save({},customer.id);
    await save({status:'creating',preview:{price_id:price.id}},customer.id);
