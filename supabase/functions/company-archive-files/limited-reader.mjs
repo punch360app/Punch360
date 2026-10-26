@@ -16,8 +16,10 @@ export async function readBoundedStorageResponse(response,{maxBytes=MAX_PRIVATE_
   throw new StorageReadError('INVALID_SIZE_LIMIT');
  const rawHeader=response?.headers?.get?.('content-length');
  const declared=rawHeader==null?NaN:Number(rawHeader);
- if(Number.isFinite(declared)&&declared>maxBytes)
+ if(Number.isFinite(declared)&&declared>maxBytes){
+  await response?.body?.cancel?.().catch(()=>{});
   throw new StorageReadError('DOCUMENT_TOO_LARGE');
+ }
  if(!response?.body?.getReader)
   throw new StorageReadError('DOCUMENT_STREAM_UNAVAILABLE');
  const reader=response.body.getReader();
