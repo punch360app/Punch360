@@ -1,17 +1,18 @@
 /** Negotiated commercial quotes: drafts only, never activate Stripe or rewrite contracts. */
 export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
  let generation=0;
- const fresh=()=>({company:'',reason:'',plan:'essential',cadence:'monthly',seats:'5',base:'1900',included:'5',extra:'300',discount:'15',effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),confirmation:'',approveConfirmation:'',approval:null,list:null,preview:null,error:'',notice:'',busy:false});
+ const fresh=()=>({company:'',companyName:'',reason:'',plan:'essential',cadence:'monthly',seats:'5',base:'1900',included:'5',extra:'300',discount:'15',effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),confirmation:'',approveConfirmation:'',approval:null,list:null,preview:null,error:'',notice:'',busy:false});
  const s=fresh();
  const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(Number(n||0)/100);
  const uuid=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x||'');
  function reset(){generation++;Object.assign(s,fresh());}
- function choose(companyId){if(!uuid(companyId))return false;reset();s.company=companyId;redraw();return true;}
+ function choose(companyId,companyName=''){if(!uuid(companyId))return false;reset();s.company=companyId;s.companyName=String(companyName||'').slice(0,180);redraw();return true;}
  function input(el){
   if(s.busy)return;
   const k=el.id?.replace(/^platform-price-/,'');
   if(!k||!(k in s))return;
   s[k]=el.value;
+  if(k==='company')s.companyName='';
   if(k==='company'||k==='reason'){s.list=null;s.approval=null;s.confirmation='';s.approveConfirmation='';}
   s.preview=null;s.notice='';
  }
@@ -27,6 +28,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
  async function rpc(name,parameters){const r=await sb.rpc(name,parameters);if(r.error){const err=Error('Opération Super Admin refusée. Vérifiez votre session MFA et réessayez.');err.code=r.error.code;throw err;}return r.data;}
  function render(){
   return `<section class="ess-panel"><h3>Tarifs particuliers par entreprise</h3><p>Propositions non activées, réservées au Super Admin MFA. Elles ne changent ni le forfait du Boss, ni Stripe, ni les factures, même après enregistrement. Les montants sont en cents CAD avant taxes.</p>
+  ${s.companyName?`<p>Entreprise choisie dans le répertoire : <b>${e(s.companyName)}</b> · ${e(s.company)}. Le devis ne modifie pas son abonnement tant que le Boss n'a pas accepté et que Stripe n'a pas confirmé le paiement.</p>`:''}
   ${s.error?`<p role="alert">${e(s.error)}</p>`:''}${s.notice?`<p role="status">${e(s.notice)}</p>`:''}
   <label class="ess-field">Identifiant de compagnie Essentiel réelle<input id="platform-price-company" value="${e(s.company)}" autocomplete="off"></label>
   <label class="ess-field">Motif détaillé<input id="platform-price-reason" value="${e(s.reason)}" maxlength="1000"></label>
