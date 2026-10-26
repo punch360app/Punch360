@@ -114,7 +114,10 @@ test('invalid IDs and malformed storage never create an offline identity',async(
 test('native AuthGate calls logout invalidation and localIdentity uses the serialized store',()=>{
  const gate=readFileSync(new URL('../src/auth/AuthGate.tsx',import.meta.url),'utf8');
  const identity=readFileSync(new URL('../src/auth/localIdentity.ts',import.meta.url),'utf8');
- assert.match(gate,/if\(_event==='SIGNED_OUT'\)\{\s*void forgetLocalIdentity\(\)\.catch\(\(\)=>\{\}\)/);
+ // Invalidate pending offline readers synchronously before the async cache purge.
+ assert.match(gate,/if\(_event==='SIGNED_OUT'\)\{\s*explicitlySignedOut\.current=true;\s*void forgetLocalIdentity\(\)\.catch\(\(\)=>\{\}\)/);
+ assert.ok(gate.indexOf('explicitlySignedOut.current=true')<gate.indexOf('void forgetLocalIdentity().catch'),
+  'signed-out state must be visible before cache cleanup starts');
  assert.match(identity,/const cache=createNativeIdentityCache\(AsyncStorage,KEY\)/);
  assert.match(identity,/return cache\.remember\(user\)/);
  assert.match(identity,/return cache\.forget\(\)/);

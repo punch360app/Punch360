@@ -1,5 +1,7 @@
 # PUNCH 360° — Reprise autonome vérifiable
 
+> **Lot additionnel P0-C (26 octobre)** : garde de déconnexion native et restauration hors ligne sur la branche `fix/p0-native-signout-offline-guard-20261026` ; détails dans [P0_NATIVE_SIGNOUT_GUARD_20261026.md](../P0_NATIVE_SIGNOUT_GUARD_20261026.md). Tests/PR à confirmer avant fusion. La recette Stripe reste bloquée par migration non installée, preuve en issue #35.
+
 **Actualisation : 26 octobre 2026.** Ce fichier mémorise le point d'arrêt et les preuves récentes, **sans remplacer les 578 exigences du prompt maître**.
 
 ## Source et protection
