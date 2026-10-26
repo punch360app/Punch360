@@ -198,3 +198,20 @@ export function stripeRenewalIdempotencyKey(companyId,subscriptionId,action,requ
     throw Error('INVALID_RENEWAL_REQUEST_ID');
  return `punch-renewal:${companyId}:${subscriptionId}:${action}:${requestId}`;
 }
+
+/**
+ * Reject impossible renewal transitions before a Stripe POST. Repeated
+ * cancel/resume requests that already have the desired provider state are
+ * reads, not new mutations. The signed webhook remains the contract authority.
+ */
+export function preflightStripeRenewalAction(action,subscription){
+ if(!['cancel','resume'].includes(action))throw Error('INVALID_RENEWAL_ACTION');
+ if(!subscription||typeof subscription!=='object'||
+    !['active','trialing','past_due','unpaid','paused'].includes(subscription.status)||
+    typeof subscription.cancel_at_period_end!=='boolean'||
+    !Number.isSafeInteger(subscription.current_period_end)||
+    subscription.current_period_end<=0)
+  throw Error('SUBSCRIPTION_RENEWAL_UNAVAILABLE');
+ return {needsMutation:subscription.cancel_at_period_end!==(action==='cancel'),
+         cancelAtPeriodEnd:action==='cancel'};
+}
