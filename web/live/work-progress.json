@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-26",
+  "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
+  "denominator": 578,
+  "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
+  "requirements": {
+    "GOV-001": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        26,
+        111
+      ],
+      "note": "Dépôt et suivi officiel repris sur main; contrôle de reprise à répéter à chaque session."
+    },
+    "GOV-002": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        26,
+        116
+      ],
+      "note": "Projet Supabase exclusif identifié; vérification en lecture seule, pas de recette complète."
+    },
+    "GOV-009": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        26,
+        111
+      ],
+      "note": "578 identifiants dédoublonnés et 29 lots vérifiés par test Node."
+    },
+    "GOV-011": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        111,
+        116
+      ],
+      "note": "GitHub choisi comme source de suivi; documentation liée à WORK_START."
+    },
+    "GOV-013": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        111
+      ],
+      "note": "Lien du dossier Drive privé retiré du suivi HTML public; test de confidentialité."
+    },
+    "GOV-014": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        116
+      ],
+      "note": "Registre quatre états défini, granularité ID à compléter par Work."
+    },
+    "GOV-015": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": false,
+      "pr": [
+        116
+      ],
+      "note": "Interdiction de marquer complet sans recette documentée."
+    },
+    "SEC-008": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        108,
+        109,
+        112
+      ],
+      "note": "Idempotence Stripe, requêtes obsolètes et transitions testées en logiciel; autres surfaces non auditées."
+    },
+    "SEC-009": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        80,
+        83,
+        84
+      ],
+      "note": "Limites binaires Storage et exports développées et testées avec fixtures; URLs et QA réelle en attente."
+    },
+    "SEC-017": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        103,
+        104,
+        105,
+        106,
+        110
+      ],
+      "note": "Gardes mobiles multi-comptes et cache isolé; recette RLS/RPC/Appareils non finalisée."
+    },
+    "SAUTH-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        103,
+        106
+      ],
+      "note": "Réponses Auth périmées et déconnexion native testées par simulation; parcours MFA réel en attente."
+    },
+    "SACATALOG-002": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        92,
+        115
+      ],
+      "note": "Tarifs 19/39/69 et inclusions 20/25/50 préservés dans les formulaires et tests."
+    },
+    "SACATALOG-003": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        92,
+        115
+      ],
+      "note": "Supplément +2 $ protégé dans le catalogue et préremplissage Super Admin."
+    },
+    "SACATALOG-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        92,
+        115
+      ],
+      "note": "Remise annuelle 15 % préservée; bornes/fonctions en validation indépendante."
+    },
+    "SACATALOG-006": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        93,
+        94,
+        95
+      ],
+      "note": "Prévisualisation de commandes et protection contre données obsolètes testées; vrai prorata sandbox manquant."
+    },
+    "SACATALOG-007": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        92,
+        94
+      ],
+      "note": "Conservation des snapshots et anciens prix vérifiée en tests de non-régression."
+    },
+    "STRIPE-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        96,
+        99,
+        100
+      ],
+      "note": "Précontrôle du Customer, prix et devis avant mutation Stripe testé avec mocks."
+    },
+    "STRIPE-005": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        96,
+        100
+      ],
+      "note": "Réutilisation et contrôle du Customer Stripe en code; scénario fournisseur et abonnements multiples non validé."
+    },
+    "STRIPE-006": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        107,
+        108
+      ],
+      "note": "Accès au statut payé uniquement par webhook signé en code; vrai webhook sandbox à recetter."
+    },
+    "STRIPE-007": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        107,
+        108,
+        109
+      ],
+      "note": "Tests de double appel/rejeu et idempotence; ordre inattendu complet sandbox non validé."
+    },
+    "STRIPE-012": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        97,
+        114
+      ],
+      "note": "Portail et factures bornées à 100, séparation Customer testée; QA fournisseur en attente."
+    },
+    "STRIPE-015": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        109,
+        112
+      ],
+      "note": "Annulation/reprise sécurisées et tests états fournisseur simulés; vraie facturation non recettée."
+    },
+    "INVITE-016": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        101,
+        103,
+        104
+      ],
+      "note": "Sélecteur entreprise et contrôle Auth mobile en code; bascule réelle sur deux sociétés non prouvée."
+    },
+    "INVITE-017": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        105,
+        106
+      ],
+      "note": "Frontière du cache d'identité des punchs codée/testée; journaux offline multientreprises non complètement recettés."
+    }
+  }
+}
