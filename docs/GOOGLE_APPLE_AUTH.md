@@ -68,3 +68,14 @@ Le correctif lit maintenant **les deux sources** : `Linking.getInitialURL()` au 
 - **Intervention externe :** enregistrer `punchapp://auth/callback` dans les URL de redirection Supabase autorisées, configurer les fournisseurs Google/Apple et tester ouverture à froid, reprise, lien expiré et récupération sur appareils iOS/Android. Ne fournir aucun secret dans GitHub.
 
 Références : https://reactnative.dev/docs/linking et https://supabase.com/docs/guides/auth/native-mobile-deep-linking. Les rôles continuent de provenir exclusivement du serveur `company_members`; ce correctif n'accorde aucun accès d'entreprise.
+
+## P0-C — Empêcher le retour d'un ancien espace après déconnexion (26 octobre 2026)
+
+Les requêtes natives `getSession()`, lecture des memberships `company_members` et sauvegarde AsyncStorage sont asynchrones. Avant ce durcissement, une réponse reçue tardivement après une déconnexion, une autre connexion ou une modification de compagnie pouvait rétablir dans l'interface le rôle/nom du mauvais espace. Même si RLS reste l'autorité pour les opérations serveur, cela constitue un risque de confidentialité sur le téléphone.
+
+Le composant `AuthGate.tsx` utilise maintenant une **révision d'identité** : chaque chargement en démarre une nouvelle; chaque événement Auth invalide les précédents immédiatement. Les chemins réseau, hors ligne, membership et choix d'espace vérifient la révision avant d'appliquer les données; les anciennes erreurs ne remplacent pas l'état du nouvel utilisateur. Sur `SIGNED_OUT`, la vue et la session sont vidées immédiatement et aucun rechargement du cache hors ligne n'est déclenché par cet événement. La sélection manuelle d'une entreprise effectue les mêmes contrôles d'obsolescence.
+
+- **Développé :** logique native de révision de session et gardes après `await`, sans changement des tables, rôles, invitations, JWT ni de la Construction.
+- **Testé :** garde structurelle automatisée TypeScript/AST et tests logiciels CI à confirmer. La vraie concurrence de deux comptes et le hors-ligne sur appareil restent à recetter.
+- **Déployé :** non prouvé sur build Android/iOS signé; la fusion GitHub ne démontre pas le déploiement natif.
+- **Intervention externe :** tester déconnexion pendant chargement, changement rapide de compte, choix entre deux compagnies, coupure réseau et redémarrage du téléphone, en s'assurant qu'aucune donnée d'ancien employeur ne s'affiche.
