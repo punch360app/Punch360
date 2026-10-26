@@ -29,7 +29,7 @@ export function createBossHandoffController({
   ${s.notice?`<p role="status">${e(s.notice)}</p>`:''}
   ${s.mfaLevel!=='aal2'?`<div class="ess-panel"><h4>Vérification d'identité obligatoire</h4><p>Activez ou confirmez votre application d'authentification pour gérer la succession.</p>${s.qr?`<img class="ess-qr" src="${e(s.qr)}" alt="Code QR pour application d’authentification">`:''}${button('Configurer ou utiliser mon authentificateur','mfa-enroll')}<label class="ess-field">Code de votre application à 6 chiffres<input id="boss-handoff-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${e(s.code)}"></label>${button('Vérifier mon identité','mfa-verify',!s.factor)} </div>`:''}
   ${button('Actualiser le statut','refresh')}
-  ${h?`<p>État : <b>${e(h.status)}</b> · v${Number(h.version)}</p><p>Boss : <code>${e(h.from_user)}</code></p><p>Successeur : <code>${e(h.to_user)}</code></p><p>Date limite : ${e(h.expires_at)}</p>
+  ${h&&h.status!=='expired'?`<p>État : <b>${e(h.status)}</b> · v${Number(h.version)}</p><p>Boss : <code>${e(h.from_user)}</code></p><p>Successeur : <code>${e(h.to_user)}</code></p><p>Date limite : ${e(h.expires_at)}</p>
   ${h.status==='pending'&&h.can_accept?button('Accepter la responsabilité (MFA)','accept'):''}
   ${h.status==='accepted'&&h.can_complete?button('Confirmer et transférer le rôle Boss (MFA)','complete'):''}
   ${['pending','accepted'].includes(h.status)&&h.status!=='expired'?button('Annuler la demande','cancel'):''}
@@ -65,7 +65,7 @@ export function createBossHandoffController({
     s.status=s.mfaLevel==='aal2'?await rpc('essential_boss_handoff_status',{p_company:s.company}):null;
     s.status=await rpc('essential_boss_handoff_status',{p_company:s.company});
    }else if(action[1]==='request'){
-    if(s.role!=='boss'||s.status)throw Error('Seul un Boss peut demander un nouveau transfert.');
+    if(s.role!=='boss'||(s.status&&s.status.status!=='expired'))throw Error('Seul un Boss peut demander un nouveau transfert.');
     const admins=getMembers().filter(m=>m.role==='admin'&&(m.status==null||m.status==='active'));
     if(!admins.some(m=>m.user_id===s.selected))throw Error('Choisir un administrateur actif.');
     if(s.reason.trim().length<8)throw Error('Motif détaillé obligatoire.');
