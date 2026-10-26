@@ -1,6 +1,14 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — messages d’arrivée volontaires (NAV-007, partiel)
+## Lot actif — missions manuelles : publication et fin de mission (MISSION-001/002/003/004/005/006/013/014 partiels)
+
+**PR [#152](https://github.com/punch360app/Punch360/pull/152)**, branche `feat/essential-manual-mission-publish-complete-20261026`. Boss/Admin Essentiel peut activer/désactiver explicitement « Missions », créer une mission affectée à un employé et à un lieu client existant, ordonner la tournée du jour et publier après un brouillon privé. Un salarié autorisé voit uniquement ses missions publiées sur **Accueil Punch** (Web/PWA et source Expo), « Prochaine mission · 1 de N », le lien d'itinéraire volontaire et « Terminer » confirmé au serveur. Après réponse SQL, la mission suivante apparaît; fin de mission **sans sortie du pointage**, sans nouveau quart, session, segment, paie, kilométrage, GPS ou facture. Les modifications des missions publiées sont bloquées tant que l'outil de réaffectation/annulation versionnée (MISSION-007/008) n'existe pas.
+
+**Supabase installé :** `20261026220125_essential_manual_missions` sur **l'unique projet** `mlabstdxxwjdpfaxiwmg`. Tables privées avec RLS et aucun SELECT authenticated; RPCs uniquement authenticated et autorisations Boss/Admin/employee. SQL `supabase/tests/essential_manual_missions.sql` exécuté **sur la base migrée avec BEGIN/ROLLBACK** : deux compagnies, activation fermée par défaut, brouillon, publication, notifications ciblées, rang unique, non-réaffectation publiée, « Terminer » idempotent, mission suivante, refus interentreprises/salarié non assigné, aucun changement aux trois tables de pointage, jobs et quarts. Tests Node/DOM `tests/mission-flow.test.mjs`; les anciens tests d'auth chargent le vrai contrôleur pour détecter toute régression. CI tête définitive et publication Pages à confirmer avant statut livré. Essais authentifiés navigateur/Android/iPhone **non attestés**.
+
+**Limites :** pas de photos/checklists/signature, pas de mission multi-employés, de réaffectation publiée, d'annulation, de synchronisation hors ligne, de modèles/récurrence CSV ni d'optimisation Dispatch. Le mode reste manuel; aucune nouvelle tarification ou permission Construction.
+
+## Travail connexe à préserver — messages d’arrivée volontaires (NAV-007, partiel)
 
 **Branche** `feat/essential-voluntary-arrival-issues-20261026`, PR à ouvrir, Supabase **exclusivement** `mlabstdxxwjdpfaxiwmg`. Pour un quart réel déjà affecté, l'employé connecté peut **« Prévenir d’un retard »** (avec estimation facultative, jamais calculée) ou **« Signaler un problème d’accès »** (précision volontaire). Le serveur vérifie le salarié/compagnie, l’état et la version du quart, empêche une nouvelle alerte pour le même type/quart, conserve le message dans une table privée, notifie les seuls Boss/Admin; leur action **« Pris en charge »** avertit l'employé et met à jour son statut. Web et source Expo. Aucun GPS, SMS, retard ou absence inféré, changement de session/punch, paie ou changement d'heure.
 
