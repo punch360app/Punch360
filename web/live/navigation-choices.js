@@ -29,6 +29,7 @@ export function navigationUrl(provider,address,platform='web'){
  if(provider==='other'&&platform==='android')return 'geo:0,0?q='+place;
  throw Error('Application de navigation non disponible sur cet appareil.');
 }
+/** @param {{visit?:Record<string,any>|null,usualAddress?:string,usualName?:string,incomplete?:boolean}} [options] */
 export function navigationDestination({visit=null,usualAddress='',usualName='',incomplete=false}={}){
  // Do not silently substitute a branch address when an assigned client destination
  // could be omitted by the server's bounded result.
