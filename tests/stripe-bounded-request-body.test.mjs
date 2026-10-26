@@ -15,7 +15,7 @@ function request(parts,contentLength){
    if(part)controller.enqueue(part);else controller.close();
   },
   cancel(){cancelled=true;}
- });
+ },{highWaterMark:0});
  return {request:{headers,body},info:()=>({cancelled,readCount})};
 }
 test('read exactly the body up to the cap, including UTF-8 chunk boundaries',async()=>{
