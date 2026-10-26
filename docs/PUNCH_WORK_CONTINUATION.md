@@ -1,3 +1,13 @@
+# Reprise — succession volontaire de direction Essentiel (PR #62)
+
+Le prompt original « Validation SQL archives » poursuit les accès Boss avec une procédure **volontaire à deux participants MFA AAL2**. Le Boss propose le transfert vers un administrateur actif; l'administrateur accepte dans sa session MFA; le Boss initial confirme et devient administrateur. Le successeur devient Boss uniquement après cette dernière confirmation. Blocages serveur : 48 heures, mauvais rôle/tenant, confirmation, version périmée, session MFA expirée, absence de consentement et plusieurs Boss actifs. Audit conservé. Interface Web : `web/live/boss-handoff.js`, depuis la gestion de direction, MFA TOTP inclus. Documentation : `docs/ESSENTIAL_BOSS_HANDOFF_20261026.md`.
+
+Migration Supabase officielle `20261026032012_essential_boss_dual_consent_handoff` appliquée dans `mlabstdxxwjdpfaxiwmg`; SQL synthétique rollback passé après installation. **Aucun compte ni rôle client réel modifié**. PR #62 : <https://github.com/punch360app/Punch360/pull/62>. Il reste à vérifier la CI finale, fusionner la PR si elle passe, confirmer Pages et effectuer la recette authentifiée de succession avec deux comptes et deux appareils fictifs.
+
+Restants du prompt original : protocole de succession en cas de Boss indisponible (contrôle juridique distinct), validations Stripe sandbox, qualité des horaires spéciaux, traductions et RTL, design responsive, test OAuth/notifications/paie, builds natifs et PRA. SMS/Twilio à la fin. Le prompt maître consolidé demeure séparé.
+
+---
+
 # Reprise — récupération personnelle de compte Auth dans Expo (PR #58)
 
 Prompt original **« Validation SQL archives »** : l'interface Web disposait déjà de « Mot de passe oublié ». La PR #58 complète le parcours **Expo Android/iOS** : demande d'un lien `resetPasswordForEmail`, callback deep link PKCE, vérification par l'événement `PASSWORD_RECOVERY`, création d'un nouveau mot de passe par le titulaire via `updateUser`, puis déconnexion globale et purge du cache d'identité. Aucune lecture de mot de passe ni changement administratif d'identité; aucun SQL ni compte réel modifié. Documentation : `docs/EXPO_ACCOUNT_RECOVERY_20261026.md`.
