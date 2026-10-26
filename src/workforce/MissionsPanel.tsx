@@ -3,7 +3,7 @@ import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-
 import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
-import {missionAddress,missionArgs,missionDate,missionProgress} from '../../web/live/missions.js';
+import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {navigationUrl,chooseNavigationPreference} from '../../web/live/navigation-choices.js';
 import {Platform} from 'react-native';
@@ -150,16 +150,17 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[busy,setBusy]=useState(false),
   [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
+ const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false);
  async function refresh(){
   if(!workerId||!companyId)return;
   const gen=++current.current;
   try{
    const res=await rpc('list_essential_missions',{p_company:companyId,p_day:missionDate(),p_worker:workerId,p_include_drafts:false});
    if(gen!==current.current)return;
-   setEnabled(!!res.enabled);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
-  }catch(e:any){if(gen===current.current){setEnabled(false);setItems([]);setMessage('Missions non disponibles en ligne.');}}
+   setEnabled(!!res.enabled);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
+  }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;setItems([]);setEnabled(false);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setItems([]);setEnabled(false);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;subscription.remove()};
@@ -181,7 +182,12 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      finally{setBusy(false)}
     })()}}]);
  };
- if(!workerId||!enabled)return null;
+ if(!workerId)return null;
+ if(connectionWarning&&!enabled)return <View accessibilityRole="alert" style={{padding:12,borderRadius:11,backgroundColor:'#F7FAF5',borderWidth:1,borderColor:'#DCE8D6',gap:6}}>
+  {title('Missions momentanément indisponibles')}
+  {label('Connexion requise pour actualiser vos missions. Aucune fin ni sortie de pointage n’a été enregistrée.')}
+ </View>;
+ if(!enabled)return null;
  if(!progress.total&& !message)return null;
  const address=missionAddress(next);
  const provider=chooseNavigationPreference(navProvider,Platform.OS)||'google';
