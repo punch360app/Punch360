@@ -49,7 +49,7 @@ test('late Stripe preview cannot repopulate another Boss billing screen or clear
  configure(ui);
  w.document.body.innerHTML=ui.render();
  const inFlight=ui.handle({dataset:{action:'bill:quote'}});
- await Promise.resolve();await Promise.resolve();
+ for(let tick=0;tick<12&&!calls.some(x=>x.action==='preview');tick++)await Promise.resolve();
  assert.ok(calls.some(x=>x.action==='preview'&&x.company===A));
  ui.reset();
  configure(ui,B);
