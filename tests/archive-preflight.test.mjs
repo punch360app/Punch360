@@ -28,7 +28,7 @@ test('chunk collector rejects missing strings and oversized output before reques
 });
 
 test('UTF-8 cap works with a surrogate pair split between chunks',async()=>{
- const parts=['\\uD83D','\\uDE00'];
+ const parts=['😀'.slice(0,1),'😀'.slice(1)];
  assert.equal(await collectArchiveChunks({chunks:2,maxBytes:4,getChunk:async i=>parts[i]}),'😀');
  await assert.rejects(collectArchiveChunks({chunks:2,maxBytes:3,getChunk:async i=>parts[i]}),/trop volumineuse/);
 });
