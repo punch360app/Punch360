@@ -1,3 +1,5 @@
+> **Exigences nouvelles E57–E59 — remplacement Admin/Boss et identité multientreprise (spécification seulement) :** une identité Auth personnelle, des appartenances actives et dossiers salariés propres à chaque entreprise, sélecteur sécurisé, révocation des droits Admin et transfert du Boss avec contrôle, calendrier global visible au salarié seulement. Blocage actuel constaté dans `src/auth/AuthGate.tsx` : la requête utilise `.limit(1).maybeSingle()` et ne charge qu'une compagnie; corriger puis prouver QA-031/032 avant toute affirmation de livraison.
+
 # Reprise — récupération personnelle de compte Auth dans Expo (PR #58)
 
 Prompt original **« Validation SQL archives »** : l'interface Web disposait déjà de « Mot de passe oublié ». La PR #58 complète le parcours **Expo Android/iOS** : demande d'un lien `resetPasswordForEmail`, callback deep link PKCE, vérification par l'événement `PASSWORD_RECOVERY`, création d'un nouveau mot de passe par le titulaire via `updateUser`, puis déconnexion globale et purge du cache d'identité. Aucune lecture de mot de passe ni changement administratif d'identité; aucun SQL ni compte réel modifié. Documentation : `docs/EXPO_ACCOUNT_RECOVERY_20261026.md`.
@@ -36,7 +38,7 @@ Restent la recette authentifiée Web/Expo et les prochaines étapes du prompt or
 
 ---
 
-> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 568 exigences en 29 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
+> **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 578 exigences en 29 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
 
 # Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
 
