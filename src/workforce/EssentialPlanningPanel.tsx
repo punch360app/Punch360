@@ -8,10 +8,11 @@ import {nextIsoMonday,reminderSelection,reminderResultLabel} from '../../web/liv
 import {ClientDirectoryPanel} from './ClientDirectoryPanel';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from '../../web/live/shift-client-sites.js';
 import {buildMultiSiteOverview} from '../../web/live/multi-site-overview.js';
+import {navigationStopChoices} from '../../web/live/navigation-choices.js';
 import {plannedClientReport,plannedClientReportCsv} from '../../web/live/planned-client-report.js';
 import {ABSENCE_REASONS,absenceForShift,absenceStatus,canReportShift,prepareAbsence} from '../../web/live/shift-absence.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Alert,AppState,Pressable,Share,ScrollView,StyleSheet,Text,TextInput,View,Linking} from 'react-native';
+import {ActivityIndicator,Alert,AppState,Platform,Pressable,Share,ScrollView,StyleSheet,Text,TextInput,View,Linking} from 'react-native';
 import {supabase,PUNCH_SUPABASE_URL} from '../lib/supabase';
 import type {WorkspaceAccount} from '../auth/AuthGate';
 type Row=Record<string,any>;
@@ -189,7 +190,11 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
   {text(assignedSiteAddress(assignedSiteForShift(data.assignedSites,x.id)),{fontSize:12})}
   {assignedSiteForShift(data.assignedSites,x.id)?.access_instructions?text('Accès : '+assignedSiteForShift(data.assignedSites,x.id).access_instructions,{fontSize:12}):null}
   {assignedSiteForShift(data.assignedSites,x.id)?.contact_name?text('Contact sur place : '+assignedSiteForShift(data.assignedSites,x.id).contact_name,{fontSize:12}):null}
-  {button('Itinéraire dans Google Maps',()=>Linking.openURL(assignedSiteMapsUrl(assignedSiteForShift(data.assignedSites,x.id))).catch(e=>setNotice(e.message)))}
+  {text('Itinéraire vers cet arrêt : choisir une application',{fontSize:12,fontWeight:'600'})}
+  <View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
+   {navigationStopChoices(assignedSiteForShift(data.assignedSites,x.id),Platform.OS).map((choice:{id:string;label:string;url:string})=>
+    <View key={choice.id}>{button(choice.label,()=>Linking.openURL(choice.url).catch(e=>setNotice(e.message)))}</View>)}
+  </View>
   {text('Aucun GPS permanent ni suivi de trajet activé.',{fontSize:11})}
  </View>:null}
  {manager?button('Associer une adresse client',()=>run(async()=>{
