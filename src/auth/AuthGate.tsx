@@ -5,9 +5,10 @@ import React,{useEffect,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import type {Session} from '@supabase/supabase-js';
 import {supabase} from '../lib/supabase';
+import {listVerifiedWorkspaces,chooseVerifiedWorkspace} from '../../web/live/company-workspaces.js';
 
 export type WorkspaceAccount={companyId:string;companyName:string;role:'employee'|'lead'|'admin'|'boss';userId:string;billingStatus:string;email:string;edition?:'construction'|'essential';defaultJobId?:string|null};
-type Member={company_id:string;role:WorkspaceAccount['role'];companies:{name:string;billing_status:string;product_edition?:'construction'|'essential';default_punch_job_id?:string|null}|{name:string;billing_status:string;product_edition?:'construction'|'essential';default_punch_job_id?:string|null}[]|null};
+const MEMBERSHIP_COLUMNS='user_id,company_id,role,status,companies(name,billing_status,product_edition,default_punch_job_id)';
 const RECOVERY_REDIRECT='punchapp://auth/callback?type=recovery';
 const CO={bg:'#08131C',panel:'#132630',yellow:'#FFBF40',mint:'#22E1B1',muted:'#A9BAC4',white:'#FFFFFF',stroke:'#38515E'};
 export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.ReactNode}){
@@ -15,6 +16,8 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  const [boot,setBoot]=useState(true);
  const [busy,setBusy]=useState(false);
  const [account,setAccount]=useState<WorkspaceAccount|null>(null);
+ const [workspaces,setWorkspaces]=useState<WorkspaceAccount[]>([]);
+ const [showWorkspacePicker,setShowWorkspacePicker]=useState(false);
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
  const [newPassword,setNewPassword]=useState('');
@@ -27,27 +30,73 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  const [inviteToken,setInviteToken]=useState('');
  const [loginMode,setLoginMode]=useState<'login'|'signup'>('login');
  const [error,setError]=useState('');
+ async function cachedWorkspace(id:string){
+  const selected=await AsyncStorage.getItem('punch-last-company:'+id);
+  if(!selected)return null;
+  const raw=await AsyncStorage.getItem('punch-workspace:'+id+':'+selected);
+  if(!raw)return null;
+  try{const data=JSON.parse(raw) as WorkspaceAccount;return data.userId===id&&data.companyId===selected?data:null;}
+  catch{return null;}
+ }
  async function refresh(){
-  const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false){const local=await cachedLocalIdentity();if(local){const saved=await AsyncStorage.getItem('punch-workspace:'+local.id);if(saved){setAccount(JSON.parse(saved));setBoot(false);return;}}}
-  const {data,error:sessionError}=await supabase.auth.getSession();
-  setSession(data.session);
-  if(!data.session){const local=sessionError?await cachedLocalIdentity():null;const saved=local?await AsyncStorage.getItem('punch-workspace:'+local.id):null;setAccount(saved?JSON.parse(saved):null);setBoot(false);return;}
-  const u=data.session.user;await rememberLocalIdentity(u);
-  const {data:membership,error:e}=await supabase.from('company_members')
-   .select('company_id,role,companies(name,billing_status,product_edition,default_punch_job_id)').eq('user_id',u.id).eq('status','active').limit(1).maybeSingle();
-  if(e){const cached=await AsyncStorage.getItem('punch-workspace:'+u.id);if(cached){setAccount(JSON.parse(cached));setError('Mode hors ligne');}else{setError(e.message);setAccount(null);}}
-  else if(membership){
-   const m=membership as unknown as Member;
-   const company=Array.isArray(m.companies)?m.companies[0]:m.companies;
-   const workspace={companyId:m.company_id,companyName:company?.name||'Ma compagnie',role:m.role,userId:u.id,email:u.email||'',billingStatus:company?.billing_status||'setup',edition:company?.product_edition||'construction',defaultJobId:company?.default_punch_job_id||null};setAccount(workspace);await AsyncStorage.setItem('punch-workspace:'+u.id,JSON.stringify(workspace));
-  }else{setAccount(null);await AsyncStorage.removeItem('punch-workspace:'+u.id);}
-  setBoot(false);
+  setError('');
+  try{
+   const network=await Network.getNetworkStateAsync();
+   if(network.isConnected===false||network.isInternetReachable===false){
+    const local=await cachedLocalIdentity();const cache=local?await cachedWorkspace(local.id):null;
+    setWorkspaces([]);setAccount(cache);setShowWorkspacePicker(false);setSession(null);
+    setError(cache?'Mode hors ligne — espace sélectionné seulement. Les changements d’entreprise nécessitent Internet.':'Connexion Internet requise.');return;
+   }
+   const {data,error:sessionError}=await supabase.auth.getSession();
+   setSession(data.session);
+   if(!data.session){
+    if(sessionError){setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);setError('Session non vérifiée — reconnecte-toi en ligne.');}
+    else {setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);}
+    return;
+   }
+   const u=data.session.user;await rememberLocalIdentity(u);
+   const {data:memberships,error:e}=await supabase.from('company_members')
+    .select(MEMBERSHIP_COLUMNS).eq('user_id',u.id).eq('status','active').order('company_id').limit(100);
+   if(e){setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);setError('Impossible de vérifier vos accès. Réessayez.');return;}
+   const verified=listVerifiedWorkspaces(memberships||[],u) as WorkspaceAccount[];
+   setWorkspaces(verified);
+   const stored=await AsyncStorage.getItem('punch-last-company:'+u.id);
+   const chosen=chooseVerifiedWorkspace(verified,stored) as WorkspaceAccount|null;
+   if(chosen){
+    setAccount(chosen);setShowWorkspacePicker(false);
+    await AsyncStorage.setItem('punch-last-company:'+u.id,chosen.companyId);
+    await AsyncStorage.setItem('punch-workspace:'+u.id+':'+chosen.companyId,JSON.stringify(chosen));
+   }else{setAccount(null);setShowWorkspacePicker(verified.length>1);}
+   if(!verified.length)await AsyncStorage.removeItem('punch-last-company:'+u.id);
+  }catch(err:any){setAccount(null);setWorkspaces([]);setError('Erreur de vérification des entreprises. '+(err?.message||''));}
+  finally{setBoot(false);}
+ }
+ async function selectWorkspace(companyId:string){
+  if(busy)return;
+  setBusy(true);setError('');
+  try{
+   const {data,error:authError}=await supabase.auth.getUser();
+   if(authError||!data.user)throw Error('Reconnecte-toi pour choisir une entreprise.');
+   const user=data.user;
+   const {data:memberships,error:memberError}=await supabase.from('company_members')
+    .select(MEMBERSHIP_COLUMNS).eq('user_id',user.id).eq('status','active').order('company_id').limit(100);
+   if(memberError)throw Error('Impossible de confirmer cet accès.');
+   const verified=listVerifiedWorkspaces(memberships||[],user) as WorkspaceAccount[];
+   setWorkspaces(verified);
+   const selected=verified.find(w=>w.companyId===companyId);
+   if(!selected){setAccount(null);setShowWorkspacePicker(verified.length>1);throw Error('Accès retiré : cette entreprise n’est plus accessible.');}
+   // Before switching, save only a previously server-verified workspace, scoped to this user.
+   await AsyncStorage.setItem('punch-last-company:'+user.id,selected.companyId);
+   await AsyncStorage.setItem('punch-workspace:'+user.id+':'+selected.companyId,JSON.stringify(selected));
+   setAccount(selected);setShowWorkspacePicker(false);
+  }catch(e:any){setError(e.message||'Changement d’entreprise refusé.');}
+  finally{setBusy(false);}
  }
  useEffect(()=>{
   refresh();
   const {data:sub}=supabase.auth.onAuthStateChange((_event,newSession)=>{
    if(_event==='PASSWORD_RECOVERY')setIsRecovering(true);
-   if(_event==='SIGNED_OUT'){forgetLocalIdentity();setIsRecovering(false);}
+   if(_event==='SIGNED_OUT'){forgetLocalIdentity();setIsRecovering(false);setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);}
    setSession(newSession);
    setBoot(true);
    // Différer l'appel asynchrone au prochain tour pour éviter un deadlock Supabase Auth.
@@ -107,7 +156,9 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    const userId=session.user.id;
    const r=await supabase.auth.updateUser({password:newPassword});if(r.error)throw r.error;
    setNewPassword('');setConfirmPassword('');setPassword('');
-   await AsyncStorage.removeItem('punch-workspace:'+userId);
+   const keys=await AsyncStorage.getAllKeys();
+   const scoped=keys.filter(key=>key==='punch-last-company:'+userId||key==='punch-workspace:'+userId||key.startsWith('punch-workspace:'+userId+':'));
+   if(scoped.length)await AsyncStorage.multiRemove(scoped);
    await forgetLocalIdentity();
    const out=await supabase.auth.signOut({scope:'global'});
    if(out.error)throw Error('Mot de passe modifié, mais la fermeture des sessions a échoué. Ferme tes sessions dans les paramètres du compte.');
@@ -127,7 +178,23 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   finally{setBusy(false);}
  }
  if(boot)return <View style={st.center}><ActivityIndicator size="large" color={CO.yellow}/><Text style={st.hint}>Chargement sécurisé de PUNCH 360°…</Text></View>;
- if(account&&!isRecovering)return <>{children(account)}</>;
+ if(account&&!isRecovering&&!showWorkspacePicker)return <View style={{flex:1}}>
+   {workspaces.length>1?<Pressable accessibilityRole="button" accessibilityLabel="Changer d’entreprise" onPress={()=>setShowWorkspacePicker(true)} style={{padding:10,backgroundColor:'#E1E8DB',alignItems:'center'}}>
+    <Text style={{color:'#2F4935',fontWeight:'700'}}>⌄ {account.companyName} · Changer d’entreprise</Text>
+   </Pressable>:null}
+   <View key={account.companyId+':'+account.role} style={{flex:1}}>{children(account)}</View>
+  </View>;
+ if(session&&!isRecovering&&showWorkspacePicker&&workspaces.length>0)return <View style={st.center}><ScrollView contentContainerStyle={st.stack}>
+   <Text style={st.logo}>PUNCH 360°</Text><Text style={st.head}>Choisir mon entreprise</Text>
+   <Text style={st.hint}>Chaque entreprise conserve son rôle, ses horaires et ses données. Votre employeur ne voit pas les autres.</Text>
+   {workspaces.map(w=><Pressable key={w.companyId} accessibilityRole="button" disabled={busy} style={st.social} onPress={()=>selectWorkspace(w.companyId)}>
+    <Text style={st.socialText}>{w.companyName}</Text>
+    <Text style={st.hint}>{w.edition==='essential'?'Essentiel':'Construction'} · {w.role}</Text>
+   </Pressable>)}
+   {account?<Pressable onPress={()=>setShowWorkspacePicker(false)}><Text style={st.alt}>Retour à {account.companyName}</Text></Pressable>:null}
+   {error?<Text style={st.error}>{error}</Text>:null}
+   {busy?<ActivityIndicator color={CO.mint}/>:null}
+  </ScrollView></View>;
  return <View style={st.center}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={st.stack}>
    <Text style={st.logo}>⛑ PUNCH <Text style={{color:CO.yellow}}>360°</Text></Text>
    <Text style={st.head}>{isRecovering?'Choisir un nouveau mot de passe':recoveryRequest?'Mot de passe oublié':session?'Créer ma compagnie':loginMode==='login'?'Se connecter':'Créer un compte'}</Text>
