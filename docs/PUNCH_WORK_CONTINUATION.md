@@ -1,3 +1,15 @@
+# Reprise P0-B — Invalidation des devis Boss après modification (26 octobre 2026)
+
+**Lot indépendant de la PR #118 native en brouillon (ne pas fusionner/écraser cette PR).** Le Web Boss doit invalider l'ancienne prévisualisation et commande lorsqu'un champ `billing-plan`, `billing-cadence` ou `billing-seats` change, y compris pendant un RPC lent. Correctif `web/live/billing.js`, branche `fix/p0-web-billing-quote-input-race-20261026`, tests `tests/billing-quote-input-race.test.mjs`; PR et CI doivent être vérifiées puis la branche fusionnée si verte.
+
+| Développé | Testé | Déployé | Intervention externe |
+|---|---|---|---|
+| Contrôle de révision UI Web et désactivation immédiate de l'ancienne confirmation | Tests Node/DOM ajoutés; CI à conclure | Web Pages **non vérifié**; aucune Edge ou migration modifiée | Boss Web et Stripe sandbox lent, issue #35 |
+
+**Étape suivante :** obtenir le statut final du workflow PUNCH TypeScript, corriger ses tests si nécessaire, fusionner la PR indépendante puis vérifier la version Pages; enregistrer SHA/CI final. Ensuite poursuivre Super Admin/Stripe sandbox lorsqu'autorisations fournisseur disponibles, ou autre P0 indépendant. Supabase officiel `mlabstdxxwjdpfaxiwmg` uniquement, maintenir migration `20261026110100` en attente et conserver tous les contrats et six Price IDs.
+
+---
+
 # Reprise courante P0 — 26 octobre 2026
 
 La reprise de développement et ses preuves récentes sont conservées dans [AUTOPILOT_HANDOFF_20261026.md](prompt-board/AUTOPILOT_HANDOFF_20261026.md) : PR #112 et #113 **fusionnées, CI verte**, PR #114 à vérifier et tests Stripe sandbox / OAuth appareils bloqués. Toujours vérifier dernier main/CI/Pages/Supabase avant de considérer un déploiement. **Ce chapitre prime sur les bilans historiques datés et ne clôture aucune des 578 exigences sans preuve de bout en bout.**

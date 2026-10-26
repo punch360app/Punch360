@@ -400,7 +400,7 @@ else if(a==='newGroup'){state.section='sub';state.sub='group';draw()}
 else if(a==='createGroup')await createGroup();
 else if(a==='privateChat')await privateChat();
 }catch(err){error(err)}});
-document.addEventListener('change',ev=>{if(ev.target?.id==='essential-language'&&isEssential()){locale.select(ev.target.value);draw();return;}essentialUI.planning.input(ev.target);});
+document.addEventListener('change',ev=>{if(ev.target?.id==='essential-language'&&isEssential()){locale.select(ev.target.value);draw();return;}essentialUI.planning.input(ev.target);essentialUI.billing.input(ev.target);});
 document.addEventListener('submit',ev=>{if(ev.target?.id==='recoveryForm'){ev.preventDefault();savePassword();return}if(ev.target?.id==='authForm'){ev.preventDefault();login(state.authMode)}});
 document.addEventListener('input',ev=>{essentialUI.input(ev.target);bossHandoff.input(ev.target);if(ev.target?.id==='jobSearch'){state.search=ev.target.value;const current=ev.target.selectionStart;const newHtml=jobsPage();const m=$('main');if(m){const y=m.scrollTop;m.innerHTML=newHtml;m.scrollTop=y;const inp=$('jobSearch');inp?.focus();try{inp?.setSelectionRange(current,current)}catch{}}renderMap()}});
 sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){state.recovery=true;setTimeout(draw,0)}else if(event==='SIGNED_OUT'){companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');state.user=null;state.account=null;state.section='home';draw()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
