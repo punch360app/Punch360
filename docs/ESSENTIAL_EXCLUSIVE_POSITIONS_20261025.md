@@ -15,14 +15,19 @@ Un **poste exclusif** désigne une place de travail concrète (ex. Caisse 1, Ré
 
 ## Sources
 
-- Migration : `supabase/migrations/20261025223000_essential_exclusive_positions.sql` (numéro à aligner après application Supabase).
+- Migration : `supabase/migrations/20261026011451_essential_exclusive_positions.sql` (version officiellement appliquée dans Supabase).
 - SQL : `supabase/tests/essential_exclusive_positions.sql`, scénario transactionnel synthétique rollback (poste créé, certificat, premier quart, double réservation refusée, second poste indépendant, version, refus salarié, désactivation bloquée).
 - Web : `web/live/planning.js`, création en Organisation et attribution dans Horaire.
+- Expo : `src/workforce/EssentialPlanningPanel.tsx`, création et affectation natives dans Organisation et Horaire.
 - DOM : `tests/exclusive-positions-ui.test.mjs`, visibilité Pro, absence Plus, envoi de version attendue et motif.
 
 ## Limites restant à couvrir
 
-- Recette authentifiée Web et **Expo mobile** pour l'affectation de postes; non considérée terminée par des tests unitaires.
+- Recette authentifiée sur navigateur, téléphone et tablette pour l'affectation de postes; non considérée terminée par des tests automatisés.
 - Cas administratifs de suppression/révocation d'un certificat alors qu'un quart futur y dépend et notification responsable, catalogue de poste partagé multi-établissements, mutations de disponibilité.
 - Les périodes et heures de travail sont toujours gérées par les RPC de planning existantes.
 - Continuer le prompt original **Validation SQL archives**. Ne pas commencer le prompt maître séparé de 453 exigences.
+
+## Validation de la migration appliquée
+
+Supabase exclusif `mlabstdxxwjdpfaxiwmg`: migration `20261026011451` appliquée. Recette SQL transactionnelle `supabase/tests/essential_exclusive_positions.sql` **réussie après installation**, avec rollback. Lecture de contrôle : `0` poste créé et `0` quart affecté conservés. Le rôle `anon` ne peut pas exécuter `save_essential_position`; la RPC vérifie côté serveur `private.can_administer` et la fonction Pro. Test GitHub (avant Expo) : **167/167** réussis; exécution TypeScript après ajout Expo à confirmer.
