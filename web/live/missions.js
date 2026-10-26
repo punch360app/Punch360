@@ -1,4 +1,5 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference} from './navigation-choices.js';
+import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 export function missionProgress(items){
@@ -17,7 +18,7 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  edit:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},edit:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
@@ -52,6 +53,24 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     select('Adresse client','site',f.site,[['','Sélectionner'],...s.sites.map(x=>[x.id,x.client_name+' · '+x.name+' · '+x.city])])+
     field('Ordre du jour','order',f.order,'number')+field('Titre','title',f.title)+field('Instructions internes','instructions',f.instructions)+
     '</div>'+button('Enregistrer brouillon','draft')+button('Approuver et publier','publish');
+   const analysis=missionDayReview(s.missions,s.review,s.truncated);
+   body+='<section class="ess-panel" aria-label="Suivi quotidien des missions">'+
+    '<h4>Suivi des missions — '+e(s.day)+'</h4>'+
+    '<p class="ess-fine">Statuts explicites; une mission non terminée n’est pas une absence ou un retard. Aucun temps de travail ni trajet n’est inféré.</p>'+
+    '<p role="status">À faire : '+analysis.counts.published+
+    ' · Terminées : '+analysis.counts.completed+' · Brouillons : '+analysis.counts.draft+
+    ' · Annulées : '+analysis.counts.cancelled+'</p>'+
+    select('Filtrer par salarié','review-worker',s.review.worker,[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
+    select('Filtrer par état','review-status',s.review.status,MISSION_STATES)+
+    field('Rechercher un client','review-client',s.review.client)+
+    button('Appliquer les filtres','review-apply')+
+    '<p>'+analysis.shown+' mission(s) affichée(s) sur '+analysis.scopedTotal+' correspondante(s).</p>'+
+    (analysis.truncated?'<p role="alert">Plus de 200 missions : résultats tronqués. Export CSV désactivé.</p>':button('Exporter les missions affichées (CSV)','review-csv'))+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Ordre</th><th>Salarié</th><th>Client</th><th>Lieu</th><th>Mission</th><th>État</th></tr></thead><tbody>'+
+    analysis.visible.map(x=>'<tr><td>'+e(x.sort_order)+'</td><td>'+e([x.first_name,x.last_name].filter(Boolean).join(' '))+
+     '</td><td>'+e(x.client_name)+'</td><td>'+e(x.site_name)+'</td><td>'+e(x.title)+'</td><td>'+
+      e(MISSION_STATES.find(s=>s[0]===x.status)?.[1]||x.status)+'</td></tr>').join('')+
+    '</tbody></table></div></section>';
    body+='<h4>Interventions du '+e(s.day)+'</h4>'+
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
@@ -68,6 +87,15 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     const enabled=!s.enabled;if(!doc.defaultView.confirm((enabled?'Activer':'Désactiver')+' les missions ?'))return true;
     await rpc('essential_missions_configuration',{p_company:s.company,p_enabled:enabled});
     await load(s.company,s.roster);notify(enabled?'Missions activées.':'Missions désactivées.');
+   }else if(action==='review-apply'){
+    s.review={worker:doc.getElementById('mission-review-worker')?.value||'',status:doc.getElementById('mission-review-status')?.value||'',client:doc.getElementById('mission-review-client')?.value||''};
+   }else if(action==='review-csv'){
+    const analysis=missionDayReview(s.missions,s.review,s.truncated);
+    const content=missionDayReviewCsv(analysis,s.day);
+    const win=doc.defaultView,url=win.URL.createObjectURL(new win.Blob([content],{type:'text/csv;charset=utf-8'}));
+    try{const link=doc.createElement('a');link.href=url;link.download='punch-missions-'+s.day+'.csv';doc.body.appendChild(link);link.click();link.remove();}
+    finally{win.URL.revokeObjectURL(url);}
+    notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
    }else if(action==='edit'){
