@@ -322,6 +322,182 @@ const KIOSK_WORDS={
   "Isang aktibong araw sa mga awtorisadong device."
  ]
 };
+
+// Safe, user-facing incident messages. Never translate or display raw server diagnostics.
+const KIOSK_INCIDENT_KEYS=["errorInput","errorPinMismatch","errorDenied","errorRate","errorPinPolicy","errorActive","errorNoSession","errorOperation","errorOfflineIdentity","errorOfflineConflict","errorNetwork","errorPending","errorRetry","errorPolicy","errorClock"];
+const KIOSK_INCIDENT_WORDS={
+ "fr": [
+  "Matricule et NIP de 6 à 12 chiffres requis.",
+  "Les NIP ne correspondent pas.",
+  "Borne ou identification refusée. Contactez le responsable.",
+  "Trop de tentatives. Réessayez dans quelques minutes.",
+  "Choisissez un NIP de 6 à 12 chiffres moins prévisible.",
+  "Une journée est déjà active.",
+  "Aucune journée active.",
+  "Opération refusée. Contactez votre responsable.",
+  "Identité hors ligne absente, expirée ou révoquée. Une connexion est requise.",
+  "Conflit dans le journal provisoire. Ne supprimez aucune observation; contactez le responsable.",
+  "Connexion interrompue. Résultat non confirmé. Réessayez la même opération ou contactez votre responsable.",
+  "Observations provisoires en attente. Une réconciliation est requise.",
+  "Réessayez d’abord la même opération.",
+  "Action ou pause incompatible avec les règles du département.",
+  "Horloge ou autorisation invalide. Vérification du responsable requise."
+ ],
+ "en": [
+  "Employee number and a 6–12 digit PIN are required.",
+  "The PINs do not match.",
+  "Kiosk or identity denied. Contact your manager.",
+  "Too many attempts. Try again in a few minutes.",
+  "Choose a less predictable 6–12 digit PIN.",
+  "A workday is already active.",
+  "No active workday.",
+  "Action refused. Contact your manager.",
+  "Offline identity missing, expired or revoked. A connection is required.",
+  "Conflict in provisional records. Do not delete any records; contact your manager.",
+  "Connection interrupted. Result unconfirmed. Retry the same action or contact your manager.",
+  "Provisional records are pending. Reconciliation is required.",
+  "Retry the same action first.",
+  "Action or break conflicts with department policy.",
+  "Clock or authorization invalid. Manager review required."
+ ],
+ "es": [
+  "Se requieren número de empleado y PIN de 6 a 12 dígitos.",
+  "Los PIN no coinciden.",
+  "Terminal o identidad rechazada. Contacte al responsable.",
+  "Demasiados intentos. Vuelva a intentarlo en unos minutos.",
+  "Elija un PIN menos predecible de 6 a 12 dígitos.",
+  "Ya hay una jornada activa.",
+  "No hay una jornada activa.",
+  "Operación rechazada. Contacte al responsable.",
+  "Identidad sin conexión ausente, vencida o revocada. Se requiere conexión.",
+  "Conflicto en registros provisionales. No borre registros; contacte al responsable.",
+  "Conexión interrumpida. Resultado sin confirmar. Repita la misma acción o contacte al responsable.",
+  "Hay registros provisionales pendientes de conciliación.",
+  "Primero repita la misma acción.",
+  "La operación o pausa incumple las reglas del departamento.",
+  "Reloj o autorización inválidos. Revisión requerida."
+ ],
+ "pt": [
+  "Informe matrícula e PIN de 6 a 12 dígitos.",
+  "Os PINs não coincidem.",
+  "Terminal ou identidade recusada. Contate o responsável.",
+  "Muitas tentativas. Tente novamente em alguns minutos.",
+  "Escolha um PIN menos previsível de 6 a 12 dígitos.",
+  "Já existe uma jornada ativa.",
+  "Nenhuma jornada ativa.",
+  "Operação recusada. Contate o responsável.",
+  "Identidade offline ausente, expirada ou revogada. É necessária conexão.",
+  "Conflito nos registros provisórios. Não apague registros; contate o responsável.",
+  "Conexão interrompida. Resultado não confirmado. Repita a mesma ação ou contate o responsável.",
+  "Registros provisórios pendentes de conciliação.",
+  "Repita primeiro a mesma operação.",
+  "Ação ou pausa incompatível com a política do departamento.",
+  "Relógio ou autorização inválidos. Revisão necessária."
+ ],
+ "it": [
+  "Servono matricola e PIN di 6–12 cifre.",
+  "I PIN non corrispondono.",
+  "Terminale o identità rifiutata. Contatta il responsabile.",
+  "Troppi tentativi. Riprova tra qualche minuto.",
+  "Scegli un PIN meno prevedibile di 6–12 cifre.",
+  "Una giornata è già attiva.",
+  "Nessuna giornata attiva.",
+  "Operazione rifiutata. Contatta il responsabile.",
+  "Identità offline assente, scaduta o revocata. Serve una connessione.",
+  "Conflitto nei registri provvisori. Non eliminarli; contatta il responsabile.",
+  "Connessione interrotta. Esito non confermato. Ripeti la stessa azione o contatta il responsabile.",
+  "Registri provvisori in attesa di riconciliazione.",
+  "Ripeti prima la stessa operazione.",
+  "Azione o pausa incompatibile con le regole del reparto.",
+  "Orologio o autorizzazione non validi. Richiesta verifica."
+ ],
+ "de": [
+  "Personalnummer und eine 6–12-stellige PIN erforderlich.",
+  "Die PINs stimmen nicht überein.",
+  "Terminal oder Identität abgelehnt. Bitte die Leitung kontaktieren.",
+  "Zu viele Versuche. Bitte in einigen Minuten erneut versuchen.",
+  "Wähle eine weniger vorhersehbare 6–12-stellige PIN.",
+  "Ein Arbeitstag ist bereits aktiv.",
+  "Kein aktiver Arbeitstag.",
+  "Vorgang abgelehnt. Bitte Leitung kontaktieren.",
+  "Offline-Identität fehlt, ist abgelaufen oder widerrufen. Verbindung nötig.",
+  "Konflikt bei vorläufigen Einträgen. Nichts löschen; Leitung kontaktieren.",
+  "Verbindung unterbrochen. Ergebnis unbestätigt. Dieselbe Aktion wiederholen oder Leitung kontaktieren.",
+  "Vorläufige Einträge warten auf Abgleich.",
+  "Zuerst dieselbe Aktion wiederholen.",
+  "Aktion oder Pause verstößt gegen Abteilungsregeln.",
+  "Uhr oder Berechtigung ungültig. Prüfung durch Leitung nötig."
+ ],
+ "ar": [
+  "مطلوب رقم الموظف ورقم سري من ٦ إلى ١٢ رقمًا.",
+  "الرقمان السريان غير متطابقين.",
+  "تم رفض الجهاز أو الهوية. اتصل بالمسؤول.",
+  "محاولات كثيرة. أعد المحاولة بعد بضع دقائق.",
+  "اختر رقمًا سريًا أقل قابلية للتخمين من ٦ إلى ١٢ رقمًا.",
+  "يوجد يوم عمل نشط بالفعل.",
+  "لا يوجد يوم عمل نشط.",
+  "تم رفض العملية. اتصل بالمسؤول.",
+  "الهوية دون اتصال مفقودة أو منتهية أو ملغاة. يلزم الاتصال.",
+  "تعارض في السجلات المؤقتة. لا تحذف أي سجل؛ اتصل بالمسؤول.",
+  "انقطع الاتصال. النتيجة غير مؤكدة. كرر العملية نفسها أو اتصل بالمسؤول.",
+  "توجد سجلات مؤقتة تنتظر المطابقة.",
+  "أعد المحاولة للعملية نفسها أولًا.",
+  "العملية أو الاستراحة تخالف سياسة القسم.",
+  "الساعة أو التصريح غير صالح. تلزم مراجعة المسؤول."
+ ],
+ "zh": [
+  "请输入员工编号和 6 至 12 位 PIN。",
+  "两次 PIN 不一致。",
+  "终端或身份验证被拒绝。请联系主管。",
+  "尝试次数过多。请几分钟后重试。",
+  "请选择不易猜测的 6 至 12 位 PIN。",
+  "已有进行中的工作日。",
+  "没有进行中的工作日。",
+  "操作被拒绝。请联系主管。",
+  "离线身份不存在、过期或已撤销。需要联网。",
+  "临时记录发生冲突。请勿删除记录，并联系主管。",
+  "连接中断，结果未确认。请重试同一操作或联系主管。",
+  "临时记录待核对。",
+  "请先重试同一操作。",
+  "操作或休息不符合部门规定。",
+  "时钟或授权无效，需要主管核查。"
+ ],
+ "hi": [
+  "कर्मचारी संख्या और 6 से 12 अंकों का PIN आवश्यक है।",
+  "दोनों PIN मेल नहीं खाते।",
+  "डिवाइस या पहचान अस्वीकृत। प्रबंधक से संपर्क करें।",
+  "बहुत अधिक प्रयास। कुछ मिनट बाद फिर कोशिश करें।",
+  "6 से 12 अंकों का कम अनुमान योग्य PIN चुनें।",
+  "एक कार्यदिवस पहले से सक्रिय है।",
+  "कोई सक्रिय कार्यदिवस नहीं है।",
+  "कार्रवाई अस्वीकृत। प्रबंधक से संपर्क करें।",
+  "ऑफ़लाइन पहचान उपलब्ध नहीं, समाप्त या रद्द है। इंटरनेट आवश्यक है।",
+  "अस्थायी रिकॉर्ड में टकराव है। रिकॉर्ड न मिटाएँ; प्रबंधक से संपर्क करें।",
+  "कनेक्शन बाधित हुआ। परिणाम अपुष्ट है। वही कार्रवाई दोहराएँ या प्रबंधक से संपर्क करें।",
+  "अस्थायी रिकॉर्ड का मिलान बाकी है।",
+  "पहले वही कार्रवाई दोहराएँ।",
+  "कार्रवाई या ब्रेक विभाग नीति के अनुकूल नहीं है।",
+  "घड़ी या अनुमति अमान्य है। प्रबंधक की जाँच आवश्यक है।"
+ ],
+ "tl": [
+  "Kailangan ang numero ng empleyado at 6–12 digit na PIN.",
+  "Hindi magkatugma ang mga PIN.",
+  "Tinanggihan ang terminal o pagkakakilanlan. Kontakin ang manager.",
+  "Masyadong maraming pagsubok. Subukan muli pagkalipas ng ilang minuto.",
+  "Pumili ng mas mahirap hulaan na 6–12 digit na PIN.",
+  "May aktibong araw ng trabaho na.",
+  "Walang aktibong araw ng trabaho.",
+  "Tinanggihan ang aksyon. Kontakin ang manager.",
+  "Wala, nag-expire, o binawi ang offline na pagkakakilanlan. Kailangan ng koneksyon.",
+  "May salungatan sa pansamantalang tala. Huwag magbura; kontakin ang manager.",
+  "Naputol ang koneksyon. Hindi kumpirmado ang resulta. Ulitin ang parehong aksyon o kontakin ang manager.",
+  "May mga pansamantalang talang kailangang ma-reconcile.",
+  "Ulitin muna ang parehong aksyon.",
+  "Hindi pinapayagan ng patakaran ng departamento ang aksyon o pahinga.",
+  "Hindi wasto ang oras o pahintulot. Kailangang suriin ng manager."
+ ]
+};
+
 const ACTIONS={
  fr:{startDay:'COMMENCER MA JOURNÉE',endDay:'TERMINER MA JOURNÉE'},
  en:{startDay:'CLOCK IN',endDay:'CLOCK OUT'},
@@ -338,8 +514,8 @@ const ACTIONS={
 export function createKioskLocale(){
  let code='fr';
  const dict=Object.fromEntries(KIOSK_LANGUAGES.map(x=>{
-  if(KIOSK_WORDS[x.code].length!==KIOSK_KEYS.length)throw Error('Kiosk locale incomplete: '+x.code);
-  return [x.code,Object.fromEntries(KIOSK_KEYS.map((key,i)=>[key,KIOSK_WORDS[x.code][i]]))];
+  if(KIOSK_WORDS[x.code].length!==KIOSK_KEYS.length || KIOSK_INCIDENT_WORDS[x.code]?.length!==KIOSK_INCIDENT_KEYS.length)throw Error('Kiosk locale incomplete: '+x.code);
+  return [x.code,{...Object.fromEntries(KIOSK_KEYS.map((key,i)=>[key,KIOSK_WORDS[x.code][i]])),...Object.fromEntries(KIOSK_INCIDENT_KEYS.map((key,i)=>[key,KIOSK_INCIDENT_WORDS[x.code][i]]))}];
  }));
  return {
   get code(){return code},
