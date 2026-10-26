@@ -1,3 +1,13 @@
+# Reprise — transfert Boss volontaire dans Expo (PR #65 remplacée)
+
+Suite du prompt original **« Validation SQL archives »**. Le transfert Boss sécurisé de la PR #62 (SQL Supabase `20261026032012`) couvre désormais l'interface native Expo : `src/workforce/BossHandoffPanel.tsx`, navigation `src/workforce/ManagementWorkspace.tsx`. Le Boss propose le transfert à un administrateur actif du même tenant; cet Admin accepte avec MFA TOTP AAL2; le Boss confirme à nouveau avec MFA avant permutation serveur des rôles. Les deux parties doivent recopier leurs UUID attendus. Déconnexion locale du Boss après mutation pour purger ses rôles en cache. Côté Web, `boss-handoff.js` ne lance plus de lecture privée sur simple actualisation avant AAL2, test DOM ajouté. **Aucune migration nouvelle, aucun compte réel touché.**
+
+Les essais serveur de succession via SQL synthétique transactionnel ont été réussis sur la migration déjà installée. CI TypeScript/Node/DOM et Web de la nouvelle interface passée verte sur la branche d'origine. Cette nouvelle branche reprend les mêmes changements sur la base actuelle de `main` pour résoudre un conflit documentaire dû à une fusion parallèle du prompt maître. Il reste à confirmer la CI rebased, fusionner, puis tester avec deux comptes MFA sur Android/iPhone installés. La succession d'un Boss inaccessible n'est pas automatiquement autorisée; ce cas nécessite un protocole juridique indépendant.
+
+Suite du **prompt original** : QA terrain, horaires complexes, dix langues et RTL, ergonomie, Stripe sandbox, Google/Apple et notifications/paie, builds et reprise après sinistre. SMS en dernier. Le prompt maître et ses nouvelles exigences restent distincts.
+
+---
+
 > **Nouvelles exigences E57–E59 — succession Admin/Boss et comptes multientreprises (documentation seulement).** Un seul compte Auth peut appartenir à plusieurs compagnies avec rôle/dossier salarié/politiques distincts; permissions révoquées côté serveur au départ de l'Admin, transfert sécurisé du Boss, sélecteur d'entreprise et calendrier global personnel sans accès croisé des employeurs. Problème du code actuel à corriger dans `src/auth/AuthGate.tsx` : `.limit(1).maybeSingle()` charge une seule appartenance. Tests QA-031–032 requis avant annonce de livraison.
 
 # Reprise — succession volontaire de direction Essentiel (PR #62)
