@@ -6,12 +6,12 @@ import {weeklyArgs,weeklyDaysLabel,weeklyPreviewLabel} from '../../web/live/week
 import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodLabel} from '../../web/live/schedule-preferences.js';
 import {nextIsoMonday,reminderSelection,reminderResultLabel} from '../../web/live/availability-reminders.js';
 import {ClientDirectoryPanel} from './ClientDirectoryPanel';
-import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from '../../web/live/shift-client-sites.js';
+import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,assignedSiteNavigationChoices,shiftSiteAssignmentArgs} from '../../web/live/shift-client-sites.js';
 import {buildMultiSiteOverview} from '../../web/live/multi-site-overview.js';
 import {plannedClientReport,plannedClientReportCsv} from '../../web/live/planned-client-report.js';
 import {ABSENCE_REASONS,absenceForShift,absenceStatus,canReportShift,prepareAbsence} from '../../web/live/shift-absence.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Alert,AppState,Pressable,Share,ScrollView,StyleSheet,Text,TextInput,View,Linking} from 'react-native';
+import {ActivityIndicator,Alert,AppState,Pressable,Share,ScrollView,StyleSheet,Text,TextInput,View,Linking,Platform} from 'react-native';
 import {supabase,PUNCH_SUPABASE_URL} from '../lib/supabase';
 import type {WorkspaceAccount} from '../auth/AuthGate';
 type Row=Record<string,any>;
@@ -37,6 +37,7 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  const [absenceShift,setAbsenceShift]=useState<string|null>(null);
  const [clientReportFilters,setClientReportFilters]=useState<Row|null>(null);
  const [overviewView,setOverviewView]=useState<'employee'|'location'>('employee');
+ const [navShift,setNavShift]=useState<string|null>(null),[siteDetails,setSiteDetails]=useState<string|null>(null);
  const [visitShift,setVisitShift]=useState<string|null>(null),[visitChoices,setVisitChoices]=useState<Row[]>([]),[visitMore,setVisitMore]=useState(false);
  const batch=useRef<{key:string;id:string}|null>(null);
  const manager=['boss','admin'].includes(account.role),feature=(f:string)=>data.features.includes(f),canPlan=(dept:string|null)=>manager||(feature('supervisors')&&data.scopes.some((g:Row)=>g.active&&g.can_plan&&g.department_id===dept)),anyPlan=manager||(feature('supervisors')&&data.scopes.some((g:Row)=>g.active&&g.can_plan));
@@ -187,9 +188,18 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  {assignedSiteForShift(data.assignedSites,x.id)?<View style={{gap:5,padding:9,backgroundColor:'#F4F7F2',borderRadius:8}}>
   {text('Client · '+assignedSiteSummary(assignedSiteForShift(data.assignedSites,x.id)),{fontWeight:'600'})}
   {text(assignedSiteAddress(assignedSiteForShift(data.assignedSites,x.id)),{fontSize:12})}
-  {assignedSiteForShift(data.assignedSites,x.id)?.access_instructions?text('Accès : '+assignedSiteForShift(data.assignedSites,x.id).access_instructions,{fontSize:12}):null}
-  {assignedSiteForShift(data.assignedSites,x.id)?.contact_name?text('Contact sur place : '+assignedSiteForShift(data.assignedSites,x.id).contact_name,{fontSize:12}):null}
-  {button('Itinéraire dans Google Maps',()=>Linking.openURL(assignedSiteMapsUrl(assignedSiteForShift(data.assignedSites,x.id))).catch(e=>setNotice(e.message)))}
+  {assignedSiteForShift(data.assignedSites,x.id)?.access_instructions||assignedSiteForShift(data.assignedSites,x.id)?.contact_name?button(siteDetails===x.id?'Masquer les consignes':'Consignes et contact',()=>setSiteDetails(v=>v===x.id?null:x.id)):null}
+  {siteDetails===x.id&&assignedSiteForShift(data.assignedSites,x.id)?.access_instructions?text('Accès : '+assignedSiteForShift(data.assignedSites,x.id).access_instructions,{fontSize:12}):null}
+  {siteDetails===x.id&&assignedSiteForShift(data.assignedSites,x.id)?.contact_name?text('Contact sur place : '+assignedSiteForShift(data.assignedSites,x.id).contact_name,{fontSize:12}):null}
+  {button(navShift===x.id?'Fermer les itinéraires':'Itinéraire vers cette étape',()=>setNavShift(v=>v===x.id?null:x.id))}
+  {navShift===x.id?<View style={{gap:7}}>
+   {text('Choisissez votre application. Cet itinéraire concerne uniquement cette intervention; aucun GPS PUNCH ni temps de trajet calculé.',{fontSize:12})}
+   {assignedSiteNavigationChoices(assignedSiteForShift(data.assignedSites,x.id),Platform.OS).map(choice=>
+     <Pressable accessibilityRole="button" key={choice.id} onPress={()=>{void Linking.openURL(choice.url).catch(err=>setNotice(err.message))}}
+       style={{minHeight:44,justifyContent:'center',paddingHorizontal:10,borderRadius:9,borderWidth:1,borderColor:'#E1E8DB'}}>
+       {text(choice.label+' ↗',{color:'#4e7051',fontWeight:'600'})}
+     </Pressable>)}
+  </View>:null}
   {text('Aucun GPS permanent ni suivi de trajet activé.',{fontSize:11})}
  </View>:null}
  {manager?button('Associer une adresse client',()=>run(async()=>{
