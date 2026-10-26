@@ -48,6 +48,7 @@
 | E42 | Banque de volontaires pour l’over et temps compensatoire acquis | À FAIRE | Jalon de suivi **uniquement** des IDs COVER-029–031, HR-019–020, QA-022; disponibilité volontaire ≠ heures gagnées. Réutiliser le registre RH et les offres de quarts; aucune conversion automatique en banque |
 | E43 | Plusieurs plages horaires et horaires spéciaux temporaires | À FAIRE | Jalon des **SHIFT-029–033** : plages chevauchantes matin/midi/soir par poste, fêtes/fermetures, effectif réduit/renforcé, adaptation individuelle datée, reprise de la semaine type sans modifier les quarts publiés. Plus manuel/Pro génération brouillon. |
 | E44 | Finition marketing/UX et QA responsive | À FAIRE | Jalon des **DESIGN-015–020, COMMERCIAL-014–016 et QA-023–024** : audit multi-écrans, navigation simple, visuels génératifs référentiels, landing et comparaison des forfaits, tests 320–1920 px, CTA et prix réels. Les images de référence et l'annexe marketing ne prouvent pas le code déployé. |
+| E45 | Défilement intelligent et écrans fixes prioritaires | À FAIRE | Jalon de **DESIGN-021–022 et QA-025** : Punch mobile et borne sans scroll en usage normal, scroll de secours lorsque nécessaire; listes Messages/Heures/Horaire et site marketing scrollables; tablette/desktop adaptés, navigation accessible, aucun contrôle masqué. Réutiliser CORE-018, KIOSK-019 et QA-023, sans seconde navigation. |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
@@ -74,7 +75,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 534 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 537 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
