@@ -1,5 +1,6 @@
 import * as Network from 'expo-network';
 import {cachedLocalIdentity,rememberLocalIdentity,forgetLocalIdentity} from './localIdentity';
+import {processNativeOAuthCallback} from './nativeOAuthCallback';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React,{useEffect,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
@@ -102,15 +103,22 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    // Différer l'appel asynchrone au prochain tour pour éviter un deadlock Supabase Auth.
    setTimeout(()=>refresh(),0);
   });
-  const listener=Linking.addEventListener('url',async({url})=>{
-   try{
-    if(!url.includes('/auth/callback'))return;
-    const callback=new URL(url);const code=callback.searchParams.get('code');
-    if(code){const {data,error:e}=await supabase.auth.exchangeCodeForSession(code);if(e)throw e;if(callback.searchParams.get('type')==='recovery'&&data.session)setIsRecovering(true);}
-    else setError('Connexion annulée ou URL de retour invalide.');
-   }catch(e:any){setError(e.message||'Connexion impossible');}
-  });
-  return()=>{sub.subscription.unsubscribe();listener.remove()};
+  let active=true;
+  const handledCodes=new Set<string>();
+  async function handleNativeLink(url:string|null){
+   const result=await processNativeOAuthCallback(
+    url,handledCodes,code=>supabase.auth.exchangeCodeForSession(code));
+   if(!active)return;
+   if(result==='recovery')setIsRecovering(true);
+   else if(result==='invalid')setError('Lien de connexion invalide ou annulé.');
+   else if(result==='failed')setError('Lien expiré ou connexion impossible. Recommence la connexion.');
+  }
+  // Foreground and cold-start redirects are two separate paths on iOS/Android.
+  // Register first, then inspect the launch URL; duplicated codes are ignored.
+  const listener=Linking.addEventListener('url',({url})=>{void handleNativeLink(url);});
+  void Linking.getInitialURL().then(url=>{if(active)void handleNativeLink(url);})
+   .catch(()=>{if(active)setError('Impossible de lire le lien de connexion. Réessaie.');});
+  return()=>{active=false;sub.subscription.unsubscribe();listener.remove()};
  },[]);
  async function emailAuth(){
   setError('');setBusy(true);
