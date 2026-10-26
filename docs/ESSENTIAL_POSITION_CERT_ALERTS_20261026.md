@@ -12,3 +12,5 @@ Un salarié peut posséder une certification valide au moment d'affecter un quar
 **Tests** : `supabase/tests/essential_position_cert_alerts.sql` (certificat valide → aucune alerte; réduction de sa date d'expiration → une alerte; salarié refusé; fenêtre excessive refusée; rollback) et `tests/exclusive-positions-ui.test.mjs` (bouton Web + réponse report). Expo TypeScript couvert par GitHub Actions.
 
 **Limites de fin de projet** : pas encore de notification push automatique lors d'une révocation; pas de surveillance continue, ni de certification d'appareil iOS/Android. La recette authentifiée du module de planning reste requise. Cet ajout appartient au prompt original **« Validation SQL archives »**; ne pas entamer le prompt maître parallèle tant que le premier n'est pas clos.
+
+**Livraison SQL :** migration `supabase/migrations/20261026012801_essential_position_cert_alerts.sql` appliquée dans Supabase officiel `mlabstdxxwjdpfaxiwmg`. Le scénario SQL rollback a été rejoué après installation et a réussi. Vérifier dernière CI et Pages après fusion.
