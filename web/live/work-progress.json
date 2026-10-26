@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T16:16:22.996Z",
+  "generated_at": "2026-10-26T16:19:11.077Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -120,7 +120,8 @@
         105,
         106,
         110,
-        118
+        118,
+        127
       ],
       "note": "Gardes mobiles multi-comptes et cache isolé; recette RLS/RPC/Appareils non finalisée."
     },
@@ -912,12 +913,24 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        118
+        118,
+        127
       ],
       "note": "Travail rattaché à la PR #118. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 127,
+      "sha": "364605fd91213d0c9f5513e7c14b7de60b2c3d08",
+      "ci": "success",
+      "ids": [
+        "SEC-017",
+        "QA-032"
+      ],
+      "title": "P0-C — Bloquer les réponses Auth en ligne après déconnexion explicite",
+      "merged_at": "2026-10-26T16:19:00Z"
+    },
     {
       "number": 128,
       "sha": "5cfd11edfc5cd3fe8ccba5590463465989ef324e",
@@ -1376,15 +1389,6 @@
       "ids": [],
       "title": "Borne Essentiel : 10 langues et RTL — PR réconciliée avec main",
       "merged_at": "2026-10-26T04:21:52Z"
-    },
-    {
-      "number": 72,
-      "sha": null,
-      "head_sha": "e8e225d0c58e3ea0c53176b9b951476270b41d00",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Suivi prompt Validation : 3 PR multientreprise et recettes restantes",
-      "merged_at": "2026-10-26T04:17:24Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
