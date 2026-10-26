@@ -10,7 +10,7 @@ const shift={id:'sh1',company_id:'tenant',worker_id:'w1',location_id:'site',depa
 function setup(pro=true){
  const w=new Window(),calls=[];
  const sb={
- rpc:async(name,args)=>{calls.push({name,args});if(name==='essential_entitlements')return {data:{features:pro?['minimum_coverage','departments']:['departments']}};if(name==='essential_team_roster')return {data:[]};return {data:{shift_id:'sh1',version:4}};},
+ rpc:async(name,args)=>{calls.push({name,args});if(name==='essential_entitlements')return {data:{features:pro?['minimum_coverage','departments']:['departments']}};if(name==='essential_team_roster')return {data:[]};if(name==='essential_position_certification_alerts')return {data:{count:1,items:[{shift_id:'sh1',worker_id:'w1',position_title:'Caisse 1',certificate_title:'Secourisme',starts_at:shift.starts_at,ends_at:shift.ends_at}],truncated:false}};return {data:{shift_id:'sh1',version:4}};},
  from:()=>{const q={select:()=>q,eq:()=>q,gt:()=>q,lt:()=>q,order:()=>q,limit:()=>q,then:resolve=>Promise.resolve({data:[],error:null}).then(resolve)};return q;}
  };
  const ui=createPlanningController({sb,redraw(){},notify(){},escape:esc,document:w.document});
@@ -44,5 +44,18 @@ test('Plus never shows exclusive post controls',async()=>{
  assert.equal(w.document.querySelector('[data-action="ess:plan-pos-create"]'),null);
  w.document.body.innerHTML=ui.renderSchedule();
  assert.equal(w.document.querySelector('[data-action="ess:plan-pos-assign"]'),null);
+ await w.happyDOM.close();
+});
+
+test('Pro manager can request a read-only alert report for invalid certifications',async()=>{
+ const {w,ui,calls}=setup();
+ w.document.body.innerHTML=ui.renderOrganization();
+ assert.ok(w.document.querySelector('[data-action="ess:plan-pos-alerts"]'));
+ await ui.handle({dataset:{action:'ess:plan-pos-alerts'}});
+ const call=calls.find(c=>c.name==='essential_position_certification_alerts');
+ assert.equal(call.args.p_company,'tenant');
+ assert.ok(Date.parse(call.args.p_end)>Date.parse(call.args.p_start));
+ assert.equal(ui.state.positionAlerts.count,1);
+ assert.match(ui.renderOrganization(),/Secourisme/);
  await w.happyDOM.close();
 });
