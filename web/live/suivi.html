@@ -120,9 +120,22 @@ function renderWorkProgress(manifest){
 }
 async function loadWorkProgress(){
  try{
-  const res=await fetch('./work-progress.json?t='+Date.now(),{cache:'no-store'});
-  if(!res.ok)throw Error('HTTP_'+res.status);
-  const manifest=await res.json();
+  // Read latest main directly so progress also updates when a GitHub bot
+  // commits JSON without causing a new GitHub Pages deployment.
+  const stamp=Date.now();
+  const sources=[
+   'https://raw.githubusercontent.com/punch360app/Punch360/main/web/live/work-progress.json?at='+stamp,
+   './work-progress.json?t='+stamp
+  ];
+  let manifest,lastError;
+  for(const source of sources){
+   try{
+    const res=await fetch(source,{cache:'no-store'});
+    if(!res.ok)throw Error('HTTP_'+res.status);
+    manifest=await res.json();break;
+   }catch(error){lastError=error;}
+  }
+  if(!manifest)throw lastError||Error('WORK_REGISTER_UNAVAILABLE');
   if(manifest.schema_version!==1||manifest.denominator!==validTaskIds.size||!manifest.requirements||typeof manifest.requirements!=='object')
    throw Error('INVALID_WORK_PROGRESS');
   if(Object.keys(manifest.requirements).some(id=>!validTaskIds.has(id)))throw Error('UNKNOWN_REQUIREMENT_ID');
