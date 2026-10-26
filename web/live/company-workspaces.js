@@ -9,7 +9,7 @@ export function listVerifiedWorkspaces(memberships,user){
  const found=new Set(),result=[];
  for(const member of memberships){
   if(member?.status!=='active'||!uuid.test(member.company_id||'')||!roles.has(member.role)||found.has(member.company_id))continue;
-  if(member.user_id&&member.user_id!==user.id)continue;
+  if(member.user_id!==user.id)continue;
   const company=Array.isArray(member.companies)?member.companies[0]:member.companies;
   if(!company||!['essential','construction'].includes(company.product_edition))continue;
   // The tenant ID is taken from the RLS-protected company_members row, not company metadata.
