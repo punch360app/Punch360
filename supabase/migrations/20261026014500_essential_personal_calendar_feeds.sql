@@ -26,9 +26,11 @@ begin
    where c.id=p_company and c.product_edition='essential'
     and m.user_id=auth.uid() and m.status='active')
  then raise exception using errcode='42501',message='Appartenance Essentiel active requise';end if;
- select count(*),min(id) into worker_count,worker_id
+ select count(*) into worker_count
  from public.company_workers where company_id=p_company and auth_user_id=auth.uid()
   and status='active' and personal_access;
+ select id into worker_id from public.company_workers where company_id=p_company
+  and auth_user_id=auth.uid() and status='active' and personal_access limit 1;
  if worker_count<>1 then raise exception using errcode='42501',message='Dossier salarié personnel unique requis';end if;
  return worker_id;
 end $fn$;
