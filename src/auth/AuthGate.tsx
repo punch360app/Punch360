@@ -50,8 +50,7 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    const {data,error:sessionError}=await supabase.auth.getSession();
    setSession(data.session);
    if(!data.session){
-    if(sessionError){const local=await cachedLocalIdentity();const cache=local?await cachedWorkspace(local.id):null;
-     setAccount(cache);setWorkspaces([]);setError('Session non vérifiée — réessayer en ligne.');}
+    if(sessionError){setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);setError('Session non vérifiée — reconnecte-toi en ligne.');}
     else {setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);}
     return;
    }
@@ -157,7 +156,9 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    const userId=session.user.id;
    const r=await supabase.auth.updateUser({password:newPassword});if(r.error)throw r.error;
    setNewPassword('');setConfirmPassword('');setPassword('');
-   await AsyncStorage.removeItem('punch-workspace:'+userId);
+   const keys=await AsyncStorage.getAllKeys();
+   const scoped=keys.filter(key=>key==='punch-last-company:'+userId||key==='punch-workspace:'+userId||key.startsWith('punch-workspace:'+userId+':'));
+   if(scoped.length)await AsyncStorage.multiRemove(scoped);
    await forgetLocalIdentity();
    const out=await supabase.auth.signOut({scope:'global'});
    if(out.error)throw Error('Mot de passe modifié, mais la fermeture des sessions a échoué. Ferme tes sessions dans les paramètres du compte.');
