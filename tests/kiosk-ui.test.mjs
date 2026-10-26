@@ -3,7 +3,8 @@ import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
 const original=await readFile(new URL('../web/live/kiosk.js',import.meta.url),'utf8');
-const src="const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error('No cached identity')},sync:async()=>[]});\n"+original.replace(/^import .*;\n/gm,'');
+const kioskLocaleSource=(await readFile(new URL('../web/live/kiosk-locale.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+const src="const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error('No cached identity')},sync:async()=>[]});\n"+kioskLocaleSource+'\n'+original.replace(/^import .*;\n/gm,'');
 const wait=()=>new Promise(r=>setTimeout(r,25));
 test('kiosk hides PIN, retries one immutable event after ambiguous network failure and clears personal state',async()=>{
  const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});w.document.body.innerHTML='<main id="kiosk"></main>';const calls=[];let fail=true;
