@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -46,6 +46,16 @@ Deno.serve(async(req:Request)=>{
    stripe(`/prices/${registered.yearly.stripe_price_id}`)
   ]);
   const productId=checkStripeProductPair(registered,{monthly:remote[0],yearly:remote[1]},secret.startsWith('sk_live_'));
+  // Preflight before POST /prices: reject checkout on an existing subscription
+  // and reject preview/confirm without an eligible subscription. Previously
+  // these checks ran AFTER creating a custom Price on the provider.
+  let sub:any=null,item:any=null;
+  if(body.action==='checkout')preflightBillingAction(body.action,a,null);
+  else {
+   if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');
+   sub=await stripe(`/subscriptions/${a.subscription_id}`);
+   item=preflightBillingAction(body.action,a,sub);
+  }
   const interval=o.cadence==='yearly'?'year':'month';
   const registeredPrice=selectRegisteredPrice(registered,o.cadence,o.amount_cents);
   const strategy=orderPriceStrategy(body.action,registeredPrice,o.preview);
@@ -63,17 +73,13 @@ Deno.serve(async(req:Request)=>{
     productId,liveMode:secret.startsWith('sk_live_')
   });
   if(body.action==='checkout'){
-   if(a?.subscription_id)throw Error('SUBSCRIPTION_EXISTS_USE_PREVIEW');
    const customer=a?.customer_id?{id:a.customer_id}:await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
    await save({},customer.id);
    await save({status:'creating',preview:{price_id:price.id}},customer.id);
    const checkout=await stripe('/checkout/sessions',{customer:customer.id,mode:'subscription',line_items:[{price:price.id,quantity:1}],allow_promotion_codes:true,automatic_tax:{enabled:true},billing_address_collection:'required',customer_update:{address:'auto'},client_reference_id:body.companyId,subscription_data:{metadata:{punch_company:body.companyId,punch_order:o.id}},success_url:returnUrl+'&billing=returned',cancel_url:returnUrl+'&billing=cancelled',expires_at:Math.floor(Date.parse(o.created_at)/1000)+3600},`${o.id}:checkout`);
    await save({status:'checkout',checkout_id:checkout.id},customer.id);return response(200,{url:safeHostedUrl(checkout.url)});
   }
-  if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');
-  const sub=await stripe(`/subscriptions/${a.subscription_id}`);if(sub.pending_update)throw Error('PENDING_PAYMENT_COMPLETE_FIRST');
-  if(sub.items.data.length!==1)throw Error('UNSUPPORTED_SUBSCRIPTION_ITEMS');
-  const item=sub.items.data[0],prorationDate=Math.floor(Date.now()/1000);
+  const prorationDate=Math.floor(Date.now()/1000);
   if(body.action==='preview'){
    const invoice=await stripe('/invoices/create_preview',{customer:a.customer_id,subscription:sub.id,subscription_details:{items:[{id:item.id,price:price.id,quantity:1}],proration_date:prorationDate,proration_behavior:'always_invoice'}});
    const preview={price_id:price.id,item_id:item.id,proration_date:prorationDate,subscription_id:sub.id,subscription_price:item.price.id,amount_due:invoice.amount_due,currency:invoice.currency,total:invoice.total,effective_at:prorationDate,expires_at:prorationDate+600};
