@@ -1,5 +1,7 @@
 # PUNCH Essentiel — suivi maître
 
+**Mise à jour du 26 octobre 2026 :** les travaux **restants** de l'ancien prompt « Validation SQL archives » ont été transférés au seul prompt maître dans `docs/prompt-board/MASTER_PROMPT_20261025.md`, section **PASSATION DU PROMPT**. Priorité **Super Admin / contrats et Stripe** avant les recettes finales d'archives, QA et fournisseurs. Ne pas reconstruire les fonctions déjà fusionnées (#14, #75, #80, #82–85, #87); le défaut PDF #81 est clôturé par #83. Il ne s'agit pas de nouvelles exigences en plus des 578 IDs. Voir aussi `docs/PUNCH_WORK_CONTINUATION.md`.
+
 État du 24 octobre 2026. Les statuts s’appliquent à chaque exigence entière, pas à la seule présence d’un écran. `EN COURS` comprend les fonctions codées/testées auxquelles manque encore une partie de la recette ou du périmètre. Les preuves détaillées se trouvent dans les documents liés; les SMS restent à la fin.
 
 | ID | Exigence Essentiel | État | Preuve / prochain manque |
@@ -27,14 +29,14 @@
 | E21 | Corrections et approbations | EN COURS | Demandes de corrections de sessions et pauses auditées; journée entièrement oubliée et notifications internes déjà en code. **Flux pendant session ouverte et sortie oubliée jusqu'au lendemain à compléter : HR-021–024, QA-026** (jalon E46). Push/recette appareils restent ouverts. |
 | E22 | Fermetures et rapports | EN COURS | Verrouillage/export, snapshots Pro; contrôles avancés/export complet restants |
 | E23 | Communications, messagerie Plus/Pro et offres privées dans le chat | EN COURS | Réutiliser `conversations`, `MessagesScreen`, CHAT-001–012. **Onglet bas Messages sur Plus/Pro**, 4 onglets en base; **fiches interactives de proposition de quart**, contre-propositions, paramètres de DM et statuts sous CHAT-013–015 à développer. Les Boss/Admin reçoivent la demande d'approbation sans accès au fil privé. Préserver Construction, événements COMM et notifications existantes |
-| E24 | Super Administration complète | EN COURS | MFA/catalogue/clients/tests/abonnements, suppression et coffre des comptes test; support Web/Expo, promotions Stripe et rapports financiers livrés; rapprochement bancaire et recette fournisseur restants |
-| E25 | Stripe et sursis | EN COURS | Backend et interfaces; recette fournisseur, réabonnement et rapprochement restants |
+| E24 | Super Administration complète | EN COURS | MFA/catalogue, comptes test, annuaires, promotions, finance et devis particuliers existants; isolation UI multi-compagnies #87 fusionnée, durcissement Auth #82. **Prix négociés avec Stripe sandbox, historiques et audit multi-tenant réels** toujours non recettés (#35). |
+| E25 | Stripe et sursis | EN COURS | Backend/écrans de facturation et devis présents; **configuration Stripe test, IDs prix, prorata, taxes, double webhook, échec/reprise, renouvellement, sursis et rapprochement** restent à valider avant lancement. |
 | E26 | Données et confidentialité | EN COURS | Isolation/audit; Loi 25, région, rétention, restauration à valider |
 | E27 | Hors ligne | EN COURS | Journal mobile et borne provisoire signée testés en logiciel/SQL; appareils et pertes réelles restants |
 | E28 | Site commercial | EN COURS | Trois cartes, comparatif du catalogue et FAQ; recette visuelle complète restante |
-| E29 | Dix langues, modes et RTL | À FAIRE | Infrastructure/traduction complète non livrées |
+| E29 | Dix langues, modes et RTL | EN COURS | Dix langues de borne/incidents/session/gestion et premiers écrans Boss traduits (#74, #76–79); RH, paie, Super Admin, emails, RTL/longs textes et validation humaine sur vrais appareils incomplets. |
 | E30 | Pile partagée et déploiements | EN COURS | TS/Expo/Supabase/CI; builds signés et distribution restants |
-| E31 | Matrice QA complète | EN COURS | 140 tests Node/DOM; suites SQL transactionnelles; fournisseur/charge/appareils restants |
+| E31 | Matrice QA complète | EN COURS | Node/DOM/TypeScript, tests SQL transactionnels et Edge simulés développés; **vraies recettes Auth/Storage PDF, Stripe sandbox, OAuth/SMTP, concurrence/charge, PRA, Android/iPhone/iPad et builds signés** restent à prouver. |
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 | E34 | Disponibilités hebdomadaires récurrentes, exceptions et heures souhaitées Plus/Pro | À FAIRE | Étendre essential_availability déjà présente; aucun doublon de table. Voir PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md P1 |
@@ -60,7 +62,7 @@
 | E54 | GOD-10 — Relève simple du prochain quart | À FAIRE | **TASK-011–012, QA-029** : notes et tâches restantes contextualisées par quart/poste/site, lecture de relève, rotation/remplacement, droits et audit; pas de nouvelle messagerie ni punch implicite. |
 | E55 | GOD-11 — Ventes × Personnel | À FAIRE | **BUDGET-012–013, QA-030** : CSV ventes agrégées par heure, rapprochement couverture/coûts, suggestions prudentes reliées au simulateur; aucun client identifiant ni intégration POS prétendue livrée. Pro opt-in. |
 | E56 | GOD-12 — Copilote IA de planification | À FAIRE | **SHIFT-037, SEC-016, QA-030** : question en langage naturel, moteur métier déterministe pour filtrer les candidats, permission serveur avant IA, réponse explicable, plafonds de coûts; aucune lecture privée ni affectation sans validation humaine. Pro opt-in, fonctionnement possible sans IA. |
-| E57 | Remplacement d'Admin et transfert sécurisé du Boss | À FAIRE | **INVITE-013–014, SEC-017, QA-031** : rétrogradation ou révocation de l'Admin avec effet immédiat côté serveur, promotion distincte d'un successeur, conservation historique et approbations; transfert de Boss accepté/vérifié, jamais d'entreprise sans propriétaire, traitement du titulaire contractuel distinct et support exceptionnel audité. Vérifier Web/Expo, caches et accès hors ligne. |
+| E57 | Remplacement d'Admin et transfert sécurisé du Boss | EN COURS | Durcissement MFA/nécessité de nettoyer la session Auth livré par #82; transfert complet Boss/Admin, révocations immédiates, permissions serveur et recette de deux entreprises restent à valider (INVITE-013–014, QA-031). |
 | E58 | Compte unique avec plusieurs entreprises et sélecteur | À FAIRE | **INVITE-015–017, SEC-017, QA-032** : un `auth.uid()` et plusieurs appartenances actives avec rôles/dossiers/sièges/politiques distincts, sélecteur sans déconnexion, cache et sessions isolés, invitation à Auth existant. **Blocage constaté : `src/auth/AuthGate.tsx` utilise `.limit(1).maybeSingle()`** et ne charge pas toutes les entreprises. Ne pas déclarer livré avant correction, autorisations RPC et recette réelle. |
 | E59 | Mon horaire global privé et conflits entre emplois | À FAIRE | **CAL-012–013, SEC-017, QA-032** : vue des propres quarts publiés de plusieurs commerces et alertes personnelles de chevauchement; aucun Boss/Admin ne découvre l'autre employeur ni ses horaires, rémunération, disponibilités ou données de pointage. Aucun partage ICS interentreprises et aucun refus de quart automatique fondé sur une activité externe. |
 
