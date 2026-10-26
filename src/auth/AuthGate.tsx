@@ -128,7 +128,7 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    ++authRevision.current;
    setBusy(false);
    if(_event==='SIGNED_OUT'){
-    void forgetLocalIdentity();
+    void forgetLocalIdentity().catch(()=>{});
     setIsRecovering(false);setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);
     setSession(null);setBoot(false);setError('');return;
    }
