@@ -10,7 +10,7 @@ const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r});return
 
 test('native quote guard permits the latest unchanged Boss choice',async()=>{
  const guard=createNativeBillingQuoteGuard(),ticket=guard.capture();
- assert.equal(await guard.read(ticket,async()=>({amount:3900,plan:'essential_plus'})).amount,3900);
+ assert.equal((await guard.read(ticket,async()=>({amount:3900,plan:'essential_plus'}))).amount,3900);
  assert.equal(guard.isCurrent(ticket),true);
 });
 test('native quote guard rejects a pending order after the user edits seats',async()=>{
