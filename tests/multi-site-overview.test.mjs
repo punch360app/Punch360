@@ -39,7 +39,8 @@ test('overlap detection is per worker, cancelled shifts ignored, travel estimate
  const res=buildMultiSiteOverview({day:'2026-11-02',shifts,assignedSites:sites,roster,view:'employee'});
  const nadine=res.groups.find(g=>g.label==='Nadine').items;
  assert.deepEqual(nadine.filter(x=>x.overlap).map(x=>x.id),['a','d']);
- assert.equal(res.travelCheckShifts>0,true);
+ const separate=buildMultiSiteOverview({day:'2026-11-02',shifts:[shifts[0],shifts[1]],assignedSites:[sites[0],sites[1]],roster});
+ assert.equal(separate.travelCheckShifts,2,'one hour between two distinct clients merits human review');
  assert.equal(Object.hasOwn(res,'travelKilometers'),false);
  const filtered=buildMultiSiteOverview({day:'2026-11-02',shifts,assignedSites:sites,roster,site:'address-a'});
  assert.equal(filtered.shown,1);assert.equal(filtered.overlapShifts,1);
