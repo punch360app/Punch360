@@ -45,15 +45,15 @@ begin
       and lv.user_id=v_worker.auth_user_id and lv.status='approved'
       and lv.begins_on<=v_end::date and lv.ends_on>=v_start::date) then
    v_status:='unavailable';v_source:='approved_leave';
-  elsif exists(select 1 from public.scheduled_shifts sh where sh.company_id=v_rule.company_id
-      and sh.worker_id=v_worker.id and sh.cancelled_at is null
-      and sh.starts_at<p_end and sh.ends_at>p_start) then
-   v_status:='unavailable';v_source:='already_scheduled';
   elsif exists(select 1 from private.essential_shift_absences ab
     join public.scheduled_shifts sh on sh.id=ab.shift_id and sh.company_id=ab.company_id
     where ab.company_id=v_rule.company_id and ab.worker_id=v_worker.id
       and sh.starts_at<p_end and sh.ends_at>p_start) then
    v_status:='unavailable';v_source:='reported_absence';
+  elsif exists(select 1 from public.scheduled_shifts sh where sh.company_id=v_rule.company_id
+      and sh.worker_id=v_worker.id and sh.cancelled_at is null
+      and sh.starts_at<p_end and sh.ends_at>p_start) then
+   v_status:='unavailable';v_source:='already_scheduled';
   elsif exists(select 1 from public.essential_availability a
     where a.company_id=v_rule.company_id and a.worker_id=v_worker.id
     and a.starts_at<p_end and a.ends_at>p_start) then
