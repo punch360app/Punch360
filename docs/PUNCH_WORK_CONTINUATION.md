@@ -1,5 +1,14 @@
 # PUNCH 360° — État courant unique
 
+## Parcours en cours — préférences du salarié (SHIFT-019)
+
+**PR [#131](https://github.com/punch360app/Punch360/pull/131)** — souhaits d'heures hebdomadaires, préférences jour/soir/nuit/week-end et volontariat distinct des heures gagnées; saisie Boss/Admin pour salariés sans compte. Ancienneté/minimum/maximum déclarés saisis exclusivement par gestionnaire avec version et audit; qualifications lues dans `essential_certifications`, sans double source ni règle légale inventée. Web et Expo, garde d'identité multi-compagnie, tests Node/DOM et deux entreprises fictives en transaction rollback.
+
+**Supabase appliqué :** `20261026181713_essential_worker_schedule_preferences` dans le seul projet `mlabstdxxwjdpfaxiwmg`; contrôle de confidentialité RLS et refus des appels anonymes. **Recette :** test `supabase/tests/essential_worker_schedule_preferences.sql` réussi sur le schéma installé, avec ROLLBACK : droits du salarié/manager, double demande idempotente, version concurrente, écriture RH séparée et isolation des entreprises. CI finale à rattacher à la tête de la PR avant fusion; GitHub Pages et Expo restent distincts, recettes physiques non encore attestées.
+
+Ce lot ne couvre pas la planification optimisée ni les obligations légales non modélisées. Il ne modifie ni prix ni places incluses, ni Stripe, Construction, Twilio ou contrat historique; il préserve la nouvelle demande `SACATALOG-016` spécifiée par la PR #132.
+
+
 **Mise à jour : 26 octobre 2026.** Les décisions et l’ordre global sont dans le [maître](prompt-board/MASTER_PROMPT_20261025.md); point d’entrée [WORK_START](prompt-board/WORK_START.md). Les anciens états sont [archivés](prompt-board/history/CONTINUATION_BEFORE_CLEANUP_20261026.md), sans consigne de reprise active.
 
 ## Dernier parcours fonctionnel fusionné et publié
