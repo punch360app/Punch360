@@ -191,3 +191,14 @@ Le correctif fournit un **contrôle de validité lié à la compagnie, à l'util
 - **Intervention externe :** essais sur Android/iPhone, changement rapide entre deux commerces, déconnexion pendant chargement d'un portail, alerte de renouvellement laissée ouverte, réponse réseau lente et ouverture de facture, puis mise à jour native contrôlée. Issue #102 pour tests mobiles et #35 pour Stripe sandbox restent ouvertes.
 
 **Limite explicite :** une requête **déjà transmise** au serveur ne peut pas être annulée rétroactivement depuis l'interface; seul le serveur Stripe/RLS reste autorité. Le garde évite les *actions suivantes* et les redirections périmées. Aucun changement aux six Price IDs, forfaits 19/39/69 CAD (20/25/50 inclus et +2 CAD, 15 % annuel), contrats, données réelles ou Construction.
+
+## P0-B — Transitions de renouvellement confirmées par le fournisseur (26 octobre 2026)
+
+Le serveur `essential-billing` vérifiait la propriété de l'abonnement lors de « Résilier/Reprendre », mais envoyait ensuite un `POST` Stripe sans vérifier que l'état réel pouvait encore être modifié, ou que la demande était déjà effective. Un retry pouvait déclencher une écriture redondante malgré la clé d'idempotence #109.
+
+La validation `preflightStripeRenewalAction` refuse **avant le POST** les abonnements `canceled`, `incomplete_expired`, `incomplete`, les états non reconnus et les périodes manquantes/malformées. Une répétition de l'action demandée avec `cancel_at_period_end` déjà correct retourne `already_applied:true` **sans mutation fournisseur**, en gardant `pending_server_confirmation:true`; seuls les webhooks signés déterminent l'état contractuel confirmé. Le changement effectif reste limité à `cancel_at_period_end` et à la clé UUID de décision existante. Aucune modification de produit, Price, contrat ou paiement.
+
+- **Développé :** utilitaire déterministe et garde dans Edge `essential-billing` ; couverture de réessai, états terminaux, test/live et entreprise déjà isolés par les contrôles précédents.
+- **Testé :** nouveaux tests Node et contrôle séquentiel d'appels dans la PR; CI à confirmer. Aucun fournisseur Stripe sandbox appelé.
+- **Déployé :** non. La version Edge active doit être vérifiée séparément; éviter toute publication sans recettes de facturation et compatibilité clients.
+- **Intervention externe :** tests Stripe sandbox réel de résiliation, reprise, état fournisseur déjà effectif, mauvais statut et webhook; issue #35 ouverte.

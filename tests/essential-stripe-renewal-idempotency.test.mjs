@@ -45,7 +45,7 @@ test('Edge checks idempotency before provider subscription reads and mutation',(
  const write=block.indexOf('const sub=await stripe(');
  assert.ok(guard>0&&read>guard&&write>read,'provider reads/writes follow valid idempotency key');
  assert.ok(block.includes('body.companyId,a.subscription_id,body.action,body.requestId'));
- assert.ok(block.includes("body.action==='cancel'},key"));
+ assert.ok(block.includes('cancel_at_period_end:renewal.cancelAtPeriodEnd},key'));
  assert.ok(!block.includes(':${body.requestId}'),'cannot interpolate missing request IDs');
 });
 

@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,checkoutExpiryFromOrder,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,preflightStripeOrderCustomer,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,stripeRenewalIdempotencyKey,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,preflightStripeOrderCustomer,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,stripeRenewalIdempotencyKey,preflightStripeRenewalAction,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -42,8 +42,14 @@ Deno.serve(async(req:Request)=>{
    // company metadata and mode before changing a subscription.
    const current=await stripe(`/subscriptions/${a.subscription_id}`);
    verifyStripeSubscriptionTenant(a,current,body.companyId,liveMode);
+   const renewal=preflightStripeRenewalAction(body.action,current);
+   if(!renewal.needsMutation)return response(200,{
+    cancel_at_period_end:current.cancel_at_period_end,
+    effective_at:current.current_period_end,
+    pending_server_confirmation:true,already_applied:true
+   });
    const sub=await stripe(`/subscriptions/${a.subscription_id}`,
-    {cancel_at_period_end:body.action==='cancel'},key);
+    {cancel_at_period_end:renewal.cancelAtPeriodEnd},key);
    return response(200,{cancel_at_period_end:sub.cancel_at_period_end,
     effective_at:sub.current_period_end,pending_server_confirmation:true});
   }
