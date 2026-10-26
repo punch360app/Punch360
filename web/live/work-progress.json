@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:29:49.107Z",
+  "generated_at": "2026-10-26T21:36:49.378Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 661,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1192,7 +1192,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        146
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1260,6 +1261,16 @@
     }
   },
   "activity": [
+    {
+      "number": 146,
+      "sha": "b309e4fc6b019870966c1732c27a3573cbe13c0c",
+      "ci": "success",
+      "ids": [
+        "NAV-006"
+      ],
+      "title": "Essentiel — choisir Maps/Waze/Plans pour chaque arrêt de l’horaire",
+      "merged_at": "2026-10-26T21:36:40Z"
+    },
     {
       "number": 144,
       "sha": "e2c3e6c690db24f9ef4c67148dab8e20034b07e5",
@@ -1771,15 +1782,6 @@
       "ids": [],
       "title": "P0-B Stripe : confirmer un tarif négocié sans recréer de Price",
       "merged_at": "2026-10-26T07:35:03Z"
-    },
-    {
-      "number": 93,
-      "sha": null,
-      "head_sha": "c5eca8721d10f21dfdb8237e8dec15bb23aa9d3e",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : refuser confirmation de devis périmé ou d'un autre Price ID",
-      "merged_at": "2026-10-26T07:10:04Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
