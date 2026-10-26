@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T14:26:27.528Z",
+  "generated_at": "2026-10-26T14:52:34.508Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -68,7 +68,8 @@
       "external_required": false,
       "pr": [
         116,
-        122
+        122,
+        124
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -285,7 +286,8 @@
       "external_required": true,
       "pr": [
         122,
-        123
+        123,
+        124
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -296,7 +298,8 @@
       "external_required": true,
       "pr": [
         122,
-        123
+        123,
+        124
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -899,6 +902,18 @@
   },
   "activity": [
     {
+      "number": 124,
+      "sha": "db67c3a8338bc7c94e6fe520676b3c672df5b1c7",
+      "ci": "success",
+      "ids": [
+        "GOV-010",
+        "GOV-012",
+        "GOV-014"
+      ],
+      "title": "Suivi Work PUNCH : trois compteurs automatiques d'avancement et preuves",
+      "merged_at": "2026-10-26T14:52:23Z"
+    },
+    {
       "number": 123,
       "sha": "2301002076d38cd2c4d2e448257914489f9f1137",
       "ci": "success",
@@ -1345,15 +1360,6 @@
       "ids": [],
       "title": "Essentiel Expo — 10 langues de navigation et direction RTL par compte",
       "merged_at": "2026-10-26T04:06:05Z"
-    },
-    {
-      "number": 68,
-      "sha": null,
-      "head_sha": "4f246030bd061a93ad9b95634a908178dcc2b04a",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Essentiel et Construction : sélecteur sécurisé pour salariés multi-entreprises",
-      "merged_at": "2026-10-26T04:07:55Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
