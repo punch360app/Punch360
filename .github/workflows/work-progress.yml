@@ -1,0 +1,40 @@
+name: PUNCH Work progress register
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: punch-work-progress-main
+  cancel-in-progress: false
+jobs:
+  record:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Update merged PR evidence, never infer a deployment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/update-work-progress.mjs
+      - name: Commit public progress snapshot when it changed
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if git diff --quiet -- web/live/work-progress.json; then
+            echo "Nothing to update"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/live/work-progress.json
+          git commit -m "chore(progress): record merged PR #${PR_NUMBER} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main

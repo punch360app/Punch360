@@ -1,3 +1,21 @@
+## Suivi automatique Work — obligatoire depuis le 26 octobre 2026
+
+Le tableau HTML `web/live/suivi.html` ne doit **jamais** afficher le pourcentage issu des cases cochées par le propriétaire. Sa source est `web/live/work-progress.json`, un registre **versionné sur GitHub**, construit avec les identifiants exacts du prompt maître (578). Ce registre a été initialisé par un audit rétrospectif conservateur de PR déjà fusionnées : les fonctionnalités non encore associées à une preuve restent `non vérifiées`, **pas nécessairement non développées**.
+
+**Pour CHAQUE PR créée par Work**, après avoir identifié les IDs du maître effectivement touchés, inclure dans le corps de la PR une ligne explicite, par exemple :
+
+```text
+PUNCH-PROGRESS: STRIPE-012, GOV-014
+```
+
+Ne lister **que** les exigences ayant reçu du code ou un audit concret dans la PR, pas toutes les exigences du lot. Le workflow GitHub `.github/workflows/work-progress.yml` s'exécute **automatiquement après la fusion** : il vérifie les résultats `PUNCH TypeScript` sur le SHA de tête et enregistre la PR et ses IDs dans `work-progress.json`. Toute PR fusionnée même sans ligne `PUNCH-PROGRESS` est ajoutée à l'historique des PR, mais **n'incrémente pas artificiellement le nombre d'exigences travaillées**. Ne jamais confondre une fusion avec une preuve de déploiement.
+
+Le site charge le registre depuis GitHub Pages au démarrage et l'actualise environ chaque minute quand il est ouvert. Après propagation GitHub Pages, le compteur Work est donc partagé entre tous les appareils, **sans case locale manuelle**. Les quatre états par ID restent indépendants : `developed` (non vérifié/partiel/vérifié), `tested` (non vérifié/logiciel), `deployed` (booléen), `external_required` (booléen). La clôture de bout en bout exige des preuves de développement, de tests, de déploiement et de recette. Le workflow de merge **n'attribue jamais automatiquement `deployed:true`**. Pour une livraison démontrée sur appareils/fournisseurs, mettre à jour l'ID manuellement dans le même registre avec la preuve appropriée et laisser le contrôle CI valider le JSON. Ne jamais créer d'ID hors du prompt maître.
+
+**Attention :** un changement de schéma ou un nouvel ID implique une mise à jour des tests, pas un total recalculé d'après le nombre de PR. Les tarifications 19/39/69, inclusions 20/25/50, +2 CAD, 15 % annuel, contrats existants, six IDs Stripe et l'édition Construction restent protégés.
+
+---
+
 # Instructions de reprise pour ChatGPT Work — prompts PUNCH
 
 **REPRISE COURANTE / AUTOPILOTE (26 OCTOBRE 2026) :** lire immédiatement [AUTOPILOT_HANDOFF_20261026.md](AUTOPILOT_HANDOFF_20261026.md) après ce fichier. Il enregistre les PR #112/#113 fusionnées avec CI verte, la PR #114 en cours, l'ordre de vérification GitHub Actions et les blocages Stripe/OAuth réels. Ce fichier ne remplace ni les 578 exigences du prompt maître, ni la vérification du dernier main.
