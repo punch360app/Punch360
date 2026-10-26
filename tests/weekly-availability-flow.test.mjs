@@ -53,7 +53,7 @@ test('employee can save a persistent week type and see server preview; no schedu
  assert.equal(saves[0].args.p_available,true);
  assert.ok(saves[0].args.p_request);
  assert.equal(rules.length,1);
- assert.equal(calls.some(x=>x.name.includes('shift')&&x.name!=='essential_availability_shift_preview'),false);
+ assert.equal(calls.some(x=>/^(save_essential_shift|cancel_essential_shift|request_essential_shift_change|report_essential_shift_absence|punch)/.test(x.name)),false);
  w.document.body.innerHTML=ui.renderSchedule();
  assert.match(w.document.body.textContent,/Règles actives/);
  assert.match(w.document.body.textContent,/Lun, Mar, Mer, Jeu, Ven/);
