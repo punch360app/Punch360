@@ -27,6 +27,12 @@ Les **tâches résiduelles** sont intégrées à la section `PASSATION DU PROMPT
 Le développement a repris **sur le code actuel**, sans créer un sixième prompt Drive ni modifier les **578 IDs**. Pour l'issue [#35](https://github.com/punch360app/Punch360/issues/35), le sous-lot de sécurité Boss « réponses de facturation tardives interentreprises » est développé dans la branche `fix/p0-boss-billing-tenant-race-20261026`; trois nouveaux tests Node/DOM et une réponse Edge sans détail SQL ont été ajoutés. **Développé : oui / Testé : CI à confirmer / Déployé : non vérifié / Intervention externe : Stripe sandbox + Edge + appareils.** Voir [preuve](../SUPER_ADMIN_BOSS_BILLING_RACE_20261026.md). Le suivi Drive P-001–P-005 **reste non audité**, sans changement artificiel.
 
 ## Tableau récapitulatif initial
+## P0 — résultats vérifiés après reprise (26 octobre)
+
+- **PR #89** fusionnée : Boss isolé entre compagnies lors des réponses asynchrones de devis/portail, CI TypeScript/Node/syntaxe réussie, GitHub Pages vert, Edge `essential-billing` v2 ACTIVE avec JWT activé. **Développé : oui / Testé : automatisé oui, Stripe fournisseur non / Déployé : Web et Edge oui / Intervention externe : Stripe sandbox et appareils.** Issue #35 maintenue ouverte.
+- **Issue #90** créée suite à SQL strictement en lecture seule : forfaits publics actuellement à **20/25/50 places incluses et 2 $ par siège**, alors que la référence maître/seed est **5 et +3/+4/+5 $**. Historique du catalogue versionné et modifié par acteur. **Ne pas réinitialiser des prix ni modifier les contrats en production sans analyse.** Six tarifs Stripe enregistrés sans preuve d'API fournisseur.
+- **Drive `promt` vérifié** : cinq fichiers de prompts déjà présents dans P-001–P-005, deux dossiers de visuels et `a lire en premier.txt`. Aucun nouvel identifiant ni audit complet des cinq déclaré. P-002 (`prompt paiement.txt`) **examiné sur son périmètre P0**, avec affirmations historiques de sandbox et noms de forfaits différents : le prompt maître plus récent et l'état du backend font foi; les accès fournisseur restent à vérifier. Aucun texte privé recopié sur GitHub.
+
 - Prompts repérés et indexés : **5**
 - Prompts audités : **0**
 - Prompts marqués terminés : **0** (cela ne signifie pas que zéro fonctionnalité du projet est déjà livrée)
