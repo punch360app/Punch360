@@ -1,12 +1,16 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — consignes d’accès révélées sur demande (NAV-008 partiel)
+## Lot actif — préférence d’itinéraire depuis Plus → Réglages (NAV-004 partiel)
 
-**Branche** `feat/client-access-instructions-on-demand-20261026`. Sur chaque quart client autorisé, Web et Expo n’affichent plus systématiquement les consignes d’entrée ou le contact professionnel. Le salarié ou responsable doit activer **« Voir les consignes et le contact »** sur le quart voulu. Dans le Web, les consignes ne sont même **pas intégrées au HTML initial**; elles n’y figurent que lorsque le panneau est ouvert. Dans Expo, le contenu est conditionné par le même choix volontaire. Fermeture explicite, réinitialisation au changement d’espace/compte, refus de révéler un quart non autorisé. Les liens Google/Waze/Plans ne reçoivent que l’adresse, jamais consignes, contacts ni codes.
+**PR [#148](https://github.com/punch360app/Punch360/pull/148)**, branche `feat/essential-navigation-preferences-settings-20261026`. Web/PWA et source Expo : sous **Plus → Réglages → Navigation**, chacun peut sélectionner, consulter ou effacer Google Maps, Waze, Plans Apple compatible ou le choix système Android même **sans quart ni adresse actuelle**. La préférence `punch-navigation:<utilisateur>:<compagnie>` est privée à l'appareil et à l'espace de travail, réutilisée sur l’Accueil Punch. Écriture contrôlée pour plateforme et compte; erreur de stockage non annoncée comme succès. Aucun code d'accès, adresse, GPS ni pointage persisté.
 
-**Preuves :** `web/live/planning.js`, `src/workforce/EssentialPlanningPanel.tsx`, `tests/shift-client-sites-flow.test.mjs` testent salarié autorisé, ouverture/fermeture, remise à zéro, quart étranger et absence d'appels Punch/GPS. Aucune migration, modification des droits Supabase ou paie. **Limite** : la RPC `list_essential_assigned_client_sites` retourne encore les consignes dans une réponse réservée aux rôles autorisés; un stockage serveur séparé et un droit par code secret nécessiteraient une évolution compatible avec les anciennes versions, non effectuée ici. Recette Web authentifiée et appareils physiques non attestés.
+**Contrôles** : `tests/navigation-settings.test.mjs` couvre stockage réel simulé sync/async, erreurs, effacement et isolation multientreprise; `tests/ui.test.mjs` ouvre les **vrais** Réglages Web et vérifie Waze puis son effacement, après correction du banc d’intégration. Web et Expo partagent `writeNavigationPreference`. CI sur tête définitive, fusion et Pages sur SHA exact à confirmer. Android/iPhone installés et navigateur connecté non attestés. NAV-004 demeure partiel : pas de synchronisation inter-appareils ni édition Construction.
 
-**Suite :** vérifier CI finale sur la tête PR, fusionner seulement si verte, confirmer Pages et le suivi; puis passer à NAV-007 ou une autre exigence indépendante. Préserver la branche concurrente de réglages de navigation et la PR #86, ainsi que les six Price IDs, forfaits et éditions.
+**Concurrence** : branche reconstruite sur `main` incluant #146 et #147; tous les arrêts de navigation et les consignes protégées sont préservés. Les conflits de la PR ont été traités en reprenant intégralement les fichiers #147 et en gardant uniquement le changement du présent lot.
+
+## Dernier lot fusionné — consignes d’accès visibles sur demande (NAV-008 partiel)
+
+PR [#147](https://github.com/punch360app/Punch360/pull/147) fusionnée commit `a40297bd29cb7722dd3a81e257cc7021ae132138` (post-fusion CI et Pages à relire séparément). Chaque quart client autorisé propose « Voir les consignes et le contact » à la demande seulement. Aucune note/code insérée dans les URL Google/Waze/Plans. Reste un besoin de séparation serveur des codes à accès spécifique; appareil physique non attesté.
 
 ## Dernier lot fusionné et publié — itinéraires distincts par arrêt (NAV-006 partiel)
 
