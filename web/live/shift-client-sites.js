@@ -1,3 +1,4 @@
+import {navigationProviders,navigationUrl} from './navigation-choices.js';
 // MLOC-002/004: link an EXISTING scheduled shift to a client destination.
 // No additional punch or job; maps are opened only after explicit user action.
 export function assignedSiteForShift(items,shiftId){
@@ -22,4 +23,19 @@ export function shiftSiteAssignmentArgs(company,shift,siteId){
 export function assignedSiteSummary(site){
  if(!site)return '';
  return [site.client_name,site.site_name,site.city].filter(Boolean).join(' · ');
+}
+
+/**
+ * NAV-006: each published intervention has its own destination and provider.
+ * No route ordering, telemetry, GPS, punch, or automatic travel estimate.
+ * Never put entry codes, contact numbers or private notes in a navigation URL.
+ */
+export function assignedSiteNavigationChoices(site,platform='web'){
+ const address=assignedSiteAddress(site);
+ if(!address)return [];
+ try{
+  return navigationProviders(platform).map(provider=>({
+   id:provider.id,label:provider.label,url:navigationUrl(provider.id,address,platform)
+  }));
+ }catch{return [];}
 }
