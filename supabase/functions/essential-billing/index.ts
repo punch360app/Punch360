@@ -28,7 +28,7 @@ Deno.serve(async(req:Request)=>{
   };
   const save=async(values:unknown,customer:string)=>{const r=await admin.rpc('billing_service_save',{p_actor:auth.data.user!.id,p_company:body.companyId,p_order:body.orderId||null,p_customer:customer,p_values:values});if(r.error)throw Error(r.error.message);};
   if(body.action==='invoices'){
-   if(!a?.customer_id)return response(200,{invoices:[]});await verifiedCustomer();const invoices=await stripe(`/invoices?customer=${a.customer_id}`);const safeInvoices=verifyStripeInvoiceListTenant(invoices,a.customer_id,liveMode);return response(200,{invoices:safeInvoices.map((i:any)=>({id:i.id,number:i.number,status:i.status,total:i.total,paid:i.amount_paid,currency:i.currency,url:i.hosted_invoice_url? safeHostedUrl(i.hosted_invoice_url):null,created:i.created}))});
+   if(!a?.customer_id)return response(200,{invoices:[]});await verifiedCustomer();const invoices=await stripe(`/invoices?customer=${a.customer_id}&limit=100`);const safeInvoices=verifyStripeInvoiceListTenant(invoices,a.customer_id,liveMode);return response(200,{invoices:safeInvoices.map((i:any)=>({id:i.id,number:i.number,status:i.status,total:i.total,paid:i.amount_paid,currency:i.currency,url:i.hosted_invoice_url? safeHostedUrl(i.hosted_invoice_url):null,created:i.created})),has_more:invoices.has_more===true});
   }
   if(body.action==='portal'){
    await verifiedCustomer();const p=await stripe('/billing_portal/sessions',{customer:a.customer_id,return_url:returnUrl});return response(200,{url:safeHostedUrl(p.url)});
