@@ -143,7 +143,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
     ${select('Période','overviewPeriod',[['day','Jour'],['week','Semaine']])}
     ${select('Salarié','overviewWorker',[['','Tous les salariés'],...s.roster.filter(x=>x.status==='active').map(x=>[x.id,x.name])])}
     ${select('Département','overviewDepartment',[['','Tous les départements'],...s.departments.filter(x=>x.active).map(x=>[x.id,x.name])])}
-    ${select('Lieu du client','overviewSite',[['','Toutes les adresses'],...unique.values()]])}
+    ${select('Lieu du client','overviewSite',[['','Toutes les adresses'],...unique.values()])}
    </div>${btn('Appliquer les filtres','overview-apply')}
    <p role="status">${overview.shown} quart(s) visibles · ${overview.noWorker} sans salarié · ${overview.noSite} sans adresse client · ${overview.overlapShifts} quart(s) dans des chevauchements de salariés.</p>
    ${overview.travelCheckShifts?'<p>Trajets entre lieux distincts à vérifier : la durée de déplacement réelle est inconnue; aucun trajet ni retard n’est calculé.</p>':''}
