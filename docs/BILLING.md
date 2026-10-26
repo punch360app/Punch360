@@ -2,6 +2,9 @@
 
 > Décision Essentiel actualisée le 24 octobre : Essentiel 19 $, Plus 39 $, Pro 69 $ CA/mois, 5 personnes comprises, +3/+4/+5 $ par personne; annuel −15 % sur base et suppléments; bornes 1/3/illimitées. Les sections « proposition » ci-dessous sont historiques. Les tarifs publics doivent provenir du futur catalogue serveur versionné; les contrats existants restent préservés. Voir ESSENTIAL_DELIVERY_20261024.md pour l’état réel, sans Stripe activé.
 
+
+> **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
+
 # PUNCH — Abonnements et super-administration (V1)
 
 ## Modèle commercial retenu pour le prototype
