@@ -1,3 +1,13 @@
+# Reprise — succession Boss sur Expo Android/iOS (nouveau lot)
+
+La PR #62 et la migration Supabase `20261026032012_essential_boss_dual_consent_handoff` sont déjà fusionnées/appliquées. Cette étape du **prompt original « Validation SQL archives »** ajoute `src/workforce/BossHandoffPanel.tsx` et la navigation `src/workforce/ManagementWorkspace.tsx` : proposition volontaire du Boss, acceptation du successeur et confirmation finale depuis Expo, avec contrôle MFA TOTP AAL2 et confirmations UUID sur chaque appareil. Le serveur reste seul responsable de la modification atomique des rôles. Déconnexion locale après transfert pour actualiser le compte. Correctif Web `boss-handoff.js` : l'actualisation en AAL1 ne lance plus la RPC de consultation réservée aux sessions vérifiées. Régression DOM ajoutée.
+
+Documentation : `docs/ESSENTIAL_BOSS_HANDOFF_EXPO_20261026.md`. Aucun SQL nouveau et aucun compte réel modifié. **CI, fusion PR, tests natifs réels avec 2 identités MFA** à confirmer. Le cas du Boss indisponible ne permet pas de transfert automatique sans protocole légal et identité vérifiée.
+
+Suite du prompt original : validation terrain des fonctions sensibles, horaires avancés, UX mobile/tablette, 10 langues/RTL, fournisseurs Stripe sandbox/Google/Apple/notifications/paie, charge et reprise après sinistre. SMS en dernier. **Ne pas démarrer le prompt maître consolidé tant que le premier prompt reste ouvert.**
+
+---
+
 # Reprise — succession volontaire de direction Essentiel (PR #62)
 
 Le prompt original « Validation SQL archives » poursuit les accès Boss avec une procédure **volontaire à deux participants MFA AAL2**. Le Boss propose le transfert vers un administrateur actif; l'administrateur accepte dans sa session MFA; le Boss initial confirme et devient administrateur. Le successeur devient Boss uniquement après cette dernière confirmation. Blocages serveur : 48 heures, mauvais rôle/tenant, confirmation, version périmée, session MFA expirée, absence de consentement et plusieurs Boss actifs. Audit conservé. Interface Web : `web/live/boss-handoff.js`, depuis la gestion de direction, MFA TOTP inclus. Documentation : `docs/ESSENTIAL_BOSS_HANDOFF_20261026.md`.
