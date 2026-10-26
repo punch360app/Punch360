@@ -2,6 +2,7 @@ import * as Network from 'expo-network';
 import {cachedLocalIdentity,rememberLocalIdentity,forgetLocalIdentity} from './localIdentity';
 import {processNativeOAuthCallback} from './nativeOAuthCallback';
 import {requireServerVerifiedIdentity} from './serverVerifiedIdentity';
+import {mayRestoreCachedWorkspace} from './offlineWorkspaceGuard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React,{useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
@@ -34,6 +35,9 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  const [error,setError]=useState('');
  // An older membership query must never revive another user's workspace.
  const authRevision=useRef(0);
+ // An explicit logout must block delayed offline restoration immediately,
+ // even while the identity cache is being removed asynchronously.
+ const explicitlySignedOut=useRef(false);
  async function cachedWorkspace(id:string){
   const selected=await AsyncStorage.getItem('punch-last-company:'+id);
   if(!selected)return null;
@@ -45,13 +49,19 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  async function refresh(){
   const revision=++authRevision.current;
   const current=()=>revision===authRevision.current;
+  const offlineAllowed=()=>mayRestoreCachedWorkspace(revision,authRevision.current,explicitlySignedOut.current);
   setError('');
   try{
    const network=await Network.getNetworkStateAsync();
    if(!current())return;
    if(network.isConnected===false||network.isInternetReachable===false){
-    const local=await cachedLocalIdentity();if(!current())return;
-    const cache=local?await cachedWorkspace(local.id):null;if(!current())return;
+    if(!offlineAllowed()){
+     if(!current())return;
+     setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);setSession(null);
+     setError('Reconnecte-toi en ligne pour accéder à ton compte.');return;
+    }
+    const local=await cachedLocalIdentity();if(!offlineAllowed())return;
+    const cache=local?await cachedWorkspace(local.id):null;if(!offlineAllowed())return;
     setWorkspaces([]);setAccount(cache);setShowWorkspacePicker(false);setSession(null);
     setError(cache?'Mode hors ligne — espace sélectionné seulement. Les changements d’entreprise nécessitent Internet.':'Connexion Internet requise.');return;
    }
@@ -103,7 +113,7 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   try{
    const {data,error:authError}=await supabase.auth.getUser();
    if(!current())return;
-   if(authError||!data.user)throw Error('Reconnecte-toi pour choisir une entreprise.');
+   if(authError||!data.user||data.user.id!==session?.user.id)throw Error('Reconnecte-toi pour choisir une entreprise.');
    const user=data.user;
    const {data:memberships,error:memberError}=await supabase.from('company_members')
     .select(MEMBERSHIP_COLUMNS).eq('user_id',user.id).eq('status','active').order('company_id').limit(100);
@@ -128,10 +138,12 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    ++authRevision.current;
    setBusy(false);
    if(_event==='SIGNED_OUT'){
+    explicitlySignedOut.current=true;
     void forgetLocalIdentity().catch(()=>{});
     setIsRecovering(false);setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);
     setSession(null);setBoot(false);setError('');return;
    }
+   explicitlySignedOut.current=false;
    if(_event==='PASSWORD_RECOVERY')setIsRecovering(true);
    setSession(newSession);
    setBoot(true);
