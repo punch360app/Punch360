@@ -30,7 +30,9 @@ Deno.serve(async(req:Request)=>{
   if(['cancel','resume'].includes(body.action)){
    if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');const sub=await stripe(`/subscriptions/${a.subscription_id}`,{cancel_at_period_end:body.action==='cancel'},`${body.companyId}:${body.action}:${body.requestId}`);return response(200,{cancel_at_period_end:sub.cancel_at_period_end,effective_at:sub.current_period_end,pending_server_confirmation:true});
   }
-  if(!o)throw Error('ORDER_REQUIRED');billingQuote(o.snapshot,o.seats,o.cadence);
+  if(!o)throw Error('ORDER_REQUIRED');
+  const expected=billingQuote(o.snapshot,o.seats,o.cadence);
+  if(expected.amount_cents!==Number(o.amount_cents))throw Error('ORDER_AMOUNT_MISMATCH');
   // Never infer the Stripe product from amount alone: all six existing IDs belong
   // to distinct plan/cadence pairs, even if a negotiated offer matches another price.
   const keys=planPriceKeys(o.plan_id);
