@@ -1,3 +1,13 @@
+# Reprise — dix langues Essentiel et premier socle RTL
+
+Étape suivante du **prompt original « Validation SQL archives »** : fichier `web/live/essential-locale.js` proposant FR, EN, ES, PT, IT, DE, AR (RTL), ZH, HI, TL, avec dictionnaire complet **des clés de navigation et actions essentielles**. Les préférences sont enregistrées par identifiant utilisateur sur l'appareil, sans affecter une autre compagnie et sans modifier la borne ni Construction. `web/live/app.js` ajoute un choix de langue dans les paramètres Essentiel, traduit la barre d'onglets et les principales commandes de pointage et applique le RTL à la page personnelle. `web/live/styles.css` conserve les horaires et identifiants numériques en LTR. Tests `tests/essential-locale.test.mjs` et DOM `tests/ui.test.mjs`. Documentation `docs/ESSENTIAL_MULTILINGUAL_NAV_20261026.md`.
+
+**Important : la couverture complète des dix langues reste à terminer.** Les sous-pages RH/paie/gestion, le Super Admin, les messages et erreurs serveur, courriels, la borne et les écrans natifs Expo ne sont **pas encore traduits**. La présente livraison n'inclut aucune migration SQL et ne nécessite aucun paiement fournisseur. CI, fusion PR et Pages à confirmer. La traduction juridique et salariale doit être vérifiée humainement.
+
+Les autres travaux du prompt original restent ouverts : recette de transfert Boss avec 2 appareils MFA, calendriers tiers, Stripe test, horaires spéciaux/variantes, responsive terrain, fournisseurs OAuth/push/paie, tests charge/PRA et builds signés. SMS/Twilio en dernier. Ne pas basculer au prompt maître consolidé.
+
+---
+
 # Reprise — transfert Boss volontaire dans Expo (PR #65 remplacée)
 
 Suite du prompt original **« Validation SQL archives »**. Le transfert Boss sécurisé de la PR #62 (SQL Supabase `20261026032012`) couvre désormais l'interface native Expo : `src/workforce/BossHandoffPanel.tsx`, navigation `src/workforce/ManagementWorkspace.tsx`. Le Boss propose le transfert à un administrateur actif du même tenant; cet Admin accepte avec MFA TOTP AAL2; le Boss confirme à nouveau avec MFA avant permutation serveur des rôles. Les deux parties doivent recopier leurs UUID attendus. Déconnexion locale du Boss après mutation pour purger ses rôles en cache. Côté Web, `boss-handoff.js` ne lance plus de lecture privée sur simple actualisation avant AAL2, test DOM ajouté. **Aucune migration nouvelle, aucun compte réel touché.**
