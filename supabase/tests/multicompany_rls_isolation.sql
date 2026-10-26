@@ -27,7 +27,9 @@ begin
  select id into wb from public.company_workers where company_id=b and auth_user_id=shared;
  select id into w2 from public.company_workers where company_id=b and auth_user_id=worker_b;
  if wa is null or wb is null or wa=wb or w2 is null then raise exception 'Independent worker records not created';end if;
+ perform set_config('request.jwt.claim.sub',boss_a::text,true);
  perform public.assign_essential_worker(wa,loc_a,null);
+ perform set_config('request.jwt.claim.sub',boss_b::text,true);
  perform public.assign_essential_worker(wb,loc_b,null);
  perform public.assign_essential_worker(w2,loc_b,null);
  perform set_config('request.jwt.claim.sub',boss_a::text,true);
