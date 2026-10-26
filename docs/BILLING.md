@@ -150,3 +150,18 @@ Lors du Checkout, le Customer déjà associé à une entreprise était vérifié
 - **Testé :** tests Node simulant le fournisseur, refus croisé interentreprises/suppression/mode incorrect et ordre du précontrôle; CI GitHub à confirmer dans la PR.
 - **Déployé :** non pour cette nouvelle version du code Edge; état du fournisseur à vérifier séparément.
 - **Intervention externe :** recette Stripe sandbox Checkout et offres négociées, puis déploiement Edge contrôlé; issue #35 encore ouverte.
+
+## P0-B — Statut de confirmation Stripe et course avec le webhook (26 octobre 2026)
+
+Avant ce correctif, le serveur marquait un ordre `submitted` **avant** le POST de changement d'abonnement Stripe. Une erreur Stripe pouvait donc laisser une commande semblant acceptée. Le même statut était réécrit après l'appel, y compris lorsqu'un webhook signé avait déjà confirmé le paiement (`paid`).
+
+Le nouveau protocole distinctif est : `previewed → submitting` (intention persistée avant appel fournisseur) → `submitted` (Stripe a répondu positivement) → `paid` (**exclusivement** confirmé par webhook signé). Stripe peut répondre avec `pending_update` : `submitted` ne donne **jamais** de sièges payés. Une erreur de fournisseur peut laisser le statut `submitting` pour une enquête/réconciliation; elle ne devient pas `submitted` par erreur. L'appel conserve la même clé d'idempotence `${order.id}:confirm`.
+
+La migration **20261026110100_billing_confirm_intent.sql** étend le rapprochement `billing_service_resolve_order` pour reconnaître `submitting`, sans toucher aux commandes historiques. Dans `billing_service_save`, une commande déjà `paid` ne peut plus être rétrogradée ni voir ses éléments de preuve de facture écrasés par une réponse HTTP tardive. Une commande `submitting` bloque également un second Checkout concurrent durant sa validité. Les RPC restent exécutables uniquement par le service. Les contrats ne sont pas modifiés.
+
+- **Développé** : Edge + migration SQL additive + tests Node de séquençage + test SQL synthétique transactionnel `ROLLBACK`.
+- **Testé** : CI TypeScript/Node à valider sur la PR; recette SQL du fichier sous transaction, et Stripe sandbox **non exécutés**.
+- **Déployé** : non. **Ordre obligatoire** : appliquer et recetter d'abord la migration SQL sur environnement isolé puis sur le projet cible autorisé, avant de publier l'Edge `essential-billing`; garder les versions et preuves dans l'issue #35. Ne jamais déployer le nouveau Edge avant la fonction SQL qui comprend `submitting`.
+- **Intervention externe** : recette Stripe mode test (refus provider, timeout, double clic, webhook avant réponse POST, paiement en attente, puis facture payée), tests de débit et vérification manuelle des Customers historiques avant publication.
+
+Décision propriétaire conservée : Essentiel 19 $/20, Plus 39 $/25, Pro 69 $/50, +2 $/personne, 15 % annuel; six Price IDs et les contrats existants sont intacts.

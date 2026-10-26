@@ -104,10 +104,12 @@ Deno.serve(async(req:Request)=>{
    await save({status:'previewed',preview},a.customer_id);return response(200,{preview});
   }
   const p=verifySubscriptionPreview(o.preview,sub,item,price.id);
-  // Do not grant new seats from this response. Signed webhook confirms paid changes.
-  await save({status:'submitted',subscription_id:sub.id},a.customer_id);
+  // Register an in-flight confirmation so an immediate signed Stripe webhook can
+  // resolve the order. Never claim that Stripe accepted a request before its POST.
+  await save({status:'submitting',subscription_id:sub.id},a.customer_id);
   const updated=await stripe(`/subscriptions/${sub.id}`,{items:[{id:p.item_id,price:p.price_id,quantity:1}],proration_date:p.proration_date,proration_behavior:'always_invoice',payment_behavior:'pending_if_incomplete'},`${o.id}:confirm`);
-  // Pending updates cannot include metadata: store the accepted order separately for webhook resolution.
+  // The SQL save refuses to downgrade an order already marked paid by a
+  // racing webhook. Only provider acceptance moves submitting -> submitted.
   await save({status:'submitted',subscription_id:sub.id},a.customer_id);
   return response(200,{pending_payment:!!updated.pending_update,pending_server_confirmation:true});
  }catch(err){const m=err instanceof Error?err.message:'BILLING_ERROR';return response(400,{error:m.startsWith('STRIPE_')||/^[A-Z_]+$/.test(m)?m:'BILLING_REQUEST_FAILED'});}
