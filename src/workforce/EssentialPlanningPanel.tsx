@@ -159,8 +159,8 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
   {choose('Période','calendarViewPeriod',[['all','Tous les quarts chargés'],['day','Un jour'],['week','Une semaine']])}
   {field('Date du jour ou de la semaine','calendarViewDay','AAAA-MM-JJ')}
   {choose('Équipe / département','calendarViewDepartment',[['','Tous les départements'],...data.departments.filter((d:Row)=>d.active).map((d:Row)=>[d.id,d.name])])}
-  {choose('Client','calendarViewClient',[['','Tous les clients'],...locationViewOptions.clients.map((name:string)=>[name,name])])}
-  {choose('Adresse','calendarViewSite',[['','Toutes les adresses'],...locationViewOptions.sites.map((a:Row)=>[a.id,a.label])])}
+  {choose('Client','calendarViewClient',[['','Tous les clients'],...locationViewOptions.clients.map((name:string):[string,string]=>[name,name])])}
+  {choose('Adresse','calendarViewSite',[['','Toutes les adresses'],...locationViewOptions.sites.map((a:Row):[string,string]=>[String(a.id),String(a.label)])])}
   {choose('Salarié','calendarViewWorker',[['','Tous les salariés'],...data.roster.filter((w:Row)=>w.id).map((w:Row)=>[w.id,w.name])])}
   {scheduleError?text(scheduleError,{color:'#9A412D'}):null}
   {scheduleOverview?text('Quarts : '+scheduleOverview.stats.shifts+' · chevauchements : '+scheduleOverview.stats.overlappingShifts+
