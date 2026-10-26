@@ -38,6 +38,7 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  const [absenceShift,setAbsenceShift]=useState<string|null>(null);
  const [clientReportFilters,setClientReportFilters]=useState<Row|null>(null);
  const [overviewView,setOverviewView]=useState<'employee'|'location'>('employee');
+ const [accessShift,setAccessShift]=useState<string|null>(null);
  const [visitShift,setVisitShift]=useState<string|null>(null),[visitChoices,setVisitChoices]=useState<Row[]>([]),[visitMore,setVisitMore]=useState(false);
  const batch=useRef<{key:string;id:string}|null>(null);
  const manager=['boss','admin'].includes(account.role),feature=(f:string)=>data.features.includes(f),canPlan=(dept:string|null)=>manager||(feature('supervisors')&&data.scopes.some((g:Row)=>g.active&&g.can_plan&&g.department_id===dept)),anyPlan=manager||(feature('supervisors')&&data.scopes.some((g:Row)=>g.active&&g.can_plan));
@@ -70,7 +71,7 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
   if(!manager&&myWorkerId&&!prefsUnavailable)setForm(f=>f.prefLoadedWorker===myWorkerId?f:{...f,...prefsToForm(workerPrefs.find((p:Row)=>p.worker_id===myWorkerId),myWorkerId)});
   setForm(f=>({...f,location:f.location||locations[0]?.id,avLocation:f.avLocation||locations[0]?.id,weeklyLocation:f.weeklyLocation||locations[0]?.id,posLocation:f.posLocation||locations[0]?.id}));
  }
- useEffect(()=>{setAbsenceShift(null);setClientReportFilters(null);absenceRequest.current=null;weeklyRequest.current=null;prefRequest.current=null;reminderKey.current=null;setReminderResult(null);setVisitShift(null);setVisitChoices([]);setForm(f=>({...f,prefLoadedWorker:''}));setPositionAlerts(null);setCalendarLink('');setCalendarFeed(null);load().catch(e=>setNotice(e.message));const timer=setInterval(()=>{if(AppState.currentState==='active')load().catch(()=>{})},60000);const listener=AppState.addEventListener('change',v=>{if(v==='active')load().catch(e=>setNotice(e.message))});return()=>{loadRevision.current++;clearInterval(timer);listener.remove()}},[account.companyId]);
+ useEffect(()=>{setAbsenceShift(null);setClientReportFilters(null);absenceRequest.current=null;weeklyRequest.current=null;prefRequest.current=null;reminderKey.current=null;setReminderResult(null);setVisitShift(null);setAccessShift(null);setVisitChoices([]);setForm(f=>({...f,prefLoadedWorker:''}));setPositionAlerts(null);setCalendarLink('');setCalendarFeed(null);load().catch(e=>setNotice(e.message));const timer=setInterval(()=>{if(AppState.currentState==='active')load().catch(()=>{})},60000);const listener=AppState.addEventListener('change',v=>{if(v==='active')load().catch(e=>setNotice(e.message))});return()=>{loadRevision.current++;clearInterval(timer);listener.remove()}},[account.companyId]);
  async function run(fn:()=>Promise<unknown>){if(busy)return;setBusy(true);setNotice('');try{await fn();await load()}catch(e:any){setNotice(e.message)}finally{setBusy(false)}}
  const set=(key:string,value:string)=>setForm(f=>({...f,[key]:value}));
  const text=(t:string,style:object={})=><Text style={[s.text,style]}>{t}</Text>;
@@ -188,8 +189,13 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  {assignedSiteForShift(data.assignedSites,x.id)?<View style={{gap:5,padding:9,backgroundColor:'#F4F7F2',borderRadius:8}}>
   {text('Client · '+assignedSiteSummary(assignedSiteForShift(data.assignedSites,x.id)),{fontWeight:'600'})}
   {text(assignedSiteAddress(assignedSiteForShift(data.assignedSites,x.id)),{fontSize:12})}
-  {assignedSiteForShift(data.assignedSites,x.id)?.access_instructions?text('Accès : '+assignedSiteForShift(data.assignedSites,x.id).access_instructions,{fontSize:12}):null}
-  {assignedSiteForShift(data.assignedSites,x.id)?.contact_name?text('Contact sur place : '+assignedSiteForShift(data.assignedSites,x.id).contact_name,{fontSize:12}):null}
+  {assignedSiteForShift(data.assignedSites,x.id)?.access_instructions||assignedSiteForShift(data.assignedSites,x.id)?.contact_name?
+   button(accessShift===x.id?'Masquer les consignes':'Voir les consignes et le contact',
+    ()=>setAccessShift(v=>v===x.id?null:x.id)):null}
+  {accessShift===x.id&&assignedSiteForShift(data.assignedSites,x.id)?.access_instructions?
+   text('Accès : '+assignedSiteForShift(data.assignedSites,x.id).access_instructions,{fontSize:12}):null}
+  {accessShift===x.id&&assignedSiteForShift(data.assignedSites,x.id)?.contact_name?
+   text('Contact sur place : '+assignedSiteForShift(data.assignedSites,x.id).contact_name,{fontSize:12}):null}
   {text('Itinéraire vers cet arrêt : choisir une application',{fontSize:12,fontWeight:'600'})}
   <View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
    {navigationStopChoices(assignedSiteForShift(data.assignedSites,x.id),Platform.OS).map((choice:{id:string;label:string;url:string})=>

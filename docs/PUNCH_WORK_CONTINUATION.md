@@ -1,10 +1,16 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — itinéraire distinct pour chaque arrêt publié (NAV-006 partiel)
+## Lot actif — consignes d’accès révélées sur demande (NAV-008 partiel)
 
-Branche `feat/essential-navigation-each-stop-20261026`; PR à ouvrir après CI verte. Pour chaque **quart publié associé à un lieu client autorisé**, le salarié ou responsable peut ouvrir volontairement l’adresse de cet arrêt dans Google Maps, Waze ou, sur appareil Apple compatible, Plans Apple; l’option « autre application » Android est disponible. Le choix est indépendant pour chaque intervention et suit l’ordre publié des quarts, sans fabriquer de trajet multiarrêts, sans réordonnancement secret, sans déduire km, temps, arrivée ou pointage. Les destinations sont fournies par **la RPC existante** de lieux des quarts, sans nouveau SQL, et seuls les champs d’adresse sont transmis au service de navigation, jamais consignes, secrets ou contacts.
+**Branche** `feat/client-access-instructions-on-demand-20261026`. Sur chaque quart client autorisé, Web et Expo n’affichent plus systématiquement les consignes d’entrée ou le contact professionnel. Le salarié ou responsable doit activer **« Voir les consignes et le contact »** sur le quart voulu. Dans le Web, les consignes ne sont même **pas intégrées au HTML initial**; elles n’y figurent que lorsque le panneau est ouvert. Dans Expo, le contenu est conditionné par le même choix volontaire. Fermeture explicite, réinitialisation au changement d’espace/compte, refus de révéler un quart non autorisé. Les liens Google/Waze/Plans ne reçoivent que l’adresse, jamais consignes, contacts ni codes.
 
-Code partagé `web/live/navigation-choices.js` (nouveau `navigationStopDestination/Choices`), Web `web/live/planning.js`, Expo `src/workforce/EssentialPlanningPanel.tsx`, tests `tests/shift-client-sites-flow.test.mjs` : deux lieux distincts dans une journée, URLs indépendantes, compatibilité Apple/Android, absence de notes privées, aucun changement de quart/punch. CI tête finale et PR à conclure, puis vérifier la publication Pages au SHA exact et la synchronisation automatique. **Recette authentifiée et Android/iPhone installés non prouvés.** NAV-006 reste partiel : trajet multiarrêts natif et réglages persistants d’une application par salarié nécessitent encore de la recette appareil; ne jamais annoncer un transfert de pointage MLOC-004 complet.
+**Preuves :** `web/live/planning.js`, `src/workforce/EssentialPlanningPanel.tsx`, `tests/shift-client-sites-flow.test.mjs` testent salarié autorisé, ouverture/fermeture, remise à zéro, quart étranger et absence d'appels Punch/GPS. Aucune migration, modification des droits Supabase ou paie. **Limite** : la RPC `list_essential_assigned_client_sites` retourne encore les consignes dans une réponse réservée aux rôles autorisés; un stockage serveur séparé et un droit par code secret nécessiteraient une évolution compatible avec les anciennes versions, non effectuée ici. Recette Web authentifiée et appareils physiques non attestés.
+
+**Suite :** vérifier CI finale sur la tête PR, fusionner seulement si verte, confirmer Pages et le suivi; puis passer à NAV-007 ou une autre exigence indépendante. Préserver la branche concurrente de réglages de navigation et la PR #86, ainsi que les six Price IDs, forfaits et éditions.
+
+## Dernier lot fusionné et publié — itinéraires distincts par arrêt (NAV-006 partiel)
+
+PR [#146](https://github.com/punch360app/Punch360/pull/146) fusionnée sur `b309e4fc6b019870966c1732c27a3573cbe13c0c`, TypeScript post-fusion [#40405810510](https://github.com/punch360app/Punch360/actions/runs/40405810510) **SUCCESS**, Pages [#40405810494](https://github.com/punch360app/Punch360/actions/runs/40405810494) **SUCCESS**, registre [#40405811334](https://github.com/punch360app/Punch360/actions/runs/40405811334) **SUCCESS**. Chaque quart client publié possède une sélection Google/Waze/Plans Apple ou choix Android compatible; ni changement de session ni kilomètres/itinéraire multiarrêts inventés. Recette installée et authentifiée non attestée.
 
 ## Dernier lot fusionné et publié — choix d’itinéraire sur Accueil Punch (NAV-001/002/003/004/005/009/010 partiels)
 
@@ -62,7 +68,7 @@ Branche `docs/master-execution-cleanup-20261026`. Nettoyage demandé par le prop
 
 ## Prochaine action exécutable
 
-Terminer le lot `feat/essential-navigation-each-stop-20261026` : CI complète sur SHA final, PR avec `PUNCH-PROGRESS: NAV-006`, fusion, suivre Pages et registre, vérifier résultat publié. Ensuite examiner NAV-004 « Plus → Réglages → Navigation » et NAV-002 « adresse principale autorisée » sans modifier les limites facturables; poursuivre ce qui est indépendant du transfert MLOC-004 bloqué tant que GPS, journal hors ligne et pauses ne sont pas synchronisés. Préserver prix/projets Stripe et configuration actuelle, Construction distinct, SMS/Twilio en dernier. Ne pas prétendre à une recette Android/iOS installée.
+Valider le lot NAV-008 : CI complète, fusion, Pages exact SHA et registre. Tester ensuite l'ouverture conditionnelle des consignes sur vrais appareils et comptes autorisés, sans exposer un code secret dans une URL ou notification. NAV-007 (retard/problème d'accès volontaire) et système de préférence sous Réglages sont les prochains lots NAV, mais la branche concurrente `feat/essential-navigation-preferences-settings-20261026` doit être préservée. Stripe #35 et OAuth #102 toujours bloqués par les recettes fournisseur; transfert MLOC-004 ne doit pas sauter les protections GPS/pauses/offline.
 
 ## Coordination et protections
 
