@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
 import {createPlanningController} from '../web/live/planning.js';
+import {navigationStopChoices,navigationStopDestination} from '../web/live/navigation-choices.js';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from '../web/live/shift-client-sites.js';
 
 const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -96,4 +97,45 @@ test('employee sees own assigned address but cannot change its client site',asyn
  assert.equal(calls.some(c=>c.name==='set_essential_shift_client_site'),false);
  assert.match(ui.state.error,/Responsable requis/);
  await w.happyDOM.close();
+});
+
+test('every published customer stop has independently chosen route options, never mixed or silently reordered',async()=>{
+ const {ui,w,calls,shifts}=setup('employee');
+ await ui.load({company_id:'tenant',role:'employee'},'employee','worker',[]);
+ ui.state.tab='calendar';ui.state.showForm=false;
+ w.document.body.innerHTML=ui.renderSchedule();
+ const html=w.document.body.innerHTML;
+ const wazeLinks=[...w.document.querySelectorAll('a[href*="waze.com/ul"]')];
+ assert.equal(wazeLinks.length,2);
+ const destinations=wazeLinks.map(a=>new URL(a.href).searchParams.get('q'));
+ assert.equal(destinations[0].includes('Saint-Augustin-de-Desmaures'),true);
+ assert.equal(destinations[1].includes('Charlesbourg'),true);
+ const googleLinks=[...w.document.querySelectorAll('a[href*="google.com/maps/dir"]')];
+ assert.equal(googleLinks.length,2);
+ assert.match(html,/Choisir une application d’itinéraire/);
+ assert.doesNotMatch(html,/SECRET-NO-EMPLOYEE/);
+ assert.equal(calls.some(x=>/punch_|save_essential_shift|send_notification/.test(x.name)),false);
+ assert.equal(shifts[0].id,'shift-a');
+ assert.equal(shifts[1].id,'shift-b');
+ await w.happyDOM.close();
+});
+test('single destination per stop obeys mobile compatibility and never includes codes or contact info in map links',()=>{
+ const stop={shift_id:'morning',client_site_id:'client-site',client_name:'Clinique',
+  site_name:'Entretien',address_line:'123 rue des Érables',unit:'Appartement #7',city:'Québec',
+  region:'QC',postal_code:'G1K 1A1',country:'CA',internal_notes:'PASSWORD-VERY-PRIVATE',
+  contact_name:'Confidential',access_instructions:'Code 9999'};
+ const dest=navigationStopDestination(stop);
+ assert.equal(dest.shiftId,'morning');
+ assert.equal(dest.address.includes('Appartement #7'),true);
+ assert.equal(Object.keys(dest).includes('internal_notes'),false);
+ const android=navigationStopChoices(stop,'android');
+ const ios=navigationStopChoices(stop,'ios');
+ assert.deepEqual(android.map(x=>x.id),['google','waze','other']);
+ assert.deepEqual(ios.map(x=>x.id),['google','waze','apple']);
+ for(const item of [...android,...ios]){
+  assert.doesNotMatch(item.url,/PASSWORD|Confidential|9999/);
+  assert.equal(decodeURIComponent(item.url).includes('Québec'),true);
+ }
+ assert.equal(navigationStopDestination({...stop,city:''}),null);
+ assert.equal(navigationStopChoices({...stop,client_site_id:null},'ios').length,0);
 });

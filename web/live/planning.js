@@ -6,6 +6,7 @@ import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodL
 import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availability-reminders.js';
 import {createClientDirectoryController} from './client-directory.js';
 import {buildMultiSiteOverview} from './multi-site-overview.js';
+import {navigationPlatform,navigationStopChoices,chooseNavigationPreference,navigationPreferenceKey} from './navigation-choices.js';
 import {plannedClientReport,plannedClientReportCsv} from './planned-client-report.js';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from './shift-client-sites.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
@@ -104,13 +105,22 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  function renderAssignedSite(shift){
   const site=assignedSiteForShift(s.assignedSites,shift.id);
   if(!site)return '';
-  const url=assignedSiteMapsUrl(site);
+  const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
+  const options=navigationStopChoices(site,platform);
+  const storage=doc.defaultView?.localStorage;
+  let preference=null;
+  try{if(s.user&&s.company)preference=chooseNavigationPreference(storage?.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
+  const preferred=options.find(choice=>choice.id===preference);
   return `<div class="ess-fine"><b>Client · ${e(assignedSiteSummary(site))}</b>
    <p>${e(assignedSiteAddress(site))}</p>
    ${site.access_instructions?`<p>Accès : ${e(site.access_instructions)}</p>`:''}
    ${site.contact_name?`<p>Contact sur place : ${e(site.contact_name)}</p>`:''}
-   <a href="${e(url)}" rel="noopener noreferrer" target="_blank">Itinéraire (Google Maps)</a>
-   <p>Cette adresse n’est pas l’établissement de la compagnie. Aucun suivi de trajet activé.</p>
+   ${preferred?`<a href="${e(preferred.url)}" rel="noopener noreferrer" target="_blank">Itinéraire avec ${e(preferred.label)}</a>`:''}
+   ${options.length?`<details><summary>${preferred?"Changer d'application d'itinéraire":'Choisir une application d’itinéraire'}</summary>
+    <p class="ess-fine">Itinéraire pour <b>ce quart seulement</b>. Les autres visites restent dans leur ordre prévu.</p>
+    ${options.map(choice=>`<p><a href="${e(choice.url)}" rel="noopener noreferrer" target="_blank">${e(choice.label)} · cet arrêt ↗</a></p>`).join('')}
+   </details>`:''}
+   <p>Cette adresse n’est pas l’établissement de la compagnie. Aucun suivi de trajet ou pointage activé.</p>
   </div>`;
  }
  function renderSitePicker(shift){
