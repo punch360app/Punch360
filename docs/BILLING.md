@@ -1,15 +1,15 @@
 > État actualisé : [ESSENTIAL_BILLING_20261024.md](ESSENTIAL_BILLING_20261024.md). Facturation Web/Expo et accès borne développés; configuration et recette Stripe réelle non validées. Le prompt complet reste ouvert.
 
-> Décision Essentiel actualisée le 24 octobre : Essentiel 19 $, Plus 39 $, Pro 69 $ CA/mois, 5 personnes comprises, +3/+4/+5 $ par personne; annuel −15 % sur base et suppléments; bornes 1/3/illimitées. Les sections « proposition » ci-dessous sont historiques. Les tarifs publics doivent provenir du futur catalogue serveur versionné; les contrats existants restent préservés. Voir ESSENTIAL_DELIVERY_20261024.md pour l’état réel, sans Stripe activé.
+> **ARCHIVE — décision du 24 octobre, remplacée le 26 octobre.** L'ancienne grille de 5 places incluses et +3/+4/+5 $ ne doit plus être appliquée. Les chiffres actifs et les six Price IDs existants sont décrits dans la décision du propriétaire ci-dessous.
 
 
 > **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
 
 # PUNCH — Abonnements et super-administration (V1)
 
-## Modèle commercial retenu pour le prototype
+## Ancien modèle commercial (archive, non applicable)
 
-Tarif **proposé et modifiable** : 49 $ CA/mois pour les 5 premiers membres actifs d'une compagnie, puis 7 $ CA/mois par membre actif supplémentaire. Tous les rôles (boss, admin, chef, employé) comptent si le compte est activé. Réduction annuelle proposée : 15 %. Prix hors taxes. Il faut conserver les prix contractuels des clients existants lors d'un changement du tarif global.
+**Archive uniquement — ne pas appliquer aux forfaits Essentiel actuels.** Tarif historiquement proposé : 49 $ CA/mois pour les 5 premiers membres actifs d'une compagnie, puis 7 $ CA/mois par membre actif supplémentaire. Tous les rôles (boss, admin, chef, employé) comptent si le compte est activé. Réduction annuelle proposée : 15 %. Prix hors taxes. Il faut conserver les prix contractuels des clients existants lors d'un changement du tarif global.
 
 Formule mensuelle : `base_cents + max(0, seats-included_seats)*extra_seat_cents`.
 Facturation annuelle : sous-total mensuel * 12 * (1 - taux de rabais), avec arrondi contrôlé en cents.
@@ -71,3 +71,12 @@ En `restricted`, les bornes déjà enregistrées continuent de recevoir les punc
 
 ### Essentiel : iPad commun et compte personnel facultatif
 Un membre actif qui pointe sur une borne et crée ensuite son **compte personnel pour consulter horaires/heures/congés** reste **une seule place facturable**. L'invitation personnelle est un rattachement à un dossier salarié existant, non une nouvelle inscription payante. La tablette partagée n'est pas une place; chaque salarié actif, avec ou sans smartphone, l'est. Les privilèges mobile (consultation/pointage) restent séparés et configurables. Voir [ESSENTIAL_MIXED_PUNCH_SPEC.md](ESSENTIAL_MIXED_PUNCH_SPEC.md).
+
+## Sécurité P0-B — confirmation de prévisualisation (26 octobre 2026)
+
+La confirmation d'un changement d'abonnement vérifie désormais que la prévisualisation serveur n'est pas expirée (10 minutes), qu'elle cible **le même Price ID Stripe** que le devis courant, le même abonnement, le même élément d'abonnement et le même prix précédent. Une modification concurrente ou un changement de devis nécessite une nouvelle prévisualisation; aucun prix ni contrat réel n'est modifié par les tests.
+
+- **Développé :** garde-fou Edge versionné sur GitHub, tests de refus d'identifiants périmés/croisés.
+- **Testé :** tests Node via CI GitHub; recette fournisseur non réalisée.
+- **Déployé :** non pour ce nouveau garde-fou Edge, tant que la recette Stripe sandbox n'est pas vérifiée; fonction existante v2 ACTIVE.
+- **Intervention externe :** secrets Stripe de test et validation complète des webhooks, proratas, taxes et paiements en environnement test. Issue #35 demeure ouverte.
