@@ -11,13 +11,14 @@ import {buildMultiSiteOverview} from '../../web/live/multi-site-overview.js';
 import {navigationStopChoices} from '../../web/live/navigation-choices.js';
 import {plannedClientReport,plannedClientReportCsv} from '../../web/live/planned-client-report.js';
 import {ABSENCE_REASONS,absenceForShift,absenceStatus,canReportShift,prepareAbsence} from '../../web/live/shift-absence.js';
+import {ARRIVAL_ISSUE_LABELS,arrivalIssuePayload,arrivalIssueForShift,arrivalStatusLabel,canReportArrivalIssue} from '../../web/live/arrival-issues.js';
 import React,{useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,AppState,Platform,Pressable,Share,ScrollView,StyleSheet,Text,TextInput,View,Linking} from 'react-native';
 import {supabase,PUNCH_SUPABASE_URL} from '../lib/supabase';
 import type {WorkspaceAccount} from '../auth/AuthGate';
 type Row=Record<string,any>;
 export function EssentialPlanningPanel({account,initial='calendar'}:{account:WorkspaceAccount;initial?:'calendar'|'organization'}){
- const [tab,setTab]=useState<'calendar'|'organization'|'requests'|'availability'|'report'>(initial),[data,setData]=useState<Row>({templates:[],positions:[],locations:[],departments:[],roster:[],shifts:[],requests:[],absences:[],absenceUnavailable:false,scopes:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,workerPrefs:[],prefsUnavailable:false,assignedSites:[],assignedSitesUnavailable:false,loadedFrom:'',loadedTo:'',options:[],features:[],workers:[]}),[form,setForm]=useState<Row>({mode:'single',timezone:'America/Toronto',first:new Date().toISOString().slice(0,10),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:new Date().toISOString().slice(0,10),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',prefLoadedWorker:'',prefVersion:0,reminderWeek:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDue:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDepartment:'',visitSearch:'',visitSite:'',reportFrom:new Date().toISOString().slice(0,10),reportTo:new Date(Date.now()+7*86400000).toISOString().slice(0,10),clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',overviewDay:new Date().toISOString().slice(0,10),overviewPeriod:'day',overviewWorker:'',overviewSite:'',overviewDepartment:''}),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[showForm,setShowForm]=useState(false),[editing,setEditing]=useState<Row|null>(null),[report,setReport]=useState<Row|null>(null),[positionAlerts,setPositionAlerts]=useState<Row|null>(null),[calendarFeed,setCalendarFeed]=useState<Row|null>(null),[calendarLink,setCalendarLink]=useState('');
+ const [tab,setTab]=useState<'calendar'|'organization'|'requests'|'availability'|'report'>(initial),[data,setData]=useState<Row>({templates:[],positions:[],locations:[],departments:[],roster:[],shifts:[],requests:[],absences:[],absenceUnavailable:false,arrivalIssues:[],arrivalUnavailable:false,scopes:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,workerPrefs:[],prefsUnavailable:false,assignedSites:[],assignedSitesUnavailable:false,loadedFrom:'',loadedTo:'',options:[],features:[],workers:[]}),[form,setForm]=useState<Row>({mode:'single',timezone:'America/Toronto',first:new Date().toISOString().slice(0,10),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:new Date().toISOString().slice(0,10),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',prefLoadedWorker:'',prefVersion:0,arrivalMessage:'',arrivalEta:'',reminderWeek:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDue:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDepartment:'',visitSearch:'',visitSite:'',reportFrom:new Date().toISOString().slice(0,10),reportTo:new Date(Date.now()+7*86400000).toISOString().slice(0,10),clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',overviewDay:new Date().toISOString().slice(0,10),overviewPeriod:'day',overviewWorker:'',overviewSite:'',overviewDepartment:''}),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[showForm,setShowForm]=useState(false),[editing,setEditing]=useState<Row|null>(null),[report,setReport]=useState<Row|null>(null),[positionAlerts,setPositionAlerts]=useState<Row|null>(null),[calendarFeed,setCalendarFeed]=useState<Row|null>(null),[calendarLink,setCalendarLink]=useState('');
  const activeAccount=useRef('');activeAccount.current=account.companyId+':'+account.userId;const loadRevision=useRef(0);
  const prefsToForm=(row:Row|undefined,worker:string):Row=>({
   prefLoadedWorker:worker,prefWorker:worker,prefVersion:Number(row?.version||0),
@@ -31,6 +32,9 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  });
  const selectedTemplate=useRef<Row|null>(null);
  const absenceRequest=useRef<{shift:string;id:string}|null>(null);
+ const arrivalRequest=useRef<{shift:string;kind:string;id:string}|null>(null);
+ const [arrivalShift,setArrivalShift]=useState<string|null>(null);
+ const [arrivalKind,setArrivalKind]=useState<'late'|'access'>('late');
  const weeklyRequest=useRef<{key:string;id:string}|null>(null);
  const prefRequest=useRef<{key:string;id:string}|null>(null);
  const [reminderResult,setReminderResult]=useState<Row|null>(null);
@@ -51,6 +55,9 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
   const workers=manager?await rows('company_workers'):[],templates=await rows('essential_schedule_templates');let feed=null;try{if(own.data?.id)feed=await rpc('personal_calendar_feed_status',{p_company:account.companyId});}catch{/* optional personal feed not available */}const positions=manager&&ent.features.includes('minimum_coverage')?await rows('essential_positions'):[];
   let absences:Row[]=[],absenceUnavailable=false;
   if(ent.features.includes('advanced_schedules'))try{const reports=await rpc('list_essential_shift_absences',{p_company:account.companyId});absences=Array.isArray(reports)?reports:[];}catch{absenceUnavailable=true;}
+  let arrivalIssues:Row[]=[],arrivalUnavailable=false;
+  try{const arrival=await rpc('list_essential_shift_arrival_issues',{p_company:account.companyId});arrivalIssues=Array.isArray(arrival?.items)?arrival.items:[];arrivalUnavailable=!!arrival?.has_more;}
+  catch{arrivalUnavailable=true;}
   let weeklyRules:Row[]=[],weeklyPreview:Row[]=[],weeklyUnavailable=false;
   if(ent.features.includes('availability'))try{
    const from=new Date(),to=new Date(from.getTime()+31*86400000);
@@ -66,12 +73,12 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
    assignedSitesUnavailable=!!destinations?.has_more;
   }catch{assignedSitesUnavailable=true;}
   if(activeAccount.current!==key||loadRevision.current!==revision)return;
-  setData({templates,positions,locations,departments,roster,scopes,requests,availability,absences,absenceUnavailable,weeklyRules,weeklyPreview,weeklyUnavailable,workerPrefs,prefsUnavailable,assignedSites,assignedSitesUnavailable,loadedFrom:start.toISOString().slice(0,10),loadedTo:end.toISOString().slice(0,10),shifts:shifts.data||[],features:ent.features,options,own:own.data?.id,workers});setCalendarFeed(feed);
+  setData({templates,positions,locations,departments,roster,scopes,requests,availability,absences,absenceUnavailable,arrivalIssues,arrivalUnavailable,weeklyRules,weeklyPreview,weeklyUnavailable,workerPrefs,prefsUnavailable,assignedSites,assignedSitesUnavailable,loadedFrom:start.toISOString().slice(0,10),loadedTo:end.toISOString().slice(0,10),shifts:shifts.data||[],features:ent.features,options,own:own.data?.id,workers});setCalendarFeed(feed);
   const myWorkerId=own.data?.id;
   if(!manager&&myWorkerId&&!prefsUnavailable)setForm(f=>f.prefLoadedWorker===myWorkerId?f:{...f,...prefsToForm(workerPrefs.find((p:Row)=>p.worker_id===myWorkerId),myWorkerId)});
   setForm(f=>({...f,location:f.location||locations[0]?.id,avLocation:f.avLocation||locations[0]?.id,weeklyLocation:f.weeklyLocation||locations[0]?.id,posLocation:f.posLocation||locations[0]?.id}));
  }
- useEffect(()=>{setAbsenceShift(null);setClientReportFilters(null);absenceRequest.current=null;weeklyRequest.current=null;prefRequest.current=null;reminderKey.current=null;setReminderResult(null);setVisitShift(null);setAccessShift(null);setVisitChoices([]);setForm(f=>({...f,prefLoadedWorker:''}));setPositionAlerts(null);setCalendarLink('');setCalendarFeed(null);load().catch(e=>setNotice(e.message));const timer=setInterval(()=>{if(AppState.currentState==='active')load().catch(()=>{})},60000);const listener=AppState.addEventListener('change',v=>{if(v==='active')load().catch(e=>setNotice(e.message))});return()=>{loadRevision.current++;clearInterval(timer);listener.remove()}},[account.companyId]);
+ useEffect(()=>{setAbsenceShift(null);setArrivalShift(null);arrivalRequest.current=null;setClientReportFilters(null);absenceRequest.current=null;weeklyRequest.current=null;prefRequest.current=null;reminderKey.current=null;setReminderResult(null);setVisitShift(null);setAccessShift(null);setVisitChoices([]);setForm(f=>({...f,prefLoadedWorker:''}));setPositionAlerts(null);setCalendarLink('');setCalendarFeed(null);load().catch(e=>setNotice(e.message));const timer=setInterval(()=>{if(AppState.currentState==='active')load().catch(()=>{})},60000);const listener=AppState.addEventListener('change',v=>{if(v==='active')load().catch(e=>setNotice(e.message))});return()=>{loadRevision.current++;clearInterval(timer);listener.remove()}},[account.companyId]);
  async function run(fn:()=>Promise<unknown>){if(busy)return;setBusy(true);setNotice('');try{await fn();await load()}catch(e:any){setNotice(e.message)}finally{setBusy(false)}}
  const set=(key:string,value:string)=>setForm(f=>({...f,[key]:value}));
  const text=(t:string,style:object={})=><Text style={[s.text,style]}>{t}</Text>;
@@ -185,7 +192,46 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
    </View>)}
   </>:null}
  </View>:null;
- const calendar=<>{multiSiteView}{absenceForm}<View style={s.card}>{text('Quarts publiés',{fontSize:19,fontWeight:'600'})}{text('7 derniers jours et 90 prochains jours · maximum 1 000 quarts',{fontSize:11,color:'#6c8066'})}{data.own?button('Partager mon horaire (.ics)',()=>run(sharePersonalCalendar)):null}{data.own?privateCalendar:null}{data.own?text('Calendrier personnel, importation manuelle; les futures modifications ne se synchronisent pas automatiquement.',{fontSize:11,color:'#6c8066'}):null}{anyPlan?button(showForm?'Fermer le formulaire':'Planifier',()=>{setEditing(null);setShowForm(v=>!v)}):null}</View>{showForm?<View style={s.card}>{choose('Salarié','worker',[...(feature('advanced_schedules')?[['','Quart à combler'] as [string,string]]:[]),...data.roster.map((w:Row)=>[w.id,w.name] as [string,string])])}{location('location')}{department()}{choose('Organisation','mode',[['single','Quart unique'],...(feature('advanced_schedules')?[['weekly','Hebdomadaire'],['rotate2','Jour / soir'],['rotate3','Jour / soir / nuit']] as [string,string][]:[])])}{text('Heures locales de '+(data.locations.find((l:Row)=>l.id===form.location)?.timezone||'l’établissement'),{fontSize:12})}{form.mode==='single'?<>{field('Début local','start','2026-11-02T07:00')}{field('Fin locale','end','2026-11-02T15:00')}</>:<>{field('Premier jour AAAA-MM-JJ','first')}{field('Semaines / cycles','weeks')}{field('Jours ISO séparés par virgules','days')}{field('Début A','startTime')}{field('Fin A','endTime')}{form.mode!=='weekly'?<>{field('Début B','startTime2')}{field('Fin B','endTime2')}</>:null}{form.mode==='rotate3'?<>{field('Début C','startTime3')}{field('Fin C','endTime3')}</>:null}</>}{field('Note','note')}{button('Publier',()=>run(publish))}{templates}</View>:null}{data.shifts.filter((x:Row)=>!x.cancelled_at).map((x:Row)=><View key={x.id} style={s.card}>{text(x.worker_id?name(x.worker_id):'Quart disponible',{fontWeight:'600'})}{text(date(x.starts_at,x.timezone)+' → '+date(x.ends_at,x.timezone))}{text((data.locations.find((l:Row)=>l.id===x.location_id)?.name||'Établissement')+' · version '+x.version,{fontSize:12,color:'#6c8066'})}{x.position_id?text('Poste : '+(data.positions.find((p:Row)=>p.id===x.position_id)?.title||'Poste exclusif')):null}{x.note?text(x.note):null}
+ const arrivalForm=arrivalShift&&canReportArrivalIssue(data.shifts.find((x:Row)=>x.id===arrivalShift),
+  data.own,arrivalIssueForShift(data.arrivalIssues,arrivalShift,arrivalKind))?<View style={s.card}>
+  {text(arrivalKind==='late'?'Prévenir d’un retard':'Signaler un problème d’accès',{fontSize:19,fontWeight:'700'})}
+  {text('Signalement volontaire au responsable. Aucune position GPS, heure de travail, absence ou retard ne sera déduit automatiquement.',{fontSize:12})}
+  {field('Précision facultative (500 caractères maximum)','arrivalMessage')}
+  {arrivalKind==='late'?field('Estimation en minutes (facultative, 1–240)','arrivalEta'):null}
+  {button('Envoyer au responsable',()=>{
+   let payload:Row;
+   try{payload=arrivalIssuePayload(arrivalKind,form.arrivalMessage,form.arrivalEta);}
+   catch(err:any){setNotice(err.message);return;}
+   Alert.alert('Confirmer ce signalement ?','Une notification sera envoyée au responsable; aucun pointage ne sera modifié.',[
+    {text:'Annuler',style:'cancel'},
+    {text:'Envoyer',onPress:()=>run(async()=>{
+     const shift=data.shifts.find((x:Row)=>x.id===arrivalShift);
+     if(!canReportArrivalIssue(shift,data.own,arrivalIssueForShift(data.arrivalIssues,arrivalShift,arrivalKind)))
+      throw Error('Ce quart ne peut plus être signalé.');
+     if(!arrivalRequest.current||arrivalRequest.current.shift!==arrivalShift||arrivalRequest.current.kind!==arrivalKind)
+      arrivalRequest.current={shift:arrivalShift!,kind:arrivalKind,id:Crypto.randomUUID()};
+     await rpc('report_essential_shift_arrival_issue',{p_shift:shift.id,p_expected_version:shift.version,...payload,p_request:arrivalRequest.current.id});
+     setArrivalShift(null);arrivalRequest.current=null;
+     setNotice('Signalement transmis au responsable.');
+    })}
+   ]);
+  })}
+  {button('Annuler',()=>{setArrivalShift(null);arrivalRequest.current=null;})}
+ </View>:null;
+ const arrivalInbox=manager&&!data.arrivalUnavailable?<View style={s.card}>
+  {text('Retards déclarés et problèmes d’accès',{fontSize:19,fontWeight:'700'})}
+  {text('Messages volontaires des salariés, sans déduction GPS ou absence automatique.',{fontSize:12})}
+  {data.arrivalIssues.length===0?text('Aucun signalement récent.'):null}
+  {data.arrivalIssues.map((item:Row)=><View key={item.id} style={{padding:9,borderWidth:1,borderColor:'#DCE8D6',borderRadius:8,gap:4}}>
+   {text(item.kind==='late'?'Retard déclaré':'Problème d’accès',{fontWeight:'600'})}
+   {text('Salarié : '+name(item.worker_id),{fontSize:12})}
+   {item.estimate_minutes?text('Estimation volontaire : '+item.estimate_minutes+' min (non vérifiée)',{fontSize:12}):null}
+   {item.private_message?text(item.private_message,{fontSize:12}):null}
+   {text(arrivalStatusLabel(item),{fontSize:12})}
+   {item.status==='reported'?button('Pris en charge',()=>run(()=>rpc('ack_essential_shift_arrival_issue',{p_company:account.companyId,p_issue:item.id}))):null}
+  </View>)}
+ </View>:null;
+ const calendar=<>{multiSiteView}{arrivalInbox}{arrivalForm}{absenceForm}<View style={s.card}>{text('Quarts publiés',{fontSize:19,fontWeight:'600'})}{text('7 derniers jours et 90 prochains jours · maximum 1 000 quarts',{fontSize:11,color:'#6c8066'})}{data.own?button('Partager mon horaire (.ics)',()=>run(sharePersonalCalendar)):null}{data.own?privateCalendar:null}{data.own?text('Calendrier personnel, importation manuelle; les futures modifications ne se synchronisent pas automatiquement.',{fontSize:11,color:'#6c8066'}):null}{anyPlan?button(showForm?'Fermer le formulaire':'Planifier',()=>{setEditing(null);setShowForm(v=>!v)}):null}</View>{showForm?<View style={s.card}>{choose('Salarié','worker',[...(feature('advanced_schedules')?[['','Quart à combler'] as [string,string]]:[]),...data.roster.map((w:Row)=>[w.id,w.name] as [string,string])])}{location('location')}{department()}{choose('Organisation','mode',[['single','Quart unique'],...(feature('advanced_schedules')?[['weekly','Hebdomadaire'],['rotate2','Jour / soir'],['rotate3','Jour / soir / nuit']] as [string,string][]:[])])}{text('Heures locales de '+(data.locations.find((l:Row)=>l.id===form.location)?.timezone||'l’établissement'),{fontSize:12})}{form.mode==='single'?<>{field('Début local','start','2026-11-02T07:00')}{field('Fin locale','end','2026-11-02T15:00')}</>:<>{field('Premier jour AAAA-MM-JJ','first')}{field('Semaines / cycles','weeks')}{field('Jours ISO séparés par virgules','days')}{field('Début A','startTime')}{field('Fin A','endTime')}{form.mode!=='weekly'?<>{field('Début B','startTime2')}{field('Fin B','endTime2')}</>:null}{form.mode==='rotate3'?<>{field('Début C','startTime3')}{field('Fin C','endTime3')}</>:null}</>}{field('Note','note')}{button('Publier',()=>run(publish))}{templates}</View>:null}{data.shifts.filter((x:Row)=>!x.cancelled_at).map((x:Row)=><View key={x.id} style={s.card}>{text(x.worker_id?name(x.worker_id):'Quart disponible',{fontWeight:'600'})}{text(date(x.starts_at,x.timezone)+' → '+date(x.ends_at,x.timezone))}{text((data.locations.find((l:Row)=>l.id===x.location_id)?.name||'Établissement')+' · version '+x.version,{fontSize:12,color:'#6c8066'})}{x.position_id?text('Poste : '+(data.positions.find((p:Row)=>p.id===x.position_id)?.title||'Poste exclusif')):null}{x.note?text(x.note):null}
  {assignedSiteForShift(data.assignedSites,x.id)?<View style={{gap:5,padding:9,backgroundColor:'#F4F7F2',borderRadius:8}}>
   {text('Client · '+assignedSiteSummary(assignedSiteForShift(data.assignedSites,x.id)),{fontWeight:'600'})}
   {text(assignedSiteAddress(assignedSiteForShift(data.assignedSites,x.id)),{fontSize:12})}
@@ -228,6 +274,11 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
    ]))}
    {button('Fermer',()=>{setVisitShift(null);setVisitChoices([])})}
   </View>:null}
+ {(!data.arrivalUnavailable&&data.own&&x.worker_id===data.own)?ARRIVAL_ISSUE_LABELS.map(([kind,label])=>{
+ const existing=arrivalIssueForShift(data.arrivalIssues,x.id,kind);
+ if(existing)return <View key={kind}>{text(label+' : '+arrivalStatusLabel(existing),{fontSize:12})}</View>;
+ return canReportArrivalIssue(x,data.own,null)?<View key={kind}>{button(label,()=>{setArrivalShift(x.id);setArrivalKind(kind as 'late'|'access');setForm(f=>({...f,arrivalMessage:'',arrivalEta:''}));arrivalRequest.current=null;})}</View>:null;
+ }):null}
  {feature('advanced_schedules')&&!data.absenceUnavailable?(()=>{const report=absenceForShift(data.absences,x.id);
   if(report)return <View style={{gap:6}}>{text(absenceStatus(report.status),{fontSize:12,fontWeight:'600'})}{manager&&report.status==='reported'&&report.worker_id!==data.own?<>{button('Pris en charge',()=>run(()=>rpc('review_essential_shift_absence',{p_absence:report.id,p_decision:'acknowledged'})))}{button('Suivi requis',()=>run(()=>rpc('review_essential_shift_absence',{p_absence:report.id,p_decision:'follow_up'})))}</>:null}</View>;
   return canReportShift(x,data.own,false)?button('Signaler mon absence',()=>{setAbsenceShift(x.id);setForm(f=>({...f,absenceReason:'',absenceNote:''}));absenceRequest.current=null;}):null;

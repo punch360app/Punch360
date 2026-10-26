@@ -1,6 +1,18 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — préférence d’itinéraire depuis Plus → Réglages (NAV-004 partiel)
+## Lot actif — messages d’arrivée volontaires (NAV-007, partiel)
+
+**Branche** `feat/essential-voluntary-arrival-issues-20261026`, PR à ouvrir, Supabase **exclusivement** `mlabstdxxwjdpfaxiwmg`. Pour un quart réel déjà affecté, l'employé connecté peut **« Prévenir d’un retard »** (avec estimation facultative, jamais calculée) ou **« Signaler un problème d’accès »** (précision volontaire). Le serveur vérifie le salarié/compagnie, l’état et la version du quart, empêche une nouvelle alerte pour le même type/quart, conserve le message dans une table privée, notifie les seuls Boss/Admin; leur action **« Pris en charge »** avertit l'employé et met à jour son statut. Web et source Expo. Aucun GPS, SMS, retard ou absence inféré, changement de session/punch, paie ou changement d'heure.
+
+**Validation :** migration additive `20261026220525_essential_shift_arrival_issues` **installée** dans le seul Supabase autorisé; fonctions RPC accessibles seulement authenticated avec contrôles d’appartenance et de rôle; table privée RLS sans lecture directe; aucune permission anon. Test `supabase/tests/essential_shift_arrival_issues.sql` passé sur le schéma installé avec **BEGIN/ROLLBACK** : deux entreprises, salarié, Boss extérieur refusé, double soumission idempotente, prise en charge et avis unique à l'employé, notes absentes des notifications. CI TypeScript/Web Node [#40409565962](https://github.com/punch360app/Punch360/actions/runs/40409565962) **SUCCESS** sur le code du parcours (passation finale à revérifier).
+
+**À faire avant livraison :** ouvrir PR avec `PUNCH-PROGRESS: NAV-007`, CI sur SHA final et fusion si verte, suivre Pages au SHA fusionné, vérifier le suivi. Recette authentifiée Web et appareils Android/iPhone installés **non attestés**. NAV-007 reste partiel : Construction et communications sans quart publié non développées; aucun avis d’absence quand l’entreprise n'utilise pas d’horaire.
+
+## Dernier lot livré — itinéraires et préférences personnels (NAV-004/006 partiels)
+
+PR [#146](https://github.com/punch360app/Punch360/pull/146) : chaque quart client offre le choix Maps/Waze/Plans, CI et Pages réussies. PR [#147](https://github.com/punch360app/Punch360/pull/147) : consignes et contact protégés à l'ouverture. PR [#148](https://github.com/punch360app/Punch360/pull/148) fusionnée, préférences de navigation dans Plus → Réglages. Les recettes d’appareils restent ouvertes. **Ne pas réutiliser la branche historique NAV-006**, déjà livrée par #146. La PR #150 ajoute de nouvelles exigences de missions/répartition au prompt maître, **non encore réalisées**; la prochaine tâche indépendante réalisable peut en reprendre un vrai parcours complet sans créer de deuxième calendrier.
+
+## Historique — préférence d’itinéraire depuis Plus → Réglages (NAV-004 partiel)
 
 **PR [#148](https://github.com/punch360app/Punch360/pull/148)**, branche `feat/essential-navigation-preferences-settings-20261026`. Web/PWA et source Expo : sous **Plus → Réglages → Navigation**, chacun peut sélectionner, consulter ou effacer Google Maps, Waze, Plans Apple compatible ou le choix système Android même **sans quart ni adresse actuelle**. La préférence `punch-navigation:<utilisateur>:<compagnie>` est privée à l'appareil et à l'espace de travail, réutilisée sur l’Accueil Punch. Écriture contrôlée pour plateforme et compte; erreur de stockage non annoncée comme succès. Aucun code d'accès, adresse, GPS ni pointage persisté.
 
@@ -72,7 +84,7 @@ Branche `docs/master-execution-cleanup-20261026`. Nettoyage demandé par le prop
 
 ## Prochaine action exécutable
 
-Valider le lot NAV-008 : CI complète, fusion, Pages exact SHA et registre. Tester ensuite l'ouverture conditionnelle des consignes sur vrais appareils et comptes autorisés, sans exposer un code secret dans une URL ou notification. NAV-007 (retard/problème d'accès volontaire) et système de préférence sous Réglages sont les prochains lots NAV, mais la branche concurrente `feat/essential-navigation-preferences-settings-20261026` doit être préservée. Stripe #35 et OAuth #102 toujours bloqués par les recettes fournisseur; transfert MLOC-004 ne doit pas sauter les protections GPS/pauses/offline.
+Vérifier le résultat de la CI de la PR NAV-007 sur la tête définitive; corriger le journal en cas d'échec. Fusionner seulement si les contrôles obligatoires sont verts, suivre GitHub Pages jusqu'au résultat final sur le SHA de fusion, puis vérifier l'inventaire automatique. Ne pas marquer la recette navigateur connecté ni Expo installée comme faite. Ensuite inspecter les nouvelles exigences MISSION-001–015 issues de la PR #150, choisir un lot de création → publication → fin explicite avec isolation multi-entreprise et une seule session Punch; ne pas déployer un moteur de missions fictif ou de pointage parallèle. Bloqueurs externes Stripe #35 et OAuth #102 inchangés; préserver tarifs, six IDs Stripe et contrats existants, SMS/Twilio en dernier.
 
 ## Coordination et protections
 
