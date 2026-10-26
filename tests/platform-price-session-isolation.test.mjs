@@ -105,3 +105,16 @@ test('changes to company and reason discard loaded approvals and confirmation',a
  assert.equal(h.ui.state.list,null);
  assert.equal(h.ui.state.approveConfirmation,'');
 });
+
+test('directory handoff displays escaped company name and clears it on next company',()=>{
+ const h=create(()=>({data:{}}));
+ h.ui.choose(A,'Commerce <script>alert(1)</script>');
+ assert.match(h.ui.render(),/Commerce &lt;script>/);
+ assert.doesNotMatch(h.ui.render(),/<script>/);
+ assert.match(h.ui.render(),/Le devis ne modifie pas son abonnement/);
+ h.ui.choose(B,'Atelier Beta');
+ assert.equal(h.ui.state.companyName,'Atelier Beta');
+ assert.doesNotMatch(h.ui.render(),/Commerce/);
+ h.ui.reset();
+ assert.equal(h.ui.state.companyName,'');
+});
