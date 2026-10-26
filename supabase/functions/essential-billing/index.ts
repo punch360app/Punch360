@@ -1,5 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,checkoutExpiryFromOrder,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
+import {readLimitedUtf8Request} from '../_shared/limited-body.mjs';
 import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,preflightStripeOrderCustomer,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,stripeRenewalIdempotencyKey,preflightStripeRenewalAction,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
@@ -12,7 +13,7 @@ Deno.serve(async(req:Request)=>{
  const url=Deno.env.get('SUPABASE_URL')!,user=createClient(url,Deno.env.get('SUPABASE_ANON_KEY')!,{global:{headers:{Authorization:authorization}},auth:{persistSession:false}}),admin=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
  const auth=await user.auth.getUser();if(auth.error||!auth.data.user)return response(401,{error:'AUTH_REQUIRED'});
  try{
-  const raw=await req.text();if(raw.length>4096)return response(413,{error:'REQUEST_TOO_LARGE'});const body=JSON.parse(raw);
+  const raw=await readLimitedUtf8Request(req,4096);const body=JSON.parse(raw);
   const uuid=(x:unknown)=>typeof x==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
   if(!uuid(body.companyId)||!['status','checkout','preview','confirm','portal','invoices','cancel','resume'].includes(body.action))return response(400,{error:'INVALID_REQUEST'});
   const context=await admin.rpc('billing_service_context',{p_actor:auth.data.user.id,p_company:body.companyId,p_order:body.orderId||null});if(context.error)return response(403,{error:'CONTRACT_ACCESS_DENIED'});
@@ -125,5 +126,5 @@ Deno.serve(async(req:Request)=>{
   // racing webhook. Only provider acceptance moves submitting -> submitted.
   await save({status:'submitted',subscription_id:sub.id},a.customer_id);
   return response(200,{pending_payment:!!updated.pending_update,pending_server_confirmation:true});
- }catch(err){const m=err instanceof Error?err.message:'BILLING_ERROR';return response(400,{error:m.startsWith('STRIPE_')||/^[A-Z_]+$/.test(m)?m:'BILLING_REQUEST_FAILED'});}
+ }catch(err){const m=err instanceof Error?err.message:'BILLING_ERROR';if(m==='BODY_TOO_LARGE')return response(413,{error:'REQUEST_TOO_LARGE'});return response(400,{error:m.startsWith('STRIPE_')||/^[A-Z_]+$/.test(m)?m:'BILLING_REQUEST_FAILED'});}
 });

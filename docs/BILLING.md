@@ -202,3 +202,16 @@ La validation `preflightStripeRenewalAction` refuse **avant le POST** les abonne
 - **Testé :** nouveaux tests Node et contrôle séquentiel d'appels dans la PR; CI à confirmer. Aucun fournisseur Stripe sandbox appelé.
 - **Déployé :** non. La version Edge active doit être vérifiée séparément; éviter toute publication sans recettes de facturation et compatibilité clients.
 - **Intervention externe :** tests Stripe sandbox réel de résiliation, reprise, état fournisseur déjà effectif, mauvais statut et webhook; issue #35 ouverte.
+
+## P0 — Taille réelle des requêtes et webhooks Stripe : lecture bornée (26 octobre 2026)
+
+Les Edge Functions de facturation et de webhook faisaient auparavant `await req.text()` puis vérifiaient la taille de la chaîne, ce qui lisait **la totalité de la requête non fiable en mémoire** avant rejet. Les limites de 4 Kio (actions Boss) et 1 Mio (webhooks signés) ne protégeaient pas contre les requêtes volontairement énormes ni le calcul par caractère plutôt qu'octet UTF-8.
+
+Le helper `supabase/functions/_shared/limited-body.mjs` lit le flux d'octets par morceaux, tient compte des tailles réelles UTF-8, rejette `Content-Length` trop élevé avant lecture et stoppe aussitôt si le total dépasse la limite, même si l'en-tête ment ou manque. Une entrée UTF-8 invalide ou une longueur déclarée incohérente est refusée. Le webhook Stripe conserve **exactement le texte JSON reçu** (sans re-sérialisation), condition nécessaire à la vérification de signature HMAC. Les dépassements retournent HTTP 413; les autres erreurs d'encodage/longueur sont refusées sans fuite.
+
+- **Développé** : Edge `essential-billing`, `essential-stripe-webhook` et helper commun; aucune mutation SQL ni nouvelle clé.
+- **Testé** : tests Node des frontières 4 Kio / 1 Mio, UTF-8 multi-octets fragmenté, Content-Length mensonger/absent, interruption précoce, parse/signature après lecture; résultat CI à renseigner dans PR.
+- **Déployé** : NON; la présence du fichier GitHub ne prouve pas la version du fournisseur active. Nécessite publication contrôlée et vérification de routes Edge sur le seul projet Supabase officiel.
+- **Intervention externe** : vérification avec Stripe sandbox de webhooks réellement signés (y compris espaces, caractères non ASCII, limites et retries), sécurité de la livraison HTTPS et non-régression facturation; issue #35 ouverte.
+
+Préserver les six Price IDs, forfaits propriétaires, contrats et paiements; publier uniquement après les autres prérequis de migration SQL P0-B #108.
