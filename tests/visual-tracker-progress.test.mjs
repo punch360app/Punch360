@@ -47,7 +47,10 @@ test('exactly 578 master IDs, backfilled evidence, no invented deployment or bla
  const output=summarize(progress);
  assert.equal(output.total,578);
  assert.equal(output.documented,ids.length);
- assert.equal(output.developedTested,ids.length);
+ assert.equal(output.developedTested,ids.filter(id=>progress.requirements[id].tested==='software').length);
+ assert.ok(output.developedTested<output.documented,'older merged PR titles are not proof of software tests');
+ assert.ok(output.documented>=80,'retrospective archives, HR, kiosk and Super Admin must be represented');
+ assert.ok(Object.values(progress.requirements).some(r=>r.tested==='not_verified'&&r.developed==='partial'));
  assert.equal(output.delivered,0);
  assert.equal(output.percent,Math.round(1000*ids.length/578)/10);
 });
