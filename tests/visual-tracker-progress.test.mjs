@@ -21,7 +21,7 @@ const summarize=vm.runInNewContext(
 test('Work progress is sourced from GitHub, NOT owner localStorage checkboxes',()=>{
  for(const id of ['progressFraction','progressPercent','progressRemaining','progressMeter','progressFill','progressDetail','progressSync'])
   assert.ok(html.includes('id="'+id+'"'),id);
- assert.match(html,/1\\. Travail documenté par Work/);
+ assert.ok(html.includes('1. Travail documenté par Work'));
  assert.match(html,/async function loadWorkProgress\(\)/);
  assert.ok(html.includes('raw.githubusercontent.com/punch360app/Punch360/main/web/live/work-progress.json'));
  assert.ok(html.includes("'./work-progress.json?t='+stamp"));
