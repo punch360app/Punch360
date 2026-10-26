@@ -275,5 +275,458 @@
       ],
       "note": "Frontière du cache d'identité des punchs codée/testée; journaux offline multientreprises non complètement recettés."
     }
-  }
+  },
+  "activity": [
+    {
+      "number": 121,
+      "sha": null,
+      "head_sha": "be3f74c682dad616915eba605860d6fd28d7b59d",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Suivi HTML PUNCH — afficher en tête le nombre et % d'exigences marquées terminées",
+      "merged_at": "2026-10-26T14:00:06Z"
+    },
+    {
+      "number": 120,
+      "sha": null,
+      "head_sha": "d72644a39b51302fea0c6faca8834130f5222b31",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Expo — invalider un devis Stripe dès la modification du forfait ou des places",
+      "merged_at": "2026-10-26T13:53:59Z"
+    },
+    {
+      "number": 119,
+      "sha": null,
+      "head_sha": "4312d6db91992a7642d777d606a923de136a5237",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B — Révoquer un ancien devis Stripe Boss dès qu’un choix change",
+      "merged_at": "2026-10-26T13:46:53Z"
+    },
+    {
+      "number": 117,
+      "sha": null,
+      "head_sha": "9219bd7baead1e077044806623ef96fcf8eaba99",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Actualiser le tableau HTML PUNCH avec PR #112–#115 et déploiement vérifié",
+      "merged_at": "2026-10-26T13:06:58Z"
+    },
+    {
+      "number": 116,
+      "sha": null,
+      "head_sha": "bb427d844682f298437611503d61c9effdbcf3f1",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Suivi autonome — enregistrer les PR #112–#115 et prochaine reprise P0",
+      "merged_at": "2026-10-26T13:03:19Z"
+    },
+    {
+      "number": 115,
+      "sha": null,
+      "head_sha": "f010adeac4483f7e040f26d4e1563a1d4405faaf",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0 Super Admin — corriger l'ancienne grille préremplie des offres négociées",
+      "merged_at": "2026-10-26T12:59:35Z"
+    },
+    {
+      "number": 114,
+      "sha": null,
+      "head_sha": "32d73256b88015a78c62bbfdc1bbd99852ad8a95",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B — afficher les factures Stripe sans masquer une pagination",
+      "merged_at": "2026-10-26T12:54:38Z"
+    },
+    {
+      "number": 113,
+      "sha": null,
+      "head_sha": "34eec87cae5e0aaf943d981709ff6a683407dbed",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0 sécurité — limiter en flux les requêtes de facturation et webhooks Stripe",
+      "merged_at": "2026-10-26T12:47:51Z"
+    },
+    {
+      "number": 112,
+      "sha": null,
+      "head_sha": "523d5c4f0733227dcf3c992d073625e41933c49d",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe — valider l'état réel avant résiliation ou reprise",
+      "merged_at": "2026-10-26T12:41:36Z"
+    },
+    {
+      "number": 111,
+      "sha": null,
+      "head_sha": "2850cc63bcc70aa07c43f705b3d061303d463289",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Publier le centre de suivi HTML PUNCH 360° (578 exigences / 29 lots)",
+      "merged_at": "2026-10-26T12:27:45Z"
+    },
+    {
+      "number": 110,
+      "sha": null,
+      "head_sha": "1895d45bdd02eec8c9cb092510c0e29c65d01584",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-A — Isoler les actions Stripe mobiles entre comptes et compagnies",
+      "merged_at": "2026-10-26T11:20:24Z"
+    },
+    {
+      "number": 109,
+      "sha": null,
+      "head_sha": "7541b5d14bd636bb53b57c40d8986816e3d777d8",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : fiabiliser l'identifiant de résiliation et de reprise",
+      "merged_at": "2026-10-26T11:11:08Z"
+    },
+    {
+      "number": 108,
+      "sha": null,
+      "head_sha": "af37572e57c0c7fb26cb587820812d73eb6c10e2",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : distinguer confirmation en cours et paiement confirmé sans rétrograder une commande",
+      "merged_at": "2026-10-26T11:01:09Z"
+    },
+    {
+      "number": 107,
+      "sha": null,
+      "head_sha": "46037bb59bc1bddf0018a839fd0357f008329ae5",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B — Refuser les paniers Stripe multi-lignes avant le webhook de facturation",
+      "merged_at": "2026-10-26T11:00:24Z"
+    },
+    {
+      "number": 106,
+      "sha": null,
+      "head_sha": "c7373d72473e2f2863daf304efbee0e55c72e077",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-C — Empêcher l’ancienne identité de revenir après déconnexion hors ligne",
+      "merged_at": "2026-10-26T10:52:59Z"
+    },
+    {
+      "number": 105,
+      "sha": null,
+      "head_sha": "41c91946260a79355a1b9dd9e7db6feb48d04c53",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-C — Vérifier l’identité des punchs en ligne sans briser le mode hors ligne",
+      "merged_at": "2026-10-26T10:46:55Z"
+    },
+    {
+      "number": 104,
+      "sha": null,
+      "head_sha": "317c6d5cc25dc7d831a94772735671523d4de81a",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-C Auth : vérifier l’identité Supabase serveur avant de charger les compagnies",
+      "merged_at": "2026-10-26T10:39:41Z"
+    },
+    {
+      "number": 103,
+      "sha": null,
+      "head_sha": "72be207355305a7cacd2b485c88baff4385da22f",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-C Auth mobile : empêcher qu'un ancien espace réapparaisse après déconnexion",
+      "merged_at": "2026-10-26T10:32:52Z"
+    },
+    {
+      "number": 101,
+      "sha": null,
+      "head_sha": "ab79356dfb41412d7220ab89e00ca825ec23835a",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-D Auth mobile : traiter OAuth et récupération au démarrage à froid",
+      "merged_at": "2026-10-26T10:26:07Z"
+    },
+    {
+      "number": 100,
+      "sha": null,
+      "head_sha": "e50c2e8bb3e4e328cb0671a600b65d856a955eb3",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : vérifier le client existant avant toute création de prix personnalisé",
+      "merged_at": "2026-10-26T10:12:25Z"
+    },
+    {
+      "number": 99,
+      "sha": null,
+      "head_sha": "9a366e2afaf72816cf38ec9c8cc994e10c20998b",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : refuser les devis Checkout trop anciens avant toute création de Price",
+      "merged_at": "2026-10-26T10:04:58Z"
+    },
+    {
+      "number": 98,
+      "sha": null,
+      "head_sha": "eb234cc99584d27a2a422f3d38fd63c722272a76",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : reconnaître les factures webhook modernes et vérifier leur rattachement",
+      "merged_at": "2026-10-26T09:59:19Z"
+    },
+    {
+      "number": 97,
+      "sha": null,
+      "head_sha": "bc734e2d0db15e86e206f0b5101187f75472b4e8",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : isoler portail, factures et Customer par entreprise",
+      "merged_at": "2026-10-26T09:55:18Z"
+    },
+    {
+      "number": 96,
+      "sha": null,
+      "head_sha": "04f0567fca6b50eb5ba5047bf2172e5deb293362",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : vérifier l'entreprise et le client avant toute mutation d'abonnement",
+      "merged_at": "2026-10-26T09:12:10Z"
+    },
+    {
+      "number": 95,
+      "sha": null,
+      "head_sha": "a6651b17f9eb480c98fbe3da2694466ca4fcdef4",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : précontrôle des abonnements avant création d'un Price",
+      "merged_at": "2026-10-26T08:07:09Z"
+    },
+    {
+      "number": 94,
+      "sha": null,
+      "head_sha": "6be9817d2729bc3f450abd99634a541a56b95e0d",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : confirmer un tarif négocié sans recréer de Price",
+      "merged_at": "2026-10-26T07:35:03Z"
+    },
+    {
+      "number": 93,
+      "sha": null,
+      "head_sha": "c5eca8721d10f21dfdb8237e8dec15bb23aa9d3e",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0-B Stripe : refuser confirmation de devis périmé ou d'un autre Price ID",
+      "merged_at": "2026-10-26T07:10:04Z"
+    },
+    {
+      "number": 92,
+      "sha": null,
+      "head_sha": "22adc8f05dbb4eb392194f4990889123414de0e7",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0 Stripe : préserver les forfaits du propriétaire et réutiliser les 6 prix existants",
+      "merged_at": "2026-10-26T06:46:10Z"
+    },
+    {
+      "number": 91,
+      "sha": null,
+      "head_sha": "543d1c29d741664d2fc60fda0904d8aab6d42f80",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0 — État déployé vérifié et divergence de catalogue #90",
+      "merged_at": "2026-10-26T06:32:03Z"
+    },
+    {
+      "number": 89,
+      "sha": null,
+      "head_sha": "c6f15e373123630d72754e384711200a9a2e43dd",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "P0 Super Admin #35 : isoler le devis Boss et le portail Stripe entre compagnies",
+      "merged_at": "2026-10-26T06:21:16Z"
+    },
+    {
+      "number": 88,
+      "sha": null,
+      "head_sha": "e1ca2ec232f13bc57202c2abcf82f0e7f4458eb7",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Prompt maître : intégrer tout le reste du chantier Validation SQL archives",
+      "merged_at": "2026-10-26T06:04:50Z"
+    },
+    {
+      "number": 87,
+      "sha": null,
+      "head_sha": "f61d3fd0f530911b58418ca8a6aacc408bfd2af4",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Super Admin : isoler les devis particuliers entre compagnies et après déconnexion",
+      "merged_at": "2026-10-26T05:53:50Z"
+    },
+    {
+      "number": 85,
+      "sha": null,
+      "head_sha": "81a3e2bb970c3c6c546432432c88f15ba43c9b47",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Suivi Validation : issue PDF Storage #81 résolue, recettes terrain toujours ouvertes",
+      "merged_at": "2026-10-26T05:39:28Z"
+    },
+    {
+      "number": 84,
+      "sha": null,
+      "head_sha": "b7d904d115d2ffc7b4b2c613f6582e9220753ce9",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Archives : plafonner les blocs d'export, valider les tailles et masquer les erreurs PDF",
+      "merged_at": "2026-10-26T05:36:46Z"
+    },
+    {
+      "number": 83,
+      "sha": null,
+      "head_sha": "08b6b1dad8c3274ecc437181675b802f1b86d295",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Archives PDF : plafonner réellement à 25 Mo les lectures Storage",
+      "merged_at": "2026-10-26T05:35:37Z"
+    },
+    {
+      "number": 82,
+      "sha": null,
+      "head_sha": "13e11edbbb1ff0d8e152ce9f66681f8197704f38",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Sécurité Boss : isoler MFA multi-entreprises et versionner nettoyage Auth",
+      "merged_at": "2026-10-26T05:28:21Z"
+    },
+    {
+      "number": 80,
+      "sha": null,
+      "head_sha": "d97eaf85d04bb2ff580b17889db97f78673030e8",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Validation archives : test PDF binaire intégré et fermeture confidentielle",
+      "merged_at": "2026-10-26T05:22:36Z"
+    },
+    {
+      "number": 79,
+      "sha": null,
+      "head_sha": "4f47c9b81a5e7da0f2f433350545869ada1555e7",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Console Essentiel : paramètres de bornes en 10 langues, liens secrets protégés",
+      "merged_at": "2026-10-26T05:09:21Z"
+    },
+    {
+      "number": 78,
+      "sha": null,
+      "head_sha": "c711dc622e427c55573b1a6e0bab32db7326b7bb",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Essentiel Boss/Admin : réconciliation hors ligne en 10 langues",
+      "merged_at": "2026-10-26T05:02:10Z"
+    },
+    {
+      "number": 77,
+      "sha": null,
+      "head_sha": "ef8d18d8b1c30a2f265fccc6a9a0d7c3c7b683d7",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Borne Essentiel : traductions complètes des états de session et de pauses",
+      "merged_at": "2026-10-26T04:54:26Z"
+    },
+    {
+      "number": 76,
+      "sha": null,
+      "head_sha": "f93169902a82c61905d4b4be05d3f434b29011f8",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Borne Essentiel : incidents de sécurité et hors ligne traduits (10 langues)",
+      "merged_at": "2026-10-26T04:45:50Z"
+    },
+    {
+      "number": 75,
+      "sha": null,
+      "head_sha": "06e1e410f1e6ee7f424c55434719c229bdfb4ef4",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Validation SQL archives : garde-fous RLS, ACL, PDF privés et purge",
+      "merged_at": "2026-10-26T04:37:27Z"
+    },
+    {
+      "number": 74,
+      "sha": null,
+      "head_sha": "267bd2471e2857f5dbb4b636d100f2efc6c67470",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Borne Essentiel : 10 langues et RTL — PR réconciliée avec main",
+      "merged_at": "2026-10-26T04:21:52Z"
+    },
+    {
+      "number": 72,
+      "sha": null,
+      "head_sha": "e8e225d0c58e3ea0c53176b9b951476270b41d00",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Suivi prompt Validation : 3 PR multientreprise et recettes restantes",
+      "merged_at": "2026-10-26T04:17:24Z"
+    },
+    {
+      "number": 71,
+      "sha": null,
+      "head_sha": "27a1e7523c64ea002544a2eefc95c8fce6e4c03f",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Corriger la dernière job mémorisée pour les comptes multi-entreprises",
+      "merged_at": "2026-10-26T04:14:53Z"
+    },
+    {
+      "number": 70,
+      "sha": null,
+      "head_sha": "9f370b98cc4b136ca1b2fbcc30d8acc57a9b7112",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Recette SQL : isolement réel des rôles et horaires entre deux commerces",
+      "merged_at": "2026-10-26T04:12:43Z"
+    },
+    {
+      "number": 69,
+      "sha": null,
+      "head_sha": "992746fd2e9c6eb9ebb36cb4fe2f83ae782f0fb1",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Essentiel Expo — 10 langues de navigation et direction RTL par compte",
+      "merged_at": "2026-10-26T04:06:05Z"
+    },
+    {
+      "number": 68,
+      "sha": null,
+      "head_sha": "4f246030bd061a93ad9b95634a908178dcc2b04a",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Essentiel et Construction : sélecteur sécurisé pour salariés multi-entreprises",
+      "merged_at": "2026-10-26T04:07:55Z"
+    },
+    {
+      "number": 67,
+      "sha": null,
+      "head_sha": "f8800f58931cf56e66fe1d37d3878986bd5fa8bb",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Essentiel : 10 langues de navigation, préférence personnelle et RTL arabe",
+      "merged_at": "2026-10-26T03:50:00Z"
+    },
+    {
+      "number": 66,
+      "sha": null,
+      "head_sha": "d1c33202fc6e9ed232eb42b7290ccdc44121968d",
+      "ci": "not_verified_in_manifest",
+      "ids": [],
+      "title": "Essentiel : succession Boss Expo avec MFA (réconciliée avec main)",
+      "merged_at": "2026-10-26T03:37:29Z"
+    }
+  ],
+  "history_note": "Activité récente importée depuis les PR fusionnées. Les anciennes PR sans mapping ID ne gonflent pas les exigences; leurs CI ne sont pas automatiquement certifiées rétroactivement."
 }
