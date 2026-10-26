@@ -54,3 +54,22 @@ export function selectRegisteredPrice(registered,cadence,amount){
  // negotiated amounts create a new Price *on the same verified existing product*, never a Product.
  return configured.amount_cents===amount?configured.stripe_price_id:null;
 }
+
+/**
+ * Fail closed before submitting a Stripe subscription change. The stored
+ * preview must still describe this exact order price, subscription and item.
+ * No user-provided preview identifiers are trusted.
+ */
+export function verifySubscriptionPreview(preview,subscription,item,intendedPriceId,nowSeconds=Math.floor(Date.now()/1000)){
+ const fail=()=>{throw Error('PREVIEW_EXPIRED');};
+ if(!preview||typeof preview!=='object'||!subscription||!item||
+    typeof intendedPriceId!=='string'||!/^price_[a-zA-Z0-9]{8,80}$/.test(intendedPriceId)||
+    !Number.isSafeInteger(nowSeconds)||nowSeconds<0)fail();
+ if(preview.price_id!==intendedPriceId||preview.subscription_id!==subscription.id||
+    preview.item_id!==item.id||preview.subscription_price!==item.price?.id)fail();
+ if(!Number.isSafeInteger(preview.proration_date)||!Number.isSafeInteger(preview.expires_at)||
+    preview.proration_date>nowSeconds||preview.expires_at!==preview.proration_date+600||
+    nowSeconds>=preview.expires_at)fail();
+ if(subscription.pending_update||subscription.items?.data?.length!==1)fail();
+ return preview;
+}
