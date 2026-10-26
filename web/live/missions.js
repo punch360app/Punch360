@@ -14,6 +14,7 @@ export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.reg
  * Only address fields reach the map URL: never notes, entry codes, phone or worker identity.
  * Missing/invalid destinations are unavailable, not silently replaced with the office.
  */
+/** @param {Record<string,any>|null|undefined} m @param {string} platform @param {string|null} preferred */
 export function missionNavigationOptions(m,platform='web',preferred=null){
  if(!m?.address_line||!m?.city)return {choices:[],preferred:null};
  try{
