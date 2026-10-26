@@ -60,6 +60,9 @@
 | E54 | GOD-10 — Relève simple du prochain quart | À FAIRE | **TASK-011–012, QA-029** : notes et tâches restantes contextualisées par quart/poste/site, lecture de relève, rotation/remplacement, droits et audit; pas de nouvelle messagerie ni punch implicite. |
 | E55 | GOD-11 — Ventes × Personnel | À FAIRE | **BUDGET-012–013, QA-030** : CSV ventes agrégées par heure, rapprochement couverture/coûts, suggestions prudentes reliées au simulateur; aucun client identifiant ni intégration POS prétendue livrée. Pro opt-in. |
 | E56 | GOD-12 — Copilote IA de planification | À FAIRE | **SHIFT-037, SEC-016, QA-030** : question en langage naturel, moteur métier déterministe pour filtrer les candidats, permission serveur avant IA, réponse explicable, plafonds de coûts; aucune lecture privée ni affectation sans validation humaine. Pro opt-in, fonctionnement possible sans IA. |
+| E57 | Remplacement d'Admin et transfert sécurisé du Boss | À FAIRE | **INVITE-013–014, SEC-017, QA-031** : rétrogradation ou révocation de l'Admin avec effet immédiat côté serveur, promotion distincte d'un successeur, conservation historique et approbations; transfert de Boss accepté/vérifié, jamais d'entreprise sans propriétaire, traitement du titulaire contractuel distinct et support exceptionnel audité. Vérifier Web/Expo, caches et accès hors ligne. |
+| E58 | Compte unique avec plusieurs entreprises et sélecteur | À FAIRE | **INVITE-015–017, SEC-017, QA-032** : un `auth.uid()` et plusieurs appartenances actives avec rôles/dossiers/sièges/politiques distincts, sélecteur sans déconnexion, cache et sessions isolés, invitation à Auth existant. **Blocage constaté : `src/auth/AuthGate.tsx` utilise `.limit(1).maybeSingle()`** et ne charge pas toutes les entreprises. Ne pas déclarer livré avant correction, autorisations RPC et recette réelle. |
+| E59 | Mon horaire global privé et conflits entre emplois | À FAIRE | **CAL-012–013, SEC-017, QA-032** : vue des propres quarts publiés de plusieurs commerces et alertes personnelles de chevauchement; aucun Boss/Admin ne découvre l'autre employeur ni ses horaires, rémunération, disponibilités ou données de pointage. Aucun partage ICS interentreprises et aucun refus de quart automatique fondé sur une activité externe. |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
@@ -86,7 +89,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 568 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 578 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
