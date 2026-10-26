@@ -118,3 +118,15 @@ Le portail Stripe, l'historique des factures et la réutilisation d'un Customer 
 - **Testé :** CI GitHub Actions TypeScript/Node et syntaxe Web à confirmer sur la PR; Stripe sandbox fournisseur non testé.
 - **Déployé :** non pour ce correctif Edge, tant que la recette Stripe sandbox n'a pas été faite et le déploiement confirmé.
 - **Intervention externe :** vérifier les Customers de test et leurs métadonnées chez Stripe, le portail, les factures, Checkout, prorata et webhooks; issue #35 reste ouverte. Les anciens Customers sans métadonnée exigent une revue manuelle et ne sont pas réparés automatiquement.
+
+
+## P0-B — Webhooks facture Stripe modernes et isolation (26 octobre 2026)
+
+La fonction Edge de webhook prend maintenant en charge **les deux schémas d'événement facture** : l'ancien champ `invoice.subscription` et le champ moderne `invoice.parent.subscription_details.subscription`. Sans cette compatibilité, les événements `invoice.paid` ou `invoice.payment_failed` dépourvus de l'ancien champ étaient silencieusement ignorés. Deux références contradictoires provoquent un refus.
+
+Avant de transmettre une facture au RPC d'application, le serveur récupère la facture Stripe et contrôle le lien exact vers l'abonnement, le client, la devise CAD et le mode test/live. Il contrôle la dernière facture de l'abonnement et, séparément, la facture de l'événement lorsque celle-ci est différente. Les factures étrangères, les aperçus sans facture réelle et les incohérences sont refusés plutôt que crédités à une autre entreprise.
+
+- **Développé :** correctif Edge webhook, fonctions de vérification partagées, tests négatifs Node; aucune modification SQL, catalogue, Price IDs, contrats ou clients.
+- **Testé :** CI GitHub Actions à vérifier sur la PR; scénarios mockés ancien/nouveau schéma, autre client, abonnement différent, devise et mode erronés. Aucun événement réel Stripe sandbox testé.
+- **Déployé :** non pour ce nouveau correctif, jusqu'à recette fournisseur et publication Edge contrôlée.
+- **Intervention externe :** livrer et rejouer des événements Stripe sandbox signés (ancien/nouveau format), confirmer les états après paiement/échec et les factures réelles, puis déployer; issue #35 maintenue ouverte. Les autres risques de concurrence webhook et de rapprochement restent à valider.
