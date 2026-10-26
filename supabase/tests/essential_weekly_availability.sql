@@ -5,7 +5,7 @@ declare boss uuid:=gen_random_uuid();other_boss uuid:=gen_random_uuid();
  employee uuid:=gen_random_uuid();owner_id uuid;sid uuid:=gen_random_uuid();
  tenant uuid;other_tenant uuid;site uuid;worker uuid;no_phone_worker uuid;shift_id uuid;
  req uuid:=gen_random_uuid();result jsonb;view_rows jsonb;preview jsonb;exception_id uuid;
- shift_row public.scheduled_shifts;rule_id uuid;changed boolean;denied boolean;
+ shift_row public.scheduled_shifts;rule_id uuid;leave_id uuid;changed boolean;denied boolean;
 begin
  insert into auth.users(id,email,email_confirmed_at) values
  (boss,boss||'@test.invalid',now()),(other_boss,other_boss||'@test.invalid',now()),
@@ -52,6 +52,26 @@ begin
  if jsonb_array_length(view_rows)<>1 or view_rows->0->>'worker_id'<>worker::text then raise exception 'Employee list incorrect';end if;
  preview:=public.essential_availability_shift_preview(tenant,shift_row.starts_at-interval '1 day',shift_row.ends_at+interval '1 day');
  if preview->'shifts'->0->>'status'<>'available' then raise exception 'Weekly availability not shown: %',preview;end if;
+ -- Approved leave outranks a recurring available rule; no salary or shift mutations.
+ execute 'reset role';
+ insert into public.leave_requests(company_id,user_id,leave_type,begins_on,ends_on,status)
+ values(tenant,employee,'personal',(shift_row.starts_at at time zone 'America/Toronto')::date,
+ (shift_row.ends_at at time zone 'America/Toronto')::date,'approved') returning id into leave_id;
+ execute 'set local role authenticated';
+ preview:=public.essential_availability_shift_preview(tenant,shift_row.starts_at-interval '1 day',shift_row.ends_at+interval '1 day');
+ if preview->'shifts'->0->>'status'<>'unavailable' or preview->'shifts'->0->>'source'<>'approved_leave' then
+  raise exception 'Approved leave did not outrank recurring: %',preview;end if;
+ execute 'reset role';
+ update public.leave_requests set status='cancelled' where id=leave_id;
+ execute 'set local role authenticated';
+ -- An explicitly reported absence is also higher priority.
+ perform public.report_essential_shift_absence(shift_id,shift_row.version,'undisclosed','',gen_random_uuid());
+ preview:=public.essential_availability_shift_preview(tenant,shift_row.starts_at-interval '1 day',shift_row.ends_at+interval '1 day');
+ if preview->'shifts'->0->>'status'<>'unavailable' or preview->'shifts'->0->>'source'<>'absence' then
+  raise exception 'Reported absence did not outrank recurring: %',preview;end if;
+ execute 'reset role';
+ delete from private.essential_shift_absences where company_id=tenant and shift_id=shift_id;
+ execute 'set local role authenticated';
  exception_id:=public.set_essential_availability(tenant,shift_row.starts_at,shift_row.ends_at,false,'');
  preview:=public.essential_availability_shift_preview(tenant,shift_row.starts_at-interval '1 day',shift_row.ends_at+interval '1 day');
  if preview->'shifts'->0->>'status'<>'unavailable' or preview->'shifts'->0->>'source'<>'dated_exception' then
