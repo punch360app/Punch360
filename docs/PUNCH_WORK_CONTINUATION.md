@@ -1,3 +1,13 @@
+# Reprise — abonnement calendrier personnel privé (PR #55)
+
+Le prompt original **« Validation SQL archives »** continue avec un flux personnel **iCalendar par URL secrète et révocable**, sans connexion OAuth aux comptes Google/Apple/Microsoft. SQL `20261026014802_essential_personal_calendar_feeds` installée dans le projet exclusif Supabase `mlabstdxxwjdpfaxiwmg`. Fonction Edge `essential-calendar` **version 2** déployée, contrôle du secret par empreinte SHA-256 et vérification de l'appartenance active à chaque lecture; aucune lecture directe par `anon` ou `authenticated`. Web et Expo : création, renouvellement et révocation du lien privé. Chaque renouvellement invalide immédiatement l'ancien lien; déclencheurs de révocation sur perte d'accès/changement de rôle; aucun lien créé en réel lors des tests.
+
+Recette SQL transactionnelle `supabase/tests/essential_personal_calendar_feeds.sql` rejouée après installation : succès et ROLLBACK. Tests TypeScript/Node/DOM en CI; dernière exécution à vérifier avant la fusion de la PR #55, ainsi que Pages. Lien confidentiel donnant accès aux quarts, donc ne pas le rendre public. Les calendriers externes rafraîchissent selon leurs propres intervalles.
+
+**Suite du prompt original** : revue et recette des accès Boss/récupération Auth, horaires spéciaux et affectations, 10 langues/RTL, UX responsive, intégration Stripe test/OAuth, appareils et résilience/PRA, SMS en dernier. Le prompt maître fusionné au dépôt reste distinct; **ne pas le traiter maintenant**.
+
+---
+
 # Reprise — Alertes de certifications pour postes exclusifs (PR #54)
 
 Après la fusion de la PR #52 et son déploiement Web réussi, le prompt original **Validation SQL archives** continue avec la détection des certifications expirées/retirées après publication des quarts. Rapport serveur Pro/gestionnaire en lecture seule, borné à 90 jours et 200 anomalies, interfaces Web et Expo. Migration Supabase **`20261026012801_essential_position_cert_alerts` installée**; test SQL synthétique avec ROLLBACK réussi après installation, aucun changement de données clients. PR : <https://github.com/punch360app/Punch360/pull/54>. CI, fusion et Pages à vérifier; recette authentifiée et notifications automatiques restent ouvertes.
