@@ -1,3 +1,11 @@
+# Reprise Super Admin — isolation des devis par session (26 octobre 2026)
+
+Après validation des PR d'archives, passage aux priorités visibles de Super Admin : les devis négociés déjà existants ne sont pas reconstruits. **Correctif** dans `web/live/platform-price-proposals.js` : les retours RPC arrivant après logout/changement de compagnie/MFA ne réaffichent plus un ancien client ni ne lancent de lecture supplémentaire. Les diagnostics RPC sensibles sont remplacés par un message neutre; sélection depuis le répertoire affiche le nom échappé de l'entreprise et rappelle qu'aucun abonnement n'est modifié sans le Boss et Stripe. Tests `tests/platform-price-session-isolation.test.mjs`, PWA rafraîchie. Documentation `docs/SUPER_ADMIN_PRICE_SESSION_20261026.md`.
+
+Ce lot n'active **aucun tarif ni paiement**. Issue #35 toujours ouverte pour validations et intégration fournisseurs Stripe; PR #82 MFA/transfert Boss parallèle. La vraie recette d'archives et les essais matériels du prompt « Validation SQL archives » demeurent ouverts. Le prompt maître reste séparé, SMS/Twilio dernier.
+
+---
+
 # Reprise vérifiée — protection contre les PDF Storage surdimensionnés (PR #83)
 
 Le défaut P1 **issue #81** est **résolu et fermé**. La PR #83 est fusionnée dans `main`, avec lectures bornées aux octets effectivement reçus, arrêt et annulation au premier dépassement de 25 Mio, et conservation du calcul SHA-256, preuve, permissions et anti-écrasement. Test de 26 Mio sans en-tête, en-tête mensonger, taille annoncée trop grande, limite exactement 25 Mio, et scénario PDF synthétique complet. CI **217 tests sur 217** réussie. Fonction Edge `company-archive-files` déployée en **version 2 ACTIVE** et `verify_jwt=true` dans le seul Supabase officiel. Documentation : `docs/ARCHIVE_STORAGE_STREAM_CAP_20261026.md`.
