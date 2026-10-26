@@ -17,7 +17,9 @@
 | #111 : Centre de suivi HTML 578 exigences | PR fusionnée | CI #40322622716 réussite | Fichier présent dans main ; publication GitHub Pages à vérifier indépendamment | Aucune synchronisation automatique des statuts |
 | **#112 : états résiliation/reprise** | Fusionnée, `e74a13faab5c46f6ee1e1e5b0560da4608f43c36` | **CI #40324356469 SUCCESS** après un ancien test adapté | **Pas de déploiement Edge vérifié** | Recette Stripe sandbox #35 |
 | **#113 : requêtes Stripe bornées à 4 Kio / webhooks 1 Mio** | Fusionnée, `7be1d3c448830eac972c23c8100e24b46934738e` | **CI #40325182072 SUCCESS** après correction du préchargement simulé | **Pas de déploiement Edge vérifié** | Vérification signature/réseau avec Stripe sandbox #35 |
-| **#114 : factures jusqu'à 100 + avertissement has_more** | **PR en revue / à fusionner après CI** | CI et merge à vérifier avec HEAD courant | **Non déployé** (Edge/Expo/Web à distinguer) | Stripe fictif avec >100 factures |
+| **#114 : factures jusqu'à 100 + avertissement has_more** | **Fusionnée**, `71801cd3ac46e8bbfced435e26ba4104ba29289d` | **CI #40325978654 SUCCESS** | Edge/Expo non déployés; Pages Web à vérifier | Stripe fictif avec >100 factures |
+
+| **#115 : valeurs des devis particuliers Super Admin** | **PR en cours** | CI à confirmer, tests DOM | Web Pages à vérifier après fusion | Vérification Boss/Stripe sandbox #35 |
 
 ## Blocages constatés : ne pas donner de GO commercial
 - **#35 P0-A/P0-B :** Stripe produit/Price réel test, retour Checkout, prorata/taxes/remises, factures, reçus/webhooks et tests SQL sur **environnement isolé**. Le code Edge récent dépend de la migration `supabase/migrations/20261026110100_billing_confirm_intent.sql` (PR #108). **SQL puis Edge seulement après recette et validation de compatibilité** ; les anciens clients Expo avec timestamps de résiliation ne fonctionneront pas avec l'Edge UUID stricte #109.
@@ -26,10 +28,10 @@
 - **P4 :** SMS/Twilio uniquement en dernier selon décision du propriétaire.
 
 ## Reprise exacte — consignes d'exécution
-1. Vérifier les PR et issues de `main` **y compris la #114**, les workflows GitHub et leur conclusion finale. Si test rouge, lire les logs, corriger et relancer; ne jamais fusionner CI rouge.
-2. Terminer le lot P0 `STRIPE-012` **dans la PR #114** : fichiers `supabase/functions/essential-billing/index.ts`, `web/live/billing.js`, `src/billing/BillingPanel.tsx`, `tests/essential-stripe-invoice-history.test.mjs`, `docs/BILLING.md`. Aucun SQL live.
-3. Après CI verte, fusionner, mettre à jour ce registre avec SHA/CI/conclusion et regarder le workflow GitHub Pages distinct. Ne pas confondre merge GitHub, Pages, Supabase Edge et build Expo.
+1. Vérifier les PR et issues de `main` **y compris la #115**, les workflows GitHub et leur conclusion finale. Si test rouge, lire les logs, corriger et relancer; ne jamais fusionner CI rouge.
+2. Terminer le lot **P0-A `SACATALOG-005–014`**, commencer par la **PR #115** : valeurs de départ des devis Super Admin, protection des champs négociés, tests Node/DOM. Le lot `STRIPE-012` / PR #114 est fusionné et testé, mais la recette fournisseur reste bloquée.
+3. Après CI verte de la PR #115, fusionner, mettre à jour ce registre avec SHA/CI/conclusion et regarder le workflow GitHub Pages distinct. Ne pas confondre merge GitHub, Pages, Supabase Edge et build Expo.
 4. Reprendre **P0-A / P0-B** sur la prochaine lacune technique vérifiée (tarifs particuliers/Stripe et sécurité), sans se limiter à retoucher le même flux; enregistrer les éventuels blocages fournisseur, puis passer à **P0-C/P0-D** et ensuite aux P1.
 5. Pour chaque lot garder quatre états séparés : développé, testé, déployé, intervention externe. **Ne déclarer terminé qu'avec preuves appropriées pour tout le parcours.**
 
-Ce registre reflète les preuves en date du 26 octobre. Il doit être actualisé après la fusion de la PR #114 et au début de chaque séance; les suivis historiques ne priment pas sur le code et les tests actuels.
+Ce registre reflète les preuves en date du 26 octobre. Il doit être actualisé après la fusion de la PR #115 et au début de chaque séance; les suivis historiques ne priment pas sur le code et les tests actuels.
