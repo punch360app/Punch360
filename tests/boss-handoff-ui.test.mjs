@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {createBossHandoffController} from '../web/live/boss-handoff.js';
 const c='11111111-1111-4111-8111-111111111111',boss='22222222-2222-4222-8222-222222222222',admin='33333333-3333-4333-8333-333333333333';
 const escape=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function setup({role='boss',user=boss,askValue=null,status=null}={}){
+function setup({role='boss',user=boss,askValue=null,status=null,mfaLevel='aal2'}={}){
  const calls=[];
- let current=status;
- const sb={auth:{mfa:{getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:'aal2'}}),listFactors:async()=>({data:{totp:[{id:'factor',status:'verified'}]}}),challengeAndVerify:async()=>({data:{}}),enroll:async()=>({data:{id:'factor',totp:{qr_code:'data:image/png;base64,xxx'}}})}},rpc:async(name,args)=>{
+ let current=status,level=mfaLevel;
+ const sb={auth:{mfa:{getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:level}}),listFactors:async()=>({data:{totp:[{id:'factor',status:'verified'}]}}),challengeAndVerify:async()=>{level='aal2';return {data:{}}},enroll:async()=>({data:{id:'factor',totp:{qr_code:'data:image/png;base64,xxx'}}})}},rpc:async(name,args)=>{
   calls.push({name,args});
   if(name==='essential_boss_handoff_status')return {data:current};
   if(name==='essential_boss_handoff_request'){current={id:'request1',version:1,from_user:boss,to_user:admin,status:'pending',can_accept:false,expires_at:'2026-10-28'};return {data:current};}
