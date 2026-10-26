@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
-import {createArchiveFilesHandler} from '../supabase/functions/company-archive-files/handler.mjs';
+import {createArchiveFilesHandler,readStorageBounded} from '../supabase/functions/company-archive-files/handler.mjs';
 
 const URL='https://mlabstdxxwjdpfaxiwmg.supabase.co';
 const ORIGIN='https://punch360app.github.io';
@@ -71,4 +71,19 @@ test('Content-Length exceeding 25 MiB rejects before consuming the Storage strea
  assert.equal(result.error,'DOCUMENT_TOO_LARGE');
  assert.equal(h.reads,0);
  assert.equal(h.proofs,0);
+});
+
+test('an exact 25 MiB PDF stream is accepted at the cap and remains byte-for-byte intact',async()=>{
+ const oneMiB=new Uint8Array(1024*1024);
+ oneMiB[0]=0x25;oneMiB[1]=0x50;oneMiB[2]=0x44;oneMiB[3]=0x46; // PDF signature
+ oneMiB[oneMiB.length-1]=0x42;
+ let count=0,cancelled=false;
+ const stream=new ReadableStream({pull(c){if(count===25){c.close();return;}count++;c.enqueue(oneMiB);},cancel(){cancelled=true;}},{highWaterMark:0});
+ const bytes=await readStorageBounded(new Response(stream,{status:200}));
+ assert.ok(bytes instanceof Uint8Array);
+ assert.equal(bytes.byteLength,LIMIT);
+ assert.equal(bytes[0],0x25);
+ assert.equal(bytes[1],0x50);
+ assert.equal(bytes[LIMIT-1],0x42);
+ assert.equal(cancelled,false);
 });
