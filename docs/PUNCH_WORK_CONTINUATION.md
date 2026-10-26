@@ -1,3 +1,9 @@
+# Reprise — vérification SQL en lecture seule des archives (26 octobre 2026)
+
+Dans le prompt original **« Validation SQL archives »**, branche `test/archive-security-posture-20261026` : nouveau test `supabase/tests/company_archive_security_posture.sql` exécuté avec succès sur `mlabstdxxwjdpfaxiwmg` en transaction `BEGIN READ ONLY` / `ROLLBACK`, sans aucun changement d'entreprise, de PDF, de session ni de configuration. Assertions : quatre tables privées RLS et aucun droit `anon/authenticated`, 20 fonctions archives/restore sans exécution publique/anonyme, preuve serveur non ouverte aux salariés, deux buckets PDF privés et cron de purge actif. Rapport : `docs/ARCHIVE_SQL_SECURITY_POSTURE_20261026.md`. Cette vérification technique ne remplace pas les quatre scénarios SQL de restauration fictive déjà réussis ni la recette Storage binaire/OAuth/Stripe/appareils/charge/PRA restante. **Prompt maître non démarré; SMS/Twilio toujours en dernier.**
+
+---
+
 # Reprise — Borne commune Essentiel en 10 langues (PR de réconciliation)
 
 Ce lot du prompt original **« Validation SQL archives »** reprend le code de la PR #73 sur le `main` actuel pour résoudre uniquement un conflit de documentation. La borne PWA comprend désormais le sélecteur de 10 langues, l'arabe RTL sans inversion des chiffres, l'identification/NIP et le pointage localisés, une réinitialisation au français après chaque session, aucun stockage de préférence par salarié et un pré-cache PWA de `kiosk-locale.js`. Tests DOM/Node d'identification, PIN non conservé, hors ligne et anti-doublons, plus dictionnaire 10 langues. **Aucun SQL, compte ou contrat réel touché.** Documentation : `docs/ESSENTIAL_KIOSK_TEN_LANGUAGES_20261026.md`.
