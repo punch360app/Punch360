@@ -15,3 +15,11 @@ La demande expire après 48 heures, est annulable et utilise des versions empêc
 **Limites :** une succession volontaire n'est pas un protocole de récupération pour un Boss indisponible. Elle requiert encore une recette avec deux utilisateurs fictifs et deux appareils authentifiés, plus vérification de la rotation des sessions et de l'envoi des notifications. Aucun accès au mot de passe d'autrui.
 
 Ce travail appartient au prompt original « Validation SQL archives ». Le prompt maître consolidé reste un chantier distinct.
+
+## Correctif de sécurité — 26 octobre 2026
+
+Après la fusion de la PR #62, l'interface est renforcée : chaque changement d'entreprise ou de compte efface la référence du facteur MFA, le QR, le code à usage unique et l'ancien statut de succession. Les réponses asynchrones provenant d'une ancienne entreprise ne remplacent plus le statut courant. Avant AAL2, le bouton d'actualisation des demandes n'est pas affiché; la RPC refuse toujours la lecture côté serveur.
+
+Migration `20261026052212_boss_handoff_auth_cleanup.sql` déjà installée sur le projet Supabase officiel : les demandes privées d'un compte Auth supprimé sont effacées en cascade au lieu de bloquer la suppression de ce compte. L'audit d'entreprise doit respecter sa propre politique de conservation.
+
+La recette SQL transactionnelle de succession a été relancée après installation avec succès. Aucune compagnie réelle n'a fait l'objet d'une succession pendant les tests. La recette de deux appareils et deux personnes réellement authentifiées reste à effectuer avant qualification terrain.

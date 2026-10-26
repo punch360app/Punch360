@@ -10,8 +10,8 @@ export function createBossHandoffController({
  const rpc=async(name,args)=>{const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data;};
  async function load(company,role,memberId){
   const n=++generation;
-  Object.assign(s,{company,role,memberId,error:'',notice:'',busy:true,status:null});
-  try{if(company&&['boss','admin'].includes(role)){const m=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(m.error)throw m.error;s.mfaLevel=m.data?.currentLevel||'aal1';if(s.mfaLevel==='aal2')s.status=await rpc('essential_boss_handoff_status',{p_company:company});}}
+  Object.assign(s,{company,role,memberId,error:'',notice:'',busy:true,status:null,mfaLevel:'aal1',factor:null,qr:null,code:''});
+  try{if(company&&['boss','admin'].includes(role)){const m=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(m.error)throw m.error;if(n!==generation)return;s.mfaLevel=m.data?.currentLevel||'aal1';if(s.mfaLevel==='aal2'){const status=await rpc('essential_boss_handoff_status',{p_company:company});if(n===generation)s.status=status;}}}
   catch(err){if(n===generation)s.error=err.message||'Session MFA requise';}
   finally{if(n===generation){s.busy=false;redraw();}}
  }
@@ -28,7 +28,7 @@ export function createBossHandoffController({
   ${s.error?`<p role="alert">${e(s.error)}</p>`:''}
   ${s.notice?`<p role="status">${e(s.notice)}</p>`:''}
   ${s.mfaLevel!=='aal2'?`<div class="ess-panel"><h4>Vérification d'identité obligatoire</h4><p>Activez ou confirmez votre application d'authentification pour gérer la succession.</p>${s.qr?`<img class="ess-qr" src="${e(s.qr)}" alt="Code QR pour application d’authentification">`:''}${button('Configurer ou utiliser mon authentificateur','mfa-enroll')}<label class="ess-field">Code de votre application à 6 chiffres<input id="boss-handoff-mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="${e(s.code)}"></label>${button('Vérifier mon identité','mfa-verify',!s.factor)} </div>`:''}
-  ${button('Actualiser le statut','refresh')}
+  ${s.mfaLevel==='aal2'?button('Actualiser le statut','refresh'):''}
   ${h&&h.status!=='expired'?`<p>État : <b>${e(h.status)}</b> · v${Number(h.version)}</p><p>Boss : <code>${e(h.from_user)}</code></p><p>Successeur : <code>${e(h.to_user)}</code></p><p>Date limite : ${e(h.expires_at)}</p>
   ${h.status==='pending'&&h.can_accept?button('Accepter la responsabilité (MFA)','accept'):''}
   ${h.status==='accepted'&&h.can_complete?button('Confirmer et transférer le rôle Boss (MFA)','complete'):''}

@@ -101,3 +101,23 @@ test('refresh stays outside protected handoff RPC until AAL2 confirmation',async
  assert.equal(ctrl.state.mfaLevel,'aal1');
  assert.equal(ctrl.state.status,null);
 });
+
+test('a new company clears previous MFA factor, QR and one-time code',async()=>{
+ const {ctrl}=setup({mfaLevel:'aal1'});
+ await ctrl.load(c,'boss',boss);
+ ctrl.state.factor='former-company-factor';
+ ctrl.state.qr='data:image/png;base64,sensitive';
+ ctrl.state.code='123456';
+ const other='44444444-4444-4444-8444-444444444444';
+ await ctrl.load(other,'admin',admin);
+ assert.equal(ctrl.state.company,other);
+ assert.equal(ctrl.state.factor,null);
+ assert.equal(ctrl.state.qr,null);
+ assert.equal(ctrl.state.code,'');
+ assert.equal(ctrl.state.status,null);
+});
+test('non-MFA sessions cannot see the handoff status reload action',async()=>{
+ const {ctrl}=setup({mfaLevel:'aal1'});
+ await ctrl.load(c,'boss',boss);
+ assert.doesNotMatch(ctrl.render(),/data-action="boss-handoff:refresh"/);
+});
