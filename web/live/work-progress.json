@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:52:45.838Z",
+  "generated_at": "2026-10-26T22:10:15.273Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1204,7 +1204,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        151
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1263,6 +1264,16 @@
     }
   },
   "activity": [
+    {
+      "number": 151,
+      "sha": "277e9999ea733981e96bcef3ca89bb0b4c94bf1b",
+      "ci": "success",
+      "ids": [
+        "NAV-007"
+      ],
+      "title": "Essentiel — prévenir volontairement d’un retard ou d’un problème d’accès",
+      "merged_at": "2026-10-26T22:10:06Z"
+    },
     {
       "number": 150,
       "sha": "f6ecc53d068c5888f75382afbefd548076ea76b1",
@@ -1776,15 +1787,6 @@
       "ids": [],
       "title": "P0-B Stripe : reconnaître les factures webhook modernes et vérifier leur rattachement",
       "merged_at": "2026-10-26T09:59:19Z"
-    },
-    {
-      "number": 97,
-      "sha": null,
-      "head_sha": "bc734e2d0db15e86e206f0b5101187f75472b4e8",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : isoler portail, factures et Customer par entreprise",
-      "merged_at": "2026-10-26T09:55:18Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
