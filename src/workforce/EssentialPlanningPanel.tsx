@@ -9,6 +9,7 @@ import {ClientDirectoryPanel} from './ClientDirectoryPanel';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from '../../web/live/shift-client-sites.js';
 import {buildMultiSiteOverview} from '../../web/live/multi-site-overview.js';
 import {navigationStopChoices} from '../../web/live/navigation-choices.js';
+import {VISIT_ALERT_KINDS,canSendVisitAlert,prepareVisitAlert,visitAlertLabel} from '../../web/live/visit-alerts.js';
 import {plannedClientReport,plannedClientReportCsv} from '../../web/live/planned-client-report.js';
 import {ABSENCE_REASONS,absenceForShift,absenceStatus,canReportShift,prepareAbsence} from '../../web/live/shift-absence.js';
 import React,{useEffect,useRef,useState} from 'react';
@@ -17,7 +18,7 @@ import {supabase,PUNCH_SUPABASE_URL} from '../lib/supabase';
 import type {WorkspaceAccount} from '../auth/AuthGate';
 type Row=Record<string,any>;
 export function EssentialPlanningPanel({account,initial='calendar'}:{account:WorkspaceAccount;initial?:'calendar'|'organization'}){
- const [tab,setTab]=useState<'calendar'|'organization'|'requests'|'availability'|'report'>(initial),[data,setData]=useState<Row>({templates:[],positions:[],locations:[],departments:[],roster:[],shifts:[],requests:[],absences:[],absenceUnavailable:false,scopes:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,workerPrefs:[],prefsUnavailable:false,assignedSites:[],assignedSitesUnavailable:false,loadedFrom:'',loadedTo:'',options:[],features:[],workers:[]}),[form,setForm]=useState<Row>({mode:'single',timezone:'America/Toronto',first:new Date().toISOString().slice(0,10),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:new Date().toISOString().slice(0,10),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',prefLoadedWorker:'',prefVersion:0,reminderWeek:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDue:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDepartment:'',visitSearch:'',visitSite:'',reportFrom:new Date().toISOString().slice(0,10),reportTo:new Date(Date.now()+7*86400000).toISOString().slice(0,10),clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',overviewDay:new Date().toISOString().slice(0,10),overviewPeriod:'day',overviewWorker:'',overviewSite:'',overviewDepartment:''}),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[showForm,setShowForm]=useState(false),[editing,setEditing]=useState<Row|null>(null),[report,setReport]=useState<Row|null>(null),[positionAlerts,setPositionAlerts]=useState<Row|null>(null),[calendarFeed,setCalendarFeed]=useState<Row|null>(null),[calendarLink,setCalendarLink]=useState('');
+ const [tab,setTab]=useState<'calendar'|'organization'|'requests'|'availability'|'report'>(initial),[data,setData]=useState<Row>({templates:[],positions:[],locations:[],departments:[],roster:[],shifts:[],requests:[],visitAlerts:[],visitAlertsUnavailable:false,absences:[],absenceUnavailable:false,scopes:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,workerPrefs:[],prefsUnavailable:false,assignedSites:[],assignedSitesUnavailable:false,loadedFrom:'',loadedTo:'',options:[],features:[],workers:[]}),[form,setForm]=useState<Row>({mode:'single',timezone:'America/Toronto',first:new Date().toISOString().slice(0,10),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:new Date().toISOString().slice(0,10),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',prefLoadedWorker:'',prefVersion:0,reminderWeek:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDue:nextIsoMonday(new Date().toISOString().slice(0,10)),reminderDepartment:'',visitSearch:'',visitSite:'',visitKind:'possible_delay',visitNote:'',reportFrom:new Date().toISOString().slice(0,10),reportTo:new Date(Date.now()+7*86400000).toISOString().slice(0,10),clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',overviewDay:new Date().toISOString().slice(0,10),overviewPeriod:'day',overviewWorker:'',overviewSite:'',overviewDepartment:''}),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[showForm,setShowForm]=useState(false),[editing,setEditing]=useState<Row|null>(null),[report,setReport]=useState<Row|null>(null),[positionAlerts,setPositionAlerts]=useState<Row|null>(null),[calendarFeed,setCalendarFeed]=useState<Row|null>(null),[calendarLink,setCalendarLink]=useState('');
  const activeAccount=useRef('');activeAccount.current=account.companyId+':'+account.userId;const loadRevision=useRef(0);
  const prefsToForm=(row:Row|undefined,worker:string):Row=>({
   prefLoadedWorker:worker,prefWorker:worker,prefVersion:Number(row?.version||0),
@@ -39,6 +40,7 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  const [clientReportFilters,setClientReportFilters]=useState<Row|null>(null);
  const [overviewView,setOverviewView]=useState<'employee'|'location'>('employee');
  const [accessShift,setAccessShift]=useState<string|null>(null);
+ const [visitAlertShift,setVisitAlertShift]=useState<string|null>(null),[visitAlertRequest,setVisitAlertRequest]=useState<string|null>(null);
  const [visitShift,setVisitShift]=useState<string|null>(null),[visitChoices,setVisitChoices]=useState<Row[]>([]),[visitMore,setVisitMore]=useState(false);
  const batch=useRef<{key:string;id:string}|null>(null);
  const manager=['boss','admin'].includes(account.role),feature=(f:string)=>data.features.includes(f),canPlan=(dept:string|null)=>manager||(feature('supervisors')&&data.scopes.some((g:Row)=>g.active&&g.can_plan&&g.department_id===dept)),anyPlan=manager||(feature('supervisors')&&data.scopes.some((g:Row)=>g.active&&g.can_plan));
@@ -65,8 +67,15 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
    assignedSites=Array.isArray(destinations?.items)?destinations.items:[];
    assignedSitesUnavailable=!!destinations?.has_more;
   }catch{assignedSitesUnavailable=true;}
+  let visitAlerts:Row[]=[],visitAlertsUnavailable=false;
+  try{
+   const alerts=await rpc('list_essential_visit_alerts',{p_company:account.companyId,
+    p_from:new Date(Date.now()-14*86400000).toISOString(),p_to:new Date(Date.now()+86400000).toISOString()});
+   visitAlerts=Array.isArray(alerts?.items)?alerts.items:[];
+   visitAlertsUnavailable=!!alerts?.limited;
+  }catch{visitAlertsUnavailable=true;}
   if(activeAccount.current!==key||loadRevision.current!==revision)return;
-  setData({templates,positions,locations,departments,roster,scopes,requests,availability,absences,absenceUnavailable,weeklyRules,weeklyPreview,weeklyUnavailable,workerPrefs,prefsUnavailable,assignedSites,assignedSitesUnavailable,loadedFrom:start.toISOString().slice(0,10),loadedTo:end.toISOString().slice(0,10),shifts:shifts.data||[],features:ent.features,options,own:own.data?.id,workers});setCalendarFeed(feed);
+  setData({visitAlerts,visitAlertsUnavailable,templates,positions,locations,departments,roster,scopes,requests,availability,absences,absenceUnavailable,weeklyRules,weeklyPreview,weeklyUnavailable,workerPrefs,prefsUnavailable,assignedSites,assignedSitesUnavailable,loadedFrom:start.toISOString().slice(0,10),loadedTo:end.toISOString().slice(0,10),shifts:shifts.data||[],features:ent.features,options,own:own.data?.id,workers});setCalendarFeed(feed);
   const myWorkerId=own.data?.id;
   if(!manager&&myWorkerId&&!prefsUnavailable)setForm(f=>f.prefLoadedWorker===myWorkerId?f:{...f,...prefsToForm(workerPrefs.find((p:Row)=>p.worker_id===myWorkerId),myWorkerId)});
   setForm(f=>({...f,location:f.location||locations[0]?.id,avLocation:f.avLocation||locations[0]?.id,weeklyLocation:f.weeklyLocation||locations[0]?.id,posLocation:f.posLocation||locations[0]?.id}));
@@ -185,8 +194,49 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
    </View>)}
   </>:null}
  </View>:null;
- const calendar=<>{multiSiteView}{absenceForm}<View style={s.card}>{text('Quarts publiés',{fontSize:19,fontWeight:'600'})}{text('7 derniers jours et 90 prochains jours · maximum 1 000 quarts',{fontSize:11,color:'#6c8066'})}{data.own?button('Partager mon horaire (.ics)',()=>run(sharePersonalCalendar)):null}{data.own?privateCalendar:null}{data.own?text('Calendrier personnel, importation manuelle; les futures modifications ne se synchronisent pas automatiquement.',{fontSize:11,color:'#6c8066'}):null}{anyPlan?button(showForm?'Fermer le formulaire':'Planifier',()=>{setEditing(null);setShowForm(v=>!v)}):null}</View>{showForm?<View style={s.card}>{choose('Salarié','worker',[...(feature('advanced_schedules')?[['','Quart à combler'] as [string,string]]:[]),...data.roster.map((w:Row)=>[w.id,w.name] as [string,string])])}{location('location')}{department()}{choose('Organisation','mode',[['single','Quart unique'],...(feature('advanced_schedules')?[['weekly','Hebdomadaire'],['rotate2','Jour / soir'],['rotate3','Jour / soir / nuit']] as [string,string][]:[])])}{text('Heures locales de '+(data.locations.find((l:Row)=>l.id===form.location)?.timezone||'l’établissement'),{fontSize:12})}{form.mode==='single'?<>{field('Début local','start','2026-11-02T07:00')}{field('Fin locale','end','2026-11-02T15:00')}</>:<>{field('Premier jour AAAA-MM-JJ','first')}{field('Semaines / cycles','weeks')}{field('Jours ISO séparés par virgules','days')}{field('Début A','startTime')}{field('Fin A','endTime')}{form.mode!=='weekly'?<>{field('Début B','startTime2')}{field('Fin B','endTime2')}</>:null}{form.mode==='rotate3'?<>{field('Début C','startTime3')}{field('Fin C','endTime3')}</>:null}</>}{field('Note','note')}{button('Publier',()=>run(publish))}{templates}</View>:null}{data.shifts.filter((x:Row)=>!x.cancelled_at).map((x:Row)=><View key={x.id} style={s.card}>{text(x.worker_id?name(x.worker_id):'Quart disponible',{fontWeight:'600'})}{text(date(x.starts_at,x.timezone)+' → '+date(x.ends_at,x.timezone))}{text((data.locations.find((l:Row)=>l.id===x.location_id)?.name||'Établissement')+' · version '+x.version,{fontSize:12,color:'#6c8066'})}{x.position_id?text('Poste : '+(data.positions.find((p:Row)=>p.id===x.position_id)?.title||'Poste exclusif')):null}{x.note?text(x.note):null}
- {assignedSiteForShift(data.assignedSites,x.id)?<View style={{gap:5,padding:9,backgroundColor:'#F4F7F2',borderRadius:8}}>
+ const visitAlertSummary=<View style={s.card}>
+  {text('Signalements de visites',{fontSize:19,fontWeight:'700'})}
+  {text('Avis internes volontaires, sans GPS, heures ni estimation de retard.',{fontSize:12})}
+  {data.visitAlertsUnavailable?text('Historique indisponible ou incomplet.',{fontSize:12,color:'#B34E38'}):null}
+  {data.visitAlerts.slice(0,40).map((entry:Row)=><View key={entry.id} style={{gap:4,padding:10,borderBottomColor:'#E1E8DB',borderBottomWidth:1}}>
+   {text(visitAlertLabel(entry),{fontWeight:'600'})}
+   {text(entry.employee_name+' · '+date(entry.created_at),{fontSize:12})}
+   {entry.note?text(entry.note,{fontSize:12}):null}
+   {manager&&entry.status==='reported'?button('Pris en charge',()=>run(()=>rpc('acknowledge_essential_visit_alert',{p_alert:entry.id}))):null}
+  </View>)}
+  {data.visitAlerts.length===0?text('Aucun signalement récent.',{fontSize:12}):null}
+ </View>;
+ function visitAlertForm(shift:Row){
+  if(!canSendVisitAlert(shift,data.own))return null;
+  const open=visitAlertShift===shift.id;
+  return <View style={{gap:8}}>
+   {button(open?'Fermer le signalement':'Prévenir d’un retard / problème d’accès',()=>{
+    if(open){setVisitAlertShift(null);setVisitAlertRequest(null);}
+    else{setVisitAlertShift(shift.id);setVisitAlertRequest(Crypto.randomUUID());setForm(f=>({...f,visitKind:'possible_delay',visitNote:''}));}
+   })}
+   {open?<View style={{padding:12,borderRadius:10,gap:10,backgroundColor:'#F4F7F2'}}>
+    {text('Avertir votre responsable pour ce quart',{fontWeight:'600'})}
+    {text('Ne communiquez pas de code d’accès. Aucun GPS, pointage ni temps de retard automatique.',{fontSize:12})}
+    {choose('Nature du signalement','visitKind',VISIT_ALERT_KINDS.map(x=>[x.id,x.label] as [string,string]))}
+    {text('Commentaire facultatif (500 caractères)',{fontSize:12})}
+    <TextInput accessibilityLabel="Commentaire du signalement" value={form.visitNote||''}
+     onChangeText={value=>set('visitNote',value)} multiline maxLength={500}
+     style={[s.input,{minHeight:75,textAlignVertical:'top'}]}/>
+    {button('Envoyer l’avis interne',()=>Alert.alert('Confirmer l’avis ?', 'Le responsable recevra une notification. Aucun temps de travail ne sera modifié.',[
+     {text:'Annuler',style:'cancel'},
+     {text:'Envoyer',onPress:()=>run(async()=>{
+      if(visitAlertShift!==shift.id||!visitAlertRequest)throw Error('Demande expirée.');
+      const payload=prepareVisitAlert(shift,data.own,form.visitKind,form.visitNote,visitAlertRequest);
+      const receipt=await rpc('submit_essential_visit_alert',payload);
+      setVisitAlertShift(null);setVisitAlertRequest(null);setForm(f=>({...f,visitNote:''}));
+      setNotice(receipt.delivered+' responsable(s) averti(s) en interne.');
+     })}
+    ]))}
+   </View>:null}
+  </View>;
+ }
+ const calendar=<>{multiSiteView}{visitAlertSummary}{absenceForm}<View style={s.card}>{text('Quarts publiés',{fontSize:19,fontWeight:'600'})}{text('7 derniers jours et 90 prochains jours · maximum 1 000 quarts',{fontSize:11,color:'#6c8066'})}{data.own?button('Partager mon horaire (.ics)',()=>run(sharePersonalCalendar)):null}{data.own?privateCalendar:null}{data.own?text('Calendrier personnel, importation manuelle; les futures modifications ne se synchronisent pas automatiquement.',{fontSize:11,color:'#6c8066'}):null}{anyPlan?button(showForm?'Fermer le formulaire':'Planifier',()=>{setEditing(null);setShowForm(v=>!v)}):null}</View>{showForm?<View style={s.card}>{choose('Salarié','worker',[...(feature('advanced_schedules')?[['','Quart à combler'] as [string,string]]:[]),...data.roster.map((w:Row)=>[w.id,w.name] as [string,string])])}{location('location')}{department()}{choose('Organisation','mode',[['single','Quart unique'],...(feature('advanced_schedules')?[['weekly','Hebdomadaire'],['rotate2','Jour / soir'],['rotate3','Jour / soir / nuit']] as [string,string][]:[])])}{text('Heures locales de '+(data.locations.find((l:Row)=>l.id===form.location)?.timezone||'l’établissement'),{fontSize:12})}{form.mode==='single'?<>{field('Début local','start','2026-11-02T07:00')}{field('Fin locale','end','2026-11-02T15:00')}</>:<>{field('Premier jour AAAA-MM-JJ','first')}{field('Semaines / cycles','weeks')}{field('Jours ISO séparés par virgules','days')}{field('Début A','startTime')}{field('Fin A','endTime')}{form.mode!=='weekly'?<>{field('Début B','startTime2')}{field('Fin B','endTime2')}</>:null}{form.mode==='rotate3'?<>{field('Début C','startTime3')}{field('Fin C','endTime3')}</>:null}</>}{field('Note','note')}{button('Publier',()=>run(publish))}{templates}</View>:null}{data.shifts.filter((x:Row)=>!x.cancelled_at).map((x:Row)=><View key={x.id} style={s.card}>{text(x.worker_id?name(x.worker_id):'Quart disponible',{fontWeight:'600'})}{text(date(x.starts_at,x.timezone)+' → '+date(x.ends_at,x.timezone))}{text((data.locations.find((l:Row)=>l.id===x.location_id)?.name||'Établissement')+' · version '+x.version,{fontSize:12,color:'#6c8066'})}{x.position_id?text('Poste : '+(data.positions.find((p:Row)=>p.id===x.position_id)?.title||'Poste exclusif')):null}{x.note?text(x.note):null}
+ {visitAlertForm(x)}{assignedSiteForShift(data.assignedSites,x.id)?<View style={{gap:5,padding:9,backgroundColor:'#F4F7F2',borderRadius:8}}>
   {text('Client · '+assignedSiteSummary(assignedSiteForShift(data.assignedSites,x.id)),{fontWeight:'600'})}
   {text(assignedSiteAddress(assignedSiteForShift(data.assignedSites,x.id)),{fontSize:12})}
   {assignedSiteForShift(data.assignedSites,x.id)?.access_instructions||assignedSiteForShift(data.assignedSites,x.id)?.contact_name?
@@ -223,7 +273,7 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
     {text:'Confirmer',onPress:()=>run(async()=>{
       if(form.visitSite&&!visitChoices.some(c=>c.id===form.visitSite&&c.active))throw Error('Lieu non présent dans la recherche.');
       await rpc('set_essential_shift_client_site',shiftSiteAssignmentArgs(account.companyId,x,form.visitSite));
-      setVisitShift(null);setVisitChoices([]);
+      setVisitShift(null);setVisitAlertShift(null);setVisitAlertRequest(null);setVisitChoices([]);
     })}
    ]))}
    {button('Fermer',()=>{setVisitShift(null);setVisitChoices([])})}
