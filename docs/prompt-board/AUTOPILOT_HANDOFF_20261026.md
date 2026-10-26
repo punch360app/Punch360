@@ -1,5 +1,16 @@
 # PUNCH 360° — Reprise autonome vérifiable
 
+## État courant — signalement d'absence (P1, 26 octobre 2026)
+
+**Lot principal :** un employé Essentiel Plus/Pro peut déclarer une absence sur un quart publié; Boss/Admin voit la notification minimale et choisit « Pris en charge » ou « Suivi requis »; l'employé voit la réponse. Aucune attribution automatique, modification du quart, congé ou paie. Motifs privés dans le schéma privé; nouvelle migration additive **20261026163938** appliquée **seulement** sur Supabase `mlabstdxxwjdpfaxiwmg`; 2 sociétés fictives et deux rôles validés avec transaction rollback, code Web/Expo et CI verts sur SHA `c25bd01dd6098173c22d39aa8e7274b8a30a9140` (actions #40361407776 et #40361399855). **PR #129 : en attente de fusion et de publication GitHub Pages; Expo build/appareils non vérifiés.**
+
+**P0 précédents :** PR #118 et #127 fusionnées, CI post-fusion verte; recettes Android/iOS manquantes. Stripe #35 bloqué par la migration séparée `20261026110100` absente et la recette Stripe sandbox; OAuth #102 exige consoles Google/Apple et appareils. Aucun changement Stripe, prix, contrats, Construction, SMS/Twilio.
+
+**Prochain geste :** vérifier CI sur la tête finale de #129, fusionner, suivre **PUNCH 360 Web** jusqu'à SUCCESS sur SHA déployé, vérifier le JavaScript publié et l'URL `/Punch360/suivi.html`; compléter ensuite une recette navigateur avec comptes de test, puis validations Expo Android/iOS avant de noter la fonction livrée partout. Ne pas refaire l'audit Stripe sans nouvelle preuve.
+
+---
+
+
 > **Lot additionnel P0-C (26 octobre)** : garde de déconnexion native et restauration hors ligne sur la branche `fix/p0-native-signout-offline-guard-20261026` ; détails dans [P0_NATIVE_SIGNOUT_GUARD_20261026.md](../P0_NATIVE_SIGNOUT_GUARD_20261026.md). Tests/PR à confirmer avant fusion. La recette Stripe reste bloquée par migration non installée, preuve en issue #35.
 
 **Actualisation : 26 octobre 2026.** Ce fichier mémorise le point d'arrêt et les preuves récentes, **sans remplacer les 578 exigences du prompt maître**.
