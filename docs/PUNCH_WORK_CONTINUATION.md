@@ -1,3 +1,13 @@
+# Reprise — postes exclusifs Essentiel Pro (nouvelle branche après conflit PR #51)
+
+Dans le **prompt original « Validation SQL archives »**, poste exclusif Pro créé par établissement/département, certification facultative, verrou PostgreSQL transactionnel contre chevauchements, version et audit; interfaces Web/Expo. Migration **`20261026011451_essential_exclusive_positions` appliquée dans le Supabase officiel `mlabstdxxwjdpfaxiwmg`**. Scénario SQL synthétique rollback **réussi après installation**, 0 poste et 0 affectation conservés, accès anon refusé. CI 167/167 Node/DOM, TypeScript Expo et syntaxe Web réussis sur branche précédente avant recopie sur la dernière version de main. Détails : `docs/ESSENTIAL_EXCLUSIVE_POSITIONS_20261025.md`.
+
+Ancienne PR #51 en conflit documentaire avec la fusion parallèle du prompt maître; **nouvelle PR** reprend le code sans effacer ni modifier le document `docs/prompt-board/MASTER_PROMPT_20261025.md` désormais dans main. Le prompt maître reste en attente : priorité exclusive au **prompt original Validation SQL archives**.
+
+Restent la recette authentifiée Web/Expo et les prochaines étapes du prompt original : surveillance des certifications invalidées, planning spécial et disponibilité, calendriers automatiques révocables, interventions Boss/récupération Auth, traductions RTL, design final, intégrations Stripe sandbox/OAuth/notifications/paie, tests terrain et de charge/PRA. SMS en dernier.
+
+---
+
 > **Prompt maître unique après la PR #26 :** [`docs/prompt-board/MASTER_PROMPT_20261025.md`](prompt-board/MASTER_PROMPT_20261025.md), 518 exigences en 29 lots. L'ancien giga-prompt a été retiré du dépôt courant après consolidation; seul l'historique Git conserve son ancien texte. Les bilans plus anciens ci-dessous doivent être comparés au dernier code, aux migrations et à la CI, et ne sont pas des instructions pour rejouer un ancien travail.
 
 # Reprise en cours — tarifs négociés : approbation et consentement Boss (PR #40)
