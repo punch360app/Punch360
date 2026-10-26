@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T18:21:10.297Z",
+  "generated_at": "2026-10-26T18:50:07.078Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 579,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1021,9 +1021,40 @@
         131
       ],
       "note": "Travail rattaché à la PR #131. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SHIFT-021": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        133
+      ],
+      "note": "Travail rattaché à la PR #133. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SHIFT-029": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        133
+      ],
+      "note": "Travail rattaché à la PR #133. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 133,
+      "sha": "238d4b03f1788936aef9ef385675447d8221888b",
+      "ci": "success",
+      "ids": [
+        "SHIFT-021",
+        "SHIFT-029"
+      ],
+      "title": "Essentiel Pro — besoins de couverture consolidés et copie de plage",
+      "merged_at": "2026-10-26T18:49:57Z"
+    },
     {
       "number": 131,
       "sha": "f5490672fab5612d8c04701f1099edc376b28727",
@@ -1498,15 +1529,6 @@
       "ids": [],
       "title": "Console Essentiel : paramètres de bornes en 10 langues, liens secrets protégés",
       "merged_at": "2026-10-26T05:09:21Z"
-    },
-    {
-      "number": 78,
-      "sha": null,
-      "head_sha": "c711dc622e427c55573b1a6e0bab32db7326b7bb",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Essentiel Boss/Admin : réconciliation hors ligne en 10 langues",
-      "merged_at": "2026-10-26T05:02:10Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
