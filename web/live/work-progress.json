@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T15:55:14.607Z",
+  "generated_at": "2026-10-26T16:09:22.300Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -118,7 +118,8 @@
         104,
         105,
         106,
-        110
+        110,
+        118
       ],
       "note": "Gardes mobiles multi-comptes et cache isolé; recette RLS/RPC/Appareils non finalisée."
     },
@@ -901,9 +902,30 @@
         34
       ],
       "note": "Sursis et suspensions commerciales par compagnie implémentés partiellement; recettes réelles ouvertes."
+    },
+    "QA-032": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        118
+      ],
+      "note": "Travail rattaché à la PR #118. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 118,
+      "sha": "65313f3471747c975c607ad89f193e795e9f7b9b",
+      "ci": "success",
+      "ids": [
+        "SEC-017",
+        "QA-032"
+      ],
+      "title": "P0-C — Empêcher le retour d’un espace hors ligne après déconnexion native",
+      "merged_at": "2026-10-26T16:09:12Z"
+    },
     {
       "number": 126,
       "sha": "37f831dc089bb3d680c689c5a895324697c55b17",
@@ -1357,15 +1379,6 @@
       "ids": [],
       "title": "Corriger la dernière job mémorisée pour les comptes multi-entreprises",
       "merged_at": "2026-10-26T04:14:53Z"
-    },
-    {
-      "number": 70,
-      "sha": null,
-      "head_sha": "9f370b98cc4b136ca1b2fbcc30d8acc57a9b7112",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Recette SQL : isolement réel des rôles et horaires entre deux commerces",
-      "merged_at": "2026-10-26T04:12:43Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
