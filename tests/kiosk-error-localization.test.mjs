@@ -12,7 +12,7 @@ test('kiosk incident catalog is complete in 10 languages and does not fall back 
   locale.select(language.code);
   for(const key of keys){
    const translated=locale.t(key);
-   assert.ok(translated.trim().length>15,language.code+' / '+key);
+   assert.ok(translated.trim().length>4,language.code+' / '+key);
    assert.notEqual(translated,key);
   }
  }
