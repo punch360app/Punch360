@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T22:26:34.005Z",
+  "generated_at": "2026-10-26T22:32:10.942Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1351,9 +1351,29 @@
         153
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-010": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        154
+      ],
+      "note": "Travail rattaché à la PR #154. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 154,
+      "sha": "adeee017b74e6f62913d2e654da75556d8060d15",
+      "ci": "success",
+      "ids": [
+        "MISSION-010"
+      ],
+      "title": "Missions — afficher un échec de connexion au lieu de masquer les missions",
+      "merged_at": "2026-10-26T22:32:00Z"
+    },
     {
       "number": 153,
       "sha": "806c95a678ead84f1e2c62bcf5fe2b8a4248091b",
@@ -1877,15 +1897,6 @@
       "ids": [],
       "title": "P0-D Auth mobile : traiter OAuth et récupération au démarrage à froid",
       "merged_at": "2026-10-26T10:26:07Z"
-    },
-    {
-      "number": 100,
-      "sha": null,
-      "head_sha": "e50c2e8bb3e4e328cb0671a600b65d856a955eb3",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : vérifier le client existant avant toute création de prix personnalisé",
-      "merged_at": "2026-10-26T10:12:25Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
