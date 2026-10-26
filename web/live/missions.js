@@ -13,11 +13,11 @@ export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.reg
 /** A private, bounded projection of today's already-authorized missions.
  * Never includes access notes, contacts, worker IDs or internal fields in the UI.
  */
-export function personalMissionTour(items,workerId,limit=25){
+export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
  if(!workerId)return {rows:[],total:0,hasMore:false,ambiguous:false};
  if(!Number.isInteger(limit)||limit<1||limit>50)throw Error('Limite de tournée invalide');
  const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
-  ['published','completed'].includes(m.status)&&m.id)
+  ['published','completed'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
   .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
  const ambiguity=eligible.some((m,i)=>i>0&&m.status==='published'&&eligible[i-1].status==='published'
   &&m.sort_order===eligible[i-1].sort_order);
