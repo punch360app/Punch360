@@ -1468,3 +1468,25 @@ Ces quatre sections détaillées ci-dessus sont les **sources fonctionnelles com
 - Tests : changements de syndicat/secteur en cours de période, rétroactivité, changement de régime, bonus imposable, contribution patronale distincte de retenue salariale, certificat expiré, permissions RH, multientreprise et absence de fuite dans PDF/exports.
 
 **Ordre de dépendance :** construire la fiche RH et ses règles avant la phase 2 de calcul de paie CCQ et avant le calcul définitif du coût complet; la facturation peut utiliser des coûts estimés explicitement identifiés avant cette intégration. Spécification seulement, pas fonctionnalité livrée.
+
+
+## ARCHITECTURE INTERNATIONALE — RH, PAIE, AVANTAGES ET CONFORMITÉ (ORIENTATION PRODUIT 2026-10-26)
+
+**Principe impératif :** Punch 360° est conçu international dès le départ. Le Québec/CCQ est un **module local**, jamais une hypothèse imposée au modèle de données, aux écrans ou aux calculs. Une application peut accueillir des compagnies de pays différents, et une compagnie des travailleurs, sites et contrats dans plusieurs juridictions.
+
+### Architecture
+1. Noyau universel : personne, identités professionnelles, entreprises/employeurs, contrats et affectations datés, lieu de travail et résidence fiscale (distincts), établissement payeur, devises, langues, fuseaux horaires, rémunération, avantages, déductions, documents, autorisations et historique. Ne pas utiliser une unique valeur « pays de l'entreprise » pour déterminer la paie.
+2. **Packs juridictionnels versionnés** par pays/région et dates d'effet : règles de travail, conventions collectives, cotisations, impôts, retraite, congés, heures supplémentaires, minimums, bulletins, déclarations et formulaires annuels. Statuts explicites : non pris en charge, préparation/export seulement, calcul validé, dépôt/versement intégré. Bloquer les opérations réglementées non prises en charge plutôt que produire des résultats approximatifs.
+3. Fiche employé configurable par modules : salaire horaire/fixe, commissions, pourboires, bonus, primes, indemnités, remboursements, avantages imposables ou non, assurance santé/dentaire/vie/invalidité, épargne et retraite, syndicats, conventions, certificats et formations. Contributions employeur et retenues employé séparées; règles d'admissibilité, plafonds, vesting/acquisition, périodes d'attente, dates d'effet et rétroactivité.
+4. Packs illustratifs, **sans prétendre qu'ils sont déjà conformes** : Québec CCQ/MÉDIC/retraite/syndicat; Canada hors CCQ et régimes provinciaux; États-Unis (401(k), assurance santé, W-2, taxes locales); France (conventions collectives, mutuelle, retraite, bulletins); Royaume-Uni (auto-enrolment, PAYE, pensions); autres pays ajoutables sans refonte.
+5. Travail transfrontalier : plusieurs employeurs, contrats, sites, conventions, monnaies, expatriation/détachement et télétravail international; identifier les situations nécessitant expertise humaine. Aucune conversion automatique d'obligations fiscales ou sociales d'un pays vers un autre.
+6. Calcul de coûts complets et simulations : coût patronal par heure/équipe/chantier/client/pays, budgets d'embauche, avantages négociés, alertes de renouvellement, échéances de permis et de certifications, comparaison scénarios et marges de sous-traitance. Séparer estimations financières et paies légalement calculées.
+7. Expérience : champs de fiche et documents conditionnels selon juridiction, devise et langue; formats locaux d'adresse, date et montants; modèles de talon et facture internationaux; mobile accessible. Ne pas montrer les champs CCQ à une entreprise non concernée.
+8. Sécurité et confidentialité : contrôle d'accès RH fin, cloisonnement multientreprise, résidence des données et restrictions de transfert international lorsque requises, minimisation des données sensibles, conservation et effacement selon lois locales, audit.
+9. Gouvernance : sources réglementaires officielles, mise à jour datée, tests de référence indépendants et validation humaine/partenaire pour toute mise en production d'un pack. Ne jamais annoncer un pays « pris en charge » sans tests réglementaires et parcours complets.
+
+### Ordre de livraison
+- **Fondation universelle dès maintenant**, avec schéma extensible et aucune logique fiscale CCQ codée en dur dans le noyau.
+- Première verticalisation vérifiée Canada/Québec, puis ajout de packs pays selon demande et capacité de validation.
+- Préparation/export avant calcul net, puis bulletins fiscaux, dépôts et versements seulement lorsque les intégrations et validations nécessaires existent.
+- Documenter couverture pays et limitations réelles dans le suivi; une spécification n'est pas une livraison.
