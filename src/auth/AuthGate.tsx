@@ -8,6 +8,7 @@ import {supabase} from '../lib/supabase';
 
 export type WorkspaceAccount={companyId:string;companyName:string;role:'employee'|'lead'|'admin'|'boss';userId:string;billingStatus:string;email:string;edition?:'construction'|'essential';defaultJobId?:string|null};
 type Member={company_id:string;role:WorkspaceAccount['role'];companies:{name:string;billing_status:string;product_edition?:'construction'|'essential';default_punch_job_id?:string|null}|{name:string;billing_status:string;product_edition?:'construction'|'essential';default_punch_job_id?:string|null}[]|null};
+const RECOVERY_REDIRECT='punchapp://auth/callback?type=recovery';
 const CO={bg:'#08131C',panel:'#132630',yellow:'#FFBF40',mint:'#22E1B1',muted:'#A9BAC4',white:'#FFFFFF',stroke:'#38515E'};
 export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.ReactNode}){
  const [session,setSession]=useState<Session|null>(null);
@@ -16,6 +17,11 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  const [account,setAccount]=useState<WorkspaceAccount|null>(null);
  const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
+ const [newPassword,setNewPassword]=useState('');
+ const [confirmPassword,setConfirmPassword]=useState('');
+ const [recoveryRequest,setRecoveryRequest]=useState(false);
+ const [isRecovering,setIsRecovering]=useState(false);
+ const [notice,setNotice]=useState('');
  const [companyName,setCompanyName]=useState('');
  const [edition,setEdition]=useState<'construction'|'essential'>('construction');
  const [inviteToken,setInviteToken]=useState('');
@@ -40,7 +46,8 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  useEffect(()=>{
   refresh();
   const {data:sub}=supabase.auth.onAuthStateChange((_event,newSession)=>{
-   if(_event==='SIGNED_OUT')forgetLocalIdentity();
+   if(_event==='PASSWORD_RECOVERY')setIsRecovering(true);
+   if(_event==='SIGNED_OUT'){forgetLocalIdentity();setIsRecovering(false);}
    setSession(newSession);
    setBoot(true);
    // Différer l'appel asynchrone au prochain tour pour éviter un deadlock Supabase Auth.
@@ -49,8 +56,8 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   const listener=Linking.addEventListener('url',async({url})=>{
    try{
     if(!url.includes('/auth/callback'))return;
-    const code=new URL(url).searchParams.get('code');
-    if(code){const {error:e}=await supabase.auth.exchangeCodeForSession(code);if(e)throw e;}
+    const callback=new URL(url);const code=callback.searchParams.get('code');
+    if(code){const {data,error:e}=await supabase.auth.exchangeCodeForSession(code);if(e)throw e;if(callback.searchParams.get('type')==='recovery'&&data.session)setIsRecovering(true);}
     else setError('Connexion annulée ou URL de retour invalide.');
    }catch(e:any){setError(e.message||'Connexion impossible');}
   });
@@ -80,6 +87,36 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   }catch(e:any){setError(e.message||'Fournisseur non configuré');}
   finally{setBusy(false);}
  }
+
+ async function requestRecovery(){
+  setBusy(true);setError('');setNotice('');
+  try{
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))throw Error('Entre une adresse courriel valide.');
+   const r=await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(),{redirectTo:RECOVERY_REDIRECT});
+   if(r.error)throw r.error;
+   setNotice('Si ce compte existe, un lien de récupération sera envoyé. Consulte aussi les indésirables.');
+  }catch(e:any){setError(e.message||'Impossible d’envoyer le lien pour le moment.');}
+  finally{setBusy(false);}
+ }
+ async function completeRecovery(){
+  setBusy(true);setError('');setNotice('');
+  try{
+   if(!isRecovering||!session)throw Error('Lien de récupération invalide ou expiré. Redemande un nouveau lien.');
+   if(newPassword.length<8)throw Error('Choisis un mot de passe d’au moins 8 caractères.');
+   if(newPassword!==confirmPassword)throw Error('Les deux mots de passe ne correspondent pas.');
+   const userId=session.user.id;
+   const r=await supabase.auth.updateUser({password:newPassword});if(r.error)throw r.error;
+   setNewPassword('');setConfirmPassword('');setPassword('');
+   await AsyncStorage.removeItem('punch-workspace:'+userId);
+   await forgetLocalIdentity();
+   const out=await supabase.auth.signOut({scope:'global'});
+   if(out.error)throw Error('Mot de passe modifié, mais la fermeture des sessions a échoué. Ferme tes sessions dans les paramètres du compte.');
+   setAccount(null);setIsRecovering(false);setRecoveryRequest(false);setLoginMode('login');
+   setNotice('Mot de passe mis à jour. Connecte-toi de nouveau.');
+  }catch(e:any){setError(e.message||'La mise à jour a échoué.');}
+  finally{setBusy(false);}
+ }
+
  async function createCompany(){
   setBusy(true);setError('');
   try{
@@ -90,27 +127,32 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   finally{setBusy(false);}
  }
  if(boot)return <View style={st.center}><ActivityIndicator size="large" color={CO.yellow}/><Text style={st.hint}>Chargement sécurisé de PUNCH 360°…</Text></View>;
- if(account)return <>{children(account)}</>;
+ if(account&&!isRecovering)return <>{children(account)}</>;
  return <View style={st.center}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={st.stack}>
    <Text style={st.logo}>⛑ PUNCH <Text style={{color:CO.yellow}}>360°</Text></Text>
-   <Text style={st.head}>{session?'Créer ma compagnie':loginMode==='login'?'Se connecter':'Créer un compte'}</Text>
-   <Text style={st.hint}>{session?'Configuration de ton espace entreprise. Tu devras choisir et payer un forfait avant d’inviter des employés.':'Tes heures. Tes équipes. Tes chantiers. Tout au même endroit.'}</Text>
-   {session?<>
+   <Text style={st.head}>{isRecovering?'Choisir un nouveau mot de passe':recoveryRequest?'Mot de passe oublié':session?'Créer ma compagnie':loginMode==='login'?'Se connecter':'Créer un compte'}</Text>
+   <Text style={st.hint}>{isRecovering?'Ton identité a été vérifiée par le lien de récupération Supabase.':recoveryRequest?'Reçois un lien sécurisé pour réinitialiser ton accès.':session?'Configuration de ton espace entreprise. Tu devras choisir et payer un forfait avant d’inviter des employés.':'Tes heures. Tes équipes. Tes chantiers. Tout au même endroit.'}</Text>
+   {isRecovering?<>\n    <TextInput style={st.input} placeholder="Nouveau mot de passe" placeholderTextColor="#718693" secureTextEntry autoCapitalize="none" autoComplete="new-password" value={newPassword} onChangeText={setNewPassword}/>\n    <TextInput style={st.input} placeholder="Confirmer le nouveau mot de passe" placeholderTextColor="#718693" secureTextEntry autoCapitalize="none" autoComplete="new-password" value={confirmPassword} onChangeText={setConfirmPassword}/>\n    <Pressable style={[st.button,{backgroundColor:CO.yellow}]} disabled={busy} onPress={completeRecovery}><Text style={st.buttonText}>Enregistrer et fermer les sessions</Text></Pressable>\n   </>:session?<>
     <TextInput style={st.input} placeholderTextColor="#718693" placeholder="Code d’invitation reçu" value={inviteToken} onChangeText={setInviteToken} autoCapitalize="none"/>
     <Pressable style={st.social} disabled={busy} onPress={async()=>{setBusy(true);setError('');try{const r=await supabase.rpc('accept_company_invitation',{p_token:inviteToken.trim()});if(r.error)throw r.error;await refresh()}catch(e:any){setError(e.message)}finally{setBusy(false)}}}><Text style={st.socialText}>Rejoindre la compagnie invitante</Text></Pressable>
     <View style={{gap:8}}>{(['essential','construction'] as const).map(v=><Pressable key={v} style={st.social} onPress={()=>setEdition(v)}><Text style={st.socialText}>{edition===v?'✓ ':''}{v==='essential'?'Essentiel — bureau / manufacture · 19 $ / mois proposés':'Construction — chantiers et commandes · 49 $ / mois proposés'}</Text></Pressable>)}</View>
     <TextInput style={st.input} placeholderTextColor="#718693" placeholder="Nom de ma compagnie" value={companyName} onChangeText={setCompanyName} autoCapitalize="words"/>
     <Pressable style={[st.button,{backgroundColor:CO.yellow}]} disabled={busy} onPress={createCompany}><Text style={st.buttonText}>Créer ma compagnie</Text></Pressable>
     <Pressable onPress={()=>supabase.auth.signOut()}><Text style={st.alt}>Utiliser un autre compte</Text></Pressable>
+   </>:recoveryRequest?<>
+    <TextInput style={st.input} placeholder="Adresse courriel du compte" placeholderTextColor="#718693" keyboardType="email-address" autoCapitalize="none" autoComplete="email" value={email} onChangeText={setEmail}/>
+    <Pressable style={[st.button,{backgroundColor:CO.yellow}]} disabled={busy} onPress={requestRecovery}><Text style={st.buttonText}>Envoyer un lien sécurisé</Text></Pressable>
+    <Pressable onPress={()=>{setRecoveryRequest(false);setNotice('');setError('')}}><Text style={st.alt}>Retour à la connexion</Text></Pressable>
    </>:<>
     <TextInput style={st.input} placeholder="Adresse courriel" placeholderTextColor="#718693" keyboardType="email-address" autoCapitalize="none" autoComplete="email" value={email} onChangeText={setEmail}/>
     <TextInput style={st.input} placeholder="Mot de passe" placeholderTextColor="#718693" autoCapitalize="none" secureTextEntry value={password} onChangeText={setPassword}/>
     <Pressable style={[st.button,{backgroundColor:CO.yellow}]} disabled={busy} onPress={emailAuth}><Text style={st.buttonText}>{loginMode==='login'?'Se connecter':'Créer mon compte'}</Text></Pressable>
     <Pressable style={st.social} disabled={busy} onPress={()=>social('google')}><Text style={st.socialText}>Continuer avec Google</Text></Pressable>
     <Pressable style={st.social} disabled={busy} onPress={()=>social('apple')}><Text style={st.socialText}>Continuer avec Apple</Text></Pressable>
-    <Pressable onPress={()=>{setLoginMode(v=>v==='login'?'signup':'login');setError('')}}><Text style={st.alt}>{loginMode==='login'?'Nouveau? Créer un compte':'Déjà inscrit? Se connecter'}</Text></Pressable>
+    {loginMode==='login'?<Pressable onPress={()=>{setRecoveryRequest(true);setError('');setNotice('')}}><Text style={st.alt}>Mot de passe oublié ?</Text></Pressable>:null}
+    <Pressable onPress={()=>{setLoginMode(v=>v==='login'?'signup':'login');setError('');setNotice('')}}><Text style={st.alt}>{loginMode==='login'?'Nouveau? Créer un compte':'Déjà inscrit? Se connecter'}</Text></Pressable>
    </>}
-   {error?<Text style={st.error}>{error}</Text>:null}
+   {error?<Text style={st.error}>{error}</Text>:null}{notice?<Text style={st.hint}>{notice}</Text>:null}
    {busy?<ActivityIndicator color={CO.mint}/>:null}
    <Text style={st.small}>Connexion Google et Apple : nécessite l’activation des fournisseurs dans Supabase et les URL de retour pour Android et iPhone.</Text>
  </ScrollView></View>
