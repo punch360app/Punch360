@@ -62,7 +62,7 @@ begin
  end if;
  insert into private.essential_shift_absences
   (company_id,shift_id,worker_id,shift_version,request_id,reason_code,private_note,reported_by)
- values(s.company_id,s.id,w.id,s.version,p_request,p_reason,trim(p_note))
+ values(s.company_id,s.id,w.id,s.version,p_request,p_reason,trim(p_note),auth.uid())
  returning * into a;
  -- Neither the private category nor free text appears in notifications or audit.
  insert into public.workforce_audit(company_id,actor_id,action,entity_id,after_value,reason)
