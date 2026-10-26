@@ -55,3 +55,16 @@ https://mlabstdxxwjdpfaxiwmg.supabase.co/auth/v1/callback
 - Une clé `sb_publishable_...` est publique et peut être embarquée dans le navigateur. Un **Client Secret Google**, le **client secret Apple**, la clé privée Apple `.p8`, les tokens PAT Supabase et la `service_role` ne doivent JAMAIS être intégrés au JavaScript public, ni commités.
 - **OAuth sign-in ne dispense pas de payer l'abonnement.** Le blocage des invitations à la sélection et au paiement du forfait reste à développer, sans compromettre la continuité des punchs existants.
 - La page affiche uniquement l'accès réel aux compagnies de l'utilisateur, jamais une création automatique de rôle Admin/Boss à partir du login social.
+
+## P0-D — Retour natif à froid et récupération de mot de passe (26 octobre 2026)
+
+Le composant Expo `src/auth/AuthGate.tsx` gérait auparavant le retour OAuth PKCE seulement avec `Linking.addEventListener('url')`, reçu quand l'application est déjà active. Si Android/iOS ouvrait PUNCH depuis un état complètement arrêté via `punchapp://auth/callback?code=…`, le code à usage unique pouvait ne jamais être échangé. Le même problème affectait le retour du courriel de récupération du mot de passe.
+
+Le correctif lit maintenant **les deux sources** : `Linking.getInitialURL()` au démarrage à froid et l'événement `url` en activité. La validation n'accepte que la cible exacte `punchapp://auth/callback`; un ensemble mémoire empêche qu'un même code PKCE soit échangé deux fois lors d'une course entre les deux sources. Les résultats d'échange échoués déclenchent une nouvelle tentative de connexion, jamais un réemploi silencieux du code. Le lien de récupération conservant `type=recovery` ouvre le formulaire uniquement si Supabase fournit une session vérifiée. Les codes d'autorisation ne sont ni logués ni persistés par cette logique.
+
+- **Développé :** utilitaire pur TypeScript + branche AuthGate + tests de liens hostiles, app froide, double événement, récupération et réseau.
+- **Testé :** tests Node simulés et TypeScript/CI à confirmer sur la PR; aucun OAuth externe ni appareil réel vérifié.
+- **Déployé :** non démontré pour Android/iOS; nécessite build et distribution natifs, non une simple publication GitHub Pages.
+- **Intervention externe :** enregistrer `punchapp://auth/callback` dans les URL de redirection Supabase autorisées, configurer les fournisseurs Google/Apple et tester ouverture à froid, reprise, lien expiré et récupération sur appareils iOS/Android. Ne fournir aucun secret dans GitHub.
+
+Références : https://reactnative.dev/docs/linking et https://supabase.com/docs/guides/auth/native-mobile-deep-linking. Les rôles continuent de provenir exclusivement du serveur `company_members`; ce correctif n'accorde aucun accès d'entreprise.
