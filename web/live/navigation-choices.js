@@ -46,3 +46,29 @@ export function navigationPreferenceKey(userId,companyId){
  if(!userId||!companyId)throw Error('Compte et compagnie requis.');
  return 'punch-navigation:'+String(userId)+':'+String(companyId);
 }
+
+/**
+ * MLOC-006/NAV-006 — one published intervention = one selectable destination.
+ * The caller must only supply destinations from the already authorized RPC;
+ * never append access codes, notes or contact details to a provider URL.
+ * No multi-stop route is manufactured from independently planned shifts.
+ */
+export function navigationStopDestination(site){
+ if(!site?.shift_id||!site?.client_site_id)return null;
+ const components=[site.address_line,site.unit,site.city,site.region,site.postal_code,site.country]
+   .map(x=>String(x??'').trim()).filter(Boolean);
+ if(!site.address_line||!site.city)return null;
+ try{
+  const address=navigationAddress(components.join(', '));
+  return {shiftId:site.shift_id,siteId:site.client_site_id,
+    title:[site.client_name,site.site_name].filter(Boolean).join(' · ')||'Intervention client',
+    address};
+ }catch{return null;}
+}
+export function navigationStopChoices(site,platform='web'){
+ const destination=navigationStopDestination(site);
+ if(!destination)return [];
+ return navigationProviders(platform).map(provider=>({
+  id:provider.id,label:provider.label,url:navigationUrl(provider.id,destination.address,platform)
+ }));
+}
