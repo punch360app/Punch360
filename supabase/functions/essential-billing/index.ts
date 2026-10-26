@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -20,12 +20,17 @@ Deno.serve(async(req:Request)=>{
   if(body.action==='status')return response(200,{configured:!!secret&&enabled,mode:secret?.startsWith('sk_live_')?'live':'test'});
   if(!enabled||!secret)return response(503,{error:'STRIPE_NOT_CONFIGURED'});
   const stripe=stripeClient(secret),ctx=context.data,o=ctx.order,a=ctx.account;
+  const liveMode=secret.startsWith('sk_live_');
+  const verifiedCustomer=async()=>{
+   if(!a?.customer_id)throw Error('NO_CUSTOMER');
+   return verifyStripeCustomerTenant(a,await stripe(`/customers/${a.customer_id}`),body.companyId,liveMode);
+  };
   const save=async(values:unknown,customer:string)=>{const r=await admin.rpc('billing_service_save',{p_actor:auth.data.user!.id,p_company:body.companyId,p_order:body.orderId||null,p_customer:customer,p_values:values});if(r.error)throw Error(r.error.message);};
   if(body.action==='invoices'){
-   if(!a?.customer_id)return response(200,{invoices:[]});const invoices=await stripe(`/invoices?customer=${a.customer_id}`);return response(200,{invoices:invoices.data.map((i:any)=>({id:i.id,number:i.number,status:i.status,total:i.total,paid:i.amount_paid,currency:i.currency,url:i.hosted_invoice_url? safeHostedUrl(i.hosted_invoice_url):null,created:i.created}))});
+   if(!a?.customer_id)return response(200,{invoices:[]});await verifiedCustomer();const invoices=await stripe(`/invoices?customer=${a.customer_id}`);const safeInvoices=verifyStripeInvoiceListTenant(invoices,a.customer_id,liveMode);return response(200,{invoices:safeInvoices.map((i:any)=>({id:i.id,number:i.number,status:i.status,total:i.total,paid:i.amount_paid,currency:i.currency,url:i.hosted_invoice_url? safeHostedUrl(i.hosted_invoice_url):null,created:i.created}))});
   }
   if(body.action==='portal'){
-   if(!a?.customer_id)throw Error('NO_CUSTOMER');const p=await stripe('/billing_portal/sessions',{customer:a.customer_id,return_url:returnUrl});return response(200,{url:safeHostedUrl(p.url)});
+   await verifiedCustomer();const p=await stripe('/billing_portal/sessions',{customer:a.customer_id,return_url:returnUrl});return response(200,{url:safeHostedUrl(p.url)});
   }
   if(['cancel','resume'].includes(body.action)){
    if(!a?.subscription_id)throw Error('NO_SUBSCRIPTION');
@@ -79,7 +84,8 @@ Deno.serve(async(req:Request)=>{
     productId,liveMode:secret.startsWith('sk_live_')
   });
   if(body.action==='checkout'){
-   const customer=a?.customer_id?{id:a.customer_id}:await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
+   const customer=a?.customer_id?await verifiedCustomer():await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);
+   verifyStripeCustomerTenant({customer_id:customer.id},customer,body.companyId,liveMode);
    await save({},customer.id);
    await save({status:'creating',preview:{price_id:price.id}},customer.id);
    const checkout=await stripe('/checkout/sessions',{customer:customer.id,mode:'subscription',line_items:[{price:price.id,quantity:1}],allow_promotion_codes:true,automatic_tax:{enabled:true},billing_address_collection:'required',customer_update:{address:'auto'},client_reference_id:body.companyId,subscription_data:{metadata:{punch_company:body.companyId,punch_order:o.id}},success_url:returnUrl+'&billing=returned',cancel_url:returnUrl+'&billing=cancelled',expires_at:Math.floor(Date.parse(o.created_at)/1000)+3600},`${o.id}:checkout`);
