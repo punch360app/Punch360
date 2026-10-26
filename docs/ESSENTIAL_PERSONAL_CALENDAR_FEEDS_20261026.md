@@ -14,7 +14,7 @@ Le serveur fournit les quarts du salarié pour **30 jours passés et 365 jours f
 - **Toute personne qui possède le lien peut lire le calendrier personnel**. Ne pas l'afficher publiquement et le révoquer s'il est exposé. Un calendrier tiers auquel il est ajouté conservera ce lien sur ses propres serveurs.
 
 ## Fichiers
-- Migration `supabase/migrations/20261026014500_essential_personal_calendar_feeds.sql` (numéro à aligner après installation).
+- Migration `supabase/migrations/20261026014802_essential_personal_calendar_feeds.sql` (installée dans le projet Supabase officiel).
 - `supabase/functions/essential-calendar/index.ts` et `ical.mjs`. Déployer la fonction avec `verify_jwt=false` **uniquement parce qu'elle vérifie elle-même les liens secrets**.
 - Interfaces `web/live/planning.js` et `src/workforce/EssentialPlanningPanel.tsx`.
 - Tests `supabase/tests/essential_personal_calendar_feeds.sql`, `tests/calendar-feed.test.mjs`, `tests/calendar-feed-ui.test.mjs`.
@@ -26,3 +26,7 @@ Le serveur fournit les quarts du salarié pour **30 jours passés et 365 jours f
 - Les événements annulés restent présents avec statut annulé durant la fenêtre temporelle, pour faciliter la suppression chez les clients compatibles.
 - Les quarts restent en UTC au niveau iCalendar, y compris pendant les changements d'heure Québec.
 - Projet original **« Validation SQL archives »** en cours. Ne pas basculer au prompt maître parallèle avant sa clôture.
+
+## État vérifié
+
+Migration Supabase `20261026014802` appliquée; service Edge `essential-calendar` version 2 déployé avec `verify_jwt=false` uniquement pour permettre la consultation par un lien secret à 256 bits. Vérification : lecture de la table privée strictement `service_role` (ni `anon` ni `authenticated`) ; zéro lien de calendrier réel enregistré lors du contrôle. Le serveur renvoie `Cache-Control: private, no-store, max-age=0` pour limiter les copies en cache après révocation. La validation d'un abonnement avec un vrai calendrier Google/Apple/Outlook reste une recette manuelle distincte.
