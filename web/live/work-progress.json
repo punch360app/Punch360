@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T20:33:03.692Z",
+  "generated_at": "2026-10-26T20:50:34.050Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 649,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1072,7 +1072,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        135
+        135,
+        140
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1130,6 +1131,16 @@
     }
   },
   "activity": [
+    {
+      "number": 140,
+      "sha": "3bf769b09bff8b9800e3caec488356f33e018e49",
+      "ci": "success",
+      "ids": [
+        "MLOC-003"
+      ],
+      "title": "Essentiel — calendrier par employé et par lieu d’intervention",
+      "merged_at": "2026-10-26T20:50:25Z"
+    },
     {
       "number": 139,
       "sha": "737682a4906467c0192b3d439a7c417910e38ce1",
@@ -1619,15 +1630,6 @@
       "ids": [],
       "title": "Prompt maître : intégrer tout le reste du chantier Validation SQL archives",
       "merged_at": "2026-10-26T06:04:50Z"
-    },
-    {
-      "number": 87,
-      "sha": null,
-      "head_sha": "f61d3fd0f530911b58418ca8a6aacc408bfd2af4",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Super Admin : isoler les devis particuliers entre compagnies et après déconnexion",
-      "merged_at": "2026-10-26T05:53:50Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
