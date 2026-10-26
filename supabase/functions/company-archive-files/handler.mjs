@@ -6,9 +6,9 @@ const base64=b=>{let s='';for(let i=0;i<b.length;i+=16384)s+=String.fromCharCode
 /** Read at most MAX actual Storage bytes, even when Content-Length is absent or lies.
  * Return null on overflow and cancel the upstream stream; never call arrayBuffer().
  */
-async function readStorageBounded(response){
+export async function readStorageBounded(response){
  const n=Number(response.headers.get('content-length'));
- if(Number.isFinite(n)&&n>MAX)return null;
+ if(Number.isFinite(n)&&n>MAX){await response.body?.cancel().catch(()=>{});return null;}
  const reader=response.body?.getReader();if(!reader)throw Error('STORAGE_STREAM_UNAVAILABLE');
  let total=0,parts=[],overflow=false;
  try{
