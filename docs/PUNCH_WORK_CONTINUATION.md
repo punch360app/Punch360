@@ -1,3 +1,11 @@
+# Reprise — gestion des bornes Boss/Admin en 10 langues (26 octobre 2026)
+
+La PR #78 a été fusionnée (CI/Pages réussies). Suite du prompt original « Validation SQL archives » : page Boss/Admin de gestion des bornes (`essential.js`) désormais traduite dans la langue Essentiel existante en 10 langues, avec vingt clés ajoutées, horodatage RTL isolé, identifiants HTML échappés, URLs PWA sans code secret et actions de sécurité inchangées. Nouveau test `tests/essential-kiosk-management-locale.test.mjs`, PWA v41; documentation `docs/ESSENTIAL_KIOSK_MANAGEMENT_LOCALE_20261026.md`. Vérifier CI/fusion/Pages de cette nouvelle branche avant annonce de déploiement. Aucune mutation Supabase ni client réel.
+
+Le prompt original reste **ouvert** pour intégrations fournisseurs, archives PDF binaires authentifiées, QA appareil/charge/PRA et traductions spécialisées RH/paie/Super Admin. SMS/Twilio à la fin. Le prompt maître séparé n'est pas encore démarré.
+
+---
+
 # Reprise — traduction de la réconciliation hors ligne Boss/Admin (26 octobre 2026)
 
 Après la PR #77 fusionnée, la suite du prompt original « Validation SQL archives » concerne l'écran de supervision des observations provisoires : `kiosk-offline-review.js` lit maintenant la langue Essentiel du compte (FR/EN/ES/PT/IT/DE/AR/ZH/HI/TL) par le contrôleur déjà existant. Vingt clés ajoutées au dictionnaire commun, labels de décisions/états/pauses traduits, date en LTR sous RTL, refus de confirmer sans motif, serveur seul responsable de l'approbation et messages d'erreurs sécurisés. Nouveau test `tests/kiosk-offline-review-locale.test.mjs`; PWA actualisée et dictionnaire pré-caché. Voir `docs/ESSENTIAL_KIOSK_OFFLINE_REVIEW_LOCALE_20261026.md`. Aucune mutation de base, client ou pointage réel. Valider CI et Pages avant d'annoncer la livraison.
