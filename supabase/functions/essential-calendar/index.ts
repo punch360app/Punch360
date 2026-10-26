@@ -2,7 +2,7 @@ import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {buildSubscribedCalendar} from './ical.mjs';
 
 const headers={
- 'Cache-Control':'private, max-age=120',
+ 'Cache-Control':'private, no-store, max-age=0',
  'Referrer-Policy':'no-referrer',
  'X-Content-Type-Options':'nosniff'
 };
