@@ -1370,3 +1370,38 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 ### Critères d'acceptation et priorité
 - Tester : facture Québec 40 h × 40 $ = 1 600 $ HT; TPS 5 % = 80 $, TVQ 9,975 % = 159,60 $, total 1 839,60 $ CAD **uniquement si ces taxes sont applicables**; facture sans taxes si légitime; autre province/pays; taxes incluses; plusieurs devises; logo absent/présent; PDF multipage; numéro fiscal absent; note de crédit; paiement partiel; changement de taux historique; protection contre doublons; isolation RLS; approbation externe sans fuite de marge.
 - Priorité : livraison Québec/Canada robuste d'abord, architecture extensible multipays ensuite. Les taux d'exemple ne remplacent pas la vérification des règles en vigueur. Ajouter tests de calcul, sécurité et rendu PDF, mettre à jour suivi public avec preuves concrètes; ne déclarer « terminé » qu'après validation réelle.
+
+
+## MODULE PRO — PRÉPARATION DE PAIE ET TALONS CCQ (DEMANDE 2026-10-26)
+
+**Référence produit :** talon de paie Nethris CCQ fourni par l'utilisateur dans la conversation du 26 octobre 2026. Utiliser sa **structure fonctionnelle uniquement**; ne jamais intégrer dans GitHub, fixtures, captures publiques ou journaux les noms, adresses, matricules, numéros CCQ, comptes bancaires, montants personnels ou autres données réelles de ce document. Ne pas recopier les marques/logos Nethris/CGI.
+
+**Mission :** offrir dans le forfait Pro un parcours fiable de préparation de la paie à partir des pointages approuvés, avec mode construction Québec/CCQ, talons de paie détaillés, export vers fournisseurs de paie et architecture évolutive vers calcul réglementaire complet. **Ne pas prétendre verser des salaires, effectuer des remises ou calculer une paie légalement conforme sans intégration certifiée, moteur validé et contrôles requis.**
+
+### Parcours
+1. Paramétrer entreprise, périodes de paie (hebdomadaire, aux deux semaines, etc.), date de versement, employés, matricules internes, taux et conventions applicables, classifications, secteurs CCQ, primes et avantages.
+2. Consolider heures régulières, supplémentaires, primes, vacances, absences rémunérées, corrections et affectations depuis les pointages **validés**. Contrôler doublons, périodes verrouillées et ajustements rétroactifs; distinguer heures travaillées, payables, facturables au client et déclarables à la CCQ.
+3. Calculer ou préparer les gains bruts et exporter les données structurées vers un fournisseur de paie compatible. Pour le calcul du net, retenues et remises, utiliser uniquement des règles officielles datées, versionnées, validées et testées ou un partenaire de paie autorisé. Avertir et bloquer la finalisation si le calcul n'est pas certifié/fiable pour la juridiction.
+4. Présenter un brouillon de paie vérifiable par Boss/Admin habilité, approbation explicite, verrouillage, historique, rectification et audit; aucune émission ni paiement automatique sans autorisation.
+5. Produire le talon PDF détaillé (Lettre/A4, multipage au besoin) et une consultation mobile lisible. Permettre le logo et l'identité de la compagnie sans omettre les mentions obligatoires; documents confidentiels avec accès privé individuel, stockage protégé et liens temporaires.
+
+### Structure obligatoire du talon CCQ
+- En-tête : compagnie, coordonnées, période de paie, date payable, numéro de talon, matricule employé et données d'identification nécessaires.
+- Données construction : métier, classification, secteur, numéros employeur/employé CCQ lorsqu'applicables, taux et statut pertinents.
+- Gains courants et cumulatifs : lignes détaillées (heures régulières, supplémentaires, primes, indemnités et avantages) avec quantité, taux, montant courant et cumul annuel.
+- Retenues courantes et cumulatives : impôts fédéral/provincial, RRQ, RQAP, assurance-emploi, cotisations syndicales, régimes/assurances et contributions CCQ pertinentes selon les règles en vigueur. Ne pas confondre retenues salariales et charges patronales.
+- Vacances : gains/indemnités, sommes accumulées, versées et solde selon régime applicable.
+- Sommaire : brut, avantages, retenues, net, cumuls; avis de dépôt non négociable, date et montant, compte masqué si nécessaire.
+- Deux vues : PDF complet imprimable inspiré de la densité informative du modèle fourni, et interface mobile hiérarchisée avec sections dépliables. Plusieurs modèles visuels (moderne, classique, construction), mais mêmes données obligatoires.
+
+### Sécurité et conformité
+- Employé : uniquement ses propres talons; Boss/Admin : accès aux paies selon permission explicite; cloisonnement multientreprise strict via Supabase RLS et autorisations serveur. Journaliser consultation administrative, génération, correction et téléchargement selon exigences de confidentialité; chiffrement et politique de rétention.
+- Prévoir le support futur multipays avec règles et formats locaux distincts, sans transposer les retenues CCQ ailleurs.
+- La paie CCQ exige des conventions, secteurs, taux, déclarations et règles changeants : vérifier les sources officielles CCQ, CNESST, Revenu Québec et ARC avant calcul et mise en production. Les exemples de talon ne constituent **pas** une table réglementaire.
+- Ne pas stocker les coordonnées bancaires complètes sans nécessité, autorisation et garanties adaptées. Aucun affichage des données salariales dans les factures de sous-traitance envoyées aux clients.
+
+### Phases et validation
+- **Phase 1 :** préparation/validation des heures et gains, export vers prestataires de paie, import des résultats/talons réels d'un prestataire, consultation sécurisée.
+- **Phase 2 :** moteur de paie Québec/CCQ vérifié (retenues, cumuls, indemnités, cas particuliers, rétroactivité), talons PDF natifs et rapprochement des calculs avec cas de référence indépendants.
+- **Phase 3 :** intégration partenaire pour versements, remises et documents annuels; international par juridiction après vérification.
+- Tests obligatoires : périodes avec heures supplémentaires, classifications/secteurs différents, primes, vacances, changements de taux, corrections après clôture, cumuls, confidentialité RLS, PDF multipage, mobile, absence de fuite de données bancaires, cohérence entre pointage/paie/facture. Mettre à jour le suivi officiel avec statut honnête : « spécifié » ne signifie pas « développé ».
