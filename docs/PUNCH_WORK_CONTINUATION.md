@@ -1,3 +1,11 @@
+# Reprise — Borne commune Essentiel en 10 langues (PR de réconciliation)
+
+Ce lot du prompt original **« Validation SQL archives »** reprend le code de la PR #73 sur le `main` actuel pour résoudre uniquement un conflit de documentation. La borne PWA comprend désormais le sélecteur de 10 langues, l'arabe RTL sans inversion des chiffres, l'identification/NIP et le pointage localisés, une réinitialisation au français après chaque session, aucun stockage de préférence par salarié et un pré-cache PWA de `kiosk-locale.js`. Tests DOM/Node d'identification, PIN non conservé, hors ligne et anti-doublons, plus dictionnaire 10 langues. **Aucun SQL, compte ou contrat réel touché.** Documentation : `docs/ESSENTIAL_KIOSK_TEN_LANGUAGES_20261026.md`.
+
+Le prompt original reste ouvert : tous les messages de sécurité/hors ligne de la borne, QA linguistique humaine, traductions RH/paie/Super Admin, abonnements calendrier tiers, test Stripe sandbox/OAuth, builds signés, charge et PRA. SMS en dernier. Le prompt maître et ses modifications de documentation parallèles sont conservés mais **ne doivent pas être traités avant la fin du prompt Validation**.
+
+---
+
 # Reprise vérifiée — comptes multi-entreprises, rôle et heures séparés (PR #68, #70, #71)
 
 Le prompt original **« Validation SQL archives »** progresse sans relancer le prompt maître. Trois fusions supplémentaires sont terminées :
