@@ -139,3 +139,36 @@ test('single destination per stop obeys mobile compatibility and never includes 
  assert.equal(navigationStopDestination({...stop,city:''}),null);
  assert.equal(navigationStopChoices({...stop,client_site_id:null},'ios').length,0);
 });
+
+test('client access instructions are absent from default DOM and require a permitted explicit tap',async()=>{
+ const {ui,w,calls}=setup('employee');
+ await ui.load({company_id:'tenant',role:'employee'},'employee','worker',[]);
+ ui.state.tab='calendar';ui.state.showForm=false;
+ let html=ui.renderSchedule();
+ assert.doesNotMatch(html,/Entrée arrière/);
+ assert.match(html,/Voir les consignes et le contact/);
+ assert.equal(ui.state.accessShiftId,null);
+ await ui.handle({dataset:{action:'ess:plan-site-access-toggle',id:'shift-a'}});
+ assert.equal(ui.state.accessShiftId,'shift-a');
+ html=ui.renderSchedule();
+ assert.match(html,/Entrée arrière/);
+ assert.match(html,/Contact sur place : Nadine/);
+ assert.doesNotMatch(html,/SECRET-NO-EMPLOYEE/);
+ await ui.handle({dataset:{action:'ess:plan-site-access-toggle',id:'shift-a'}});
+ assert.equal(ui.state.accessShiftId,null);
+ assert.doesNotMatch(ui.renderSchedule(),/Entrée arrière/);
+ await ui.handle({dataset:{action:'ess:plan-site-access-toggle',id:'foreign-shift'}});
+ assert.match(ui.state.error,/non autorisées/);
+ assert.equal(ui.state.accessShiftId,null);
+ assert.equal(calls.filter(x=>/punch|payment|gps|geofence/i.test(x.name)).length,0);
+ await w.happyDOM.close();
+});
+test('leaving company workspace erases any previously expanded site access details',async()=>{
+ const {ui,w}=setup('employee');
+ await ui.load({company_id:'tenant',role:'employee'},'employee','worker',[]);
+ await ui.handle({dataset:{action:'ess:plan-site-access-toggle',id:'shift-a'}});
+ assert.equal(ui.state.accessShiftId,'shift-a');
+ ui.reset();
+ assert.equal(ui.state.accessShiftId,null);
+ await w.happyDOM.close();
+});
