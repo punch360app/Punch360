@@ -738,3 +738,131 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 
 ## Verdict de lancement
 Établir un verdict **GO, GO CONDITIONNEL ou NO-GO** après QA de bout en bout, correction, retest, politique de sauvegarde, revue de confidentialité, appareil réel et tests Stripe/OAuth/fournisseurs. Lancer uniquement les fonctions pleinement validées et clairement présentées comme telles. **Ne pas déclarer le prompt terminé tant que les points non validés ne sont pas traités ou expliqués individuellement.**
+
+---
+
+# ANNEXE FINALE — DIRECTIVE MARKETING, UX/UI ET DESIGN RESPONSIVE DE PUNCH ESSENTIEL
+
+> **Décision du propriétaire — finition commerciale et visuelle.** Cette annexe est le **prompt d'exécution final** du volet marketing/UX. Elle est placée **à la fin de l'unique Prompt maître**. Elle précise la façon de concevoir, auditer, produire les visuels puis implémenter les écrans déjà exigés dans les lots DESIGN, CORE, THEMES, LOCALE, SHIFT, CHAT, TASK, COMM, STRIPE, SACATALOG, QA et autres. **Aucun deuxième Prompt maître, aucun nouvel ID d'exigence, aucune duplication de module ou de composant existant.** Les 518 exigences numérotées du registre restent la source de vérité fonctionnelle; cette annexe fixe la direction créative, les livrables et les critères de qualité UX. Toute divergence est résolue en faveur des exigences fonctionnelles et du catalogue contractuel serveur actuellement en vigueur.
+
+## PROMPT À EXÉCUTER — Agis comme une agence marketing et UX/UI SaaS haut de gamme
+
+Tu agis ensemble comme **directeur marketing SaaS, stratège conversion/CRO, directeur artistique, lead UX/UI, product designer, architecte de navigation responsive, designer accessibilité, développeur front-end expérimenté et QA visuel**.
+
+Tu interviens sur le **projet PUNCH Essentiel existant**, sans repartir de zéro. Le produit s'adresse aux **bureaux, commerces, ateliers, garages, restaurants, entrepôts et entreprises de services**. L'objectif n'est **pas** d'empiler les fonctionnalités sur la page : c'est de faire paraître facile, fiable et désirable un produit complet. L'utilisateur doit comprendre « où je vais et quoi faire » en quelques secondes.
+
+**Ordre d'exécution : audit des écrans réels et des forfaits → architecture de l'information simplifiée → wireframes par rôle et viewport → direction visuelle commune → visuels génératifs référentiels → implémentation responsive dans les composants réels → tests visuels, fonctionnels et d'accessibilité → vérification de la page de vente et du parcours de conversion.** Ne pas considérer les maquettes ou images générées comme du code livré. Ne pas annoncer « prêt en production » sans preuve.
+
+### 1 — Direction artistique et design system
+
+Conserver l'identité Essentiel déjà retenue : **vert sauge #779574**, fond **#FAFBF8**, texte **#2F4935**, contours **#E1E8DB**, cartes blanc chaud. Affiner légèrement ombres, contrastes, échelles et espacement sans refaire la marque ni introduire une multitude de couleurs. Style **minimaliste, lumineux, moderne, épuré, chaleureux, premium, crédible**. Éviter : cartes inutiles, encadrés partout, gradients agressifs, grandes icônes décoratives répétées, textes coupés, rangées de badges, plusieurs CTA concurrents et « tableaux de bord usine à gaz ».
+
+Définir les composants réutilisables : top bar, bottom navigation, sidebar, carte, section, listes, formulaires, boutons primaires/secondaires/tertiaires, champs, tableau dense facultatif, calendrier, états vides, confirmations, notifications discrètes, menu contextuel, badge réservé aux alertes pertinentes. Définir des tailles, espacements et règles de contraste cohérents en clair/sombre, sans retirer les **20 thèmes employés ni les 10 thèmes de borne** prévus. Français prioritaire, autres langues prévues et longueurs de texte réellement testées.
+
+Règle UX : **une action principale par écran**, 1–3 informations vraiment essentielles immédiatement visibles, fonctions avancées à la demande, pas de menus cachés arbitrairement. De grandes cibles tactiles et une hiérarchie qui reste claire même pour un utilisateur peu technophile.
+
+### 2 — Inventaire UX anti-doublons obligatoire
+
+Avant toute refonte, inspecter **les pages Web/Expo/PWA actuellement présentes**, leur routing, rôles Employé / Chef / Admin / Boss / Super Admin, thèmes, forfaits et comportements. Établir une matrice réelle :
+- parcours et écran existant → rôle et forfait → valeur principale → composant réutilisable → informations trop denses → simplification recommandée;
+- état **développé / testé / déployé / intervention externe nécessaire**;
+- cas Base, Plus, Pro, borne seulement, téléphone seulement, mixte, employé sans compte personnel, petit téléphone, tablette commune et desktop;
+- liens/fonctions obsolètes, menus dupliqués, boutons inertes, formulaires trop longs, incohérences des chemins et libellés.
+
+**Ne retirer aucun droit utile ni action fonctionnelle** pour simplifier : déplacer ce qui est secondaire vers un détail/menu logique, puis tester qu'il reste accessible. Ne pas mélanger PUNCH Construction : **pas de météo, de chantier, de job ou de commandes de chantier dans les écrans Essentiel**.
+
+### 3 — Mobile employé : navigation prioritaire et deux variantes
+
+Conserver la navigation officielle au **bas** du téléphone :
+- **Essentiel de base : Punch · Heures · Horaire · Plus (4 onglets)**.
+- **Essentiel Plus / Pro : Punch · Heures · Horaire · Messages · Plus (5 onglets)**, avec Messages en **vrai onglet bas** et compteur discret de non-lus.
+
+Le nombre d'onglets dépend du forfait, pas du mode de pointage. Éviter le défilement horizontal d'onglets; prévoir safe-areas iOS/Android, libellés courts, texte non coupé et accessibilité.
+
+**Onglet Punch** : une salutation courte, le statut réel, un gros bouton de pointage évident **seulement lorsque mobile autorisé**, chrono clair, pause rapide et Punch OUT selon les exigences existantes. Si l'établissement impose **Borne uniquement**, l'onglet reste présent en **lecture seule** : « Pour pointer, utilisez la borne de votre établissement », état et dernier pointage confirmés par serveur. **Aucun Punch IN/OUT/pause mobile**, ni dans l'interface ni via API/RPC; l'application personnelle reste utilisable pour le reste.
+
+**Onglet Heures** : total de la période, détail des journées, banques d'heures autorisées, demandes/corrections dans un sous-parcours clair. **Onglet Horaire** : prochain quart et semaine, détails du quart, tâches, disponibilités, proposer/échanger un quart, se porter volontaire pour l'over et **Signaler mon absence** (avec neuf motifs prévus), sans tout exposer en même temps. **Onglet Messages Plus/Pro** : style Messenger sobre, discussions directes/groupes, pièces jointes, cartes de quarts interactives, « Vu » configurable, notifications et modes silencieux, conformément à CHAT-001–015. **Onglet Plus** : paramètres, profil, formations, événements et autres pages secondaires organisées par sections simples; pas de cinquième/sixième onglet pour ces fonctions.
+
+Afficher les actions pertinentes **selon l'employé, le rôle, la permission et le forfait** : un employé sans fonctionnalité Pro ne voit pas ses panneaux avancés; un Boss peut accéder à sa gestion sans alourdir l'accueil employé. Prévoir un parcours clair pour les commerces **Borne uniquement + application personnelle complète**.
+
+### 4 — Tablette : planification et administration lisibles
+
+Prévoir tablette portrait et paysage, navigations adaptatives, zones tactiles généreuses, sans simplement réduire un écran PC. Pour Essentiel Pro, prioriser le planificateur en **trois étapes simples : (1) Besoins → (2) Employés → (3) Générer, prévisualiser et publier**.
+
+Mode **Simple par défaut** et réglages avancés cachés derrière une action identifiable. Afficher besoins par poste, personnes disponibles **et qualifiées**, puis une prévisualisation claire. Pas de grille géante illisible : sur largeur limitée, **une étape affichée à la fois** ou navigation progressive; en paysage large, aperçu et contexte côte à côte si lisibles. La génération donne seulement un brouillon; publication volontaire du responsable habilité, validations et messages explicables. Les bornes communes restent des interfaces **de pointage dédiées**, distinctes des tablettes d'administration et sans accès aux conversations privées.
+
+### 5 — Desktop Boss/Admin : une console calme, orientée décisions
+
+Créer une **sidebar gauche concise et stable** ou une navigation adaptée à la largeur, sans afficher toutes les sous-fonctions en permanence. Accueil avec quelques indicateurs réellement utiles : employés présents, quarts à couvrir, absences signalées, messages non lus. En dessous, privilégier **une synthèse d'horaire** et **les demandes qui requièrent une action**; accès secondaire à échanges, volontaires pour l'over, tâches, événements, rapports et RH selon le forfait.
+
+La sidebar peut regrouper : **Tableau de bord, Équipe, Horaires, Messages (Plus/Pro), Demandes, Rapports, Paramètres**; fusionner les modules similaires plutôt que rajouter une entrée pour chaque exigence. Les panneaux détaillés (certifications, banques RH, approbations, bornes, postes, facturation, alertes, Super Admin) doivent rester faciles à trouver au bon endroit, **sans être tous visibles sur l'accueil**. Respecter permissions et contexte établissement. Les heures, calendriers et chiffres affichés doivent être réels et sourcés côté serveur, sinon « Exemple / Démo ».
+
+### 6 — Refaire la landing page marketing PUNCH Essentiel
+
+Concevoir et implémenter **une page de vente cohérente avec l'application**, destinée à convertir un visiteur en compte d'entreprise. Elle doit répondre dès le premier écran à : **qu'est-ce que PUNCH, pour qui, pourquoi c'est simple et quelle est la prochaine action ?**
+
+Proposition de hero :
+- Titre principal : **« Le pointage et les horaires, simplement. »**
+- Sous-titre court : **« Gérez les heures, les horaires et votre équipe au même endroit. Pour les commerces, bureaux et entreprises de services. »**
+- CTA primaire : **« Créer un compte »**; CTA secondaire : **« Voir les forfaits »**. Séparer visuellement « Se connecter ».
+- Un visuel produit **crédible** mobile + desktop (vraies captures validées lorsqu'elles existent, sinon maquettes clairement identifiées comme illustrations).
+- Montrer discrètement les six contextes commerciaux **Bureaux · Commerces · Restaurants · Ateliers · Entrepôts · Services**, pas six grosses cartes marketing.
+- Plus bas : bénéfices concrets, fonctionnement en **3 étapes maximum**, brève différenciation borne/téléphone/mixte, forfaits, FAQ utile, confidentialité et contact réel.
+
+**Interdit** : faux avis, logos clients non autorisés, chiffres de performance inventés, « prêt en quelques minutes », « support prioritaire », « fait au Québec », conformité certifiée ou fonctionnalités indisponibles sans preuve. Vendre la simplicité **sans survendre** les modules encore en développement. Toute promesse publique doit correspondre au statut réellement livré.
+
+### 7 — Refaire la page « Choisir un forfait » et la comparaison
+
+Concevoir une page autonome, sobre, ultra lisible sur mobile et desktop, avec **trois cartes seulement** sur desktop et des **cartes verticales empilées** sur mobile. Montrer immédiatement : prix, membres inclus, coût par membre additionnel, bornes, cible, **trois bénéfices-clés** et CTA « Choisir ce forfait ». Le détail avancé reste sous **« Comparer toutes les fonctionnalités »** dans une matrice consultable, non sous une liste de 40 items dans chaque carte.
+
+**Forfaits de référence CAD, sous réserve du catalogue contractuel actif :**
+| Forfait | Base mensuelle | Membres inclus | Membre additionnel / mois | Bornes | Promesse courte |
+|---|---:|---:|---:|---|---|
+| **Essentiel** | **19 $** | **5** | **3 $** | **1** | Pointage, heures, horaire simple |
+| **Essentiel Plus** | **39 $** | **5** | **4 $** | **3** | Horaires avancés, échanges/remplacements, Messages |
+| **Essentiel Pro** | **69 $** | **5** | **5 $** | **Illimitées** | Multi-établissements, RH, banques d'heures et gestion avancée |
+
+**Facturation annuelle : −15 % sur le total mensuel de 12 mois**, calculée en cents en utilisant **les prix serveur/contrats** : valeurs de base indicatives **193,80 $/an**, **397,80 $/an**, **703,80 $/an** respectivement (hors sièges supplémentaires et taxes). En mode Annuel, afficher le montant réellement facturé pour l'année, éventuellement son équivalent mensuel **clairement marqué « équivalent »**; ne jamais afficher 19/39/69 $ comme s'il s'agissait des montants annuels. Calculer aussi la remise sur les sièges additionnels conformément aux règles serveur; indiquer devise CAD, périodicité et taxes/conditions lorsque pertinent. Ne jamais coder les tarifs comme seule source de vérité dans la page marketing.
+
+Le forfait **Plus** peut être marqué « Recommandé pour les équipes qui grandissent » plutôt que prétendre être « le plus populaire » sans statistique vérifiée. Le Pro se différencie clairement sans être surchargé. Ajouter un **mini-sélecteur du nombre de salariés** pour montrer le prix estimé et les sièges supplémentaires, avec hypothèses explicites, lien vers le détail, aucun prix trompeur. Les critères de places payantes, sursis de paiement **paramétrable** et seuils d'abonnement restent ceux du serveur. Ne pas lancer d'abonnement ou paiement avant l'action explicite du client.
+
+**UX mobile page forfaits** : titre, interrupteur mensuel/annuel, carte recommandée sans exclure les autres, trois cartes l'une après l'autre, CTA pleine largeur; puis une comparaison de fonctionnalités **par groupes repliables**, FAQ courte et rappel transparent des conditions. **UX desktop** : trois cartes alignées, même ordre et même lisibilité des différences; CTA équivalents, pas d'effets visuels envahissants. Les liens **Créer un compte / Choisir ce forfait / Se connecter** doivent fonctionner réellement jusqu'au parcours adéquat.
+
+### 8 — Produire les visuels génératifs par responsive
+
+Créer **des images originales de référence** dans le style retenu, au lieu de décrire uniquement les écrans. Utiliser **les captures ou visuels déjà fournis par le propriétaire** comme références stylistiques à améliorer, **pas comme preuves** de fonctionnalité. Produire au minimum :
+1. **Mobile employé Essentiel de base** avec quatre onglets, état Punch autorisé ou Borne uniquement.
+2. **Mobile Plus/Pro** avec cinq onglets dont Messages, plus un aperçu sobre de l'inbox façon Messenger.
+3. **Mobile page des forfaits** avec cartes empilées, tarifs et limites exacts.
+4. **Tablette admin** : planification en trois étapes, mode simple, aperçu lisible.
+5. **Desktop Boss/Admin** : tableau de bord calme, horaires, absences, échanges, volontaires pour l'over.
+6. **Desktop landing page de vente** : hero, produit mobile/desktop, CTA et bénéfices.
+7. **Desktop comparaison des forfaits** : trois cartes claires avec détails de prix, 5 membres inclus et limites de bornes.
+8. **Mini design system** : palette, typographie, composants et règles de navigation.
+
+Les visuels génératifs sont des **maquettes conceptuelles** : ne pas les substituer aux composants réels, ne pas les utiliser comme captures « client » sans mention et **relire manuellement tous les textes/chiffres** (les outils d'image peuvent inventer des prix, dates ou limites). Lorsque la sortie doit être exploitable par l'équipe, fournir **les références visuelles et les spécifications concrètes** : dimensions, marges, composants, variantes, rôles, accessibilité, états et comportements. Le rendu final dans le code doit rester éditable, réactif et fidèle à la source métier.
+
+### 9 — Audit responsive, accessibilité et performance
+
+Tester réellement **petits mobiles (320/360/390/430 px), grands mobiles, tablette portrait/paysage, laptop/desktop (1024/1280/1440/1920 px)**, variations de densité, taille de police et clavier ouvert. Le contenu ne doit jamais être tronqué, recouvert par l'encoche/les safe-areas ou par la barre du bas; **pas de scroll horizontal involontaire** ni de boutons trop petits.
+
+Prévoir contrastes suffisants, navigation clavier, libellés de lecteurs d'écran, focus, zones tactiles confortables, texte long en français/anglais et autres langues prévues; états chargement/vide/erreur/hors ligne/permission manquante. Réduire le coût des illustrations sur petits appareils : performance rapide, médias optimisés, animations légères et option de mouvement réduit.
+
+Revoir chaque responsive séparément : mêmes fonctionnalités et identité, mais **recomposition intentionnelle** et non simple réduction. Évaluer le parcours en situations réelles : employé sur cellulaire, Boss sur PC, Admin sur iPad, commerce en mode borne uniquement, forfait Plus/Pro avec Messages, salarié sans application personnelle.
+
+### 10 — Ordre de livraison et critères de réussite
+
+**Priorité UX 1 :** inventaire/anti-doublons, navigation et rôles, layouts mobile employés (4/5 onglets et mode borne) puis mises en page administrateur. **Priorité UX 2 :** cohérence de la planification, Messages, tâches, heures/banques et événements, en respectant leurs droits et entitlements. **Priorité marketing 1 :** landing page, page de forfaits, parcours d'inscription, calcul annuel et comparaison honnête. **Priorité marketing 2 :** visuels référentiels, microcopies, FAQ, lisibilité, optimisation des conversions (sans collecte inutile de données personnelles). **Priorité QA finale :** capture comparative avant/après par largeur, tests sur vrais appareils, vérification du bon nombre de tabs, aucun faux CTA, aucune régression de pointage, paiement ni RLS.
+
+**Livrables attendus dans la même exécution :**
+- synthèse de l'audit des responsive et pages existants, avec captures/constats lorsque disponibles;
+- arborescence de navigation **par rôle, forfait et viewport**, incluant ce qui se cache sous Plus/Paramètres;
+- wireframes puis visuels génératifs mobile/tablette/desktop, **avec la même direction artistique**;
+- maquette et implémentation de la landing page + sélection/comparaison des forfaits, prix et textes exacts;
+- inventaire des composants réutilisés vs modifiés, de ce qui a été codé/testé/publié vs restant;
+- validation des parcours principaux **Création de compte → Choix du forfait → Première configuration → Inviter employés**, sans lancer d'achats non demandés;
+- critères d'acceptation accessibles, responsive et de conversion.
+
+**Règle finale absolue :** le produit complet doit donner l'impression **« c'est beau, clair, simple et facile à utiliser »**. Tout ce qui alourdit sans aider une décision doit être retiré de la vue principale **sans supprimer sa fonctionnalité**. **Ne créer aucun deuxième prompt, aucune deuxième app, aucun deuxième calendrier ou système de facturation. Ne jamais inventer des fonctions livrées ou des résultats marketing.** Conserver les responsabilités réelles de PUNCH Essentiel et les règles de sécurité, tests et déploiement déjà écrites dans le Prompt maître.
+
+**Indicateurs à améliorer si les métriques sont réellement mesurables :** compréhension de la promesse en moins de 10 secondes, facilité de trouver Punch/Horaire/Messages, complétion de création de compte, taux de clic vers les forfaits, compréhension des différences Essentiel/Plus/Pro, sélection du forfait adapté, réduction des erreurs, temps pour les tâches employé/gestionnaire et stabilité responsive. Mesurer sans fabriquer de taux ni faire de promesse non vérifiée.
