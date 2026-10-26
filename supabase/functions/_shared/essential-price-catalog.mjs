@@ -55,6 +55,37 @@ export function selectRegisteredPrice(registered,cadence,amount){
  return configured.amount_cents===amount?configured.stripe_price_id:null;
 }
 
+
+// Checkout and preview may create a new Price only when the exact registered
+// base amount cannot be reused. Confirm must be read-only for Prices: use the
+// server-saved preview identifier and refuse missing/stale/mismatched IDs.
+export function orderPriceStrategy(action,registeredPriceId,storedPreview){
+ if(!['checkout','preview','confirm'].includes(action))throw Error('INVALID_BILLING_ACTION');
+ if(registeredPriceId!==null&&!validPriceId(registeredPriceId))throw Error('STRIPE_CATALOG_INVALID');
+ if(action==='confirm'){
+  if(!validPriceId(storedPreview?.price_id)||
+     (registeredPriceId!==null&&registeredPriceId!==storedPreview.price_id))throw Error('PREVIEW_EXPIRED');
+  return {kind:'fetch',priceId:storedPreview.price_id};
+ }
+ return registeredPriceId!==null?{kind:'fetch',priceId:registeredPriceId}:{kind:'create',priceId:null};
+}
+// Check a negotiated or registered Price returned by Stripe before referring
+// to it in an order. An ID alone cannot prove its product, amount or mode.
+export function checkOrderStripePrice(price,{expectedId,amount,cadence,productId,liveMode}){
+ if(!validPriceId(price?.id)||
+    (expectedId!==null&&price.id!==expectedId)||
+    !Number.isSafeInteger(amount)||amount<1||amount>99999999||
+    !['monthly','yearly'].includes(cadence)||
+    price.active!==true||price.livemode!==liveMode||
+    price.currency!=='cad'||price.unit_amount!==amount||
+    price.type!=='recurring'||price.billing_scheme!=='per_unit'||
+    price.recurring?.interval!==(cadence==='yearly'?'year':'month')||
+    (price.recurring?.interval_count??1)!==1||
+    price.product!==productId||price.transform_quantity||price.tiers_mode
+ )throw Error('STRIPE_ORDER_PRICE_UNVERIFIED');
+ return price;
+}
+
 /**
  * Fail closed before submitting a Stripe subscription change. The stored
  * preview must still describe this exact order price, subscription and item.
