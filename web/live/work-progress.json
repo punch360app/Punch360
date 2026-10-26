@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T20:04:45.846Z",
+  "generated_at": "2026-10-26T20:33:03.692Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
-  "denominator": 587,
+  "denominator": 649,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
   "requirements": {
     "GOV-001": {
@@ -1131,6 +1131,14 @@
   },
   "activity": [
     {
+      "number": 139,
+      "sha": "737682a4906467c0192b3d439a7c417910e38ce1",
+      "ci": "success",
+      "ids": [],
+      "title": "Prompt maître : flotte, remboursements photo et suivi des modules Pro internationaux",
+      "merged_at": "2026-10-26T20:32:53Z"
+    },
+    {
       "number": 138,
       "sha": "34b9904fb3b17f5d0ac0da8f93c1fc8446b16330",
       "ci": "success",
@@ -1620,15 +1628,6 @@
       "ids": [],
       "title": "Super Admin : isoler les devis particuliers entre compagnies et après déconnexion",
       "merged_at": "2026-10-26T05:53:50Z"
-    },
-    {
-      "number": 85,
-      "sha": null,
-      "head_sha": "81a3e2bb970c3c6c546432432c88f15ba43c9b47",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Suivi Validation : issue PDF Storage #81 résolue, recettes terrain toujours ouvertes",
-      "merged_at": "2026-10-26T05:39:28Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
