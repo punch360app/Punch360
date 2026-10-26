@@ -60,8 +60,10 @@ begin
  denied:=false;begin perform public.set_essential_shift_client_site(company,shift_am,site_b,1);
  exception when invalid_parameter_value then denied:=true;end;
  if not denied then raise exception 'Stale expected version permitted';end if;
+ execute 'reset role';
  if (select count(*) from public.app_notifications where company_id=company and recipient_id=a and kind='shift_site_changed')<>2 then
   raise exception 'Expected exactly one notification per real change';end if;
+ execute 'set local role authenticated';
  -- Employee sees only their own two locations and no internal manager-only notes.
  perform set_config('request.jwt.claim.sub',a::text,true);
  details:=public.list_essential_assigned_client_sites(company,
