@@ -1,3 +1,11 @@
+# Reprise — Alertes de certifications pour postes exclusifs (PR #54)
+
+Après la fusion de la PR #52 et son déploiement Web réussi, le prompt original **Validation SQL archives** continue avec la détection des certifications expirées/retirées après publication des quarts. Rapport serveur Pro/gestionnaire en lecture seule, borné à 90 jours et 200 anomalies, interfaces Web et Expo. Migration Supabase **`20261026012801_essential_position_cert_alerts` installée**; test SQL synthétique avec ROLLBACK réussi après installation, aucun changement de données clients. PR : <https://github.com/punch360app/Punch360/pull/54>. CI, fusion et Pages à vérifier; recette authentifiée et notifications automatiques restent ouvertes.
+
+Priorité : continuer le **prompt original** (calendriers synchronisés révocables, accès Boss/récupération Auth, horaires avancés, langues/RTL, UX, Stripe sandbox/OAuth, appareils, charge/PRA). Ne pas basculer sur le prompt maître consolidé, même s'il existe désormais dans main; SMS en dernier.
+
+---
+
 # Reprise — postes exclusifs Essentiel Pro (nouvelle branche après conflit PR #51)
 
 Dans le **prompt original « Validation SQL archives »**, poste exclusif Pro créé par établissement/département, certification facultative, verrou PostgreSQL transactionnel contre chevauchements, version et audit; interfaces Web/Expo. Migration **`20261026011451_essential_exclusive_positions` appliquée dans le Supabase officiel `mlabstdxxwjdpfaxiwmg`**. Scénario SQL synthétique rollback **réussi après installation**, 0 poste et 0 affectation conservés, accès anon refusé. CI 167/167 Node/DOM, TypeScript Expo et syntaxe Web réussis sur branche précédente avant recopie sur la dernière version de main. Détails : `docs/ESSENTIAL_EXCLUSIVE_POSITIONS_20261025.md`.
