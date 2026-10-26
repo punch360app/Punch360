@@ -3,7 +3,7 @@ import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-
 import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
-import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour} from '../../web/live/missions.js';
+import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour,missionAmbiguousNext} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
@@ -164,7 +164,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;subscription.remove()};
  },[companyId,workerId]);
- const progress=missionProgress(items),next=progress.next;
+ const progress=missionProgress(items),ambiguousNext=missionAmbiguousNext(items,missionProgress(items).next);
+ const next=ambiguousNext?null:progress.next;
  const tour=personalMissionTour(items,workerId);
  useEffect(()=>{setNavOpen(false)},[next?.id]);
  const complete=()=>{
@@ -193,7 +194,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
-  {title(progress.allDone?'Toutes les missions sont terminées':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
+  {title(progress.allDone?'Toutes les missions sont terminées':ambiguousNext?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
+  {ambiguousNext?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Deux missions sont au même rang. Demandez au responsable de clarifier l'ordre. Aucun prochain client n'est choisi automatiquement.</Text>:null}
   {next?<>{title(next.title+' · '+next.client_name)}{label(next.site_name+' · '+address)}
    {routes.preferred?button('Itinéraire avec '+routes.preferred.label,
     ()=>{const route=routes.preferred;if(route)void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))}):null}
