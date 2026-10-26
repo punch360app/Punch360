@@ -19,7 +19,7 @@
 | **#113 : requêtes Stripe bornées à 4 Kio / webhooks 1 Mio** | Fusionnée, `7be1d3c448830eac972c23c8100e24b46934738e` | **CI #40325182072 SUCCESS** après correction du préchargement simulé | **Pas de déploiement Edge vérifié** | Vérification signature/réseau avec Stripe sandbox #35 |
 | **#114 : factures jusqu'à 100 + avertissement has_more** | **Fusionnée**, `71801cd3ac46e8bbfced435e26ba4104ba29289d` | **CI #40325978654 SUCCESS** | Edge/Expo non déployés; Pages Web à vérifier | Stripe fictif avec >100 factures |
 
-| **#115 : valeurs des devis particuliers Super Admin** | **PR en cours** | CI à confirmer, tests DOM | Web Pages à vérifier après fusion | Vérification Boss/Stripe sandbox #35 |
+| **#115 : valeurs des devis particuliers Super Admin** | **Fusionnée**, `779f303c3a79dbb92e765a6c690588da8b598cda` | **CI #40326701238 SUCCESS** | Code source dans main; Pages Web non confirmé | Boss et Stripe sandbox #35 |
 
 ## Blocages constatés : ne pas donner de GO commercial
 - **#35 P0-A/P0-B :** Stripe produit/Price réel test, retour Checkout, prorata/taxes/remises, factures, reçus/webhooks et tests SQL sur **environnement isolé**. Le code Edge récent dépend de la migration `supabase/migrations/20261026110100_billing_confirm_intent.sql` (PR #108). **SQL puis Edge seulement après recette et validation de compatibilité** ; les anciens clients Expo avec timestamps de résiliation ne fonctionneront pas avec l'Edge UUID stricte #109.
@@ -28,10 +28,16 @@
 - **P4 :** SMS/Twilio uniquement en dernier selon décision du propriétaire.
 
 ## Reprise exacte — consignes d'exécution
-1. Vérifier les PR et issues de `main` **y compris la #115**, les workflows GitHub et leur conclusion finale. Si test rouge, lire les logs, corriger et relancer; ne jamais fusionner CI rouge.
-2. Terminer le lot **P0-A `SACATALOG-005–014`**, commencer par la **PR #115** : valeurs de départ des devis Super Admin, protection des champs négociés, tests Node/DOM. Le lot `STRIPE-012` / PR #114 est fusionné et testé, mais la recette fournisseur reste bloquée.
-3. Après CI verte de la PR #115, fusionner, mettre à jour ce registre avec SHA/CI/conclusion et regarder le workflow GitHub Pages distinct. Ne pas confondre merge GitHub, Pages, Supabase Edge et build Expo.
+1. Vérifier les PR et issues de `main` **y compris la #115 fusionnée**, les workflows GitHub et leur conclusion finale. Si test rouge, lire les logs, corriger et relancer; ne jamais fusionner CI rouge.
+2. Lot P0-A `SACATALOG-005–014` : **PR #115 fusionnée et testée** pour les valeurs de départ des devis Super Admin. Prochaine étape exacte : **valider les actions fournisseur Stripe sandbox** (prix existants/absents, taxes/prorata, callbacks et webhooks) sur entreprises fictives; si impossible faute d'accès fournisseur, enregistrer le blocage #35 et choisir le prochain défaut P0 documenté, sans toucher aux contrats réels. Les PR #112–#114 sont fusionnées/testées mais leurs nouvelles fonctions Edge ne sont pas déployées.
+3. Après chaque PR suivante : lire CI jusqu'au résultat final, corriger en cas d'échec, fusionner seulement vert, puis inspecter séparément GitHub Pages, Edge et builds Expo avant d'inscrire 'déployé'. Ne pas confondre merge GitHub, Pages, Supabase Edge et build Expo.
 4. Reprendre **P0-A / P0-B** sur la prochaine lacune technique vérifiée (tarifs particuliers/Stripe et sécurité), sans se limiter à retoucher le même flux; enregistrer les éventuels blocages fournisseur, puis passer à **P0-C/P0-D** et ensuite aux P1.
 5. Pour chaque lot garder quatre états séparés : développé, testé, déployé, intervention externe. **Ne déclarer terminé qu'avec preuves appropriées pour tout le parcours.**
 
-Ce registre reflète les preuves en date du 26 octobre. Il doit être actualisé après la fusion de la PR #115 et au début de chaque séance; les suivis historiques ne priment pas sur le code et les tests actuels.
+Ce registre reflète les preuves en date du 26 octobre. Il doit être actualisé après la prochaine PR active et au début de chaque séance; les suivis historiques ne priment pas sur le code et les tests actuels.
+
+## Point de contrôle suivant
+
+**Blocage fournisseur non résolu :** issue [#35](https://github.com/punch360app/Punch360/issues/35). Le lot Stripe live/test ne peut pas recevoir de GO commercial sans configuration/recette réelle des ressources sandbox, ni sans migration SQL correspondante validée **avant** la publication des Edge. 
+
+**Exigence indépendante encore réalisable :** P0-C SEC-017 / QA-032 : vérification serveur multientreprise avec deux comptes et rôles fictifs, droits RPC/RLS et caches hors ligne. Les correctifs #101–#106 n'en constituent qu'une partie; inspecter les tests existants pour éviter de les refaire. **Ne pas prétendre** que cette recette est achevée sans un environnement et une preuve concrets.
