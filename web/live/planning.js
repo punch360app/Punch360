@@ -5,12 +5,13 @@ import {weeklyArgs,weeklyDaysLabel,weeklyPreviewLabel} from './weekly-availabili
 import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodLabel} from './schedule-preferences.js';
 import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availability-reminders.js';
 import {createClientDirectoryController} from './client-directory.js';
+import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from './shift-client-sites.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
 export function createPlanningController({sb,redraw,notify,escape:e,document:doc,exportIcs=downloadCalendarIcs}){
  let generation=0;
  const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const future=()=>{const d=new Date();d.setDate(d.getDate()+31);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
- const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:''}};
+ const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,siteChoices:[],siteHasMore:false,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
  const clientDirectory=createClientDirectoryController({sb,escape:e,document:doc,redraw,notify});
  const manager=()=>['boss','admin'].includes(s.role),feature=f=>Array.isArray(s.entitlement.features)&&s.entitlement.features.includes(f);
  const canPlan=d=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan&&g.department_id===d));
@@ -27,7 +28,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  const val=key=>doc.getElementById('plan-'+key)?.value.trim()??s.form[key]??'';
  async function rpc(name,args){const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data;}
  async function rows(table){const r=await sb.from(table).select('*').eq('company_id',s.company);if(r.error)throw r.error;return Array.isArray(r.data)?r.data:[];}
- async function load(account,user,own,workers=[]){const revision=++generation;const company=account.company_id;if(s.company!==account.company_id||s.user!==user){s.feedUrl=null;s.feedStatus=null;s.absenceShift=null;s.absenceRequest=null;s.absences=[];s.weeklyRules=[];s.weeklyPreview=[];s.weeklyRequest=null;s.workerPrefs=[];s.prefLoadedWorker=null;s.prefLoadedVersion=0;s.prefRequest=null;s.form.prefWorker='';s.reminderPreview=null;s.reminderKey=null;}s.company=account.company_id;s.role=account.role;s.user=user;s.own=own;s.workers=workers;s.error='';
+ async function load(account,user,own,workers=[]){const revision=++generation;const company=account.company_id;if(s.company!==account.company_id||s.user!==user){s.feedUrl=null;s.feedStatus=null;s.absenceShift=null;s.absenceRequest=null;s.absences=[];s.weeklyRules=[];s.weeklyPreview=[];s.weeklyRequest=null;s.workerPrefs=[];s.prefLoadedWorker=null;s.prefLoadedVersion=0;s.prefRequest=null;s.form.prefWorker='';s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.siteOpenShift=null;s.siteChoices=[];}s.company=account.company_id;s.role=account.role;s.user=user;s.own=own;s.workers=workers;s.error='';
   const results=await Promise.all([rpc('essential_entitlements',{p_company:s.company}),rows('essential_locations'),rows('essential_departments'),rows('essential_supervisors'),rpc('essential_team_roster',{p_company:s.company}),sb.from('scheduled_shifts').select('*').eq('company_id',s.company).gt('ends_at',s.form.calendarFrom+'T00:00:00Z').lt('starts_at',s.form.calendarTo+'T00:00:00Z').order('starts_at').limit(1000),rows('essential_shift_requests'),rows('essential_availability'),rows('essential_schedule_templates')]);
   if(revision!==generation)return;s.entitlement=results[0]||{};s.locations=results[1];s.departments=results[2];s.scopes=results[3];s.roster=Array.isArray(results[4])?results[4]:[];
   if(results[5].error)throw results[5].error;s.shifts=Array.isArray(results[5].data)?results[5].data:[];s.requests=results[6];s.availability=results[7];s.templates=results[8];s.absences=[];s.absenceUnavailable=false;
@@ -53,6 +54,13 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }
   if(feature('shift_swaps')){const opts=await rpc('essential_swap_options',{p_company:company});if(revision!==generation)return;s.options=Array.isArray(opts)?opts:[];}else s.options=[];
   if(manager())await clientDirectory.load(company);else clientDirectory.reset();
+  s.assignedSites=[];s.assignedSitesUnavailable=false;
+  try{
+   const result=await rpc('list_essential_assigned_client_sites',{p_company:company,
+    p_from:s.form.calendarFrom+'T00:00:00Z',p_to:s.form.calendarTo+'T00:00:00Z'});
+   if(revision!==generation)return;s.assignedSites=Array.isArray(result?.items)?result.items:[];
+   if(result?.has_more)s.assignedSitesUnavailable=true;
+  }catch{s.assignedSitesUnavailable=true;}
  }
  async function reload(){await load({company_id:s.company,role:s.role},s.user,s.own,s.workers);}
  function renderOrganization(){return `<div class="plan-workspace"><h2>Établissements et départements</h2>${s.error?`<p class="ess-notice" role="alert">${e(s.error)}</p>`:''}<p class="ess-fine">Forfait : ${e(s.entitlement.title||'Essentiel')}${s.entitlement.simulated?' · environnement de test':''}</p><div class="ess-worker-layout"><section class="ess-panel"><h3>Établissements</h3>${s.locations.map(l=>`<article class="ess-person"><div><b>${e(l.name)}</b><small>${e(l.address)} · ${e(l.timezone)}</small></div></article>`).join('')}${manager()?`${field('Nom du nouvel établissement','locationName')}${field('Adresse','address')}${field('Fuseau IANA','timezone')}${btn('Créer l’établissement','location')}`:''}</section><section class="ess-panel"><h3>Départements</h3>${s.departments.map(d=>`<article class="ess-person"><div><b>${e(d.name)}</b><small>${e(place(d.location_id))}${feature('minimum_coverage')?' · minimum '+d.minimum_staff:''}</small></div>${manager()&&feature('minimum_coverage')?btn('Minimum','minimum',`data-id="${e(d.id)}"`):''}</article>`).join('')||'<p>Aucun département.</p>'}${manager()&&feature('departments')?`${locationSelect('orgLocation')}${field('Nom du département','departmentName')}${btn('Créer le département','department')}`:'<p class="ess-fine">Départements disponibles avec Plus et Pro.</p>'}</section></div>${manager()?renderAssignments():''}${manager()&&feature('minimum_coverage')?renderPositions():''}${s.role==='boss'&&feature('supervisors')?renderSupervisors():''}${manager()?clientDirectory.render():''}</div>`;}
@@ -91,6 +99,32 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }
   return canReportShift(shift,s.own,false)?btn('Signaler mon absence','absence-open',`data-id="${e(shift.id)}"`):'';
  }
+ function renderAssignedSite(shift){
+  const site=assignedSiteForShift(s.assignedSites,shift.id);
+  if(!site)return '';
+  const url=assignedSiteMapsUrl(site);
+  return `<div class="ess-fine"><b>Client · ${e(assignedSiteSummary(site))}</b>
+   <p>${e(assignedSiteAddress(site))}</p>
+   ${site.access_instructions?`<p>Accès : ${e(site.access_instructions)}</p>`:''}
+   ${site.contact_name?`<p>Contact sur place : ${e(site.contact_name)}</p>`:''}
+   <a href="${e(url)}" rel="noopener noreferrer" target="_blank">Itinéraire (Google Maps)</a>
+   <p>Cette adresse n’est pas l’établissement de la compagnie. Aucun suivi de trajet activé.</p>
+  </div>`;
+ }
+ function renderSitePicker(shift){
+  if(!manager()||s.siteOpenShift!==shift.id)return '';
+  const matches=s.siteChoices.filter(x=>x.active);
+  return `<div class="ess-panel" aria-label="Adresse d’intervention du quart">
+   <h4>Choisir l’adresse réelle de ce quart</h4>
+   <p class="ess-fine">L’horaire, les heures et le pointage ne changent pas. Vous pouvez créer plusieurs quarts la même journée pour plusieurs adresses.</p>
+   ${field('Rechercher une adresse ou un client','clientSiteSearch')}
+   ${btn('Rechercher les lieux','site-search')}
+   ${select('Lieu d’intervention','clientSiteChoice',[['','Aucune adresse client'],...matches.map(x=>[x.id,x.client_name+' · '+x.name+' · '+x.city])])}
+   ${s.siteHasMore?'<p class="ess-fine">Plus de 50 résultats : précisez la recherche pour trouver l’adresse souhaitée.</p>':''}
+   ${btn('Enregistrer le lieu de ce quart','site-assign',`data-id="${e(shift.id)}"`)}
+   ${btn('Fermer','site-close')}
+  </div>`;
+ }
  function renderCalendar(){const visible=s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));return `<section class="ess-panel"><h3>Quarts publiés</h3>${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
  ${s.own?`<details class="ess-panel"><summary>Synchroniser mon horaire avec mon calendrier</summary>
  <p class="ess-fine">Lien privé iCalendar compatible avec les calendriers qui acceptent un abonnement par URL. Les mises à jour dépendent de la fréquence de synchronisation du calendrier.</p>
@@ -100,7 +134,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  ${btn('Créer ou renouveler le lien privé','feed-rotate')}
  ${s.feedStatus?.active?btn('Révoquer le lien','feed-revoke'):''}
  ${s.feedUrl?`<label class="ess-field">Copiez ce lien maintenant — il ne sera pas réaffiché<input readonly aria-label="Lien privé calendrier" value="${e(s.feedUrl)}"></label>${btn('Copier le lien','feed-copy')}`:''}
- </details>`:''}<div class="ess-form-grid">${field('Du (UTC)','calendarFrom','date')}${field('Au exclusif (UTC)','calendarTo','date')}</div>${btn('Afficher cette période','reload')}${s.shifts.length>=1000?'<p class="ess-notice">Limite de 1 000 quarts : réduisez la période pour consulter tous les résultats.</p>':''}${!visible.length?'<p>Aucun quart planifié.</p>':''}${visible.map(x=>`<article class="plan-shift"><div><b>${x.worker_id?e(workerName(x.worker_id)):'Quart disponible'}</b><small>${e(date(x.starts_at,x.timezone))} → ${e(date(x.ends_at,x.timezone))}</small><small>${e(place(x.location_id))}${x.department_id?' · '+e(s.departments.find(d=>d.id===x.department_id)?.name||'Département'):''}${x.position_id?' · Poste : '+e(s.positions.find(p=>p.id===x.position_id)?.title||'Poste exclusif'):''} · v${x.version}</small><p>${e(x.note||'')}</p></div><div class="plan-actions">${canPlan(x.department_id)?btn('Modifier','edit',`data-id="${e(x.id)}"`)+btn('Annuler','cancel',`data-id="${e(x.id)}"`)+(manager()&&feature('minimum_coverage')?select('Poste exclusif','pos-'+x.id,[['','Aucun poste'],...s.positions.filter(p=>p.active&&p.location_id===x.location_id&&(!p.department_id||p.department_id===x.department_id)).map(p=>[p.id,p.title])])+btn('Affecter le poste','pos-assign',`data-id="${e(x.id)}"`):''):''}${x.user_id===s.user?(s.acks.some(a=>a.shift_id===x.id&&a.version===x.version)?'<span class="ess-badge">Lecture confirmée</span>':btn('Confirmer la lecture','ack',`data-id="${e(x.id)}"`)):''}${renderAbsenceControls(x)}${feature('shift_swaps')&&new Date(x.starts_at)>new Date()?(x.worker_id===s.own?btn('Demander un remplacement','release',`data-id="${e(x.id)}"`)+select('Proposer un échange','swap-'+x.id,[['','Choisir le quart du collègue'],...s.options.filter(o=>o.location_id===x.location_id&&o.department_id===x.department_id).map(o=>[o.id,o.name+' · '+date(o.starts_at,x.timezone)])])+btn('Proposer l’échange','swap',`data-id="${e(x.id)}"`):x.worker_id===null?btn('Me proposer pour ce quart','claim',`data-id="${e(x.id)}"`):''):''}</div></article>`).join('')}</section>`;}
+ </details>`:''}<div class="ess-form-grid">${field('Du (UTC)','calendarFrom','date')}${field('Au exclusif (UTC)','calendarTo','date')}</div>${btn('Afficher cette période','reload')}${s.shifts.length>=1000?'<p class="ess-notice">Limite de 1 000 quarts : réduisez la période pour consulter tous les résultats.</p>':''}${!visible.length?'<p>Aucun quart planifié.</p>':''}${visible.map(x=>`<article class="plan-shift"><div><b>${x.worker_id?e(workerName(x.worker_id)):'Quart disponible'}</b><small>${e(date(x.starts_at,x.timezone))} → ${e(date(x.ends_at,x.timezone))}</small><small>${e(place(x.location_id))}${x.department_id?' · '+e(s.departments.find(d=>d.id===x.department_id)?.name||'Département'):''}${x.position_id?' · Poste : '+e(s.positions.find(p=>p.id===x.position_id)?.title||'Poste exclusif'):''} · v${x.version}</small><p>${e(x.note||'')}</p>${renderAssignedSite(x)}${renderSitePicker(x)}</div><div class="plan-actions">${canPlan(x.department_id)?btn('Modifier','edit',`data-id="${e(x.id)}"`)+btn('Annuler','cancel',`data-id="${e(x.id)}"`)+(manager()?btn('Associer une adresse client','site-open',`data-id="${e(x.id)}"`):'')+(manager()&&feature('minimum_coverage')?select('Poste exclusif','pos-'+x.id,[['','Aucun poste'],...s.positions.filter(p=>p.active&&p.location_id===x.location_id&&(!p.department_id||p.department_id===x.department_id)).map(p=>[p.id,p.title])])+btn('Affecter le poste','pos-assign',`data-id="${e(x.id)}"`):''):''}${x.user_id===s.user?(s.acks.some(a=>a.shift_id===x.id&&a.version===x.version)?'<span class="ess-badge">Lecture confirmée</span>':btn('Confirmer la lecture','ack',`data-id="${e(x.id)}"`)):''}${renderAbsenceControls(x)}${feature('shift_swaps')&&new Date(x.starts_at)>new Date()?(x.worker_id===s.own?btn('Demander un remplacement','release',`data-id="${e(x.id)}"`)+select('Proposer un échange','swap-'+x.id,[['','Choisir le quart du collègue'],...s.options.filter(o=>o.location_id===x.location_id&&o.department_id===x.department_id).map(o=>[o.id,o.name+' · '+date(o.starts_at,x.timezone)])])+btn('Proposer l’échange','swap',`data-id="${e(x.id)}"`):x.worker_id===null?btn('Me proposer pour ce quart','claim',`data-id="${e(x.id)}"`):''):''}</div></article>`).join('')}</section>`;}
  function loadPrefsForm(worker){
   const row=s.workerPrefs.find(p=>p.worker_id===worker);
   s.prefLoadedWorker=worker;s.prefLoadedVersion=Number(row?.version||0);s.prefRequest=null;
@@ -219,7 +253,33 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   if(a==='absence-cancel'){s.absenceShift=null;s.absenceRequest=null;redraw();return true;}
   if(a==='template-load'){const t=s.templates.find(t=>t.id===id&&t.active);if(!t)return true;Object.assign(s.form,scheduleTemplateForm(t));s.template=t;s.batch=null;s.editing=null;s.showForm=true;redraw();return true;}if(a==='toggle'){s.showForm=!s.showForm;s.editing=null;redraw();return true;}if(a==='tab'){s.tab=id;redraw();return true;}if(a==='edit'){edit(id);redraw();return true;}
   s.busy=true;try{
-   if(a==='template-save'||a==='template-update'){await rpc('save_essential_schedule_template',{p_company:s.company,p_location:val('location'),p_department:val('department')||null,p_name:val('templateName'),p_configuration:scheduleTemplateConfiguration(s.form),p_template:a==='template-update'?s.template?.id:null,p_expected_version:a==='template-update'?s.template?.version:null});s.template=null;notify('Modèle enregistré; aucun quart publié.');}
+   if(a==='site-open'){
+    if(!manager())throw Error('Responsable requis.');
+    const sh=s.shifts.find(x=>x.id===id&&!x.cancelled_at);
+    if(!sh)throw Error('Quart introuvable.');
+    s.siteOpenShift=id;s.form.clientSiteSearch='';
+    s.form.clientSiteChoice=sh.client_site_id||'';
+    const sites=await rpc('list_essential_client_sites',{p_company:s.company,p_search:'',p_after:null,p_limit:50});
+    s.siteChoices=Array.isArray(sites?.items)?sites.items:[];s.siteHasMore=!!sites?.has_more;
+   }else if(a==='site-search'){
+    if(!manager()||!s.siteOpenShift)throw Error('Choisissez d’abord un quart.');
+    s.form.clientSiteSearch=val('clientSiteSearch');
+    const sites=await rpc('list_essential_client_sites',{p_company:s.company,p_search:s.form.clientSiteSearch,p_after:null,p_limit:50});
+    s.siteChoices=Array.isArray(sites?.items)?sites.items:[];s.siteHasMore=!!sites?.has_more;
+    s.form.clientSiteChoice='';
+   }else if(a==='site-close'){s.siteOpenShift=null;s.siteChoices=[];}
+   else if(a==='site-assign'){
+    if(!manager()||s.siteOpenShift!==id)throw Error('Responsable et quart sélectionné requis.');
+    const sh=s.shifts.find(x=>x.id===id&&!x.cancelled_at);
+    if(!sh)throw Error('Quart introuvable.');
+    const chosen=val('clientSiteChoice');
+    if(chosen&&!s.siteChoices.some(x=>x.id===chosen&&x.active))throw Error('Choisissez un lieu actif trouvé dans la recherche.');
+    if(!chosen&&!doc.defaultView.confirm('Retirer l’adresse d’intervention de ce quart ?'))return true;
+    const answer=await rpc('set_essential_shift_client_site',shiftSiteAssignmentArgs(s.company,sh,chosen));
+    s.siteOpenShift=null;s.siteChoices=[];
+    notify(answer.unchanged?'Adresse déjà enregistrée.':'Adresse du quart enregistrée. Le salarié concerné recevra un avis interne si son compte est actif.');
+   }
+   else if(a==='template-save'||a==='template-update'){await rpc('save_essential_schedule_template',{p_company:s.company,p_location:val('location'),p_department:val('department')||null,p_name:val('templateName'),p_configuration:scheduleTemplateConfiguration(s.form),p_template:a==='template-update'?s.template?.id:null,p_expected_version:a==='template-update'?s.template?.version:null});s.template=null;notify('Modèle enregistré; aucun quart publié.');}
    else if(a==='template-archive'){const t=s.templates.find(t=>t.id===id);await rpc('archive_essential_schedule_template',{p_template:id,p_expected_version:t.version});}
    else if(a==='absence-report'){
     const shift=s.shifts.find(x=>x.id===id);
@@ -327,6 +387,6 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }catch(err){s.error=err.message;notify(err.message);}finally{s.busy=false;redraw();}return true;
  }
  function input(el){if(!el?.id?.startsWith('plan-'))return;s.form[el.id.slice(5)]=el.type==='checkbox'?el.checked:el.value;if(['plan-location','plan-assignLocation','plan-mode'].includes(el.id)){if(el.id==='plan-location')s.form.department='';if(el.id==='plan-assignLocation')s.form.assignDepartment='';redraw();}}
- function reset(){generation++;clientDirectory.reset();s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.report=null;s.options=[];s.editing=null;s.batch=null;}
+ function reset(){generation++;clientDirectory.reset();s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.siteOpenShift=null;s.siteChoices=[];s.report=null;s.options=[];s.editing=null;s.batch=null;}
  return {state:s,load,reload,renderOrganization,renderSchedule,handle,input,reset};
 }
