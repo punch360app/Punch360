@@ -112,7 +112,9 @@ function summarizeWorkProgress(manifest){
  const developedTested=statuses.filter(([,r])=>['partial','verified'].includes(r.developed)&&r.tested==='software').length;
  const delivered=statuses.filter(([,r])=>r.developed==='verified'&&r.tested==='software'&&r.deployed===true&&r.external_required!==true).length;
  return {total:validTaskIds.size,documented,developedTested,delivered,
-  percent:validTaskIds.size?Math.round(1000*documented/validTaskIds.size)/10:0};
+  percent:validTaskIds.size?Math.round(1000*documented/validTaskIds.size)/10:0,
+  testedPercent:validTaskIds.size?Math.round(1000*developedTested/validTaskIds.size)/10:0,
+  deliveredPercent:validTaskIds.size?Math.round(1000*delivered/validTaskIds.size)/10:0};
 }
 function totalValidated(){
  // This small counter is retained solely for the owner's optional local notes.
@@ -129,6 +131,15 @@ function renderWorkProgress(manifest){
  document.getElementById('progressDetail').textContent='Livrées, testées et déployées de bout en bout : '+result.delivered+' / '+result.total+' confirmées. Ce n’est pas une estimation de tout le travail non audité.';
  document.getElementById('progressFill').style.width=result.percent+'%';
  document.getElementById('progressMeter').setAttribute('aria-valuenow',String(result.percent));
+ const displayPercent=percent=>percent.toLocaleString('fr-CA',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';
+ document.getElementById('progressTestedFraction').textContent=result.developedTested+' / '+result.total;
+ document.getElementById('progressTestedPercent').textContent=displayPercent(result.testedPercent);
+ document.getElementById('progressTestedFill').style.width=result.testedPercent+'%';
+ document.getElementById('progressTestedMeter').setAttribute('aria-valuenow',String(result.testedPercent));
+ document.getElementById('progressDeliveredFraction').textContent=result.delivered+' / '+result.total;
+ document.getElementById('progressDeliveredPercent').textContent=displayPercent(result.deliveredPercent);
+ document.getElementById('progressDeliveredFill').style.width=result.deliveredPercent+'%';
+ document.getElementById('progressDeliveredMeter').setAttribute('aria-valuenow',String(result.deliveredPercent));
  document.getElementById('progressSync').textContent='Registre GitHub actualisé : '+(manifest.generated_at||'date non renseignée');
  const recent=document.getElementById('workRecent');
  recent.replaceChildren();
