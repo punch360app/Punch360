@@ -5,7 +5,7 @@ export function summarizeCoverageDemand(report,planning){
   const start=Date.parse(g.starts_at),end=Date.parse(g.ends_at),missing=Number(g.minimum_staff)-Number(g.staffed);
   return total+(Number.isFinite(start)&&Number.isFinite(end)&&end>start&&Number.isFinite(missing)&&missing>0?missing*(end-start)/3600000:0);
  },0);
- const valid=planning&&Number.isFinite(Number(planning.vacant_shifts))&&Number.isFinite(Number(planning.planned_gross_ms));
+ const valid=planning&&planning.vacant_shifts!==null&&planning.vacant_shifts!==undefined&&planning.planned_gross_ms!==null&&planning.planned_gross_ms!==undefined&&Number.isFinite(Number(planning.vacant_shifts))&&Number.isFinite(Number(planning.planned_gross_ms));
  return {gapCount:Number(report.gap_count)||0,missingStaffHours:Math.round(missingStaffHours*10)/10,
   truncated:!!report.truncated,vacantShifts:valid?Number(planning.vacant_shifts):null,
   plannedHours:valid?Math.round(Number(planning.planned_gross_ms)/360000)/10:null,
