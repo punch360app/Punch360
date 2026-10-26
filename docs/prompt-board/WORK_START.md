@@ -1,5 +1,7 @@
 # Instructions de reprise pour ChatGPT Work — prompts PUNCH
 
+**REPRISE COURANTE / AUTOPILOTE (26 OCTOBRE 2026) :** lire immédiatement [AUTOPILOT_HANDOFF_20261026.md](AUTOPILOT_HANDOFF_20261026.md) après ce fichier. Il enregistre les PR #112/#113 fusionnées avec CI verte, la PR #114 en cours, l'ordre de vérification GitHub Actions et les blocages Stripe/OAuth réels. Ce fichier ne remplace ni les 578 exigences du prompt maître, ni la vérification du dernier main.
+
 
 **RÈGLE IMMÉDIATE POUR WORK :** **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
 
