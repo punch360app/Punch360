@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -48,18 +48,20 @@ Deno.serve(async(req:Request)=>{
   const productId=checkStripeProductPair(registered,{monthly:remote[0],yearly:remote[1]},secret.startsWith('sk_live_'));
   const interval=o.cadence==='yearly'?'year':'month';
   const registeredPrice=selectRegisteredPrice(registered,o.cadence,o.amount_cents);
-  // Existing base rates always reuse their exact Price ID. Additional seats and
-  // negotiated prices use an idempotent new Price ON THE EXISTING Stripe Product.
-  const price:any=registeredPrice?remote[o.cadence==='yearly'?1:0]:
-    await stripe('/prices',{
+  const strategy=orderPriceStrategy(body.action,registeredPrice,o.preview);
+  // Unlike preview/checkout, confirm never creates a Stripe Price. It reads
+  // the server-saved preview ID, verifies the actual provider object, and
+  // only then submits the subscription change. Safe across retries.
+  const price:any=strategy.kind==='fetch'
+    ? registeredPrice===strategy.priceId?remote[o.cadence==='yearly'?1:0]:await stripe(`/prices/${strategy.priceId}`)
+    : await stripe('/prices',{
       currency:'cad',unit_amount:o.amount_cents,recurring:{interval},product:productId,
       metadata:{punch_order:o.id,punch_plan:o.plan_id,punch_company:body.companyId}
     },`${o.id}:price`);
-  if(!/^price_[a-zA-Z0-9]{8,80}$/.test(price.id||'')||price.currency!=='cad'||
-     price.unit_amount!==o.amount_cents||price.livemode!==secret.startsWith('sk_live_')||
-     price.recurring?.interval!==interval||price.product!==productId){
-    throw Error('STRIPE_CREATED_PRICE_MISMATCH');
-  }
+  checkOrderStripePrice(price,{
+    expectedId:strategy.priceId,amount:o.amount_cents,cadence:o.cadence,
+    productId,liveMode:secret.startsWith('sk_live_')
+  });
   if(body.action==='checkout'){
    if(a?.subscription_id)throw Error('SUBSCRIPTION_EXISTS_USE_PREVIEW');
    const customer=a?.customer_id?{id:a.customer_id}:await stripe('/customers',{metadata:{punch_company:body.companyId}},`${body.companyId}:customer`);

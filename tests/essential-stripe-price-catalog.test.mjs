@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {billingQuote} from '../supabase/functions/_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
 
 const cases=[
  ['essential',1900,19380,20],
@@ -88,4 +88,39 @@ test('subscription confirmation accepts only the exact, fresh, previously previe
  assert.throws(()=>verifySubscriptionPreview(preview,{...subscription,pending_update:{}},item,price,now),/PREVIEW_EXPIRED/);
  assert.throws(()=>verifySubscriptionPreview(preview,{...subscription,items:{data:[item,item]}},item,price,now),/PREVIEW_EXPIRED/);
  assert.throws(()=>verifySubscriptionPreview(null,subscription,item,price,now),/PREVIEW_EXPIRED/);
+});
+
+
+test('confirm is READ-ONLY for Stripe Prices: custom offers reuse previewed ID',()=>{
+ const standard='price_12345678monthly',custom='price_12345678offer';
+ assert.deepEqual(orderPriceStrategy('checkout',standard,null),{kind:'fetch',priceId:standard});
+ assert.deepEqual(orderPriceStrategy('preview',standard,null),{kind:'fetch',priceId:standard});
+ assert.deepEqual(orderPriceStrategy('checkout',null,null),{kind:'create',priceId:null});
+ assert.deepEqual(orderPriceStrategy('preview',null,null),{kind:'create',priceId:null});
+ assert.deepEqual(orderPriceStrategy('confirm',null,{price_id:custom}),{kind:'fetch',priceId:custom});
+ assert.deepEqual(orderPriceStrategy('confirm',standard,{price_id:standard}),{kind:'fetch',priceId:standard});
+ assert.throws(()=>orderPriceStrategy('confirm',null,null),/PREVIEW_EXPIRED/);
+ assert.throws(()=>orderPriceStrategy('confirm',null,{price_id:'fake_price'}),/PREVIEW_EXPIRED/);
+ assert.throws(()=>orderPriceStrategy('confirm',standard,{price_id:custom}),/PREVIEW_EXPIRED/);
+ assert.throws(()=>orderPriceStrategy('confirm',standard,null),/PREVIEW_EXPIRED/);
+ assert.throws(()=>orderPriceStrategy('unknown',null,null),/INVALID_BILLING_ACTION/);
+});
+test('saved custom Stripe Price must match amount, product, cadence, currency and test/live mode',()=>{
+ const expectedId='price_12345678offer',productId='prod_12345678';
+ const price={id:expectedId,active:true,livemode:false,currency:'cad',unit_amount:2100,
+  type:'recurring',billing_scheme:'per_unit',recurring:{interval:'month',interval_count:1},product:productId};
+ const args={expectedId,amount:2100,cadence:'monthly',productId,liveMode:false};
+ assert.equal(checkOrderStripePrice(price,args),price);
+ for(const [field,value] of [
+  ['id','price_87654321other'],['active',false],['livemode',true],
+  ['currency','usd'],['unit_amount',2200],['type','one_time'],
+  ['billing_scheme','tiered'],['product','prod_other123'],
+  ['transform_quantity',{divide_by:2,round:'up'}]
+ ])assert.throws(()=>checkOrderStripePrice({...price,[field]:value},args),/STRIPE_ORDER_PRICE_UNVERIFIED/,field);
+ assert.throws(()=>checkOrderStripePrice({...price,recurring:{interval:'year'}},args),/STRIPE_ORDER_PRICE_UNVERIFIED/);
+ assert.throws(()=>checkOrderStripePrice({...price,recurring:{interval:'month',interval_count:2}},args),/STRIPE_ORDER_PRICE_UNVERIFIED/);
+ assert.throws(()=>checkOrderStripePrice(price,{...args,amount:0}),/STRIPE_ORDER_PRICE_UNVERIFIED/);
+ assert.throws(()=>checkOrderStripePrice(price,{...args,cadence:'yearly'}),/STRIPE_ORDER_PRICE_UNVERIFIED/);
+ const yearly={...price,recurring:{interval:'year',interval_count:1}};
+ assert.equal(checkOrderStripePrice(yearly,{...args,cadence:'yearly'}),yearly);
 });
