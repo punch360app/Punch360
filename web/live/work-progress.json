@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T19:02:25.828Z",
+  "generated_at": "2026-10-26T19:12:47.760Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
-  "denominator": 579,
+  "denominator": 587,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
   "requirements": {
     "GOV-001": {
@@ -1042,9 +1042,106 @@
         133
       ],
       "note": "Travail rattaché à la PR #133. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-001": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-002": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-003": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-005": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-006": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-007": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MLOC-008": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        135
+      ],
+      "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 135,
+      "sha": "2b1b1fe52946ed57c03fa3b554582b0348f6f90e",
+      "ci": "success",
+      "ids": [
+        "MLOC-001",
+        "MLOC-002",
+        "MLOC-003",
+        "MLOC-004",
+        "MLOC-005",
+        "MLOC-006",
+        "MLOC-007",
+        "MLOC-008"
+      ],
+      "title": "docs(master): planification clients et interventions multi-emplacements",
+      "merged_at": "2026-10-26T19:12:38Z"
+    },
     {
       "number": 134,
       "sha": "c5e4deb47f9fe152e34f2f96aa45737de56f469b",
@@ -1522,15 +1619,6 @@
       "ids": [],
       "title": "Sécurité Boss : isoler MFA multi-entreprises et versionner nettoyage Auth",
       "merged_at": "2026-10-26T05:28:21Z"
-    },
-    {
-      "number": 80,
-      "sha": null,
-      "head_sha": "d97eaf85d04bb2ff580b17889db97f78673030e8",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Validation archives : test PDF binaire intégré et fermeture confidentielle",
-      "merged_at": "2026-10-26T05:22:36Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
