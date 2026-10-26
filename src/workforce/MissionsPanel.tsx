@@ -3,7 +3,7 @@ import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-
 import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
-import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions} from '../../web/live/missions.js';
+import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
@@ -149,7 +149,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[busy,setBusy]=useState(false),
   [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
- const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false);
+ const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false),[tourOpen,setTourOpen]=useState(false),[tourRouteId,setTourRouteId]=useState<string|null>(null);
  async function refresh(){
   if(!workerId||!companyId)return;
   const gen=++current.current;
@@ -159,12 +159,13 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    setEnabled(!!res.enabled);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
   }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setItems([]);setEnabled(false);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setItems([]);setEnabled(false);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;subscription.remove()};
  },[companyId,workerId]);
  const progress=missionProgress(items),next=progress.next;
+ const tour=personalMissionTour(items,workerId);
  useEffect(()=>{setNavOpen(false)},[next?.id]);
  const complete=()=>{
   if(!next||busy)return;
@@ -205,6 +206,24 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    {button('Terminer',complete,busy)}
    {label('Terminer une mission ne pointe jamais la sortie.')}
   </>:null}
+  {tour.total>0?button(tourOpen?'Masquer ma tournée du jour':'Voir mes interventions du jour ('+tour.total+')',()=>setTourOpen(v=>!v)):null}
+  {tourOpen?<View style={{gap:7,paddingVertical:8}}>
+   {label('Ordre publié, sans GPS PUNCH, temps de trajet estimé ni changement d’heures.')}
+   {tour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Deux missions ont le même rang; confirmer l’ordre avec le responsable.</Text>:null}
+   {tour.rows.map((stop:Row)=><View key={stop.id} style={{padding:9,backgroundColor:'white',borderWidth:1,borderColor:'#DCE8D6',borderRadius:8,gap:5}}>
+    {title(stop.title+' · '+stop.client_name)}
+    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':'À faire'))}
+    {label(missionAddress(stop))}
+    {stop.status==='published'&&missionNavigationOptions(stop,Platform.OS,navProvider).choices.length?
+     button(tourRouteId===stop.id?'Masquer les itinéraires':'Itinéraire vers cette étape',
+      ()=>setTourRouteId(v=>v===stop.id?null:stop.id)):null}
+    {tourRouteId===stop.id&&stop.status==='published'?
+     missionNavigationOptions(stop,Platform.OS,navProvider).choices.map(route=><View key={route.id}>
+      {button(route.label+' · cette étape',()=>{void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))})}
+     </View>):null}
+   </View>)}
+   {tour.hasMore?label('Seules les 25 premières missions sont affichées; contactez le responsable pour une tournée segmentée.'):null}
+  </View>:null}
   {!!message?<Text accessibilityLiveRegion="polite" style={{color:'#B04C37'}}>{message}</Text>:null}
   {truncated?label('Plus de 200 missions : demandez une tournée segmentée au responsable.'):null}
  </View>;
