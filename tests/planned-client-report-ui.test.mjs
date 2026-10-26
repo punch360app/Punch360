@@ -32,7 +32,7 @@ test('manager can calculate client planned hours from authorized existing shift 
  ui.state.tab='report';
  window.document.body.innerHTML=ui.renderSchedule();
  assert.match(window.document.body.textContent,/Heures planifiées par client et adresse/);
- await ui.handle({dataset:{action:'ess:plan-client-planned-report'}});
+ await ui.handle({dataset:{action:'ess:plan-planned-client-report'}});
  assert.equal(ui.state.clientPlannedReport?.totalHours,4);
  assert.equal(ui.state.clientPlannedReport?.actualHours,null);
  window.document.body.innerHTML=ui.renderSchedule();
@@ -47,13 +47,13 @@ test('manager report refuses incomplete period and employee cannot read or calcu
  Object.assign(ui.state.form,{calendarFrom:today,calendarTo:tomorrow,reportFrom:today,reportTo:new Date(Date.parse(today+'T00:00:00Z')+3*86400000).toISOString().slice(0,10)});
  await ui.load({company_id:'company-a',role:'boss'},'boss',null,[]);
  ui.state.tab='report';window.document.body.innerHTML=ui.renderSchedule();
- await ui.handle({dataset:{action:'ess:plan-client-planned-report'}});
+ await ui.handle({dataset:{action:'ess:plan-planned-client-report'}});
  assert.equal(ui.state.clientPlannedReport,null);
  assert.match(ui.state.error,/postérieure/);
  await ui.load({company_id:'company-a',role:'employee'},'employee','worker-a',[]);
  ui.state.tab='report';window.document.body.innerHTML=ui.renderSchedule();
  assert.doesNotMatch(window.document.body.textContent,/Heures planifiées par client et adresse/);
- await ui.handle({dataset:{action:'ess:plan-client-planned-report'}});
+ await ui.handle({dataset:{action:'ess:plan-planned-client-report'}});
  assert.equal(ui.state.clientPlannedReport,null);
  await window.happyDOM.close();
 });
