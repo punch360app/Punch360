@@ -74,24 +74,15 @@ Si le fichier a bougé, **le rechercher dans le dépôt**. Ne pas inventer un ch
 
 La source de vérité est le **code du commit courant + tests réexécutés + état vérifié du serveur**, puis les documents à jour. Si la documentation se contredit, consigner l'écart et vérifier avant d'écrire.
 
-## 5. Quelle tâche faire en premier
+## 5. Choisir le prochain parcours
 
-**Ne pas coder un nouveau système en parallèle de celui qui existe.** Commencer par un audit court : lire `ESSENTIAL_BILLING_20261024.md`, `ESSENTIAL_PLANNING_20261024.md`, `ESSENTIAL_MIXED_PUNCH_SPEC.md`, les composants concernés et les tests. Confirmer le statut actuel des fonctionnalités suivantes :
-
-1. **Pointeuse PWA** : boutons d'ouverture/copie, URL statique sans code ou token, appairage et révocation, délai de 10 secondes, retour après fermeture de la PWA. Tester ce qui est déjà codé avant de le refaire.
-2. **Thèmes de borne** : développer les **dix apparences** approuvées avec un seul composant fonctionnel, choix par borne dans Boss, aperçu, persistance Supabase, vérifications contrastes et tests. Références visuelles à récupérer auprès du propriétaire si elles ne sont pas présentes dans le dépôt.
-3. **Admin/Boss sur borne** : accès explicitement activable par Boss, authentification séparée complète, **aucun identifiant mémorisé**, sortie immédiate vers la pointeuse et fermeture après **5 minutes**. Ne jamais donner de droits Admin au jeton de borne ; évaluer l'isolation de session PWA avant développement.
-4. **Heures disponibles (Plus/Pro)** : les quarts vacants et candidatures existent partiellement. Vérifier le parcours complet Admin publication → employé postule dans Horaire → Admin accepte/refuse → affectation atomique, conflits/notifications, limites de forfait ; fonctions de coûts et couverture réservées Pro.
-5. **Super Admin commun et page de vente** : dashboard sobre à six indicateurs, filtre Tout/Essentiel/Construction, matrice de tarifs, trois cartes **avec arguments commerciaux différents**, Stripe et droits vérifiés.
-6. **Validation de commercialisation** : QA de régression Essentiel/Construction, accès par rôle, tests multi-entreprise, flux fournisseur dans des environnements sûrs, appareils réels, données et conservation.
-
-Si le propriétaire assigne une tâche différente, suivre sa priorité, **mais respecter les règles de sécurité et de test**.
+Lire [WORK_START](prompt-board/WORK_START.md), l’ordre global du [maître](prompt-board/MASTER_PROMPT_20261025.md) et l’état courant unique [PUNCH_WORK_CONTINUATION](PUNCH_WORK_CONTINUATION.md). Ils remplacent les anciennes listes de priorités de ce guide. Examiner les briques déjà livrées et les travaux concurrents; choisir un parcours complet réalisable avec IDs, résultat et critères de validation. Un défaut critique confirmé passe avant le lot; un fournisseur bloqué n’empêche pas un parcours indépendant. Sans élément nouveau, ne pas répéter un audit déjà conclu.
 
 ## 6. Méthode de travail avec GitHub et Supabase
 
 1. Vérifier les deux invitations acceptées et les connecteurs disponibles dans Work. Ne jamais utiliser un projet Supabase au nom ou à l'ID différent.
 2. Lire l'état du dépôt avant de toucher au code ; noter commit de départ et modifications non fusionnées. Vérifier les branches et PR ouvertes.
-3. Choisir une **fonctionnalité étroite** et un résultat vérifiable. Créer une branche dédiée (ex. `feature/essential-kiosk-themes`). Éviter de pousser directement dans `main` ; proposer une Pull Request avec description et résultats de tests.
+3. Choisir un **parcours complet cohérent** et un résultat vérifiable; regrouper les corrections liées. Créer une branche dédiée (ex. `feature/essential-kiosk-themes`). Éviter de pousser directement dans `main` ; proposer une Pull Request avec description et résultats de tests.
 4. Garder les modifications Supabase sous forme de **migrations versionnées** dans le dépôt, revues avant application. Examiner RLS, tenant, permissions des RPC, stockage et secrets. Utiliser une base/staging ou transactions annulées pour les tests SQL. **Ne pas modifier des données réelles** pour tester.
 5. En local ou environnement d'exécution Work capable de lancer les commandes :
    ```bash
@@ -103,7 +94,7 @@ Si le propriétaire assigne une tâche différente, suivre sa priorité, **mais 
    ```
    Pour les Edge Functions, vérifier TypeScript/Deno et les scripts SQL pertinents seulement lorsque l'environnement est configuré. Exécuter aussi les tests spécifiques au module modifié. Ne pas prétendre avoir lancé ces commandes si Work n'y a pas accès.
 6. Pour le Web, le workflow GitHub Pages publie `web/live/` depuis `main`. **Une branche/PR n'est pas automatiquement le site public.** Vérifier l'état du déploiement avant de tester l'URL publique.
-7. Faire vérifier la PR, documenter les risques, fusionner après autorisation/revue, puis revalider les parcours touchés. Préserver les heures, les données commerciales et le comportement Construction.
+7. Faire vérifier la PR, documenter les risques, fusionner selon les autorisations déjà données et les règles de revue applicables, puis revalider les parcours touchés. Préserver les heures, les données commerciales et le comportement Construction.
 
 **Tests interdits en production :** suppression de salariés ou d'heures, factures Stripe réelles, envois SMS coûteux, tests de charge agressifs, changements de rôles plateforme, contournement RLS ou tests offensifs hors environnement autorisé.
 
@@ -115,9 +106,9 @@ Si absents, créer **après avoir inspecté ce qui existe** :
 
 **Ne pas marquer « TERMINÉ ET TESTÉ » si seules la maquette, la compilation ou la documentation existent.** Pour éviter les conflits entre deux Work : assigner les tâches, travailler sur des branches séparées, ne jamais écraser les changements non fusionnés de l'autre.
 
-## 8. Prompt à coller dans le Work du collaborateur
+## 8. Reprise du collaborateur
 
-> Je rejoins le dépôt GitHub **punch360app/Punch360** en tant que collaborateur et le projet Supabase **mlabstdxxwjdpfaxiwmg** avec mon propre accès Developer. Lis d'abord `docs/README_COLLABORATEUR_WORK.md`, puis les statuts récents `docs/ESSENTIAL_BILLING_20261024.md`, `docs/ESSENTIAL_PLANNING_20261024.md` et `docs/ESSENTIAL_MIXED_PUNCH_SPEC.md`. Inspecte le code actuel et les PR ouvertes. **Ne repars pas de zéro.** PUNCH Essentiel et Construction ont des interfaces distinctes, mais partagent leur moteur de temps et un Super Admin. Identifie les écarts réels entre fonctionnalités codées et décisions validées, vérifie ce qui est déjà fait, puis prends **une première tâche cohérente non terminée** dans la priorité du propriétaire. Travaille sur une branche dédiée, n'expose aucun secret, n'altère pas les vraies données Supabase. Implémente, ajoute des tests, exécute les contrôles possibles, puis prépare une PR et mets à jour la roadmap/continuation. Rapporte exactement les fichiers changés, tests exécutés, résultats, blocages et prochaine tâche, sans inventer de validation ni annoncer le produit commercialisable prématurément.
+> Reprends le dépôt existant punch360app/Punch360 et uniquement Supabase mlabstdxxwjdpfaxiwmg. Lis docs/prompt-board/WORK_START.md, l’ordre global de docs/prompt-board/MASTER_PROMPT_20261025.md et l’état courant de docs/PUNCH_WORK_CONTINUATION.md. Vérifie le dernier main et les branches/PR/workflows; préserve les travaux concurrents et les décisions actuelles du propriétaire. Termine un parcours complet réalisable, teste selon le risque, suis les contrôles et déploiements jusqu’à leur résultat final, conserve les preuves puis enchaîne sans demander « continue ». Les fournisseurs bloqués restent explicitement ouverts; ne refais pas les audits déjà conclus sans information nouvelle. Les anciens rapports servent de preuves datées, pas d’ordres concurrents.
 
 ---
 
