@@ -60,8 +60,10 @@ test('native punch/jobs identity path checks live getUser before accepting onlin
  assert.doesNotMatch(local,/rememberLocalIdentity\(data\.session\.user\)/);
 });
 
-test('malformed offline JSON does not crash a worker identity resolver',()=>{
+test('malformed offline JSON is rejected by the shared serialized cache',()=>{
  const source=readFileSync(new URL('../src/auth/localIdentity.ts',import.meta.url),'utf8');
- assert.match(source,/export async function cachedLocalIdentity\(\)/);
- assert.match(source,/try\{[\s\S]*?JSON\.parse\(raw\)[\s\S]*?\}catch\{return null;\}/);
+ const cache=readFileSync(new URL('../src/auth/nativeIdentityCache.ts',import.meta.url),'utf8');
+ assert.match(source,/export function cachedLocalIdentity\(\):Promise<LocalIdentity\|null>\{return cache\.read\(\);\}/);
+ assert.match(cache,/JSON\.parse\(raw\)/);
+ assert.match(cache,/\}catch\{return null;\}/);
 });

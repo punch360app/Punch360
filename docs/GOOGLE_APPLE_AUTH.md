@@ -107,3 +107,17 @@ Les fonctions mobiles `src/punch/journal.ts`, `src/punch/api.ts` et `src/jobs/ap
 - **Intervention externe :** vrais essais avec jeton révoqué en ligne, mode avion, connectivité fluctuante, journal de punch en attente, redémarrage, deux comptes et deux entreprises. Préserver les heures en attente et vérifier RLS. Issue #102 ouverte.
 
 La fermeture de session et la purge des caches d'identité pendant une sauvegarde concurrente font l'objet d'une revue distincte; cette modification ne prétend pas rendre le mode hors ligne sûr après une révocation distante survenue pendant l'absence de réseau. Aucune modification à Stripe, Supabase SQL, aux données client, aux contrats ou à Construction.
+
+## P0-C — Déconnexion sécurisée malgré les écritures AsyncStorage en cours (26 octobre 2026)
+
+Les opérations natives d'identité `rememberLocalIdentity()` et `forgetLocalIdentity()` écrivaient auparavant la même clé AsyncStorage sans sérialisation. Un ancien `setItem()` retardé pouvait donc terminer **après** `removeItem()` sur `SIGNED_OUT`, et rendre de nouveau l'ancienne identité visible au prochain démarrage hors ligne. La révocation d'une session en ligne ne doit jamais laisser cette identité réapparaître.
+
+Le nouveau cache contrôlé `src/auth/nativeIdentityCache.ts` :
+- attribue une révision à chaque écriture, invalide **immédiatement** toute lecture lors d'une déconnexion, avant le retour asynchrone d'AsyncStorage;
+- sérialise `setItem`/`removeItem` et saute les écritures périmées afin que la suppression arrive après une écriture déjà commencée;
+- bloque une ancienne lecture lancée avant la déconnexion, et empêche de lire l'ancien compte si un second compte vérifié est en cours de sauvegarde;
+- ne supprime **aucun** journal de punch, historique, travail hors ligne ni base de données; seule la clé `punch-last-identity` est concernée.
+
+**Développé** : utilitaire partagé, intégration avec `src/auth/localIdentity.ts`, protection sur `SIGNED_OUT`. **Testé** : simulations déterministes de `setItem` et `removeItem` retardés, double compte, suppression avant réécriture, lecture en vol et conservation des journaux; CI à vérifier. **Déployé** : aucune preuve de build natif signé avec ce correctif. **Intervention externe** : vrai test Android/iPhone de déconnexion pendant les sauvegardes, fermeture forcée pendant le nettoyage et connexion du second compte; suivi issue #102.
+
+**Limite** : si le stockage de l'appareil échoue ou le processus est brutalement arrêté avant la confirmation physique de la suppression, l'état persistant doit être testé; une garantie de purge à travers une défaillance du stockage n'est pas revendiquée. La révocation distante pendant une panne réseau doit aussi être évaluée séparément.
