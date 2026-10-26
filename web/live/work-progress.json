@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T16:19:11.077Z",
+  "generated_at": "2026-10-26T16:44:24.498Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -917,9 +917,73 @@
         127
       ],
       "note": "Travail rattaché à la PR #118. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "COVER-018": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        129
+      ],
+      "note": "Travail rattaché à la PR #129. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "COVER-019": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        129
+      ],
+      "note": "Travail rattaché à la PR #129. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "COVER-020": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        129
+      ],
+      "note": "Travail rattaché à la PR #129. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "COVER-021": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        129
+      ],
+      "note": "Travail rattaché à la PR #129. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "HR-018": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        129
+      ],
+      "note": "Travail rattaché à la PR #129. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 129,
+      "sha": "08c81698192fa83d34fef57e3c12f480657ae3b5",
+      "ci": "success",
+      "ids": [
+        "COVER-018",
+        "COVER-019",
+        "COVER-020",
+        "COVER-021",
+        "HR-018"
+      ],
+      "title": "P1 Essentiel Plus/Pro — Signaler une absence et confirmer sa prise en charge",
+      "merged_at": "2026-10-26T16:44:13Z"
+    },
     {
       "number": 127,
       "sha": "364605fd91213d0c9f5513e7c14b7de60b2c3d08",
@@ -1380,15 +1444,6 @@
       "ids": [],
       "title": "Validation SQL archives : garde-fous RLS, ACL, PDF privés et purge",
       "merged_at": "2026-10-26T04:37:27Z"
-    },
-    {
-      "number": 74,
-      "sha": null,
-      "head_sha": "267bd2471e2857f5dbb4b636d100f2efc6c67470",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Borne Essentiel : 10 langues et RTL — PR réconciliée avec main",
-      "merged_at": "2026-10-26T04:21:52Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
