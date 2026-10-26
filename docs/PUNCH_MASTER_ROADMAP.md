@@ -1,3 +1,15 @@
+# PUNCH 360° — Correspondance et preuves de la roadmap
+
+**Réorganisation du 26 octobre 2026 :** les décisions actuelles, les IDs et l’unique ordre global sont dans [le maître](prompt-board/MASTER_PROMPT_20261025.md). Le seul état courant est [PUNCH_WORK_CONTINUATION.md](PUNCH_WORK_CONTINUATION.md); entrée [WORK_START](prompt-board/WORK_START.md). Cette roadmap conserve les correspondances et preuves historiques, **pas une file de reprise concurrente**.
+
+Les tarifs confirmés sont 19/39/69 $ CAD, 20/25/50 membres inclus, +2 $/membre, annuel −15 %, bornes 1/3/illimitées. Les modifications Stripe sont volontaires; les six Price IDs et snapshots restent préservés. Les anciennes mentions d’une divergence à corriger et de l’issue #90 ouverte sont dépassées par la confirmation du propriétaire.
+
+## Historique des lots et correspondances
+
+Les statuts, priorités et « prochaines actions » ci-dessous sont datés; confronter leurs preuves au dernier code et à la passation courante avant toute action. Aucune recette, aucun déploiement ni pourcentage n’est certifié par cette réorganisation.
+
+---
+
 
 > **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
 
@@ -7,7 +19,7 @@
 
 > **Lot Super Admin P0-A — correctif Boss en PR (26 oct. 2026).** Le devis négocié, l'approbation et l'affichage Boss sont déjà codés : aucun redéveloppement. Correction isolée des réponses tardives entre sociétés, anciennes commandes, prévisualisations et URLs portail, et masquage d'erreurs Edge dans `web/live/billing.js` / `essential-billing`. Trois tests de non-régression ajoutés; CI, fusion, Pages et Edge à vérifier. **E24/E25 et l'issue #35 restent EN COURS**, Stripe test/prorata/taxes/webhooks et recette appareil non prouvés. Suivi à quatre colonnes dans [rapport de ce lot](SUPER_ADMIN_BOSS_BILLING_RACE_20261026.md).
 
-**Mise à jour du 26 octobre 2026 :** les travaux **restants** de l'ancien prompt « Validation SQL archives » ont été transférés au seul prompt maître dans `docs/prompt-board/MASTER_PROMPT_20261025.md`, section **PASSATION DU PROMPT**. Priorité **Super Admin / contrats et Stripe** avant les recettes finales d'archives, QA et fournisseurs. Ne pas reconstruire les fonctions déjà fusionnées (#14, #75, #80, #82–85, #87); le défaut PDF #81 est clôturé par #83. Il ne s'agit pas de nouvelles exigences en plus des 578 IDs. Voir aussi `docs/PUNCH_WORK_CONTINUATION.md`.
+**Mise à jour du 26 octobre 2026 :** les travaux **restants** de l'ancien prompt « Validation SQL archives » ont été transférés au seul prompt maître dans `docs/prompt-board/MASTER_PROMPT_20261025.md`, historique de passation (voir `docs/prompt-board/history/MASTER_CONTEXT_BEFORE_CLEANUP_20261026.md`). Priorité **Super Admin / contrats et Stripe** avant les recettes finales d'archives, QA et fournisseurs. Ne pas reconstruire les fonctions déjà fusionnées (#14, #75, #80, #82–85, #87); le défaut PDF #81 est clôturé par #83. Il ne s'agit pas de nouvelles exigences en plus des 578 IDs. Voir aussi `docs/PUNCH_WORK_CONTINUATION.md`.
 
 État du 24 octobre 2026. Les statuts s’appliquent à chaque exigence entière, pas à la seule présence d’un écran. `EN COURS` comprend les fonctions codées/testées auxquelles manque encore une partie de la recette ou du périmètre. Les preuves détaillées se trouvent dans les documents liés; les SMS restent à la fin.
 

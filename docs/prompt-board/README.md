@@ -1,42 +1,28 @@
 # PUNCH 360° — Centre de suivi des prompts
 
-> **Affichage d'avancement :** la page [suivi.html](https://punch360app.github.io/Punch360/suivi.html) montre désormais au début le nombre d'exigences **marquées « Validé » localement** (ex. `110 / 578`), le pourcentage calculé (`19,0 %`) et une barre de progression qui se mettent à jour à chaque modification de statut. Le calcul utilise les **578 identifiants uniques du maître**, ignore les clés de notes étrangères, et conserve les notes déjà présentes dans le navigateur. **Ce chiffre n'est pas un pourcentage d'avancement technique certifié** : aucune case n'est cochée automatiquement par une PR, et les états développé / testé / déployé / intervention externe restent séparés dans le suivi GitHub. Une exigence sans note locale peut déjà avoir du code. Les données ne sont pas synchronisées entre appareils.
+Entrée unique : [WORK_START.md](WORK_START.md). Exigences et ordre global : [MASTER_PROMPT_20261025.md](MASTER_PROMPT_20261025.md). État courant et prochaine action : [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md).
 
+## Fonctionnement du suivi
 
-> **Tableau de bord HTML du 26 octobre 2026 :** [Centre de suivi PUNCH 360° — 578 exigences / 29 lots](https://punch360app.github.io/Punch360/suivi.html). Le fichier source est [\`web/live/suivi.html\`](../../web/live/suivi.html). Il reprend le design du \`SUIVI_PUNCH360.html\` créé le 25 octobre et remplace son ancien inventaire de 389 points par la liste officielle du prompt maître. **C'est un instantané documenté, pas un tableau synchronisé en direct** : les notes « validées » dans l'interface restent locales au navigateur; seul GitHub et les preuves de test/déploiement permettent de clôturer une exigence. Aucun document brut ni lien direct du Drive privé n'y est publié. Les tests vérifient 578 IDs uniques et 29 lots.\n\n
-Ce répertoire définit le fonctionnement **Drive → GitHub → ChatGPT Work → statut vérifié**. Il ne change ni l'application ni Supabase.
+Le [suivi public](https://punch360app.github.io/Punch360/suivi.html) affiche trois ratios distincts depuis le registre versionné `web/live/work-progress.json` : **travail documenté**, **développement avec tests** et **livré et validé**. Ils se recalculent depuis les IDs actifs du maître et leurs preuves GitHub, partagées entre les appareils. Ils ne mesurent pas un pourcentage global inventé de l’application.
 
-## Source de vérité après consolidation
+Les notes et validations personnelles de la page restent locales au navigateur. Elles n’influencent aucun de ces trois compteurs. Une exigence sans preuve enregistrée peut déjà avoir du code; une PR liée peut ne couvrir qu’une partie du parcours.
 
-**Un seul prompt à exécuter :** [`MASTER_PROMPT_20261025.md`](MASTER_PROMPT_20261025.md) (**578 exigences uniques, 29 lots**). L'ancien giga-prompt a été supprimé après son intégration; les spécifications techniques sur les absences servent de références détaillées, pas de deuxième liste d'exigences à coder. Les exigences horaires avancés et signalement volontaire sont rangées sous SHIFT-016–025, COVER-018–025, HR-018 et QA-018–020, sans réimplémenter les mécanismes existants. Avant de développer, vérifier le dernier `main`, les PR, la base officielle et les tests ; un document n'est pas une preuve de livraison.
+Le générateur `node scripts/sync-tracker-master.mjs` synchronise la liste HTML, les lots, le total, le registre publié et l’instantané lors des tests et de la publication Pages. Toute nouvelle demande distincte reçoit un ID unique stable au format reconnu dans le maître; aucune preuve n’est attribuée automatiquement. Ne pas maintenir manuellement de total fixe. Une clarification enrichit l’ID existant.
 
-## Principe
-- **Google Drive** : boîte d'entrée des nouveaux prompts et visuels. Dossier existant intitulé `promt` dans le Drive autorisé du propriétaire.
-- **GitHub (ce dépôt)** : source de vérité des tâches, modifications, preuves et statuts. Les prompts doivent être triés en exigences vérifiables, sans duplication du code existant.
-- **ChatGPT Work** : au début de chaque séance, lire `docs/prompt-board/WORK_START.md` et `INDEX.md`; chercher les nouveaux fichiers Drive si le connecteur est disponible; vérifier le code, les PR, les migrations et les tests; ouvrir des PR et actualiser les statuts.
-- **Lecture par le propriétaire** : consulter `INDEX.md` sur `main` après fusion des PR, et les GitHub Issues/PR associées.
+Chaque PR indique les IDs réellement touchés sur une ligne `PUNCH-PROGRESS: ID-001, ID-002`. Après fusion, le workflow de suivi enregistre PR et CI vérifiée; **une fusion ne prouve pas le déploiement**. Les états développé/testé/déployé/intervention externe restent indépendants. L’état livré exige les preuves applicables au parcours complet, y compris fournisseur ou appareil lorsque nécessaire.
 
-**Important :** La présence d'un document dans Drive ou GitHub ne déclenche pas Work automatiquement. Il faut ouvrir une tâche Work ou mettre en place une automatisation autorisée. La synchronisation continue Drive → GitHub n'est PAS installée ici. Une connexion Drive et une connexion GitHub autorisées sont nécessaires pour que Work lise les deux.
+## Sources et confidentialité
 
-## États autorisés
-- **À auditer** : prompt présent, périmètre non encore comparé au code courant.
-- **À faire** : exigence vérifiée et manquante.
-- **En cours** : branche/PR ou travaux identifiables.
-- **À tester** : code présent, preuve de tests ou de déploiement manquante.
-- **Bloqué** : dépendance identifiée avec action concrète.
-- **Terminé** : code, tests ET déploiement pertinent vérifiés, avec preuves. Un comportement fournisseur/appareil non testé doit rester ouvert.
+- **Maître** : seule liste fonctionnelle et seul ordre global. Annexes et spécifications détaillent les mêmes IDs, sans deuxième module ou prompt concurrent.
+- **Passation courante** : lot actif, dernier livré, PR/SHA, CI et déploiements confirmés, blocages, prochaine action et travaux à préserver.
+- **GitHub** : code, tâches et preuves. Roadmap et rapports historiques ne commandent pas de recommencer leurs anciennes priorités.
+- **Drive privé `promt`** : boîte d’entrée des demandes/visuels; [INDEX.md](INDEX.md) garde leur correspondance. Aucun document brut, secret, lien privé ou donnée RH/GPS publié automatiquement.
 
-Pour chaque exigence, indiquer **Développé / Testé / Déployé / Intervention externe** séparément. Toute affirmation « terminé » doit donner des références exactes vers PR/commit, migrations et résultats de tests, plus la recette sur appareil/fournisseur si nécessaire. Ne jamais considérer la seule existence d'un écran comme une livraison.
+La lecture du maître ne déclenche pas de travail entre les sessions. La synchronisation continue Drive → GitHub n’est pas installée. Les blocages d’accès Drive n’empêchent pas de poursuivre les parcours déjà documentés.
 
-## Processus de travail
-1. Repérer les nouveaux fichiers dans le Drive `promt` (y compris les sous-dossiers); lire seulement les documents liés au projet PUNCH.
-2. Examiner les documents et repérer les mots de passe, NIP, clés API, données RH/GPS, finances personnelles, et autres secrets. **Ne rien recopier de sensible dans ce dépôt public**.
-3. Comparer toutes les exigences au code actuel, à `docs/PUNCH_MASTER_ROADMAP.md`, `docs/PUNCH_WORK_CONTINUATION.md`, aux PR et au serveur officiel. Conserver les acquis.
-4. Décomposer les prompts en tâches avec identifiant stable (`P-001`, etc.). Créer des issues GitHub pour les tâches décidées, associer les PR, tester puis mettre les preuves à jour.
-5. Mettre `INDEX.md` à jour via une PR, et respecter les travaux concurrents avant fusion.
-6. Garder PUNCH Construction intact. Ne jamais modifier les données réelles pour faire une recette.
+## Clôture d’une exigence
 
-## Confidentialité
-Le dépôt `punch360app/Punch360` est **public**. Ne pas publier automatiquement les fichiers Google Drive, ni leurs liens privés ou leurs données sensibles. Ne pas ajouter de synchronisation Drive/GitHub qui contourne les droits ou publie des documents sans contrôle. Avant toute automatisation, définir le périmètre et stocker les identifiants du fournisseur uniquement dans les secrets sécurisés du workflow.
+Établir ce qui manque réellement dans le dernier code, livrer un parcours cohérent, exécuter les contrôles pertinents et obligatoires, suivre CI/déploiement jusqu’au résultat final et conserver les preuves. Une interface seule, un test simulé ou une build compilée ne suffit pas à certifier une recette complète. Un fournisseur bloqué reste ouvert et laisse avancer les tâches indépendantes.
 
-Voir [INDEX.md](INDEX.md) et [WORK_START.md](WORK_START.md).
+Le [contexte historique avant réorganisation](history/MASTER_CONTEXT_BEFORE_CLEANUP_20261026.md) conserve les anciennes passations; les versions antérieures des fichiers restent dans Git. Les décisions actuelles du propriétaire, les tarifs et les six Price IDs du maître priment sur ces états datés.

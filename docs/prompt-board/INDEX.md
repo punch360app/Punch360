@@ -1,3 +1,13 @@
+# PUNCH 360° — Index des sources et historique
+
+**Instructions actives :** [WORK_START](WORK_START.md) → [maître et ordre global](MASTER_PROMPT_20261025.md) → [passation courante unique](../PUNCH_WORK_CONTINUATION.md). L’index ci-dessous conserve la provenance et les audits datés des sources Drive; ses anciens ordres, nombres et états ne constituent pas une file de développement actuelle.
+
+Les demandes nouvelles sont dédupliquées puis intégrées aux IDs du maître; le suivi public se régénère automatiquement. Une modification documentaire ne vaut pas validation fonctionnelle. Les décisions commerciales actuelles du maître priment sur les divergences historiques; ne pas modifier Stripe pour rétablir une ancienne grille.
+
+## Historique des sources et de leur rapprochement
+
+---
+
 
 > **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
 
@@ -23,7 +33,7 @@ Le giga-prompt de continuation GitHub a été rapproché du [Prompt maître](MAS
 
 ## Passation vérifiée — ancien prompt « Validation SQL archives » (26 octobre 2026)
 
-Les **tâches résiduelles** sont intégrées à la section `PASSATION DU PROMPT « VALIDATION SQL ARCHIVES »` du [prompt maître](MASTER_PROMPT_20261025.md). **Aucun nouveau fichier de prompt autonome, aucun nouvel ID ni nouvelle exigence** : les activités relèvent des IDs SAUTH/SACATALOG/STRIPE/INVITE/ARCHIVE/LOCALE/QA/SERVICES et de l'issue #35. Les correctifs archives déjà livrés (notamment PR #83, issue #81 fermée) ne sont pas repris. Cette passation ne change pas le statut des cinq prompts privés Drive, non audités à ce stade, ni le total de 578 exigences.
+Les **tâches résiduelles** sont intégrées à la [historique de passation](history/MASTER_CONTEXT_BEFORE_CLEANUP_20261026.md) du [prompt maître](MASTER_PROMPT_20261025.md). **Aucun nouveau fichier de prompt autonome, aucun nouvel ID ni nouvelle exigence** : les activités relèvent des IDs SAUTH/SACATALOG/STRIPE/INVITE/ARCHIVE/LOCALE/QA/SERVICES et de l'issue #35. Les correctifs archives déjà livrés (notamment PR #83, issue #81 fermée) ne sont pas repris. Cette passation ne change pas le statut des cinq prompts privés Drive, non audités à ce stade, ni le total de 578 exigences.
 
 ## Reprise Super Admin P0 — 26 octobre 2026
 

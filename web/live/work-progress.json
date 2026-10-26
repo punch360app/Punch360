@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_at": "2026-10-26T18:02:13.302Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
-  "denominator": 578,
+  "denominator": 579,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
   "requirements": {
     "GOV-001": {
