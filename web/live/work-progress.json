@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T18:17:34.220Z",
+  "generated_at": "2026-10-26T18:21:10.297Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 579,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1011,9 +1011,29 @@
         132
       ],
       "note": "Travail rattaché à la PR #132. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SHIFT-019": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        131
+      ],
+      "note": "Travail rattaché à la PR #131. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 131,
+      "sha": "f5490672fab5612d8c04701f1099edc376b28727",
+      "ci": "success",
+      "ids": [
+        "SHIFT-019"
+      ],
+      "title": "Essentiel Plus/Pro — préférences horaires des salariés et limites déclarées",
+      "merged_at": "2026-10-26T18:20:59Z"
+    },
     {
       "number": 132,
       "sha": "f52105e72ed3c028fcc985e4cdd817918be5ade3",
@@ -1487,15 +1507,6 @@
       "ids": [],
       "title": "Essentiel Boss/Admin : réconciliation hors ligne en 10 langues",
       "merged_at": "2026-10-26T05:02:10Z"
-    },
-    {
-      "number": 77,
-      "sha": null,
-      "head_sha": "ef8d18d8b1c30a2f265fccc6a9a0d7c3c7b683d7",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Borne Essentiel : traductions complètes des états de session et de pauses",
-      "merged_at": "2026-10-26T04:54:26Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
