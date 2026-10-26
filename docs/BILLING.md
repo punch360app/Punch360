@@ -80,3 +80,13 @@ La confirmation d'un changement d'abonnement vérifie désormais que la prévisu
 - **Testé :** tests Node via CI GitHub; recette fournisseur non réalisée.
 - **Déployé :** non pour ce nouveau garde-fou Edge, tant que la recette Stripe sandbox n'est pas vérifiée; fonction existante v2 ACTIVE.
 - **Intervention externe :** secrets Stripe de test et validation complète des webhooks, proratas, taxes et paiements en environnement test. Issue #35 demeure ouverte.
+
+
+## P0-B — Confirmation sans création de tarif Stripe (26 octobre 2026)
+
+Une prévisualisation de modification d'abonnement peut créer **un nouveau Price** Stripe uniquement pour un prix négocié ou un nombre de places qui ne correspond à aucun des six tarifs de base. La confirmation ultérieure **ne crée jamais de Price** : elle lit l'identifiant conservé côté serveur, récupère le Price Stripe existant au besoin et vérifie le produit, la devise CAD, le montant exact, la périodicité, l'environnement test/live, l'état actif et l'identité du prix prévisualisé. Une confirmation directe sans prévisualisation échoue sans création de tarif. Les six Price IDs existants et leurs produits restent inchangés.
+
+- **Développé :** protection du flux Edge et tests négatifs unitaires versionnés sur une branche distincte.
+- **Testé :** tests Node et CI GitHub Actions à vérifier sur la PR correspondante; **aucune** recette fournisseur Stripe sandbox effectuée.
+- **Déployé :** **non** pour ce nouveau correctif; essential-billing v2 reste la version Edge précédemment constatée.
+- **Intervention externe :** compléter la recette Stripe **test mode** (prorata, checkout, webhooks, taxes, annulation/reprise) avant toute publication Edge; issue #35 ouverte.
