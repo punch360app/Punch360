@@ -175,19 +175,9 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
   const p=missionProgress(s.items);
   if(!p.total)return '';
-  if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>';
-  const x=p.next,addr=missionAddress(x);
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
   let pref=null;try{pref=chooseNavigationPreference(doc.defaultView.localStorage.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
-  const routes=missionNavigationOptions(x,platform,pref);
-  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
-   '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
-   (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
-   (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
-     '<p>Adresse de cette mission seulement. Aucun GPS PUNCH, temps de trajet ou pointage déclenché.</p>'+
-     routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
-     '</details>':'')+
-   (()=>{
+  const renderTour=()=>{
     const tour=personalMissionTour(s.items,s.worker);
     return '<details class="ess-panel"><summary>Voir mes interventions de la journée ('+tour.total+')</summary>'+
       '<p>Ordre publié par votre responsable, sans calcul automatique de trajet ni changement de pointage.</p>'+
@@ -202,7 +192,18 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       }).join('')+
       (tour.hasMore?'<p>Seules les 25 premières étapes sont affichées; demander une tournée segmentée au responsable.</p>':'')+
       '</details>';
-   })()+
+  };
+  if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>'+renderTour();
+  const x=p.next,addr=missionAddress(x);
+  const routes=missionNavigationOptions(x,platform,pref);
+  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
+   '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
+   (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
+   (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
+     '<p>Adresse de cette mission seulement. Aucun GPS PUNCH, temps de trajet ou pointage déclenché.</p>'+
+     routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
+     '</details>':'')+
+   renderTour()+
    '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
  }
  async function finish(id){
