@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T16:44:24.498Z",
+  "generated_at": "2026-10-26T18:02:13.302Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -967,9 +967,51 @@
         129
       ],
       "note": "Travail rattaché à la PR #129. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SHIFT-016": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        130
+      ],
+      "note": "Travail rattaché à la PR #130. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SHIFT-017": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        130
+      ],
+      "note": "Travail rattaché à la PR #130. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SHIFT-018": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        130
+      ],
+      "note": "Travail rattaché à la PR #130. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 130,
+      "sha": "7057c365a1de704bfc8e2af6cbb3b78fa7ad0326",
+      "ci": "success",
+      "ids": [
+        "SHIFT-016",
+        "SHIFT-017",
+        "SHIFT-018"
+      ],
+      "title": "Essentiel Plus/Pro — semaine type récurrente et aperçu des conflits",
+      "merged_at": "2026-10-26T18:02:03Z"
+    },
     {
       "number": 129,
       "sha": "08c81698192fa83d34fef57e3c12f480657ae3b5",
@@ -1435,15 +1477,6 @@
       "ids": [],
       "title": "Borne Essentiel : incidents de sécurité et hors ligne traduits (10 langues)",
       "merged_at": "2026-10-26T04:45:50Z"
-    },
-    {
-      "number": 75,
-      "sha": null,
-      "head_sha": "06e1e410f1e6ee7f424c55434719c229bdfb4ef4",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Validation SQL archives : garde-fous RLS, ACL, PDF privés et purge",
-      "merged_at": "2026-10-26T04:37:27Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
