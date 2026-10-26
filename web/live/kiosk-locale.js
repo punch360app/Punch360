@@ -498,6 +498,141 @@ const KIOSK_INCIDENT_WORDS={
  ]
 };
 
+// Short, public-facing kiosk session/status labels; no credentials or employee data.
+const KIOSK_SESSION_KEYS=["languageLabel","greeting","localProvisional","serverStamped","paidPolicy","unpaidPolicy","pendingCount","pairSuccess","pinConfigured","provisionalSaved","punchSaved"];
+const KIOSK_SESSION_WORDS={
+ "fr": [
+  "Langue",
+  "Bonjour,",
+  "PROVISOIRE · conservé sur cette borne, puis vérifié et approuvé au retour du réseau.",
+  "Votre pointage sera horodaté par le serveur.",
+  "Politique : pauses payées.",
+  "Politique : pauses non payées.",
+  "Observations provisoires : {count}. Approbation requise.",
+  "Borne appairée.",
+  "NIP configuré. Vous pouvez maintenant vous identifier.",
+  "Observation provisoire conservée sur cette borne. Approbation du responsable requise.",
+  "Pointage enregistré et synchronisé."
+ ],
+ "en": [
+  "Language",
+  "Hello,",
+  "PROVISIONAL · saved on this kiosk and reviewed and approved after the connection returns.",
+  "The server will record the time of your punch.",
+  "Policy: paid breaks.",
+  "Policy: unpaid breaks.",
+  "Provisional records: {count}. Manager approval required.",
+  "Kiosk paired.",
+  "PIN configured. You can now identify yourself.",
+  "Provisional record saved on this kiosk. Manager approval required.",
+  "Time entry recorded and synchronized."
+ ],
+ "es": [
+  "Idioma",
+  "Hola,",
+  "PROVISIONAL · guardado en esta terminal; será revisado y aprobado al restablecerse la conexión.",
+  "El servidor registrará la hora del fichaje.",
+  "Política: descansos pagados.",
+  "Política: descansos no pagados.",
+  "Registros provisionales: {count}. Se requiere aprobación.",
+  "Terminal vinculada.",
+  "PIN configurado. Ya puede identificarse.",
+  "Registro provisional guardado en esta terminal. Requiere aprobación.",
+  "Registro de horas guardado y sincronizado."
+ ],
+ "pt": [
+  "Idioma",
+  "Olá,",
+  "PROVISÓRIO · salvo neste terminal e sujeito a verificação e aprovação após a reconexão.",
+  "O servidor registrará a hora do ponto.",
+  "Política: pausas pagas.",
+  "Política: pausas não pagas.",
+  "Registros provisórios: {count}. Aprovação necessária.",
+  "Terminal vinculado.",
+  "PIN configurado. Você já pode se identificar.",
+  "Registro provisório salvo no terminal. Aprovação do responsável necessária.",
+  "Registro de ponto salvo e sincronizado."
+ ],
+ "it": [
+  "Lingua",
+  "Ciao,",
+  "PROVVISORIO · salvato su questo terminale; sarà verificato e approvato dopo il ritorno della connessione.",
+  "Il server registrerà l'orario della timbratura.",
+  "Regola: pause retribuite.",
+  "Regola: pause non retribuite.",
+  "Registrazioni provvisorie: {count}. Approvazione richiesta.",
+  "Terminale associato.",
+  "PIN configurato. Ora puoi identificarti.",
+  "Registrazione provvisoria salvata. Serve l'approvazione del responsabile.",
+  "Timbratura registrata e sincronizzata."
+ ],
+ "de": [
+  "Sprache",
+  "Hallo,",
+  "VORLÄUFIG · auf diesem Terminal gespeichert; wird nach Wiederherstellung der Verbindung geprüft und freigegeben.",
+  "Der Server erfasst den Zeitpunkt der Buchung.",
+  "Regelung: bezahlte Pausen.",
+  "Regelung: unbezahlte Pausen.",
+  "Vorläufige Einträge: {count}. Freigabe erforderlich.",
+  "Terminal gekoppelt.",
+  "PIN eingerichtet. Sie können sich jetzt identifizieren.",
+  "Vorläufiger Eintrag auf dem Terminal gespeichert. Freigabe erforderlich.",
+  "Zeitbuchung erfasst und synchronisiert."
+ ],
+ "ar": [
+  "اللغة",
+  "مرحبًا،",
+  "مؤقت · حُفظ على هذا الجهاز وسيُراجع ويُعتمد بعد عودة الاتصال.",
+  "يسجل الخادم وقت العملية.",
+  "السياسة: استراحات مدفوعة.",
+  "السياسة: استراحات غير مدفوعة.",
+  "السجلات المؤقتة: {count}. الموافقة مطلوبة.",
+  "تم ربط الجهاز.",
+  "تم إعداد الرقم السري. يمكنك الآن تسجيل هويتك.",
+  "حُفظ السجل المؤقت على الجهاز. تلزم موافقة المسؤول.",
+  "تم تسجيل العملية ومزامنتها."
+ ],
+ "zh": [
+  "语言",
+  "你好，",
+  "临时记录 · 已保存在本终端，恢复联网后须经审核和批准。",
+  "服务器将记录打卡时间。",
+  "规定：带薪休息。",
+  "规定：无薪休息。",
+  "临时记录：{count}。需要主管批准。",
+  "终端已配对。",
+  "PIN 已设置。现在可以验证身份。",
+  "临时记录已保存于本终端，等待主管批准。",
+  "打卡已记录并同步。"
+ ],
+ "hi": [
+  "भाषा",
+  "नमस्ते,",
+  "अस्थायी · इस टर्मिनल में सुरक्षित; नेटवर्क लौटने पर जाँच और अनुमोदन होगा।",
+  "सर्वर दर्ज किए गए समय को सुरक्षित करेगा।",
+  "नीति: भुगतान वाले ब्रेक।",
+  "नीति: बिना भुगतान वाले ब्रेक।",
+  "अस्थायी रिकॉर्ड: {count}। प्रबंधक की मंज़ूरी आवश्यक।",
+  "टर्मिनल जुड़ गया।",
+  "PIN सेट है। अब पहचान सत्यापित कर सकते हैं।",
+  "अस्थायी रिकॉर्ड टर्मिनल में सुरक्षित है। प्रबंधक की मंज़ूरी आवश्यक।",
+  "समय दर्ज और सिंक हो गया।"
+ ],
+ "tl": [
+  "Wika",
+  "Kumusta,",
+  "PANSAMANTALA · naka-save sa terminal; susuriin at aaprubahan kapag bumalik ang koneksyon.",
+  "Itatala ng server ang oras ng pagpasok o paglabas.",
+  "Patakaran: bayad na pahinga.",
+  "Patakaran: hindi bayad na pahinga.",
+  "Pansamantalang tala: {count}. Kailangan ng pag-apruba.",
+  "Naipares ang terminal.",
+  "Naitakda ang PIN. Maaari ka nang magpakilala.",
+  "Naka-save ang pansamantalang tala sa terminal. Kailangan ng pag-apruba.",
+  "Naitala at na-sync ang oras."
+ ]
+};
+
 const ACTIONS={
  fr:{startDay:'COMMENCER MA JOURNÉE',endDay:'TERMINER MA JOURNÉE'},
  en:{startDay:'CLOCK IN',endDay:'CLOCK OUT'},
@@ -514,8 +649,8 @@ const ACTIONS={
 export function createKioskLocale(){
  let code='fr';
  const dict=Object.fromEntries(KIOSK_LANGUAGES.map(x=>{
-  if(KIOSK_WORDS[x.code].length!==KIOSK_KEYS.length || KIOSK_INCIDENT_WORDS[x.code]?.length!==KIOSK_INCIDENT_KEYS.length)throw Error('Kiosk locale incomplete: '+x.code);
-  return [x.code,{...Object.fromEntries(KIOSK_KEYS.map((key,i)=>[key,KIOSK_WORDS[x.code][i]])),...Object.fromEntries(KIOSK_INCIDENT_KEYS.map((key,i)=>[key,KIOSK_INCIDENT_WORDS[x.code][i]]))}];
+  if(KIOSK_WORDS[x.code].length!==KIOSK_KEYS.length || KIOSK_INCIDENT_WORDS[x.code]?.length!==KIOSK_INCIDENT_KEYS.length || KIOSK_SESSION_WORDS[x.code]?.length!==KIOSK_SESSION_KEYS.length)throw Error('Kiosk locale incomplete: '+x.code);
+  return [x.code,{...Object.fromEntries(KIOSK_KEYS.map((key,i)=>[key,KIOSK_WORDS[x.code][i]])),...Object.fromEntries(KIOSK_INCIDENT_KEYS.map((key,i)=>[key,KIOSK_INCIDENT_WORDS[x.code][i]])),...Object.fromEntries(KIOSK_SESSION_KEYS.map((key,i)=>[key,KIOSK_SESSION_WORDS[x.code][i]]))}];
  }));
  return {
   get code(){return code},
