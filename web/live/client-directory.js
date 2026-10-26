@@ -19,6 +19,7 @@ const num=(v,min,max,label)=>{
  if(!Number.isFinite(value)||value<min||value>max)throw Error(label+' hors limites.');
  return value;
 };
+/** @param {string} company @param {Record<string,any>} form @param {{id?:string,version?:number}|null} [row] */
 export function clientSaveArgs(company,form,row=null){
  if(!company)throw Error('Compagnie manquante.');
  return {p_company:company,p_id:row?.id||null,p_expected_version:row?.version||0,
@@ -26,6 +27,7 @@ export function clientSaveArgs(company,form,row=null){
   p_contact_name:str(form.contact_name,120,'Contact'),p_contact_phone:str(form.contact_phone,35,'Téléphone'),
   p_active:form.active===true||form.active==='true'};
 }
+/** @param {string} company @param {Record<string,any>} form @param {{id?:string,version?:number}|null} [row] */
 export function siteSaveArgs(company,form,row=null){
  if(!company)throw Error('Compagnie manquante.');
  const lat=num(form.latitude,-90,90,'Latitude'),lng=num(form.longitude,-180,180,'Longitude');
