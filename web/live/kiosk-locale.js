@@ -322,6 +322,19 @@ const KIOSK_WORDS={
   "Isang aktibong araw sa mga awtorisadong device."
  ]
 };
+const ACTIONS={
+ fr:{startDay:'COMMENCER MA JOURNÉE',endDay:'TERMINER MA JOURNÉE'},
+ en:{startDay:'CLOCK IN',endDay:'CLOCK OUT'},
+ es:{startDay:'INICIAR JORNADA',endDay:'TERMINAR JORNADA'},
+ pt:{startDay:'INICIAR O DIA',endDay:'ENCERRAR O DIA'},
+ it:{startDay:'INIZIA LA GIORNATA',endDay:'TERMINA LA GIORNATA'},
+ de:{startDay:'ARBEIT BEGINNEN',endDay:'ARBEIT BEENDEN'},
+ ar:{startDay:'بدء يوم العمل',endDay:'إنهاء يوم العمل'},
+ zh:{startDay:'开始工作',endDay:'结束工作'},
+ hi:{startDay:'काम शुरू करें',endDay:'काम समाप्त करें'},
+ tl:{startDay:'SIMULAN ANG TRABAHO',endDay:'TAPUSIN ANG TRABAHO'}
+};
+
 export function createKioskLocale(){
  let code='fr';
  const dict=Object.fromEntries(KIOSK_LANGUAGES.map(x=>{
@@ -332,6 +345,6 @@ export function createKioskLocale(){
   get code(){return code},
   get dir(){return code==='ar'?'rtl':'ltr'},
   select(next){code=KIOSK_LANGUAGES.some(x=>x.code===next)?next:'fr';return code},
-  t(key){return dict[code]?.[key]??dict.fr[key]??key}
+  t(key){return dict[code]?.[key]??ACTIONS[code]?.[key]??dict.fr[key]??ACTIONS.fr[key]??key}
  };
 }
