@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const helper=readFileSync(new URL('../src/auth/offlineWorkspaceGuard.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(helper,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const {mayRestoreCachedWorkspace}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+const {mayRestoreCachedWorkspace,canResumeAfterExplicitSignOut}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
 const gate=readFileSync(new URL('../src/auth/AuthGate.tsx',import.meta.url),'utf8');
 const between=(a,b)=>{
  const start=gate.indexOf(a),end=gate.indexOf(b,start);
@@ -27,7 +27,8 @@ test('SIGNED_OUT blocks delayed reads synchronously before async cache cleanup',
  const cleanup=body.indexOf('void forgetLocalIdentity()',signout);
  const cleared=body.indexOf('setAccount(null)',signout);
  assert.ok(signout>=0&&guard>signout&&cleanup>guard&&cleared>guard);
- assert.match(body,/explicitlySignedOut\.current=false;\s*if\(_event==='PASSWORD_RECOVERY'\)/);
+ assert.match(body,/if\(explicitlySignedOut\.current\)\{[\s\S]*?canResumeAfterExplicitSignOut\(_event,Boolean\(newSession\)\)/);
+ assert.match(body,/explicitlySignedOut\.current=false;\s*\}\s*if\(_event==='PASSWORD_RECOVERY'\)/);
  assert.ok(body.indexOf('return;',signout)<body.indexOf('setTimeout(()=>refresh(),0)'),
   'a SIGNED_OUT callback must not schedule a fresh offline refresh');
 });
@@ -56,4 +57,27 @@ test('native implementation still parses after the hardening',()=>{
   const parsed=ts.createSourceFile(name,source,ts.ScriptTarget.Latest,true,kind);
   assert.equal(parsed.parseDiagnostics.length,0,name+' must parse as TypeScript');
  }
+});
+
+
+test('only a fresh sign-in or recovery session may unlock an explicit logout',()=>{
+ for(const event of ['INITIAL_SESSION','TOKEN_REFRESHED','USER_UPDATED','SIGNED_OUT','MFA_CHALLENGE_VERIFIED']){
+  assert.equal(canResumeAfterExplicitSignOut(event,true),false,event);
+ }
+ assert.equal(canResumeAfterExplicitSignOut('SIGNED_IN',false),false);
+ assert.equal(canResumeAfterExplicitSignOut('PASSWORD_RECOVERY',false),false);
+ assert.equal(canResumeAfterExplicitSignOut('SIGNED_IN',true),true);
+ assert.equal(canResumeAfterExplicitSignOut('PASSWORD_RECOVERY',true),true);
+});
+
+test('native refresh invalidates delayed ONLINE responses too',()=>{
+ const body=between(' async function refresh(){',' async function selectWorkspace(companyId:string){');
+ assert.match(body,/const current=\(\)=>revision===authRevision\.current&&!explicitlySignedOut\.current;/);
+ assert.match(body,/const serverIdentity=await supabase\.auth\.getUser/);
+ assert.match(body,/if\(!current\(\)\)return;\s*const u=requireServerVerifiedIdentity/);
+ assert.match(body,/if\(!current\(\)\)return;\s*if\(e\)/);
+ const auth=between(' const {data:sub}=supabase.auth.onAuthStateChange','  let active=true;');
+ assert.match(auth,/if\(explicitlySignedOut\.current\)/);
+ assert.match(auth,/canResumeAfterExplicitSignOut\(_event,Boolean\(newSession\)\)/);
+ assert.ok(auth.indexOf('canResumeAfterExplicitSignOut(')<auth.indexOf('explicitlySignedOut.current=false'));
 });

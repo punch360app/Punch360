@@ -2,7 +2,7 @@ import * as Network from 'expo-network';
 import {cachedLocalIdentity,rememberLocalIdentity,forgetLocalIdentity} from './localIdentity';
 import {processNativeOAuthCallback} from './nativeOAuthCallback';
 import {requireServerVerifiedIdentity} from './serverVerifiedIdentity';
-import {mayRestoreCachedWorkspace} from './offlineWorkspaceGuard';
+import {mayRestoreCachedWorkspace,canResumeAfterExplicitSignOut} from './offlineWorkspaceGuard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React,{useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
@@ -48,7 +48,8 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
  }
  async function refresh(){
   const revision=++authRevision.current;
-  const current=()=>revision===authRevision.current;
+  // A SIGNED_OUT event also blocks delayed ONLINE membership responses.
+  const current=()=>revision===authRevision.current&&!explicitlySignedOut.current;
   const offlineAllowed=()=>mayRestoreCachedWorkspace(revision,authRevision.current,explicitlySignedOut.current);
   setError('');
   try{
@@ -143,7 +144,14 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
     setIsRecovering(false);setWorkspaces([]);setAccount(null);setShowWorkspacePicker(false);
     setSession(null);setBoot(false);setError('');return;
    }
-   explicitlySignedOut.current=false;
+   // Do not let INITIAL_SESSION/TOKEN_REFRESHED (or null sessions) unlock a logout.
+   // Only a new verified sign-in/recovery may start workspace restoration again.
+   if(explicitlySignedOut.current){
+    if(!canResumeAfterExplicitSignOut(_event,Boolean(newSession))){
+     setSession(null);setBoot(false);return;
+    }
+    explicitlySignedOut.current=false;
+   }
    if(_event==='PASSWORD_RECOVERY')setIsRecovering(true);
    setSession(newSession);
    setBoot(true);
