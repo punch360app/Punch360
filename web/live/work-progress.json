@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26",
+  "generated_at": "2026-10-26T14:20:16.710Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -34,7 +34,8 @@
       "external_required": false,
       "pr": [
         26,
-        111
+        111,
+        122
       ],
       "note": "578 identifiants dédoublonnés et 29 lots vérifiés par test Node."
     },
@@ -45,7 +46,8 @@
       "external_required": false,
       "pr": [
         111,
-        116
+        116,
+        122
       ],
       "note": "GitHub choisi comme source de suivi; documentation liée à WORK_START."
     },
@@ -65,7 +67,8 @@
       "deployed": false,
       "external_required": false,
       "pr": [
-        116
+        116,
+        122
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -274,9 +277,43 @@
         106
       ],
       "note": "Frontière du cache d'identité des punchs codée/testée; journaux offline multientreprises non complètement recettés."
+    },
+    "GOV-010": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        122
+      ],
+      "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "GOV-012": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        122
+      ],
+      "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 122,
+      "sha": "c04abdbbfdfd2a23e5a1acfdb8e0b786faa6161c",
+      "ci": "success",
+      "ids": [
+        "GOV-009",
+        "GOV-010",
+        "GOV-011",
+        "GOV-012",
+        "GOV-014"
+      ],
+      "title": "Suivi PUNCH — vrai avancement Work depuis GitHub, avec rétroactivité et mise à jour automatique",
+      "merged_at": "2026-10-26T14:20:07Z"
+    },
     {
       "number": 121,
       "sha": null,
@@ -717,15 +754,6 @@
       "ids": [],
       "title": "Essentiel : 10 langues de navigation, préférence personnelle et RTL arabe",
       "merged_at": "2026-10-26T03:50:00Z"
-    },
-    {
-      "number": 66,
-      "sha": null,
-      "head_sha": "d1c33202fc6e9ed232eb42b7290ccdc44121968d",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Essentiel : succession Boss Expo avec MFA (réconciliée avec main)",
-      "merged_at": "2026-10-26T03:37:29Z"
     }
   ],
   "history_note": "Activité récente importée depuis les PR fusionnées. Les anciennes PR sans mapping ID ne gonflent pas les exigences; leurs CI ne sont pas automatiquement certifiées rétroactivement."
