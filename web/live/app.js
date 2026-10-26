@@ -1,5 +1,6 @@
 import {createEssentialController} from './essential.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
+import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey} from './navigation-choices.js';
 import {createEssentialLocale,ESSENTIAL_LANGUAGES} from './essential-locale.js';
 import {listVerifiedWorkspaces,chooseVerifiedWorkspace} from './company-workspaces.js';
 import {createBossHandoffController} from './boss-handoff.js';
@@ -143,6 +144,38 @@ function siteLabel(id){return isEssential()?'Établissement':'#'+(getJob(id)?.nu
 function planCards(){return '<div class="plan-cards"><button type="button" class="plan-card '+(state.creationEdition==='essential'?'chosen':'')+'" data-action="chooseEdition" data-id="essential"><span class="plan-kicker">BUREAUX · MANUFACTURES</span><strong>PUNCH Essentiel</strong><span>Punch, pauses, heures et congés. Simplement.</span><b>Trois forfaits disponibles</b><small>Consultez les tarifs ci-dessous</small></button><button type="button" class="plan-card '+(state.creationEdition==='construction'?'chosen':'')+'" data-action="chooseEdition" data-id="construction"><span class="plan-kicker">CHANTIERS · ÉQUIPES MOBILES</span><strong>PUNCH Construction</strong><span>Jobs, matériel, plans et équipes.</span><b>49 $ CA / mois</b><small>5 personnes incluses · +7 $ / personne</small></button></div>'}
 function essentialToday(){const d=new Date(state.time);return totals(new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime())}
 function essentialBase(){const tabs=[['home','◉',manager()?tr('management'):tr('punch')],['hours','◷',tr('hours')],['schedule','▦',tr('schedule')],['more','☷',tr('more')]];return '<div class="wrap"><aside class="pitch essential-pitch"><div class="kicker">PUNCH ESSENTIEL</div><h1>Du temps.<br>De la <b>simplicité.</b></h1><p>Le pointage qui laisse respirer votre journée.</p><div class="zen-orbit">◌</div><p class="small">Bureaux · ateliers · manufactures</p></aside><div class="phone"><header class="header"><div class="essential-brand"><span class="brand-mark">p</span><div>PUNCH <span>Essentiel</span></div></div><button class="iconbutton" data-action="subpage" data-id="notifications" aria-label="Notifications">♧ '+state.notifications.filter(n=>!n.read_at).length+'</button></header><main id="main">'+(state.fieldMode?button('← Direction','navigate','full','data-id="management"'):'')+(state.recovery?authHTML():member()?essentialPage():authHTML())+'</main><div class="banner">'+(member()?(state.localPending?'◌ '+state.localPending+' événement(s) conservé(s) sur cet appareil':'Données de test · validation terrain à effectuer'):'PUNCH · choisir la simplicité')+'</div>'+(member()?'<nav class="nav">'+tabs.map(t=>'<button class="'+(state.section===t[0]?'active':'')+'" data-action="navigate" data-id="'+t[0]+'"><i>'+t[1]+'</i><span>'+t[2]+'</span></button>').join('')+'</nav>':'')+'<div class="toast" id="toast" style="display:none"></div></div></div>'}
+function essentialNavigationState(){
+ if(!isEssential()||!state.user?.id||!state.account?.company_id)return null;
+ const worker=essentialUI.state.worker,planning=essentialUI.planning.state;
+ if(!worker?.id||planning.company!==company())return null;
+ const visit=personalUpcomingClientVisit(planning.assignedSites,worker.id,Date.now());
+ const fixed=planning.locations.find(l=>l.id===worker.location_id);
+ const destination=navigationDestination({visit,usualAddress:fixed?.address||'',
+  usualName:fixed?.name||'Établissement habituel',incomplete:planning.assignedSitesUnavailable});
+ if(!destination)return null;
+ const platform=navigationPlatform('web',navigator.userAgent);
+ const key=navigationPreferenceKey(state.user.id,company());
+ const saved=chooseNavigationPreference(localStorage.getItem(key),platform);
+ return {destination,platform,key,saved};
+}
+function essentialNavigationCard(){
+ const stateNav=essentialNavigationState();
+ if(!stateNav)return '';
+ const {destination,platform,saved}=stateNav;
+ const choices=navigationProviders(platform);
+ const preferred=choices.find(p=>p.id===saved);
+ const direct=preferred?'<p><a class="ess-btn" href="'+e(navigationUrl(saved,destination.address,platform))+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(preferred.label)+' ↗</a></p>':'';
+ return '<section class="zen-company" aria-label="Navigation vers votre travail"><div>'+
+  '<strong>Itinéraire · '+e(destination.title)+'</strong><small>'+e(destination.address)+'</small>'+
+  '<small>'+(destination.kind==='client'?'Intervention du calendrier':'Lieu de travail habituel · aucun horaire requis')+'</small>'+
+  direct+
+  '<details '+(!preferred?'open':'')+'><summary>'+(preferred?"Changer d'application de navigation":"Choisir l'application de navigation")+'</summary>'+
+  '<p class="ess-fine">Le lien ouvre l’application si disponible ou son site Web. Aucun pointage ni GPS continu n’est déclenché.</p>'+
+  choices.map(choice=>'<div class="plan-actions"><a href="'+e(navigationUrl(choice.id,destination.address,platform))+'" target="_blank" rel="noopener noreferrer">'+e(choice.label)+' · juste cette fois ↗</a>'+
+   '<button type="button" class="ess-btn" data-action="navRemember" data-id="'+e(choice.id)+'">Toujours '+e(choice.label)+'</button></div>').join('')+
+  (preferred?'<button type="button" class="ess-btn" data-action="navForget">Effacer ma préférence</button>':'')+
+  '</details></div></section>';
+}
 function essentialUpcomingHomeCard(){
  const person=essentialUI.state.worker?.id,planning=essentialUI.planning.state;
  if(!person||planning.company!==company())return '';
@@ -152,14 +185,14 @@ function essentialUpcomingHomeCard(){
   '<small>'+(visit.ongoing?'Intervention prévue à cette heure':'Prochaine intervention')+'</small>'+
   '<strong>'+e(visit.client)+' · '+e(visit.title)+'</strong>'+
   '<small>'+e(visit.address)+'</small>'+
-  '<div><a href="'+e(visit.route)+'" target="_blank" rel="noopener noreferrer">Itinéraire ↗</a></div>'+
+  ''+
   '<details><summary>Consignes et contact sur place</summary>'+
   (visit.instructions?'<p>'+e(visit.instructions)+'</p>':'')+
   (visit.contact?'<small>Contact : '+e(visit.contact)+(visit.phone?' · '+e(visit.phone):'')+'</small>':'')+
   '</details></div></section>';
 }
 function essentialPunchJob(){return essentialUI.planning.state.locations.find(l=>l.id===essentialUI.state.worker?.location_id)?.punch_job_id||state.account?.companies?.default_punch_job_id;}
-function essentialHome(){const paidMode=essentialUI.breakPolicies.state.own?.paid_mode||'choice';const mobile=essentialUI.state.worker?.can_mobile_punch!==false;const active=currentSession(),pause=state.breaks.find(b=>!b.ended_at),name=(state.profile?.full_name||state.user.email?.split('@')[0]||'').split(' ')[0];return '<div class="zen-home">'+(!mobile?'<p class="ess-notice">Le pointage s’effectue sur la tablette de votre entreprise.</p>':'')+'<div class="zen-greeting"><span class="eyebrow">'+new Date().toLocaleDateString(locale.code==='fr'?'fr-CA':locale.code,{weekday:'long',day:'numeric',month:'long'})+'</span><h1>'+e(tr('greeting'))+(name?', '+e(name):'')+'.</h1><p>Une journée à votre rythme.</p></div><div class="zen-clock-card"><span class="zen-status"><span class="status-dot"></span>'+(pause?'En pause':active?'Votre journée est en cours':'Prêt pour votre journée ?')+'</span><strong class="zen-time" id="liveTimer">'+elapsed(essentialToday())+'</strong><span class="small muted">'+e(tr('workingTime'))+(locale.code==='fr'?' · pauses non payées exclues':'')+'</span><button class="zen-punch '+(active?'finish':'')+'" '+(!mobile?'disabled aria-disabled="true"':'data-action="punch"')+' '+(state.busy?'disabled':'')+'>'+(active?tr('endDay'):tr('startDay'))+'<span>↗</span></button>'+(active&&mobile?button(pause?tr('resume'):paidMode==='paid'?'Pause payée':'Pause non payée / repas',!pause&&paidMode==='paid'?'pausePaid':'pause','full zen-pause')+(!pause&&paidMode==='choice'?button('Pause payée','pausePaid','full zen-pause'):''):'<p class="zen-help">Un geste pour commencer. Un autre pour terminer.</p>')+'</div>'+essentialUI.breakPolicies.hint()+'<div class="zen-summary"><div><span class="eyebrow">'+e(tr('thisWeek').toLocaleUpperCase(locale.code))+'</span><strong id="weekTotal">'+mins(clockTotals().week)+'</strong></div><div><span class="eyebrow">'+e(tr('status').toLocaleUpperCase(locale.code))+'</span><strong class="zen-small-status">'+(state.localPending?'Sauvegardé ici':tr('synchronized'))+'</strong></div></div>'+essentialUpcomingHomeCard()+'<div class="zen-company"><span class="zen-company-icon">▧</span><div><strong>'+e(state.account.companies.name)+'</strong><small>Votre espace de travail</small></div></div></div>'}
+function essentialHome(){const paidMode=essentialUI.breakPolicies.state.own?.paid_mode||'choice';const mobile=essentialUI.state.worker?.can_mobile_punch!==false;const active=currentSession(),pause=state.breaks.find(b=>!b.ended_at),name=(state.profile?.full_name||state.user.email?.split('@')[0]||'').split(' ')[0];return '<div class="zen-home">'+(!mobile?'<p class="ess-notice">Le pointage s’effectue sur la tablette de votre entreprise.</p>':'')+'<div class="zen-greeting"><span class="eyebrow">'+new Date().toLocaleDateString(locale.code==='fr'?'fr-CA':locale.code,{weekday:'long',day:'numeric',month:'long'})+'</span><h1>'+e(tr('greeting'))+(name?', '+e(name):'')+'.</h1><p>Une journée à votre rythme.</p></div><div class="zen-clock-card"><span class="zen-status"><span class="status-dot"></span>'+(pause?'En pause':active?'Votre journée est en cours':'Prêt pour votre journée ?')+'</span><strong class="zen-time" id="liveTimer">'+elapsed(essentialToday())+'</strong><span class="small muted">'+e(tr('workingTime'))+(locale.code==='fr'?' · pauses non payées exclues':'')+'</span><button class="zen-punch '+(active?'finish':'')+'" '+(!mobile?'disabled aria-disabled="true"':'data-action="punch"')+' '+(state.busy?'disabled':'')+'>'+(active?tr('endDay'):tr('startDay'))+'<span>↗</span></button>'+(active&&mobile?button(pause?tr('resume'):paidMode==='paid'?'Pause payée':'Pause non payée / repas',!pause&&paidMode==='paid'?'pausePaid':'pause','full zen-pause')+(!pause&&paidMode==='choice'?button('Pause payée','pausePaid','full zen-pause'):''):'<p class="zen-help">Un geste pour commencer. Un autre pour terminer.</p>')+'</div>'+essentialUI.breakPolicies.hint()+'<div class="zen-summary"><div><span class="eyebrow">'+e(tr('thisWeek').toLocaleUpperCase(locale.code))+'</span><strong id="weekTotal">'+mins(clockTotals().week)+'</strong></div><div><span class="eyebrow">'+e(tr('status').toLocaleUpperCase(locale.code))+'</span><strong class="zen-small-status">'+(state.localPending?'Sauvegardé ici':tr('synchronized'))+'</strong></div></div>'+essentialUpcomingHomeCard()+essentialNavigationCard()+'<div class="zen-company"><span class="zen-company-icon">▧</span><div><strong>'+e(state.account.companies.name)+'</strong><small>Votre espace de travail</small></div></div></div>'}
 
 function essentialSchedule(){return essentialUI.planning.renderSchedule();}
 function legacyEssentialSchedule(){return heading('Horaire','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Personne</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début','shiftStart','','datetime-local')+formfield('Fin','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Planifier','scheduleShift','gold full')):'')+state.shifts.map(x=>card('<b>'+when(x.starts_at)+' → '+when(x.ends_at)+'</b><p class="muted">'+e(x.note||'Votre quart planifié')+'</p>'+(manager()?button('Annuler','cancelShift','',`data-id="${e(x.id)}"`):''))).join('');}
@@ -322,6 +355,13 @@ async function logOut(){companyContext.list=[];companyContext.choosing=false;bos
 function tick(){state.time=Date.now();const t=$('liveTimer'),cs=currentSession();if(t)t.textContent=isEssential()?elapsed(essentialToday()):elapsed(cs?state.time-Date.parse(cs.started_at):0);const w=$('weekTotal'),y=$('yearTotal');if(w||y){const tot=clockTotals();if(w)w.textContent=mins(tot.week);if(y)y.textContent=mins(tot.year)}if($('topclock'))$('topclock').textContent=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})}
 document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-action]');if(!el)return;const a=el.dataset.action,id=el.dataset.id;try{
 if(member()&&manager()&&managementIsRestricted()&&!(state.account.role==='boss'&&state.fieldMode)&&!canUseRestrictedManagement({role:state.account.role,action:a,id,section:state.section,sub:state.sub})){toast('Gestion suspendue : utilisez Abonnement, Support ou votre pointage.');return;}
+if(a==='navRemember'||a==='navForget'){
+ const ctx=essentialNavigationState();if(!ctx)throw Error('Aucune destination professionnelle autorisée.');
+ if(a==='navForget'){localStorage.removeItem(ctx.key);draw();return;}
+ const url=navigationUrl(id,ctx.destination.address,ctx.platform);
+ localStorage.setItem(ctx.key,id);
+ window.open(url,'_blank','noopener,noreferrer');draw();return;
+}
 if(a==='activateWorker'){const r=await sb.rpc('accept_worker_invitation',{p_token:sessionStorage.getItem('punch-worker-invite')});if(r.error)throw r.error;sessionStorage.removeItem('punch-worker-invite');await initialize();return;}
 if(a.startsWith('subdir:')){await essentialUI.subscriptions.handle(el);return;}
 if(a.startsWith('boss-handoff:')){await bossHandoff.handle(el);return;}
