@@ -1,3 +1,6 @@
+
+> **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
+
 # Vérification après fusion Super Admin P0 (26 octobre 2026)
 
 PR **#89 fusionnée** sur `main` : les anciennes réponses de la facturation Boss sont isolées; tests CI Node/DOM, TypeScript, syntaxe Web **verts**; publication Web **réussie**. Edge `essential-billing` **v2 ACTIVE**, `verify_jwt=true`, code d'erreur d'accès stabilisé. Son adaptateur Stripe partagé préexistant a été conservé inchangé au déploiement ciblé; sa source déployée diffère toujours de la version plus récente du dépôt par la validation des chaînes de requête : réconcilier/tester séparément avant livraison Stripe. Aucun test fournisseur ni paiement réel. L'issue **#35** reste ouverte.
