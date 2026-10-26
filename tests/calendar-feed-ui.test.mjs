@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Window} from 'happy-dom';
+import {createPlanningController} from '../web/live/planning.js';
+const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+test('personal feed link appears only once, is rotated and revoked, never stored as plain status',async()=>{
+ const w=new Window();w.confirm=()=>true;
+ const calls=[],secret='a'.repeat(64);
+ const sb={supabaseUrl:'https://project.supabase.co',rpc:async(name,args)=>{
+  calls.push({name,args});
+  if(name==='personal_calendar_feed_rotate')return {data:{token:secret}};
+  if(name==='personal_calendar_feed_revoke')return {data:{revoked:true}};
+  return {data:null};
+ }};
+ const ui=createPlanningController({sb,redraw(){},notify(){},escape:e,document:w.document});
+ Object.assign(ui.state,{company:'tenant',user:'me',own:'worker',role:'employee',feedStatus:{active:false},locations:[],shifts:[]});
+ assert.match(ui.renderSchedule(),/Synchroniser mon horaire/);
+ await ui.handle({dataset:{action:'ess:plan-feed-rotate'}});
+ assert.equal(calls.at(-1).name,'personal_calendar_feed_rotate');
+ assert.match(ui.state.feedUrl,/token=aaaa/);
+ assert.equal(ui.state.feedStatus.active,true);
+ assert.equal(ui.state.feedStatus.token,undefined,'status must not contain secret');
+ await ui.handle({dataset:{action:'ess:plan-feed-revoke'}});
+ assert.equal(calls.at(-1).name,'personal_calendar_feed_revoke');
+ assert.equal(ui.state.feedUrl,null);
+ assert.equal(ui.state.feedStatus.active,false);
+ ui.state.own=null;
+ assert.doesNotMatch(ui.renderSchedule(),/Synchroniser mon horaire/);
+ await w.happyDOM.close();
+});
