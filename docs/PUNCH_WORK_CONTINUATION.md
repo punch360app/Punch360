@@ -1,8 +1,16 @@
+# Reprise vérifiée — protection contre les PDF Storage surdimensionnés (PR #83)
+
+Le défaut P1 **issue #81** est **résolu et fermé**. La PR #83 est fusionnée dans `main`, avec lectures bornées aux octets effectivement reçus, arrêt et annulation au premier dépassement de 25 Mio, et conservation du calcul SHA-256, preuve, permissions et anti-écrasement. Test de 26 Mio sans en-tête, en-tête mensonger, taille annoncée trop grande, limite exactement 25 Mio, et scénario PDF synthétique complet. CI **217 tests sur 217** réussie. Fonction Edge `company-archive-files` déployée en **version 2 ACTIVE** et `verify_jwt=true` dans le seul Supabase officiel. Documentation : `docs/ARCHIVE_STORAGE_STREAM_CAP_20261026.md`.
+
+**L'ensemble du prompt original « Validation SQL archives » reste ouvert** : recette avec deux vrais comptes de test (Boss/Super Admin) et PDF synthétiques sur un environnement isolé autorisé, quota et concurrence, sauvegardes et PRA, facturation Stripe sandbox, Apple/Google OAuth, notifications, traductions spécialisées et builds natifs. Aucune donnée client réelle n'a été modifiée. Continuer les validations restantes, SMS/Twilio en dernier; le prompt maître consolidé reste distinct.
+
+---
+
 # Reprise — limite d'export des archives et erreurs PDF contrôlées (26 octobre 2026)
 
 Suite à la PR #80 fusionnée et déployée, le prompt original **« Validation SQL archives »** progresse avec `web/live/archive-preflight.js` et `tests/archive-preflight.test.mjs`. Le navigateur borne à **4 096 blocs et 20 Mio UTF-8** la reconstruction du contenu SQL, refuse les blocs absents et les tailles PDF invalides/> 25 Mio avant l'appel Edge, masque les diagnostics PDF inconnus tout en gardant le nettoyage des copies temporaires. Contrôles d'Unicode et de refus avant requêtes également testés. PWA rafraîchie. Documentation : `docs/ARCHIVE_CLIENT_PREFLIGHT_20261026.md`. Aucune migration, aucun PDF réel ni abonnement modifié.
 
-**Issue #81 toujours ouverte** : réponse Storage Edge encore lue via `arrayBuffer()` sans plafond indépendant de `Content-Length`, malgré la validation côté navigateur. Pas de déploiement Edge de cette correction; ne pas déclarer les archives prêtes pour production. Vérifier CI et GitHub Pages sur la PR du lot.
+**Issue #81 fermée — correctif livré par PR #83** : les deux lectures PDF Storage de la fonction Edge utilisent désormais un lecteur de flux borné aux **25 Mio réels**, y compris sans `Content-Length` fiable, avec annulation immédiate et erreur 413. CI **217/217** réussie; fonction Edge `company-archive-files` **version 2 ACTIVE**, vérification JWT conservée sur `mlabstdxxwjdpfaxiwmg`. Les essais PDF authentifiés en conditions réelles, la charge et le PRA restent **ouverts**; ne pas déclarer l’ensemble des archives prêt pour production.
 
 Vérification read-only Supabase du 26 octobre : `company-archive-files` ACTIVE, cron `punch-expired-company-exports` actif; avis RLS/SECURITY DEFINER à auditer sans supprimer les permissions délibérées. Restants du prompt original : vrai cycle PDF fictif authentifié, Stripe sandbox, OAuth Google/Apple, traductions spécialisées, vraie QA iOS/Android/iPad, charge et PRA. SMS/Twilio en dernier. Prompt maître séparé.
 
