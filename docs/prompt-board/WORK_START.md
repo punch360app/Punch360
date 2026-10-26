@@ -1,3 +1,5 @@
+> **Audit initial du suivi Work élargi :** 82/578 exigences rattachées à des PR fusionnées (travail souvent partiel), dont 26 avec tests logiciels attestés et 56 dont la CI historique reste à vérifier. Ce n'est pas 82 fonctions terminées. L'horodatage et les comptes sont fournis dans `web/live/work-progress.json`; le site recalcule toujours depuis ce registre. Si le total progresse, vérifier les IDs et ne pas en déduire une livraison sans preuves d'appareils/fournisseurs.
+
 ## Suivi automatique Work — obligatoire depuis le 26 octobre 2026
 
 Le tableau HTML `web/live/suivi.html` ne doit **jamais** afficher le pourcentage issu des cases cochées par le propriétaire. Sa source est `web/live/work-progress.json`, un registre **versionné sur GitHub**, construit avec les identifiants exacts du prompt maître (578). Ce registre a été initialisé par un audit rétrospectif conservateur de PR déjà fusionnées : les fonctionnalités non encore associées à une preuve restent `non vérifiées`, **pas nécessairement non développées**.
