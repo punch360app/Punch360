@@ -91,3 +91,13 @@ test('expired handoff does not block a new Boss request',async()=>{
  await ctrl.handle({dataset:{action:'boss-handoff:request'}});
  assert.equal(calls.filter(v=>v.name==='essential_boss_handoff_request').length,1);
 });
+
+test('refresh stays outside protected handoff RPC until AAL2 confirmation',async()=>{
+ const {ctrl,calls}=setup({mfaLevel:'aal1'});
+ await ctrl.load(c,'boss',boss);
+ assert.equal(calls.filter(x=>x.name==='essential_boss_handoff_status').length,0);
+ await ctrl.handle({dataset:{action:'boss-handoff:refresh'}});
+ assert.equal(calls.filter(x=>x.name==='essential_boss_handoff_status').length,0);
+ assert.equal(ctrl.state.mfaLevel,'aal1');
+ assert.equal(ctrl.state.status,null);
+});
