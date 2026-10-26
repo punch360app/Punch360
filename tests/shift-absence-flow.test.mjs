@@ -110,7 +110,7 @@ test('native and web both use shared reasons and protected server RPC paths',()=
  }
 });
 test('migration preserves private notes; no automatic shift reassign/punch/offer',()=>{
- const sql=readFileSync(new URL('../supabase/migrations/20261026163000_essential_shift_absences.sql',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../supabase/migrations/20261026163938_essential_shift_absences.sql',import.meta.url),'utf8');
  assert.match(sql,/create table private\.essential_shift_absences/);
  assert.match(sql,/enable row level security/);
  assert.match(sql,/revoke all on private\.essential_shift_absences from public,anon,authenticated/);
