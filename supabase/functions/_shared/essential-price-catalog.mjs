@@ -182,3 +182,19 @@ export function verifySubscriptionPreview(preview,subscription,item,intendedPric
  if(subscription.pending_update||subscription.items?.data?.length!==1)fail();
  return preview;
 }
+
+/**
+ * One UUID v4 identifies one Boss decision, and can be reused for an
+ * uncertain retry of THAT decision. Stripe remembers idempotency results;
+ * reusing a constant, missing or timestamp-only key risks stale mutations.
+ * Scope also includes tenant, subscription and action (cancel/resume).
+ */
+export function stripeRenewalIdempotencyKey(companyId,subscriptionId,action,requestId){
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ const v4=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+ if(typeof companyId!=='string'||companyId.length!==36||!uuid.test(companyId)||
+    typeof subscriptionId!=='string'||!/^sub_[a-zA-Z0-9_]{8,100}$/.test(subscriptionId)||
+    !['cancel','resume'].includes(action)||typeof requestId!=='string'||requestId.length!==36||!v4.test(requestId))
+    throw Error('INVALID_RENEWAL_REQUEST_ID');
+ return `punch-renewal:${companyId}:${subscriptionId}:${action}:${requestId}`;
+}
