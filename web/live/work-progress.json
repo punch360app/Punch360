@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T19:12:47.760Z",
+  "generated_at": "2026-10-26T19:19:50.805Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 587,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1029,7 +1029,8 @@
       "external_required": true,
       "pr": [
         133,
-        134
+        134,
+        136
       ],
       "note": "Travail rattaché à la PR #133. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1125,6 +1126,16 @@
     }
   },
   "activity": [
+    {
+      "number": 136,
+      "sha": "0fdc740ed825d0b0b47c374aad6cc4173f9924cf",
+      "ci": "success",
+      "ids": [
+        "SHIFT-021"
+      ],
+      "title": "Essentiel Plus/Pro — rappels de disponibilité internes et sans doublon",
+      "merged_at": "2026-10-26T19:19:40Z"
+    },
     {
       "number": 135,
       "sha": "2b1b1fe52946ed57c03fa3b554582b0348f6f90e",
@@ -1610,15 +1621,6 @@
       "ids": [],
       "title": "Archives PDF : plafonner réellement à 25 Mo les lectures Storage",
       "merged_at": "2026-10-26T05:35:37Z"
-    },
-    {
-      "number": 82,
-      "sha": null,
-      "head_sha": "13e11edbbb1ff0d8e152ce9f66681f8197704f38",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Sécurité Boss : isoler MFA multi-entreprises et versionner nettoyage Auth",
-      "merged_at": "2026-10-26T05:28:21Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
