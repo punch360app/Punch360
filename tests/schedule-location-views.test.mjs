@@ -87,6 +87,11 @@ test('manager can toggle two views and apply filters without another calendar or
  assert.match(w.document.body.textContent,/Condo Mathieu/);
  assert.match(w.document.body.textContent,/Quarts affichés : 4/);
  assert.equal(calls.some(x=>/shift|schedule|punch|publish|client/.test(x.name)),false);
+ w.document.getElementById('plan-calendarViewDay').value='2026-11-51';
+ await ui.handle({dataset:{action:'ess:plan-calendar-view-apply'}});
+ assert.equal(ui.state.form.calendarViewDay,'2026-11-05');
+ assert.match(ui.state.error,/date valide/);
+ assert.match(ui.renderSchedule(),/Quarts publiés/);
  await w.happyDOM.close();
 });
 test('employee cannot see manager grouping controls',async()=>{
