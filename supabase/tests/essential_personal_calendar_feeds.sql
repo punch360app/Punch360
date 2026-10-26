@@ -54,5 +54,14 @@ begin
  execute 'reset role';
  if (select count(*) from private.essential_calendar_feed_tokens where company_id=c and revoked_at is null)<>0
  then raise exception 'Active feed survives revocation';end if;
+ execute 'set local role authenticated';
+ payload:=public.personal_calendar_feed_rotate(c);tok2:=payload->>'token';
+ execute 'reset role';
+ update public.company_workers set personal_access=false where id=worker;
+ update public.company_workers set personal_access=true where id=worker;
+ execute 'set local role service_role';
+ if public.personal_calendar_feed_read(tok2) is not null
+ then raise exception 'Reactivated worker revived an old secret link';end if;
+ execute 'reset role';
 end $t$;
 rollback;
