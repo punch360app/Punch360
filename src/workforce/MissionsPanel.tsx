@@ -195,7 +195,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   {title(progress.allDone?'Toutes les missions sont terminées':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
   {next?<>{title(next.title+' · '+next.client_name)}{label(next.site_name+' · '+address)}
    {routes.preferred?button('Itinéraire avec '+routes.preferred.label,
-    ()=>{void Linking.openURL(routes.preferred.url).catch(e=>setMessage(e.message||'Application indisponible'))}):null}
+    ()=>{const route=routes.preferred;if(route)void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))}):null}
    {routes.choices.length?button(routes.preferred?"Changer d’application d’itinéraire":"Choisir l’application d’itinéraire",()=>setNavOpen(v=>!v)):null}
    {navOpen?<View style={{gap:4}}>
     {label('Destination de cette mission seulement. Aucun trajet, GPS PUNCH ou pointage déclenché.')}
