@@ -91,3 +91,27 @@ test('expired handoff does not block a new Boss request',async()=>{
  await ctrl.handle({dataset:{action:'boss-handoff:request'}});
  assert.equal(calls.filter(v=>v.name==='essential_boss_handoff_request').length,1);
 });
+
+test('AAL1 refresh does not call handoff RPC, and hides unauthenticated status refresh',async()=>{
+ const {ctrl,calls}=setup({mfaLevel:'aal1'});
+ await ctrl.load(c,'boss',boss);
+ assert.doesNotMatch(ctrl.render(),/data-action="boss-handoff:refresh"/);
+ await ctrl.handle({dataset:{action:'boss-handoff:refresh'}});
+ assert.equal(calls.filter(x=>x.name==='essential_boss_handoff_status').length,0);
+ assert.equal(ctrl.state.status,null);
+});
+test('switching companies clears MFA factor and private handoff state',async()=>{
+ const current={id:'req',company_id:c,version:1,from_user:boss,to_user:admin,status:'pending',can_accept:false};
+ const {ctrl}=setup({status:current});
+ await ctrl.load(c,'boss',boss);
+ assert.equal(ctrl.state.status.id,'req');
+ ctrl.state.qr='private qr';
+ ctrl.state.factor='factor';
+ ctrl.state.code='123456';
+ const other='44444444-4444-4444-8444-444444444444';
+ await ctrl.load(other,'admin',admin);
+ assert.equal(ctrl.state.company,other);
+ assert.equal(ctrl.state.qr,null);
+ assert.equal(ctrl.state.factor,null);
+ assert.equal(ctrl.state.code,'');
+});
