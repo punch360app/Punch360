@@ -1,3 +1,15 @@
+## ACTUEL — P1 : disponibilités récurrentes Essentiel Plus/Pro (26 octobre 2026)
+
+**Lot :** SHIFT-016/017/018, PR [#130](https://github.com/punch360app/Punch360/pull/130), branche `feat/essential-recurring-availability-20261026`. Les employés enregistrent une semaine type (jours et plages multiples au moyen de règles répétées); le Boss/Admin peut saisir les règles d'un salarié actif sans compte. L'aperçu serveur sur les quarts publiés respecte la priorité absence signalée / congé approuvé / exception datée / semaine type, et affiche « inconnu » sans règle. Aucune modification automatique de quart, de paie ou de congé.
+
+**Supabase exclusif :** migration additive **20261026175720_essential_weekly_availability** réellement appliquée dans `mlabstdxxwjdpfaxiwmg` ; table RLS inaccessible en lecture directe à authenticated et RPC interdits à anon. Test `supabase/tests/essential_weekly_availability.sql` exécuté sur le schéma publié **en transaction ROLLBACK** : deux entreprises, salarié avec compte, salarié sans téléphone, idempotence, conflit non destructif, priorité congé/absence/exception, séparation des compagnies. Aucun contrat, paiement ou autre projet Supabase touché.
+
+**Vérification avant promotion :** attendre les CI TypeScript/Node/Web finales sur SHA de la PR #130 ; fusionner si vert, vérifier `PUNCH 360 Web` sur le SHA fusionné et l'URL publique; actualiser le suivi automatique. Expo : source compilée en CI uniquement, build installé et recette Android/iPhone restent ouverts. Les fonctions de remplacement automatique et les préférences complètes SHIFT-019–025 ne sont pas incluses.
+
+**Lots précédents confirmés :** #118/#127 Auth et #129 absences fusionnées, CI verte; #129 Web Pages SUCCESS #40361967403 et SQL installé. Blocages séparés Stripe #35 (migration `20261026110100` et sandbox), OAuth #102 (fournisseurs/appareils). Six Price IDs, tarifs **19/39/69 $**, 20/25/50 places, +2 $/place, −15 % annuel, Construction et Twilio préservés.
+
+---
+
 ## État courant — signalement d'absence (P1, 26 octobre 2026)
 
 **Lot principal :** un employé Essentiel Plus/Pro peut déclarer une absence sur un quart publié; Boss/Admin voit la notification minimale et choisit « Pris en charge » ou « Suivi requis »; l'employé voit la réponse. Aucune attribution automatique, modification du quart, congé ou paie. Motifs privés dans le schéma privé; nouvelle migration additive **20261026163938** appliquée **seulement** sur Supabase `mlabstdxxwjdpfaxiwmg`; 2 sociétés fictives et deux rôles validés avec transaction rollback, code Web/Expo et CI verts sur SHA `c25bd01dd6098173c22d39aa8e7274b8a30a9140` (actions #40361407776 et #40361399855). **PR #129 : en attente de fusion et de publication GitHub Pages; Expo build/appareils non vérifiés.**
