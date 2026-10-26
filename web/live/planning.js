@@ -7,7 +7,8 @@ import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availabilit
 import {createClientDirectoryController} from './client-directory.js';
 import {buildMultiSiteOverview} from './multi-site-overview.js';
 import {plannedClientReport,plannedClientReportCsv} from './planned-client-report.js';
-import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from './shift-client-sites.js';
+import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,assignedSiteNavigationChoices,shiftSiteAssignmentArgs} from './shift-client-sites.js';
+import {navigationPlatform,chooseNavigationPreference,navigationPreferenceKey} from './navigation-choices.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
 export function createPlanningController({sb,redraw,notify,escape:e,document:doc,exportIcs=downloadCalendarIcs}){
  let generation=0;
@@ -104,13 +105,22 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  function renderAssignedSite(shift){
   const site=assignedSiteForShift(s.assignedSites,shift.id);
   if(!site)return '';
-  const url=assignedSiteMapsUrl(site);
+  const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
+  const links=assignedSiteNavigationChoices(site,platform);
+  const preference=s.user&&s.company?chooseNavigationPreference(
+   doc.defaultView?.localStorage?.getItem(navigationPreferenceKey(s.user,s.company)),platform):null;
+  links.sort((a,b)=>(a.id===preference?-1:0)-(b.id===preference?-1:0));
   return `<div class="ess-fine"><b>Client · ${e(assignedSiteSummary(site))}</b>
    <p>${e(assignedSiteAddress(site))}</p>
+   ${links.length?`<details class="ess-panel"><summary>Itinéraire vers cette intervention · choisir l’application</summary>
+   <p class="ess-fine">Cette étape seulement. Aucun réordonnancement de vos quarts, GPS PUNCH ni temps de route estimé.</p>
+   <div class="plan-actions">${links.map(x=>`<a href="${e(x.url)}" target="_blank" rel="noopener noreferrer">${e(x.label)} ↗</a>`).join('')}</div>
+   </details>`:'<p>Adresse indisponible pour l’itinéraire.</p>'}
+   ${site.access_instructions||site.contact_name?`<details><summary>Consignes et contact sur place</summary>
    ${site.access_instructions?`<p>Accès : ${e(site.access_instructions)}</p>`:''}
    ${site.contact_name?`<p>Contact sur place : ${e(site.contact_name)}</p>`:''}
-   <a href="${e(url)}" rel="noopener noreferrer" target="_blank">Itinéraire (Google Maps)</a>
-   <p>Cette adresse n’est pas l’établissement de la compagnie. Aucun suivi de trajet activé.</p>
+   </details>`:''}
+   <p>Le lieu du client ne remplace pas l’établissement de la compagnie. Aucun suivi de trajet activé.</p>
   </div>`;
  }
  function renderSitePicker(shift){
