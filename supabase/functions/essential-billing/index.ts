@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -77,7 +77,7 @@ Deno.serve(async(req:Request)=>{
    const preview={price_id:price.id,item_id:item.id,proration_date:prorationDate,subscription_id:sub.id,subscription_price:item.price.id,amount_due:invoice.amount_due,currency:invoice.currency,total:invoice.total,effective_at:prorationDate,expires_at:prorationDate+600};
    await save({status:'previewed',preview},a.customer_id);return response(200,{preview});
   }
-  const p=o.preview;if(!p||p.expires_at<Date.now()/1000||p.subscription_price!==item.price.id||p.subscription_id!==sub.id)throw Error('PREVIEW_EXPIRED');
+  const p=verifySubscriptionPreview(o.preview,sub,item,price.id);
   // Do not grant new seats from this response. Signed webhook confirms paid changes.
   await save({status:'submitted',subscription_id:sub.id},a.customer_id);
   const updated=await stripe(`/subscriptions/${sub.id}`,{items:[{id:p.item_id,price:p.price_id,quantity:1}],proration_date:p.proration_date,proration_behavior:'always_invoice',payment_behavior:'pending_if_incomplete'},`${o.id}:confirm`);
