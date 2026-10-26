@@ -9,7 +9,7 @@ export async function selectNativeDeviceIdentity<T extends {id:string}>(
 ):Promise<T>{
  if(offline===true){
   const cached=await readCached();
-  if(!cached||typeof cached.id!=='string'||
+  if(!cached||typeof cached.id!=='string'||cached.id.length!==36||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cached.id))
     throw Error('OFFLINE_IDENTITY_UNAVAILABLE');
   return cached;
