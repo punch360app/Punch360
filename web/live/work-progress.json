@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T23:39:12.589Z",
+  "generated_at": "2026-10-26T23:46:11.779Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1161,7 +1161,8 @@
       "external_required": true,
       "pr": [
         142,
-        144
+        144,
+        156
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1299,7 +1300,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        152
+        152,
+        156
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1365,6 +1367,17 @@
     }
   },
   "activity": [
+    {
+      "number": 156,
+      "sha": "5ba9a829c8da1ebf123880e4cb3aedd4d496282b",
+      "ci": "success",
+      "ids": [
+        "MISSION-004",
+        "NAV-003"
+      ],
+      "title": "Essentiel — choisir Maps, Waze ou Plans Apple depuis la prochaine mission",
+      "merged_at": "2026-10-26T23:46:02Z"
+    },
     {
       "number": 155,
       "sha": "195d9317226d932fd25ed039947aeee40e83e2c3",
@@ -1890,15 +1903,6 @@
       "ids": [],
       "title": "P0-C Auth : vérifier l’identité Supabase serveur avant de charger les compagnies",
       "merged_at": "2026-10-26T10:39:41Z"
-    },
-    {
-      "number": 103,
-      "sha": null,
-      "head_sha": "72be207355305a7cacd2b485c88baff4385da22f",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-C Auth mobile : empêcher qu'un ancien espace réapparaisse après déconnexion",
-      "merged_at": "2026-10-26T10:32:52Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
