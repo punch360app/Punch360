@@ -90,3 +90,13 @@ Une prévisualisation de modification d'abonnement peut créer **un nouveau Pric
 - **Testé :** tests Node et CI GitHub Actions à vérifier sur la PR correspondante; **aucune** recette fournisseur Stripe sandbox effectuée.
 - **Déployé :** **non** pour ce nouveau correctif; essential-billing v2 reste la version Edge précédemment constatée.
 - **Intervention externe :** compléter la recette Stripe **test mode** (prorata, checkout, webhooks, taxes, annulation/reprise) avant toute publication Edge; issue #35 ouverte.
+
+
+## P0-B — Précontrôle avant toute création de tarif fournisseur (26 octobre 2026)
+
+Pour les tarifs personnalisés, la fonction Edge vérifie désormais **avant** un éventuel appel de création de Price Stripe que l'action demandée est autorisée : un Checkout n'est pas possible si un abonnement existe déjà; une prévisualisation ou confirmation exige un abonnement correspondant à celui du compte, un seul élément facturé et aucune mise à jour Stripe en attente. Les vérifications de produit, montant, devise et prévisualisation de la PR #94 demeurent en place. Ce changement évite de créer des tarifs Stripe orphelins à cause d'une action impossible.
+
+- **Développé :** précontrôle dans le flux Edge et fonction partagée testable, sans modification de SQL, catalogue, contrats ou six Price IDs.
+- **Testé :** tests Node mockés et CI GitHub à vérifier sur la PR; recette fournisseur Stripe test mode non exécutée.
+- **Déployé :** non pour cette nouvelle version Edge (état fournisseur à revérifier avant déploiement).
+- **Intervention externe :** essais Stripe sandbox et validation du déploiement; issue #35 ouverte.

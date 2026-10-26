@@ -56,6 +56,25 @@ export function selectRegisteredPrice(registered,cadence,amount){
 }
 
 
+
+// A provider Price must never be created until the action is known to be
+// eligible. For an existing subscription, validate its identity and pending
+// update state before any POST /prices or POST /invoices/create_preview.
+export function preflightBillingAction(action,account,subscription){
+ if(!['checkout','preview','confirm'].includes(action))throw Error('INVALID_BILLING_ACTION');
+ if(action==='checkout'){
+  if(account?.subscription_id)throw Error('SUBSCRIPTION_EXISTS_USE_PREVIEW');
+  return null;
+ }
+ if(!account?.subscription_id)throw Error('NO_SUBSCRIPTION');
+ if(!subscription||subscription.id!==account.subscription_id)throw Error('SUBSCRIPTION_MISMATCH');
+ if(subscription.pending_update)throw Error('PENDING_PAYMENT_COMPLETE_FIRST');
+ if(!Array.isArray(subscription.items?.data)||subscription.items.data.length!==1||
+    typeof subscription.items.data[0]?.id!=='string'||
+    typeof subscription.items.data[0]?.price?.id!=='string')throw Error('UNSUPPORTED_SUBSCRIPTION_ITEMS');
+ return subscription.items.data[0];
+}
+
 // Checkout and preview may create a new Price only when the exact registered
 // base amount cannot be reused. Confirm must be read-only for Prices: use the
 // server-saved preview identifier and refuse missing/stale/mismatched IDs.

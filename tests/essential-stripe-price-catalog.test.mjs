@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {billingQuote} from '../supabase/functions/_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
 
 const cases=[
  ['essential',1900,19380,20],
@@ -123,4 +123,28 @@ test('saved custom Stripe Price must match amount, product, cadence, currency an
  assert.throws(()=>checkOrderStripePrice(price,{...args,cadence:'yearly'}),/STRIPE_ORDER_PRICE_UNVERIFIED/);
  const yearly={...price,recurring:{interval:'year',interval_count:1}};
  assert.equal(checkOrderStripePrice(yearly,{...args,cadence:'yearly'}),yearly);
+});
+
+
+test('P0-B preflight rejects ineligible checkout BEFORE creating a custom Stripe Price',()=>{
+ const subscribed={subscription_id:'sub_12345678',customer_id:'cus_12345678'};
+ assert.throws(()=>preflightBillingAction('checkout',subscribed,null),/SUBSCRIPTION_EXISTS_USE_PREVIEW/);
+ assert.equal(preflightBillingAction('checkout',{customer_id:'cus_12345678'},null),null);
+ assert.equal(preflightBillingAction('checkout',null,null),null);
+ assert.throws(()=>preflightBillingAction('unknown',null,null),/INVALID_BILLING_ACTION/);
+});
+test('P0-B preflight rejects invalid subscription BEFORE Stripe Price creation',()=>{
+ const account={subscription_id:'sub_12345678',customer_id:'cus_12345678'};
+ const item={id:'si_12345678',price:{id:'price_12345678old'}};
+ const sub={id:account.subscription_id,pending_update:null,items:{data:[item]}};
+ for(const action of ['preview','confirm']){
+  assert.equal(preflightBillingAction(action,account,sub),item);
+  assert.throws(()=>preflightBillingAction(action,null,sub),/NO_SUBSCRIPTION/);
+  assert.throws(()=>preflightBillingAction(action,account,null),/SUBSCRIPTION_MISMATCH/);
+  assert.throws(()=>preflightBillingAction(action,account,{...sub,id:'sub_wrong'}),/SUBSCRIPTION_MISMATCH/);
+  assert.throws(()=>preflightBillingAction(action,account,{...sub,pending_update:{expires_at:123}}),/PENDING_PAYMENT_COMPLETE_FIRST/);
+  assert.throws(()=>preflightBillingAction(action,account,{...sub,items:{data:[]}}),/UNSUPPORTED_SUBSCRIPTION_ITEMS/);
+  assert.throws(()=>preflightBillingAction(action,account,{...sub,items:{data:[item,item]}}),/UNSUPPORTED_SUBSCRIPTION_ITEMS/);
+  assert.throws(()=>preflightBillingAction(action,account,{...sub,items:{data:[{id:item.id,price:{}}]}}),/UNSUPPORTED_SUBSCRIPTION_ITEMS/);
+ }
 });
