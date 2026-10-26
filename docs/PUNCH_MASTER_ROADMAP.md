@@ -5,7 +5,7 @@
 | ID | Exigence Essentiel | État | Preuve / prochain manque |
 |---|---|---|---|
 | E01 | Conserver dépôt et Construction | EN COURS | Branches/PR, régressions Node et SQL; validation appareils restante |
-| E02 | Identité visuelle et six références | EN COURS | docs/design, composants sage; recette visuelle complète restante |
+| E02 | Identité visuelle et références produits responsive | EN COURS | Composants sauge partiels; huit visuels génératifs de référence **à produire et relire** sous DESIGN-020, puis intégrer en composants vrais et valider sur appareils. |
 | E03 | Trois forfaits modifiables | EN COURS | Catalogue versionné, MFA, devis; recette Stripe restante |
 | E04 | Fonctions de base du forfait Essentiel | EN COURS | Punch/horaire/heures/congés/CSV et corrections de pauses; recette complète restante |
 | E05 | Gestion Plus | EN COURS | Rotations, échanges, départements, annonces; calendriers externes/push restants |
@@ -38,7 +38,7 @@
 | E32 | Livraison commerciale | EN COURS | Aucun lancement commercial déclaré avant recettes |
 | E33 | Livrables complets du prompt | EN COURS | Ne pas clôturer tant que les lignes précédentes restent ouvertes |
 | E34 | Disponibilités hebdomadaires récurrentes, exceptions et heures souhaitées Plus/Pro | À FAIRE | Étendre essential_availability déjà présente; aucun doublon de table. Voir PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md P1 |
-| E35 | Besoins récurrents par poste et tableau des quarts à couvrir Plus/Pro | À FAIRE | Réutiliser modèles d'horaires, couverture Pro et qualifications existants; postes exclusifs/variations restent à concevoir. Voir P1 |
+| E35 | Besoins récurrents par poste et tableau des quarts à couvrir Plus/Pro | À FAIRE | Réutiliser modèles d'horaires, couverture Pro et qualifications existants; les **plages multiples et horaires spéciaux** sont suivis par SHIFT-029–033 (jalon E43), sans deuxième moteur. Voir P1 |
 | E36 | Génération intelligente Pro et interface guidée en 3 étapes | À FAIRE | Brouillon explicable, contraintes, ancienneté, équité, heures, prévisualisation et publication manuelle. Voir P2 |
 | E37 | Signalement d'absence explicite de l'employé sur un quart | À FAIRE | Aucun no-show, retard, GPS ou absence de punch ne lance une offre; pas d'effacement d'heures. Motifs prédéfinis, note facultative, confidentialité; voir P3 |
 | E38 | Banque de remplaçants, offres par vagues et un seul gagnant | À FAIRE | Réutiliser quarts vacants/candidatures; attribution atomique; mode Boss approbation ou automatique. Voir P3 |
@@ -46,6 +46,8 @@
 | E40 | Tâches de quart, modèles par poste et formations internes Plus/Pro | À FAIRE | TASK-001–010 du Prompt maître; aucune deuxième identité, horaire, formation RH ou notification. UX simple, transfert au remplaçant confirmé, accès mobile et QA. |
 | E41 | Propositions/échanges privés dans Messages et compatibilité des postes | À FAIRE | Jalon de suivi **uniquement** des IDs SHIFT-026–028, COVER-026–028, CHAT-013–015, QA-021; ce ne sont pas des fonctions indépendantes à recoder. Consentement privé puis approbation, qualification et attribution atomique |
 | E42 | Banque de volontaires pour l’over et temps compensatoire acquis | À FAIRE | Jalon de suivi **uniquement** des IDs COVER-029–031, HR-019–020, QA-022; disponibilité volontaire ≠ heures gagnées. Réutiliser le registre RH et les offres de quarts; aucune conversion automatique en banque |
+| E43 | Plusieurs plages horaires et horaires spéciaux temporaires | À FAIRE | Jalon des **SHIFT-029–033** : plages chevauchantes matin/midi/soir par poste, fêtes/fermetures, effectif réduit/renforcé, adaptation individuelle datée, reprise de la semaine type sans modifier les quarts publiés. Plus manuel/Pro génération brouillon. |
+| E44 | Finition marketing/UX et QA responsive | À FAIRE | Jalon des **DESIGN-015–020, COMMERCIAL-014–016 et QA-023–024** : audit multi-écrans, navigation simple, visuels génératifs référentiels, landing et comparaison des forfaits, tests 320–1920 px, CTA et prix réels. Les images de référence et l'annexe marketing ne prouvent pas le code déployé. |
 
 Voir `PUNCH_WORK_CONTINUATION.md` pour la tâche active et les versions du serveur. Les instructions récentes du propriétaire priment sur l’ordre indicatif de ce tableau.
 
@@ -72,7 +74,7 @@ Annuaire des abonnements (2026-10-25) : filtres/pagination/indicateurs réel-tes
 
 ## Extension priorisée — horaires intelligents et remplacement (décision du 25 octobre 2026)
 
-**Source officielle des exigences : [PROMPT MAÎTRE — 518 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
+**Source officielle des exigences : [PROMPT MAÎTRE — 534 points](prompt-board/MASTER_PROMPT_20261025.md).** Le document [Planification et absences](PLANIFICATION_INTELLIGENTE_ABSENCES_20261025.md) sert de spécification complémentaire. Suivi sans doublon : E34 = SHIFT-016–019; E35 = SHIFT-020–021; E36 = SHIFT-022–025; E37 = COVER-018–021 + HR-018; E38 = COVER-022–025; E39 = QA-018–020. Les lignes E34–E39 représentent ces mêmes exigences, sans créer de tickets parallèles.
 
 Ordre pour les nouveaux écarts (en coordination avec les lots de sécurité, archives et QA déjà engagés) :
 1. **P0 — audit anti-doublons :** confirmer les tables, RPC, flux et tests existants.
