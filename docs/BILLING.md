@@ -215,3 +215,14 @@ Le helper `supabase/functions/_shared/limited-body.mjs` lit le flux d'octets par
 - **Intervention externe** : vérification avec Stripe sandbox de webhooks réellement signés (y compris espaces, caractères non ASCII, limites et retries), sécurité de la livraison HTTPS et non-régression facturation; issue #35 ouverte.
 
 Préserver les six Price IDs, forfaits propriétaires, contrats et paiements; publier uniquement après les autres prérequis de migration SQL P0-B #108.
+
+## P0-B — Affichage de l'historique des factures sans omission silencieuse (26 octobre 2026)
+
+Stripe retourne **10 factures par défaut** lorsqu'aucune limite n'est demandée. L'API PUNCH renvoyait cette première page au Boss, et l'écran « Factures » ne signalait pas que d'autres factures existaient. Une entreprise ayant plus de dix factures pouvait donc croire, à tort, consulter son historique complet.
+
+L'API demande désormais **100 factures maximum** pour ce client Stripe préalablement vérifié, conserve le contrôle strict de `customer_id` et du mode test/live pour chaque facture, et retourne `has_more` vrai seulement lorsque Stripe signale une page supplémentaire. Le Web et Expo affichent alors : « Seules les 100 dernières factures sont affichées ici. Consultez le portail Stripe pour les autres. » Il n'y a **aucune** récupération non bornée de l'historique, aucune facture d'un autre client, et aucun changement contractuel. Cela ne constitue pas un export comptable exhaustif ni une synchronisation fournisseur.
+
+- **Développé** : lecture plafonnée API, drapeau de pagination, affichage explicite Web/Expo, tests DOM/Node.
+- **Testé** : CI PR à confirmer; aucune connexion réelle à Stripe sandbox.
+- **Déployé** : non en Edge et mobile. La page Web pourra suivre la fusion via workflow Pages, à vérifier indépendamment.
+- **Intervention externe** : tester dans Stripe sandbox une entreprise fictive avec plus de 10 puis plus de 100 factures et factures annulées/remboursées; issue #35 toujours ouverte.
