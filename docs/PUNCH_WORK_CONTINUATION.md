@@ -1,3 +1,13 @@
+# Reprise — limite d'export des archives et erreurs PDF contrôlées (26 octobre 2026)
+
+Suite à la PR #80 fusionnée et déployée, le prompt original **« Validation SQL archives »** progresse avec `web/live/archive-preflight.js` et `tests/archive-preflight.test.mjs`. Le navigateur borne à **4 096 blocs et 20 Mio UTF-8** la reconstruction du contenu SQL, refuse les blocs absents et les tailles PDF invalides/> 25 Mio avant l'appel Edge, masque les diagnostics PDF inconnus tout en gardant le nettoyage des copies temporaires. Contrôles d'Unicode et de refus avant requêtes également testés. PWA rafraîchie. Documentation : `docs/ARCHIVE_CLIENT_PREFLIGHT_20261026.md`. Aucune migration, aucun PDF réel ni abonnement modifié.
+
+**Issue #81 toujours ouverte** : réponse Storage Edge encore lue via `arrayBuffer()` sans plafond indépendant de `Content-Length`, malgré la validation côté navigateur. Pas de déploiement Edge de cette correction; ne pas déclarer les archives prêtes pour production. Vérifier CI et GitHub Pages sur la PR du lot.
+
+Vérification read-only Supabase du 26 octobre : `company-archive-files` ACTIVE, cron `punch-expired-company-exports` actif; avis RLS/SECURITY DEFINER à auditer sans supprimer les permissions délibérées. Restants du prompt original : vrai cycle PDF fictif authentifié, Stripe sandbox, OAuth Google/Apple, traductions spécialisées, vraie QA iOS/Android/iPad, charge et PRA. SMS/Twilio en dernier. Prompt maître séparé.
+
+---
+
 # Reprise — archives binaires fictives et nettoyage en cas d'échec (26 octobre 2026)
 
 Après les PR #77–79 fusionnées (langues borne et console, CI/Pages vertes), retour au **cœur du prompt original « Validation SQL archives »**. Ce lot ajoute un test intégrant réellement le contrôleur Web, AES-GCM, le handler Edge testé et les RPC/Storage **synthétiques** (pas d'accès client réel) : export en blocs, téléchargement et vérification du PDF fictif, chiffrement, prévisualisation après suppression simulée, restauration sans écrasement puis plan et lignes simulés; mauvais mot de passe interdit toute importation. `tests/archive-binary-flow.test.mjs`.
