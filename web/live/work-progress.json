@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:36:49.378Z",
+  "generated_at": "2026-10-26T21:42:03.932Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 661,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1213,7 +1213,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        142
+        142,
+        147
       ],
       "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1261,6 +1262,16 @@
     }
   },
   "activity": [
+    {
+      "number": 147,
+      "sha": "a40297bd29cb7722dd3a81e257cc7021ae132138",
+      "ci": "success",
+      "ids": [
+        "NAV-008"
+      ],
+      "title": "Essentiel — consignes d’accès d’un client uniquement sur demande",
+      "merged_at": "2026-10-26T21:41:55Z"
+    },
     {
       "number": 146,
       "sha": "b309e4fc6b019870966c1732c27a3573cbe13c0c",
@@ -1773,15 +1784,6 @@
       "ids": [],
       "title": "P0-B Stripe : précontrôle des abonnements avant création d'un Price",
       "merged_at": "2026-10-26T08:07:09Z"
-    },
-    {
-      "number": 94,
-      "sha": null,
-      "head_sha": "6be9817d2729bc3f450abd99634a541a56b95e0d",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : confirmer un tarif négocié sans recréer de Price",
-      "merged_at": "2026-10-26T07:35:03Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
