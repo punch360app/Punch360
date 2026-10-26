@@ -1,6 +1,7 @@
 import * as Network from 'expo-network';
 import {cachedLocalIdentity,rememberLocalIdentity,forgetLocalIdentity} from './localIdentity';
 import {processNativeOAuthCallback} from './nativeOAuthCallback';
+import {requireServerVerifiedIdentity} from './serverVerifiedIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React,{useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
@@ -56,13 +57,17 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    }
    const {data,error:sessionError}=await supabase.auth.getSession();
    if(!current())return;
-   setSession(data.session);
-   if(!data.session){
-    setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);
+   if(sessionError||!data.session){
+    setSession(null);setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);
     if(sessionError)setError('Session non vérifiée — reconnecte-toi en ligne.');
     return;
    }
-   const u=data.session.user;
+   // The cached getSession().user is not trustworthy for roles. Confirm
+   // the exact token with the Auth server BEFORE querying company_members.
+   const serverIdentity=await supabase.auth.getUser(data.session.access_token);
+   if(!current())return;
+   const u=requireServerVerifiedIdentity(data.session,serverIdentity);
+   setSession({...data.session,user:u});
    const {data:memberships,error:e}=await supabase.from('company_members')
     .select(MEMBERSHIP_COLUMNS).eq('user_id',u.id).eq('status','active').order('company_id').limit(100);
    if(!current())return;
@@ -86,8 +91,8 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
    if(current())setWorkspaces(verified);
   }catch{
    if(!current())return;
-   setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);
-   setError('Erreur de vérification des entreprises. Réessaie.');
+   setSession(null);setAccount(null);setWorkspaces([]);setShowWorkspacePicker(false);
+   setError('Identité ou accès non vérifié. Reconnecte-toi en ligne.');
   }finally{if(current())setBoot(false);}
  }
  async function selectWorkspace(companyId:string){
