@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T16:09:22.300Z",
+  "generated_at": "2026-10-26T16:16:22.996Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -70,7 +70,8 @@
         116,
         122,
         124,
-        126
+        126,
+        128
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -290,7 +291,8 @@
         122,
         123,
         124,
-        126
+        126,
+        128
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -303,7 +305,8 @@
         122,
         123,
         124,
-        126
+        126,
+        128
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -916,6 +919,18 @@
   },
   "activity": [
     {
+      "number": 128,
+      "sha": "5cfd11edfc5cd3fe8ccba5590463465989ef324e",
+      "ci": "success",
+      "ids": [
+        "GOV-010",
+        "GOV-012",
+        "GOV-014"
+      ],
+      "title": "Suivi : total et nouvelles exigences générés automatiquement depuis le maître",
+      "merged_at": "2026-10-26T16:16:13Z"
+    },
+    {
       "number": 118,
       "sha": "65313f3471747c975c607ad89f193e795e9f7b9b",
       "ci": "success",
@@ -1370,15 +1385,6 @@
       "ids": [],
       "title": "Suivi prompt Validation : 3 PR multientreprise et recettes restantes",
       "merged_at": "2026-10-26T04:17:24Z"
-    },
-    {
-      "number": 71,
-      "sha": null,
-      "head_sha": "27a1e7523c64ea002544a2eefc95c8fce6e4c03f",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Corriger la dernière job mémorisée pour les comptes multi-entreprises",
-      "merged_at": "2026-10-26T04:14:53Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
