@@ -29,10 +29,15 @@ function fixtures(){
    if(entry&&entry.version!==args.p_expected_version)return{error:{message:'Lieu modifié. Actualisez.'}};
    const id=args.p_id||'site-'+String(sites.length+1).padStart(3,'0');
    const client=clients.find(c=>c.id===args.p_client);
-   if(entry)Object.assign(entry,{name:args.p_name,unit:args.p_unit,active:args.p_active,version:entry.version+1});
-   else sites.push({id,company_id:args.p_company,client_id:args.p_client,client_name:client?.name,name:args.p_name,
-    address_line:args.p_address_line,unit:args.p_unit,city:args.p_city,region:args.p_region,
-    postal_code:args.p_postal_code,country:args.p_country,version:1,active:args.p_active});
+   const persisted={id,company_id:args.p_company,client_id:args.p_client,client_name:client?.name,
+    name:args.p_name,address_line:args.p_address_line,unit:args.p_unit,city:args.p_city,
+    region:args.p_region,postal_code:args.p_postal_code,country:args.p_country,
+    timezone:args.p_timezone,latitude:args.p_latitude,longitude:args.p_longitude,
+    contact_name:args.p_contact_name,contact_phone:args.p_contact_phone,
+    access_instructions:args.p_access_instructions,internal_notes:args.p_internal_notes,
+    active:args.p_active,version:entry?entry.version+1:1};
+   if(entry)Object.assign(entry,persisted);
+   else sites.push(persisted);
    return {data:{id,version:entry?.version||1}};
   }
   if(name==='essential_entitlements')return{data:{features:[],title:'Essentiel'}};
@@ -85,6 +90,7 @@ test('client directory creates and edits a client + several visit addresses inde
  w.document.body.innerHTML=controller.render();
  w.document.getElementById('directory-site-unit').value='Bureau 3';
  await controller.handle('save-site',{dataset:{}});
+ assert.equal(controller.state.error,'');
  assert.equal(sites[0].unit,'Bureau 3');assert.equal(sites[0].version,2);
  await w.happyDOM.close();
 });
