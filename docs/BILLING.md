@@ -141,3 +141,12 @@ La vérification serveur garde la limite contractuelle d'une heure pour le devis
 - **Testé :** tests Node/CI GitHub Actions à confirmer dans la PR; le fournisseur Stripe sandbox n'est pas testé.
 - **Déployé :** non pour ce correctif Edge; la version active Supabase doit être vérifiée avant publication.
 - **Intervention externe :** valider le scénario de devis neuf/périmé avec Stripe en mode test et l'interaction avec les webhooks; issue #35 reste ouverte.
+
+## P0-B — Client Stripe validé avant création de Price (26 octobre 2026)
+
+Lors du Checkout, le Customer déjà associé à une entreprise était vérifié après l'éventuelle création d'un Price personnalisé. Une association Stripe périmée ou interentreprises pouvait donc laisser un Price inutilisé avant le refus de Checkout. Le précontrôle est maintenant effectué **avant toute création de Price ou de session** : lecture du Customer réel, vérification de son identifiant, métadonnée `punch_company`, état actif et environnement test/live. La vérification s'applique également à `preview` et `confirm`. Seul le premier Checkout d'une compagnie sans Customer enregistré est admissible sans Customer existant. Aucun prix, client ou contrat n'est réparé automatiquement.
+
+- **Développé :** fonction partagée injectable et contrôle Edge, avec réutilisation du Customer vérifié.
+- **Testé :** tests Node simulant le fournisseur, refus croisé interentreprises/suppression/mode incorrect et ordre du précontrôle; CI GitHub à confirmer dans la PR.
+- **Déployé :** non pour cette nouvelle version du code Edge; état du fournisseur à vérifier séparément.
+- **Intervention externe :** recette Stripe sandbox Checkout et offres négociées, puis déploiement Edge contrôlé; issue #35 encore ouverte.
