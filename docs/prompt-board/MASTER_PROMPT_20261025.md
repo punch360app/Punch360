@@ -1,5 +1,5 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
-**Édition consolidée du 25 octobre 2026 — 534 exigences uniques en 29 lots. Ajouts de suivi : horaires spéciaux/plages multiples et refonte marketing-UX responsive vérifiable. Aucune autre liste de tâches parallèle; historique et spécifications conservés.**
+**Édition consolidée du 25 octobre 2026 — 537 exigences uniques en 29 lots. Ajouts de suivi : horaires spéciaux/plages multiples et refonte marketing-UX responsive vérifiable. Aucune autre liste de tâches parallèle; historique et spécifications conservés.**
 
 Tu es une équipe de développement senior (architecture SaaS, full-stack, Expo/React Native, PostgreSQL/Supabase, sécurité, QA, design et DevOps). Tu dois **reprendre le projet existant et développer réellement**, sans te limiter à une maquette ou un audit. Ne redemande pas « continue » après chaque lot; travaille tant que la séance et les permissions le permettent, en documentant honnêtement les dépendances restantes. Tu ne peux pas supposer une exécution automatique entre deux sessions.
 
@@ -47,6 +47,7 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 | Planificateur automatique Pro en trois étapes | SHIFT-022–025 | Nouveau, après modèles/contraintes validés |
 | Plages multiples pour même poste et horaires spéciaux datés | SHIFT-020/029–033, DESIGN-018, QA-023 | Cinq critères P1 distincts (plages, fêtes, effectif, salarié, expiration) avec un seul moteur de besoins et aucune modification silencieuse |
 | Finition marketing, UX responsive et visuels de référence | DESIGN-015–020, COMMERCIAL-014–016, QA-023–024 | Onze critères suivables; complètent les 14 DESIGN et 13 COMMERCIAL déjà présents sans deuxième prompt marketing |
+| Défilement intelligent et écrans fixes prioritaires | CORE-018, KIOSK-019, DESIGN-006–008/021–022, QA-023/025 | Trois nouveaux critères traçables : politique par écran, accessibilité du débordement et QA ciblée; jamais de « zéro scroll » absolu |
 | « Signaler mon absence » et choix de neuf motifs privés | COVER-018–021, HR-018 | Nouveau parcours distinct de demande de congé, d'échange et de quart libre |
 | Banque intelligente, offres par vagues, un gagnant | COVER-008/011/012, COVER-022–025 | Étendre les quarts/candidatures existants, sans deuxième workflow concurrent |
 | Recette du signalement et confidentialité | QA-005, QA-018–020, SEC-001–015 | Compléments de tests sans nouveaux systèmes d'audit/notifications |
@@ -199,7 +200,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **CORE-015** — Conserver totaux jour/semaine et historique exact après fermeture/réouverture.
 - [ ] **CORE-016** — Ne pas afficher une énorme carte pour un seul établissement.
 - [ ] **CORE-017** — Interdire changement de site non autorisé et ne pas mélanger avec un chantier.
-- [ ] **CORE-018** — Faire tenir la page Punch mobile sans scroll vertical en usage normal.
+- [ ] **CORE-018** — Faire tenir l'accueil Punch mobile sans défilement vertical **en usage normal**; ne jamais bloquer un débordement nécessaire lorsque police agrandie, accessibilité, clavier, petit écran, zoom ou contenu conditionnel exige le scroll. Voir DESIGN-021–022 et QA-025.
 
 ## P0 — Bornes communes et accès Admin/Boss (KIOSK, 32 points)
 **Objectif :** Finaliser borne tablette sécurisée, appairage et sessions mixtes.
@@ -610,7 +611,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **TALON-010** — Ne pas calculer impôts, retenues et paie officielle sans moteur conforme.
 - [ ] **TALON-011** — Exporter CSV des heures fermées vers logiciel de paie.
 
-## P2 — Design de l’écran Punch et interfaces (DESIGN, 20 points)
+## P2 — Design de l’écran Punch et interfaces (DESIGN, 22 points)
 **Objectif :** Harmoniser sans modifier Construction.
 **Sources :** Visuel accueil / thème Design report. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **DESIGN-001** — Conserver fond chaud #FAFBF8, sauge #779574, texte #2F4935, bordures #E1E8DB.
@@ -618,7 +619,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **DESIGN-003** — Avoir des composants arrondis, ombres discrètes et navigation claire.
 - [ ] **DESIGN-004** — Maintenir stabilité pixel à pixel du cadran et des boutons travail/pause.
 - [ ] **DESIGN-005** — Retirer textes/états répétés pour conserver de la place.
-- [ ] **DESIGN-006** — Tester non-scroll écran Punch sur petits téléphones et safe-areas.
+- [ ] **DESIGN-006** — Tester l'accueil Punch sans scroll en conditions normales sur petits téléphones et safe-areas, avec **défilement de secours accessible** si la hauteur utile est insuffisante; aucun bouton ne doit être coupé ni inaccessible.
 - [ ] **DESIGN-007** — Ne pas couper boutons sur Galaxy S25 Ultra, petits Android et iPhone.
 - [ ] **DESIGN-008** — Assurer police agrandie, contraste, focus clavier et lecteurs d’écran.
 - [ ] **DESIGN-009** — Harmoniser Employé, Admin, Boss sans donner aux rôles mêmes actions.
@@ -633,6 +634,8 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **DESIGN-018** — **Finition tablette planification** : interface Admin responsive en mode Simple « Besoins → Employés → Générer/prévisualiser/publier », avec ajout de plusieurs plages pour un poste/jour et action unique « Horaire spécial ». Tablette portrait = étapes progressives; paysage = panneaux supplémentaires seulement s'ils restent lisibles; grille lourde évitée.
 - [ ] **DESIGN-019** — **Finition desktop Boss/Admin** : réorganiser navigation/sidebar et accueil autour des décisions utiles (présences, horaires, quarts à couvrir, absences, échanges, messages non lus, volontaires à l'over) avec métriques réelles, détails accessibles en sous-pages et visibilité par droits/forfait. Ne pas afficher tous les modules RH, rapports ou Super Admin sur un même écran.
 - [ ] **DESIGN-020** — **Visuels génératifs et design system exploitables** : produire et relire huit références distinctes (mobile Essentiel, mobile Plus/Pro, tarifs mobile, tablette planification, desktop Boss, landing page, comparaison tarifs desktop, mini design system) dans la charte sauge, puis fournir spécifications d'espacement, composants, versions et états. Corriger manuellement tout texte/prix fictif. **Les images sont des références, pas des écrans codés ni une preuve de déploiement**; intégrer réellement les composants et ne jamais inventer une photo officielle d'une fonctionnalité non livrée.
+- [ ] **DESIGN-021** — **Stratégie de défilement par écran, pas « zéro scroll universel »** : favoriser une vue initiale complète et fixe pour **Punch mobile, borne et accueil tablette**, quand la hauteur utile réelle le permet; garder les actions prioritaires visibles. Autoriser le scroll vertical naturel des **Heures, Horaire, échanges, tâches, Messages, formulaires, tableaux longs, admin/Super Admin et pages commerciales publiques**, selon la quantité d'information. Sur desktop, tableau de bord visible au premier écran si possible; site de vente = défilement vertical normal pour présenter les sections. **Jamais** de contenu, action, historique, FAQ ou paramètre perdu pour éliminer le scroll; prévoir une issue accessible pour les cas limites (zoom, gros caractères, orientation, clavier). Réutiliser CORE-018, KIOSK-019, DESIGN-006–008/015–019 et QA-023 plutôt qu'une seconde navigation.
+- [ ] **DESIGN-022** — **Hiérarchie de place et débordement accessibles** : adapter chaque responsive **intentionnellement** avant d'ajouter du scroll : 1) supprimer le décor redondant, 2) placer les fonctionnalités secondaires sous « Plus », détail ou menu contextuel clairement nommé, 3) compacter raisonnablement l'espacement **sans réduire illisiblement police et cibles tactiles**, 4) autoriser une **zone de contenu verticale scrollable** si nécessaire. Sur mobile, onglets du bas et barre d'action restent accessibles, sans recouvrir les champs, bouton Punch ou dernier élément; gérer safe-areas, clavier, lecteur d'écran et focus. Éviter les scrolls imbriqués, gestes horizontaux cachés, zones figées surdimensionnées, `overflow:hidden` empêchant la lecture et régressions des cinq onglets Messages. Sur tablette, favoriser pages fixes pour l'accueil/la borne, mais permettre le défilement ou les étapes pour la planification; sur desktop, garder navigation stable et listes paginées/scrollables.
 
 ## P2 — Thèmes et borne visuelle (THEMES, 11 points)
 **Objectif :** Livrer vingt ambiances employés et dix thèmes borne réels.
@@ -701,7 +704,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **LOCALE-010** — Éviter chaînes codées en dur dans Web et Expo.
 - [ ] **LOCALE-011** — Tester écrans compacts avec textes allongés et lecteurs d’écran.
 
-## P3 — QA, vrais appareils, déploiement et lancement (QA, 24 points)
+## P3 — QA, vrais appareils, déploiement et lancement (QA, 25 points)
 **Objectif :** Livrer un produit commercialisable sans confondre compilation et recette.
 **Sources :** Prompt final tests / roadmap. **État initial :** partiellement développé ou à vérifier ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **QA-001** — Construire matrice exigences → code → test → preuves → verdict.
@@ -728,6 +731,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **QA-022** — **Over et banque de temps** : tester volonté ponctuelle/récurrente, retrait, préférences, heures souhaitées, filtrage repos/poste/qualifications, offre par vagues, refus/expiration et une seule attribution par place; puis distinguer heure proposée, réellement travaillée, rémunérée et mise en banque. Tester conversion interdite sans demande/accord/règle applicable, crédits/débits auditables, soldes serveur sur tout l'historique, dépassement refusé, autorisations RH, multi-tenant et modes Borne seulement/Mixte.
 - [ ] **QA-023** — **Matrice de recette visuelle responsive** : captures comparatives et tests à 320, 360, 390, 430, 768/1024, 1280, 1440 et 1920 px, tablette portrait/paysage, Android/iPhone/iPad, clavier, zoom, safe areas, gros texte et langues prévues. Tester chaque rôle, 4/5 onglets et borne uniquement, tableaux, boutons, écrans d'erreur/chargement/hors ligne, aucune coupure ni scroll horizontal involontaire; preuves rattachées aux pages/composants.
 - [ ] **QA-024** — **Recette marketing et parité maquette/code** : vérifier CTAs et itinéraires création/forfait/connexion, 3 prix + sièges/borne + remise annuelle exactement calculés depuis le serveur, taxes/périodes, page mobile/desktop et FAQ, image générative relue vs écran réel éditable. Détecter et corriger fausses promesses, images/prix inventés, composants inertes; rapport clair des parties codées, testées, déployées et toujours illustratives.
+- [ ] **QA-025** — **Recette du défilement intelligent et accès à 100 % des fonctions** : tester séparément Punch (mode téléphone/mixte et borne seule), borne PWA, accueil tablette, Heures/Horaire, Messagerie Plus/Pro, planification à plages multiples, gestion Boss/Admin/Super Admin, formulaires, landing page et forfaits. Variantes **320/360/390/430 px**, tablette portrait/paysage, desktop 1024/1280/1440/1920 px, zoom **200 %**, polices agrandies, clavier virtuel déployé, lecteurs d'écran et texte long multilingue. En usage courant, privilégier la page Punch/borne sans défilement; en cas de débordement, **toute action reste atteignable au doigt, clavier et lecteur d'écran**, la barre de navigation ne cache rien, le dernier champ peut recevoir le focus, le scroll conserve le contexte, sans piège de scroll imbriqué ni scroll horizontal involontaire. Comparer avant/après par capture et tester parcours réels, pas seulement une image.
 
 ## P4 — Services, intégrations et SMS en dernier (SERVICES, 11 points)
 **Objectif :** Ne pas bloquer les lots prioritaires sur les configurations externes.
@@ -909,3 +913,38 @@ Revoir chaque responsive séparément : mêmes fonctionnalités et identité, ma
 **Règle finale absolue :** le produit complet doit donner l'impression **« c'est beau, clair, simple et facile à utiliser »**. Tout ce qui alourdit sans aider une décision doit être retiré de la vue principale **sans supprimer sa fonctionnalité**. **Ne créer aucun deuxième prompt, aucune deuxième app, aucun deuxième calendrier ou système de facturation. Ne jamais inventer des fonctions livrées ou des résultats marketing.** Conserver les responsabilités réelles de PUNCH Essentiel et les règles de sécurité, tests et déploiement déjà écrites dans le Prompt maître.
 
 **Indicateurs à améliorer si les métriques sont réellement mesurables :** compréhension de la promesse en moins de 10 secondes, facilité de trouver Punch/Horaire/Messages, complétion de création de compte, taux de clic vers les forfaits, compréhension des différences Essentiel/Plus/Pro, sélection du forfait adapté, réduction des erreurs, temps pour les tâches employé/gestionnaire et stabilité responsive. Mesurer sans fabriquer de taux ni faire de promesse non vérifiée.
+
+---
+
+## DIRECTIVE UX FINALE ADDITIONNELLE — Défilement intelligent et écrans fixes prioritaires
+
+**Mission pour ChatGPT Work, les développeurs et les designers :** appliquer la philosophie « **page fixe lorsque c'est utile, scroll uniquement lorsque c'est nécessaire** » à tout PUNCH Essentiel, dans la continuité du prompt marketing final. **Ce n'est pas une interdiction universelle du défilement.** Les exigences exécutables correspondantes sont **DESIGN-021–022 et QA-025**; les références **CORE-018, KIOSK-019, DESIGN-006–008, DESIGN-015–020 et QA-023** restent intactes. Cette section est une directive de finition, **pas une nouvelle checklist parallèle**.
+
+### Règles d'interface par contexte
+| Contexte | Comportement cible | Débordement permis |
+|---|---|---|
+| **Mobile employé — Punch (Base, Plus, Pro)** | Action principale, état, chrono/pause et 4/5 onglets visibles **sans scroll en usage normal** | Oui lorsque petit viewport, taille de police, zoom, clavier ou besoin d'accessibilité l'impose |
+| **Mobile — Heures / Horaire / Mes demandes / Tâches / Plus** | Résumé initial clair, puis détails accessibles | Oui, défilement **vertical naturel** des données et listes |
+| **Mobile — Messages (Plus/Pro)** | Onglet Messages au bas et compositeur lisibles | Oui, historique de conversation scrollable; clavier ne masque pas la saisie |
+| **Tablette commune en borne** | Pointage simplifié et retour auto, **sans scroll normalement** | Exception accessible en cas de hauteur utile insuffisante; aucune information RH ou chat privé |
+| **Tablette Admin — accueil** | Raccourcis primaires visibles, mise en page respirante | Oui si les données dépassent; sans cartes secondaires multipliées |
+| **Tablette Admin — planification** | Étapes Besoins → Employés → Générer, contenus segmentés et zones tactiles | Oui pour calendrier, listes et créneaux; éviter imbrications et grilles illisibles |
+| **Desktop Boss/Admin** | Synthèse décisionnelle et navigation permanente si possible | Oui pour listes, rapports et tableaux longs; pagination/filtrage appropriés |
+| **Desktop Super Admin** | Priorité à la sécurité et à la manipulation de dossiers volumineux | Oui pour tableaux, archives, historique et formulaires |
+| **Page Web marketing / forfaits** | Hero clair, CTA immédiat, sections aérées | **Scroll vertical normal et attendu**; ne jamais masquer FAQ, conditions ni comparaison |
+
+### Méthode obligatoire de simplification
+1. **Inventorier la page réelle** et identifier l'action numéro 1, la navigation indispensable et les 1–3 informations vraiment utiles à l'écran initial.
+2. **Retirer les répétitions et le décor non fonctionnel**; ne pas enlever de fonction ni masquer une approbation/obligation réglementaire.
+3. **Regrouper seulement les options secondaires** dans un menu nommé et prévisible (ex. « Plus », « Détails », « Paramètres ») et vérifier leur découvrabilité.
+4. **Rationaliser l'espace vertical** sans police microscopique ni bouton trop petit; adapter portrait/paysage, petits Android, grands Samsung, iPhone et iPad.
+5. Si le contenu reste trop haut, **permettre son défilement vertical** au lieu de le couper; conserver une navigation facilement accessible et éviter barres figées qui recouvrent le contenu.
+6. Tester le **clavier ouvert**, le focus clavier, les lecteurs d'écran, la police agrandie, le zoom, les safe-areas, la barre Android et les contenus longs dans les langues prévues; ne pas verrouiller artificiellement le scroll via `overflow:hidden` ou hauteur fixe.
+7. Produire **captures avant/après** et une décision explicite « fixe en usage courant / scroll de contenu / liste paginée », avec justification, blocages et preuve d'absence de fonctionnalité inaccessible.
+
+### Critères d'acceptation et livraison
+- **Punch** et la borne permettent l'action principale sans défilement en usage normal sur tailles ciblées; sur petite hauteur ou avec grossissement, la totalité des contrôles demeure utilisable.
+- **Heures, Horaire, Messages et les calendriers complexes** conservent un défilement naturel plutôt que de tronquer l'historique ou les quarts.
+- La barre inférieure **Punch · Heures · Horaire · Plus** (Base) ou **Punch · Heures · Horaire · Messages · Plus** (Plus/Pro) ne cache jamais la dernière action; l'accès à l'application personnelle reste possible en mode borne uniquement, sans autoriser le punch mobile.
+- **Page de vente et tarifs** conservent une expérience verticale fluide, car le scroll est nécessaire et normal pour la lecture; le CTA principal apparaît sans distraction.
+- Avant « terminé », mettre à jour **DESIGN-021–022 / QA-025** dans la roadmap et le tracker avec code, tests, captures d'écrans, plateformes vérifiées et statut développé/testé/déployé séparé. **Aucun rendu génératif ne remplace les tests sur vrais appareils.**
