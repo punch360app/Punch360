@@ -33,7 +33,7 @@ begin
   raise exception using errcode='22023',message='Quart, type, demande et commentaire valide requis';
  end if;
  select * into sh from public.scheduled_shifts
- where id=p_shift and cancelled_at is null;
+ where id=p_shift and cancelled_at is null for update;
  if not found then raise exception using errcode='42501',message='Quart non disponible';end if;
  if not private.is_member(sh.company_id) or
     not exists(select 1 from public.companies c where c.id=sh.company_id and c.product_edition='essential') or
