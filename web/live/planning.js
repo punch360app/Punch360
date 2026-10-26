@@ -7,6 +7,7 @@ import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availabilit
 import {createClientDirectoryController} from './client-directory.js';
 import {buildMultiSiteOverview} from './multi-site-overview.js';
 import {navigationPlatform,navigationStopChoices,chooseNavigationPreference,navigationPreferenceKey} from './navigation-choices.js';
+import {VISIT_ALERT_KINDS,canSendVisitAlert,prepareVisitAlert,visitAlertLabel} from './visit-alerts.js';
 import {plannedClientReport,plannedClientReportCsv} from './planned-client-report.js';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from './shift-client-sites.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
@@ -14,7 +15,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  let generation=0;
  const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const future=()=>{const d=new Date();d.setDate(d.getDate()+31);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
- const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,accessShiftId:null,siteChoices:[],siteHasMore:false,clientPlannedReport:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',overviewDay:today(),overviewPeriod:'day',overviewView:'employee',overviewWorker:'',overviewSite:'',overviewDepartment:'',clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
+ const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],visitAlerts:[],visitAlertsUnavailable:false,visitAlertShift:null,visitRequest:null,absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,accessShiftId:null,siteChoices:[],siteHasMore:false,clientPlannedReport:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',overviewDay:today(),overviewPeriod:'day',overviewView:'employee',overviewWorker:'',overviewSite:'',overviewDepartment:'',clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',clientSiteSearch:'',clientSiteChoice:'',visitKind:'',visitNote:''}};
  const clientDirectory=createClientDirectoryController({sb,escape:e,document:doc,redraw,notify});
  const manager=()=>['boss','admin'].includes(s.role),feature=f=>Array.isArray(s.entitlement.features)&&s.entitlement.features.includes(f);
  const canPlan=d=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan&&g.department_id===d));
@@ -31,10 +32,17 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  const val=key=>doc.getElementById('plan-'+key)?.value.trim()??s.form[key]??'';
  async function rpc(name,args){const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data;}
  async function rows(table){const r=await sb.from(table).select('*').eq('company_id',s.company);if(r.error)throw r.error;return Array.isArray(r.data)?r.data:[];}
- async function load(account,user,own,workers=[]){const revision=++generation;const company=account.company_id;if(s.company!==account.company_id||s.user!==user){s.feedUrl=null;s.feedStatus=null;s.absenceShift=null;s.absenceRequest=null;s.absences=[];s.weeklyRules=[];s.weeklyPreview=[];s.weeklyRequest=null;s.workerPrefs=[];s.prefLoadedWorker=null;s.prefLoadedVersion=0;s.prefRequest=null;s.form.prefWorker='';s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.clientPlannedReport=null;s.siteOpenShift=null;s.accessShiftId=null;s.siteChoices=[];}s.company=account.company_id;s.role=account.role;s.user=user;s.own=own;s.workers=workers;s.error='';
+ async function load(account,user,own,workers=[]){const revision=++generation;const company=account.company_id;if(s.company!==account.company_id||s.user!==user){s.feedUrl=null;s.feedStatus=null;s.absenceShift=null;s.absenceRequest=null;s.absences=[];s.visitAlerts=[];s.visitAlertsUnavailable=false;s.visitAlertShift=null;s.visitRequest=null;s.form.visitKind='';s.form.visitNote='';s.weeklyRules=[];s.weeklyPreview=[];s.weeklyRequest=null;s.workerPrefs=[];s.prefLoadedWorker=null;s.prefLoadedVersion=0;s.prefRequest=null;s.form.prefWorker='';s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.clientPlannedReport=null;s.siteOpenShift=null;s.accessShiftId=null;s.siteChoices=[];}s.company=account.company_id;s.role=account.role;s.user=user;s.own=own;s.workers=workers;s.error='';
   const results=await Promise.all([rpc('essential_entitlements',{p_company:s.company}),rows('essential_locations'),rows('essential_departments'),rows('essential_supervisors'),rpc('essential_team_roster',{p_company:s.company}),sb.from('scheduled_shifts').select('*').eq('company_id',s.company).gt('ends_at',s.form.calendarFrom+'T00:00:00Z').lt('starts_at',s.form.calendarTo+'T00:00:00Z').order('starts_at').limit(1000),rows('essential_shift_requests'),rows('essential_availability'),rows('essential_schedule_templates')]);
   if(revision!==generation)return;s.entitlement=results[0]||{};s.locations=results[1];s.departments=results[2];s.scopes=results[3];s.roster=Array.isArray(results[4])?results[4]:[];
   if(results[5].error)throw results[5].error;s.shifts=Array.isArray(results[5].data)?results[5].data:[];s.requests=results[6];s.availability=results[7];s.templates=results[8];s.absences=[];s.absenceUnavailable=false;
+  s.visitAlerts=[];s.visitAlertsUnavailable=false;
+  try{
+   const recent=await rpc('list_essential_visit_alerts',{p_company:s.company,p_from:new Date(Date.now()-14*86400000).toISOString(),p_to:new Date(Date.now()+86400000).toISOString()});
+   if(revision!==generation)return;
+   s.visitAlerts=Array.isArray(recent?.items)?recent.items:[];
+   s.visitAlertsUnavailable=!!recent?.limited;
+  }catch{s.visitAlertsUnavailable=true;}
   if(feature('advanced_schedules')){
    try{const reports=await rpc('list_essential_shift_absences',{p_company:s.company});if(revision!==generation)return;s.absences=Array.isArray(reports)?reports:[];}
    catch{s.absenceUnavailable=true;}
@@ -171,7 +179,31 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    </div></article>`).join('')}</section>`).join('')||'<p>Aucun quart pour ces filtres.</p>'}
   </section>`;
  }
- function renderCalendar(){const visible=s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));return `<section class="ess-panel"><h3>Quarts publiés</h3>${renderMultiSiteOverview()}${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
+ function renderVisitAlertForm(shift){
+  if(!canSendVisitAlert(shift,s.own))return '';
+  const selected=s.visitAlertShift===shift.id;
+  return '<div>'+btn(selected?'Fermer le signalement':'Prévenir d’un retard / problème d’accès','visit-open',`data-id="${e(shift.id)}"`)+
+   (selected?`<div class="ess-panel" aria-label="Signaler un problème sur mon quart">
+    <h4>Avertir le responsable pour ce quart</h4>
+    <p class="ess-fine">Signalement volontaire. Pas de GPS, de calcul de retard ou de modification du pointage. Commentaire facultatif conservé de façon privée; évitez d’y mettre un code d’accès.</p>
+    ${select('Nature du signalement','visitKind',VISIT_ALERT_KINDS.map(x=>[x.id,x.label]))}
+    ${field('Commentaire facultatif (500 caractères max)','visitNote','text','maxlength="500"')}
+    ${btn('Confirmer l’avis interne','visit-send',`data-id="${e(shift.id)}"`)}
+   </div>`:'' )+'</div>';
+ }
+ function renderVisitAlerts(){
+  if(!s.own&&!manager())return '';
+  return `<section class="ess-panel"><h3>Signalements de visites</h3>
+  <p class="ess-fine">Avis internes volontaires uniquement. Aucun SMS, estimation de retard ou changement automatique des heures.</p>
+  ${s.visitAlertsUnavailable?'<p role="status">Historique indisponible ou incomplet; réessayez après synchronisation.</p>':''}
+  ${s.visitAlerts.slice(0,40).map(item=>`<article class="ess-person"><div><b>${e(visitAlertLabel(item))}</b>
+   <small>${e(item.employee_name)} · ${e(date(item.created_at))}</small>
+   ${item.note?`<p>${e(item.note)}</p>`:''}
+   </div>${manager()&&item.status==='reported'?btn('Pris en charge','visit-ack',`data-id="${e(item.id)}"`):''}</article>`).join('')||'<p>Aucun signalement récent.</p>'}
+  ${s.visitAlerts.length>40?'<p>Affichage limité aux 40 signalements les plus récents.</p>':''}
+  </section>`;
+ }
+ function renderCalendar(){const visible=s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));return `<section class="ess-panel"><h3>Quarts publiés</h3>${renderMultiSiteOverview()}${renderVisitAlerts()}${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
  ${s.own?`<details class="ess-panel"><summary>Synchroniser mon horaire avec mon calendrier</summary>
  <p class="ess-fine">Lien privé iCalendar compatible avec les calendriers qui acceptent un abonnement par URL. Les mises à jour dépendent de la fréquence de synchronisation du calendrier.</p>
  <p class="ess-fine"><b>Confidentialité :</b> toute personne détenant le lien pourra consulter vos quarts jusqu'à sa révocation. Ne le publiez pas.</p>
@@ -180,7 +212,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  ${btn('Créer ou renouveler le lien privé','feed-rotate')}
  ${s.feedStatus?.active?btn('Révoquer le lien','feed-revoke'):''}
  ${s.feedUrl?`<label class="ess-field">Copiez ce lien maintenant — il ne sera pas réaffiché<input readonly aria-label="Lien privé calendrier" value="${e(s.feedUrl)}"></label>${btn('Copier le lien','feed-copy')}`:''}
- </details>`:''}<div class="ess-form-grid">${field('Du (UTC)','calendarFrom','date')}${field('Au exclusif (UTC)','calendarTo','date')}</div>${btn('Afficher cette période','reload')}${s.shifts.length>=1000?'<p class="ess-notice">Limite de 1 000 quarts : réduisez la période pour consulter tous les résultats.</p>':''}${!visible.length?'<p>Aucun quart planifié.</p>':''}${visible.map(x=>`<article class="plan-shift"><div><b>${x.worker_id?e(workerName(x.worker_id)):'Quart disponible'}</b><small>${e(date(x.starts_at,x.timezone))} → ${e(date(x.ends_at,x.timezone))}</small><small>${e(place(x.location_id))}${x.department_id?' · '+e(s.departments.find(d=>d.id===x.department_id)?.name||'Département'):''}${x.position_id?' · Poste : '+e(s.positions.find(p=>p.id===x.position_id)?.title||'Poste exclusif'):''} · v${x.version}</small><p>${e(x.note||'')}</p>${renderAssignedSite(x)}${renderSitePicker(x)}</div><div class="plan-actions">${canPlan(x.department_id)?btn('Modifier','edit',`data-id="${e(x.id)}"`)+btn('Annuler','cancel',`data-id="${e(x.id)}"`)+(manager()?btn('Associer une adresse client','site-open',`data-id="${e(x.id)}"`):'')+(manager()&&feature('minimum_coverage')?select('Poste exclusif','pos-'+x.id,[['','Aucun poste'],...s.positions.filter(p=>p.active&&p.location_id===x.location_id&&(!p.department_id||p.department_id===x.department_id)).map(p=>[p.id,p.title])])+btn('Affecter le poste','pos-assign',`data-id="${e(x.id)}"`):''):''}${x.user_id===s.user?(s.acks.some(a=>a.shift_id===x.id&&a.version===x.version)?'<span class="ess-badge">Lecture confirmée</span>':btn('Confirmer la lecture','ack',`data-id="${e(x.id)}"`)):''}${renderAbsenceControls(x)}${feature('shift_swaps')&&new Date(x.starts_at)>new Date()?(x.worker_id===s.own?btn('Demander un remplacement','release',`data-id="${e(x.id)}"`)+select('Proposer un échange','swap-'+x.id,[['','Choisir le quart du collègue'],...s.options.filter(o=>o.location_id===x.location_id&&o.department_id===x.department_id).map(o=>[o.id,o.name+' · '+date(o.starts_at,x.timezone)])])+btn('Proposer l’échange','swap',`data-id="${e(x.id)}"`):x.worker_id===null?btn('Me proposer pour ce quart','claim',`data-id="${e(x.id)}"`):''):''}</div></article>`).join('')}</section>`;}
+ </details>`:''}<div class="ess-form-grid">${field('Du (UTC)','calendarFrom','date')}${field('Au exclusif (UTC)','calendarTo','date')}</div>${btn('Afficher cette période','reload')}${s.shifts.length>=1000?'<p class="ess-notice">Limite de 1 000 quarts : réduisez la période pour consulter tous les résultats.</p>':''}${!visible.length?'<p>Aucun quart planifié.</p>':''}${visible.map(x=>`<article class="plan-shift"><div><b>${x.worker_id?e(workerName(x.worker_id)):'Quart disponible'}</b><small>${e(date(x.starts_at,x.timezone))} → ${e(date(x.ends_at,x.timezone))}</small><small>${e(place(x.location_id))}${x.department_id?' · '+e(s.departments.find(d=>d.id===x.department_id)?.name||'Département'):''}${x.position_id?' · Poste : '+e(s.positions.find(p=>p.id===x.position_id)?.title||'Poste exclusif'):''} · v${x.version}</small><p>${e(x.note||'')}</p>${renderAssignedSite(x)}${renderVisitAlertForm(x)}${renderSitePicker(x)}</div><div class="plan-actions">${canPlan(x.department_id)?btn('Modifier','edit',`data-id="${e(x.id)}"`)+btn('Annuler','cancel',`data-id="${e(x.id)}"`)+(manager()?btn('Associer une adresse client','site-open',`data-id="${e(x.id)}"`):'')+(manager()&&feature('minimum_coverage')?select('Poste exclusif','pos-'+x.id,[['','Aucun poste'],...s.positions.filter(p=>p.active&&p.location_id===x.location_id&&(!p.department_id||p.department_id===x.department_id)).map(p=>[p.id,p.title])])+btn('Affecter le poste','pos-assign',`data-id="${e(x.id)}"`):''):''}${x.user_id===s.user?(s.acks.some(a=>a.shift_id===x.id&&a.version===x.version)?'<span class="ess-badge">Lecture confirmée</span>':btn('Confirmer la lecture','ack',`data-id="${e(x.id)}"`)):''}${renderAbsenceControls(x)}${feature('shift_swaps')&&new Date(x.starts_at)>new Date()?(x.worker_id===s.own?btn('Demander un remplacement','release',`data-id="${e(x.id)}"`)+select('Proposer un échange','swap-'+x.id,[['','Choisir le quart du collègue'],...s.options.filter(o=>o.location_id===x.location_id&&o.department_id===x.department_id).map(o=>[o.id,o.name+' · '+date(o.starts_at,x.timezone)])])+btn('Proposer l’échange','swap',`data-id="${e(x.id)}"`):x.worker_id===null?btn('Me proposer pour ce quart','claim',`data-id="${e(x.id)}"`):''):''}</div></article>`).join('')}</section>`;}
  function loadPrefsForm(worker){
   const row=s.workerPrefs.find(p=>p.worker_id===worker);
   s.prefLoadedWorker=worker;s.prefLoadedVersion=Number(row?.version||0);s.prefRequest=null;
@@ -333,6 +365,27 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
     finally{doc.defaultView.URL.revokeObjectURL(objectUrl);}
     notify('Export local des heures prévues uniquement. Pas de paie ni d’heures réelles attribuées.');
     return true;
+   }else if(a==='visit-open'){
+    const sh=s.shifts.find(sh=>sh.id===id&&!sh.cancelled_at);
+    if(!canSendVisitAlert(sh,s.own))throw Error('Seul le salarié affecté peut signaler ce quart.');
+    if(s.visitAlertShift===id){s.visitAlertShift=null;s.visitRequest=null;}
+    else{s.visitAlertShift=id;s.visitRequest=doc.defaultView?.crypto?.randomUUID?.();
+     if(!s.visitRequest)throw Error('Impossible de générer un identifiant sûr pour le signalement.');
+     s.form.visitKind='possible_delay';s.form.visitNote='';}
+   }else if(a==='visit-send'){
+    const sh=s.shifts.find(sh=>sh.id===id&&!sh.cancelled_at);
+    if(s.visitAlertShift!==id)throw Error('Ouvrez le signalement du bon quart.');
+    const payload=prepareVisitAlert(sh,s.own,val('visitKind'),val('visitNote'),s.visitRequest);
+    if(!doc.defaultView.confirm('Envoyer cet avis interne à votre responsable ? Aucun pointage ni heure ne sera modifié.'))return true;
+    const answer=await rpc('submit_essential_visit_alert',payload);
+    s.visitAlertShift=null;s.visitRequest=null;s.form.visitNote='';s.form.visitKind='';
+    notify(answer.delivered+' responsable(s) averti(s) en interne.');
+   }else if(a==='visit-ack'){
+    if(!manager())throw Error('Responsable requis.');
+    const item=s.visitAlerts.find(x=>x.id===id);
+    if(!item||item.status!=='reported')throw Error('Signalement non disponible.');
+    await rpc('acknowledge_essential_visit_alert',{p_alert:id});
+    notify('Signalement pris en charge; le salarié reçoit une notification.');
    }else if(a==='site-access-toggle'){
     const allowedShift=s.shifts.find(shift=>shift.id===id&&!shift.cancelled_at);
     const allowedSite=assignedSiteForShift(s.assignedSites,id);
@@ -472,6 +525,6 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }catch(err){s.error=err.message;notify(err.message);}finally{s.busy=false;redraw();}return true;
  }
  function input(el){if(!el?.id?.startsWith('plan-'))return;s.form[el.id.slice(5)]=el.type==='checkbox'?el.checked:el.value;if(['plan-location','plan-assignLocation','plan-mode'].includes(el.id)){if(el.id==='plan-location')s.form.department='';if(el.id==='plan-assignLocation')s.form.assignDepartment='';redraw();}}
- function reset(){generation++;clientDirectory.reset();s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.clientPlannedReport=null;s.siteOpenShift=null;s.accessShiftId=null;s.siteChoices=[];s.report=null;s.options=[];s.editing=null;s.batch=null;}
+ function reset(){generation++;clientDirectory.reset();s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.visitAlerts=[];s.visitAlertsUnavailable=false;s.visitAlertShift=null;s.visitRequest=null;s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.clientPlannedReport=null;s.siteOpenShift=null;s.accessShiftId=null;s.siteChoices=[];s.report=null;s.options=[];s.editing=null;s.batch=null;}
  return {state:s,load,reload,renderOrganization,renderSchedule,handle,input,reset};
 }
