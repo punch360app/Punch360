@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T21:02:06.011Z",
+  "generated_at": "2026-10-26T21:14:22.194Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
-  "denominator": 649,
+  "denominator": 661,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
   "requirements": {
     "GOV-001": {
@@ -1129,9 +1129,150 @@
         135
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-001": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-002": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-003": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-005": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-006": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-007": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-008": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-009": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-010": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-011": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "NAV-012": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        142
+      ],
+      "note": "Travail rattaché à la PR #142. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 142,
+      "sha": "88a67422cb5bc9ee8b2b614e09c7ae4b3c417f08",
+      "ci": "success",
+      "ids": [
+        "NAV-001",
+        "NAV-002",
+        "NAV-003",
+        "NAV-004",
+        "NAV-005",
+        "NAV-006",
+        "NAV-007",
+        "NAV-008",
+        "NAV-009",
+        "NAV-010",
+        "NAV-011",
+        "NAV-012"
+      ],
+      "title": "Prompt maître : itinéraires universels Google Maps, Waze et Plans pour tout salarié",
+      "merged_at": "2026-10-26T21:14:11Z"
+    },
     {
       "number": 141,
       "sha": "da08c78371b4a24ee2d9f1277c45a8d58ad609e6",
@@ -1623,15 +1764,6 @@
       "ids": [],
       "title": "P0 — État déployé vérifié et divergence de catalogue #90",
       "merged_at": "2026-10-26T06:32:03Z"
-    },
-    {
-      "number": 89,
-      "sha": null,
-      "head_sha": "c6f15e373123630d72754e384711200a9a2e43dd",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0 Super Admin #35 : isoler le devis Boss et le portail Stripe entre compagnies",
-      "merged_at": "2026-10-26T06:21:16Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
