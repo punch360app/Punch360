@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {billingQuote} from '../supabase/functions/_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../supabase/functions/_shared/essential-price-catalog.mjs';
 
 const cases=[
  ['essential',1900,19380,20],
@@ -169,4 +169,37 @@ test('P0-B Stripe subscription is bound to exact company, customer and test/live
  assert.throws(()=>verifyStripeSubscriptionTenant(account,sub,'',false),/SUBSCRIPTION_TENANT_MISMATCH/);
  assert.throws(()=>verifyStripeSubscriptionTenant(account,sub,companyA,'test'),/SUBSCRIPTION_TENANT_MISMATCH/);
  assert.equal(verifyStripeSubscriptionTenant(account,{...sub,livemode:true},companyA,true).livemode,true);
+});
+
+test('P0-B Stripe customer belongs to exactly one active company and mode',()=>{
+ const account={customer_id:'cus_abcdefghijk123'};
+ const companyA='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const companyB='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ const customer={id:account.customer_id,object:'customer',deleted:false,livemode:false,metadata:{punch_company:companyA}};
+ assert.equal(verifyStripeCustomerTenant(account,customer,companyA,false),customer);
+ assert.throws(()=>verifyStripeCustomerTenant(account,customer,companyB,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,{...customer,id:'cus_wrong123'},companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,{...customer,metadata:{}},companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,{...customer,metadata:{punch_company:companyB}},companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,{...customer,deleted:true},companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,{...customer,object:'account'},companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,{...customer,livemode:true},companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,customer,companyA,true),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant({...account,customer_id:null},customer,companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,null,companyA,false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeCustomerTenant(account,customer,'',false),/STRIPE_CUSTOMER_TENANT_MISMATCH/);
+ assert.equal(verifyStripeCustomerTenant(account,{...customer,livemode:true},companyA,true).livemode,true);
+});
+
+test('P0-B refuse invoice response with a wrong Stripe customer or mode',()=>{
+ const id='cus_abcdefghijk123',good={id:'in_12345678',customer:id,livemode:false};
+ assert.deepEqual(verifyStripeInvoiceListTenant({data:[]},id,false),[]);
+ assert.deepEqual(verifyStripeInvoiceListTenant({data:[good]},id,false),[good]);
+ assert.deepEqual(verifyStripeInvoiceListTenant({data:[{...good,customer:{id}}]},id,false).length,1);
+ assert.throws(()=>verifyStripeInvoiceListTenant(null,id,false),/STRIPE_INVOICE_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeInvoiceListTenant({data:null},id,false),/STRIPE_INVOICE_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeInvoiceListTenant({data:[good,{...good,customer:'cus_other'}]},id,false),/STRIPE_INVOICE_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeInvoiceListTenant({data:[{...good,livemode:true}]},id,false),/STRIPE_INVOICE_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeInvoiceListTenant({data:[{...good,customer:null}]},id,false),/STRIPE_INVOICE_TENANT_MISMATCH/);
+ assert.throws(()=>verifyStripeInvoiceListTenant({data:[good]},'',false),/STRIPE_INVOICE_TENANT_MISMATCH/);
 });
