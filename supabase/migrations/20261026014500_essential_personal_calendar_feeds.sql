@@ -118,6 +118,47 @@ begin
   'shifts',shifts,'locations',locations,'read_only',true);
 end $fn$;
 
+
+-- Immediately invalidate links on role removal, membership closure or change.
+create function private.revoke_calendar_feed_on_membership()
+returns trigger language plpgsql security definer set search_path='' as $fn$
+begin
+ if tg_op='DELETE' then
+  update private.essential_calendar_feed_tokens set revoked_at=clock_timestamp()
+   where company_id=old.company_id and user_id=old.user_id and revoked_at is null;
+  return old;
+ end if;
+ if new.status is distinct from old.status or new.role is distinct from old.role then
+  update private.essential_calendar_feed_tokens set revoked_at=clock_timestamp()
+   where company_id=new.company_id and user_id=new.user_id and revoked_at is null;
+ end if;
+ return new;
+end $fn$;
+revoke all on function private.revoke_calendar_feed_on_membership() from public,anon,authenticated;
+create trigger essential_calendar_member_revoke
+after update of status,role or delete on public.company_members for each row
+ execute function private.revoke_calendar_feed_on_membership();
+
+create function private.revoke_calendar_feed_on_worker()
+returns trigger language plpgsql security definer set search_path='' as $fn$
+begin
+ if tg_op='DELETE' then
+  update private.essential_calendar_feed_tokens set revoked_at=clock_timestamp()
+   where company_id=old.company_id and worker_id=old.id and revoked_at is null;
+  return old;
+ end if;
+ if new.auth_user_id is distinct from old.auth_user_id or new.status is distinct from old.status
+    or new.personal_access is distinct from old.personal_access then
+  update private.essential_calendar_feed_tokens set revoked_at=clock_timestamp()
+   where company_id=new.company_id and worker_id=new.id and revoked_at is null;
+ end if;
+ return new;
+end $fn$;
+revoke all on function private.revoke_calendar_feed_on_worker() from public,anon,authenticated;
+create trigger essential_calendar_worker_revoke
+after update of status,personal_access,auth_user_id or delete on public.company_workers for each row
+ execute function private.revoke_calendar_feed_on_worker();
+
 revoke all on function public.personal_calendar_feed_status(uuid),
  public.personal_calendar_feed_rotate(uuid),public.personal_calendar_feed_revoke(uuid),
  public.personal_calendar_feed_read(text) from public,anon,authenticated;
