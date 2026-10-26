@@ -7,6 +7,7 @@ export function missionProgress(items){
  return {total:ordered.length,done,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
 }
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
+/** @param {string} company @param {Record<string,any>} form @param {{id?:string,version?:number}|null} [existing] @param {boolean} [publish] */
 export function missionArgs(company,form,existing=null,publish=false){
  const day=String(form.day||''),order=Number(form.order),title=String(form.title||'').trim();
  if(!company||!form.worker||!form.site||!(/^\d{4}-\d{2}-\d{2}$/.test(day))||!Number.isInteger(order)||order<1||order>999||
