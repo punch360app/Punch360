@@ -45,7 +45,7 @@ En l’absence d’un défaut critique ouvert et réalisable, suivre les jalons 
 |---|---|---|
 | **J1 — Socle Essentiel et administration** | Boss crée sa compagnie; salarié activé ou matricule/NIP; pointage téléphone/borne/mixte autorisé; heures, corrections, validations et export; gestion des accès, comptes et catalogue Super Admin; inscription/forfaits honnêtes. | Auth, isolation, moteur de temps et permissions vérifiés dans les parcours touchés. Google/Apple/courriel : `INVITE` + `SERVICES-001/002/008`; Stripe : `STRIPE` + catalogue/contrats et migration/Edge/clients compatibles. Aucun GO commercial sur simulation seulement. |
 | **J2 — Parcours Plus complets** | Disponibilités récurrentes, postes/habilitations, horaires et publication; **clients/adresses d’intervention et horaires multi-emplacements (`MLOC`)**; absence volontaire puis remplacement; échanges/quarts supplémentaires; Messages et décisions partagés. | Réutiliser chaque brique déjà fusionnée. Qualifications et disponibilités avant attribution; consentement avant remplacement; notifications internes opérationnelles, push à valider via `SERVICES-003/004`. |
-| **J3 — Gestion Pro** | Génération déterministe en trois étapes, multi-établissements, banques/paie/RH, budgets, scénarios, Wallet, GPS professionnel, dépenses et talons. | Droits et modules serveur réels; services Wallet/OCR/intégrations uniquement pour le parcours concerné. Aucun service IA payant nécessaire au générateur de base. |
+| **J3 — Gestion Pro** | Génération déterministe en trois étapes, multi-établissements, banques/paie/RH, budgets, scénarios, Wallet, GPS professionnel, **flotte et carnet de route**, **dépenses/approbations de remboursement**, **sous-traitance/factures internationales**, talons et **documents fiscaux annuels** par juridiction vérifiée. | Droits et modules serveur réels; services Wallet/OCR/intégrations uniquement pour le parcours concerné. Aucun service IA payant nécessaire au générateur de base. |
 | **J4 — Validation complète et lancement** | Archives/PRA, charge, langues complètes, finition responsive et accessibilité, builds signés et recettes appareils/fournisseurs. | QA ciblée, sécurité, sauvegarde et interfaces sont traitées dans chaque lot dès leur nécessité; ce jalon termine la couverture globale. GO/GO conditionnel/NO-GO par domaine avec limites explicites. |
 | **P4 — Intégrations secondaires et SMS en dernier** | Connecteurs facultatifs restants et Twilio configuré, consenti et vérifié. | Ne pas bloquer les jalons réalisables sur une configuration externe. SMS/Twilio demeure la dernière intégration. |
 
@@ -692,7 +692,7 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **GPS-017** — Exporter kilomètres/remboursements sans les traiter comme heures payées.
 - [ ] **GPS-018** — Limiter rétention, accès à la carte et usage des positions privées.
 
-## P2 — Dépenses, reçus et remboursements Pro (EXPENSE, 18 points)
+## P2 — Dépenses, reçus et remboursements Pro (EXPENSE, 26 points)
 **Objectif :** Gestion des frais professionnels, y compris commerce de détail.
 **Sources :** Nouveaux ajouts. **État initial :** nouveau / à développer ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **EXPENSE-001** — Créer module Dépenses Pro séparé du suivi GPS.
@@ -714,8 +714,17 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **EXPENSE-017** — Ne jamais simuler virement bancaire sous statut remboursé.
 - [ ] **EXPENSE-018** — Préparer adaptateurs QuickBooks/Sage sans fausses intégrations.
 
+- [ ] **EXPENSE-019** — Parcours employé complet : dans « Mes dépenses », saisir une dépense professionnelle payée personnellement, prendre une photo du reçu ou importer un PDF, vérifier montant/devise/date/taxes et choisir catégorie, motif, véhicule/chantier/client s'il y a lieu; **envoyer à l'approbateur autorisé** sans passer par le module Flotte.
+- [ ] **EXPENSE-020** — Notification et boîte « Dépenses à approuver » pour Boss/Admin/délégué configuré : afficher justificatif original, détails et historique; **approuver, demander une correction ou refuser avec motif**. L'employé consulte en tout temps le statut et reçoit la décision. Empêcher l'autoapprobation et la lecture interentreprises.
+- [ ] **EXPENSE-021** — Cycle fiable : brouillon → soumise → à corriger → approuvée/refusée → **à rembourser** → remboursée seulement sur preuve réelle de décaissement, avec mode/date/référence/montant et acteur autorisé. Un consentement ou une approbation ne constituent pas un paiement; gérer paiements partiels, reprises/annulations et journal d'audit.
+- [ ] **EXPENSE-022** — Activer « demander remboursement de frais » à l'échelle **compagnie, établissement, rôle, modèle de poste et employé à sa création**, avec catégories autorisées, plafonds, justificatifs, politique, chaîne d'approbation et délégations. Modification ultérieure possible; interface employé allégée si désactivé.
+- [ ] **EXPENSE-023** — Ne pas lier obligatoirement dépenses, véhicule, GPS ou trajet : commerce de détail fixe peut avoir **Dépenses activées, Flotte et GPS masqués**; une équipe itinérante peut utiliser les trois, avec consentements distincts. Les droits restent imposés au serveur, pas uniquement en masquant les boutons.
+- [ ] **EXPENSE-024** — Scanner local sans tokens/API IA facturés à l'usage (OCR sur appareil ou bibliothèque libre compatible) : proposer fournisseur, date, montant, taxes, devise, catégorie et doublons possibles; correction/validation par l'employé. Ne jamais comptabiliser une valeur OCR non confirmée; original privé préservé si OCR indisponible.
+- [ ] **EXPENSE-025** — Un reçu = pièce source unique, potentiellement associée à une dépense employé **ou** à une dépense flotte/chantier, sans double comptabilisation ni double remboursement; rattachement modifiable par responsable avec audit et protection des pièces.
+- [ ] **EXPENSE-026** — Tests bout en bout : employé sans droits (aucun bouton ni API), commerce de détail avec frais activés seulement, photo essence → OCR → confirmation → soumission → notification admin → refus/correction/approbation → preuve de remboursement; approbation concurrente, doublon, reçu ambigu, image illisible, hors ligne, deux compagnies et confidentialité.
+
 ## P2 — Talons de paie numériques Pro (TALON, 11 points)
-**Objectif :** Utiliser le stockage RH privé existant, éviter logiciel paie complet.
+**Objectif :** Phase 1 : utiliser le stockage RH privé existant et des exports/imports de paie; **ne pas calculer le net** sans moteur conforme. Phases 2/3 : moteur natif vérifié par juridiction puis fournisseurs de versement/remises autorisés (voir PAYPRO).
 **Sources :** Nouveaux ajouts / RH. **État initial :** nouveau / à développer ; aucun élément ci-dessous ne doit être présumé validé sans preuve.
 - [ ] **TALON-001** — Ajouter Mes talons de paie dans l’onglet Plus si droit Pro.
 - [ ] **TALON-002** — Permettre import simple et lot multi-PDF par responsable autorisé.
@@ -728,6 +737,84 @@ Une entreprise PUNCH Essentiel choisit le **canal de pointage** (borne seulement
 - [ ] **TALON-009** — Permettre consultation et téléchargement depuis appareil personnel.
 - [ ] **TALON-010** — Ne pas calculer impôts, retenues et paie officielle sans moteur conforme.
 - [ ] **TALON-011** — Exporter CSV des heures fermées vers logiciel de paie.
+
+
+## P2 — Flotte et véhicules de compagnie Pro (FLEET, 27 points)
+**Objectif :** console **Flotte** Boss/Admin + interface minimale pour les salariés autorisés. Connecter aux horaires, lieux clients, punchs, déplacements professionnels, facturation et dépenses **sans rendre le GPS ou le compteur obligatoires**. Applicable internationalement avec règles locales versionnées. Aucune de ces demandes n'est réputée déjà développée.
+
+- [ ] **FLEET-001** — Répertoire par entreprise de voitures, camionnettes, camions, remorques et équipements, avec photo, identifiant, marque, modèle, année, plaque si applicable, VIN, motorisation, compteur km/miles, localisation habituelle, statut.
+- [ ] **FLEET-002** — Fiche véhicule : acquisition, propriétaire ou location, contrats, financement, garanties, fournisseurs, historique d'affectations, photos et documents privés; archivage conservant l'historique.
+- [ ] **FLEET-003** — Boss/Admin attribue véhicule à un ou plusieurs conducteurs/équipes/chantiers selon dates; réservations autonomes uniquement si autorisées; éviter doubles réservations et gérer conducteur habituel/remplaçant.
+- [ ] **FLEET-004** — Permis, catégories de conduite, autorisations et échéances des conducteurs; droits limités au besoin opérationnel, confidentialité des documents.
+- [ ] **FLEET-005** — Employé autorisé : carte « Mon véhicule » affichant véhicule attribué, ses réservations, son carnet de route, inspections, signalements et reçus; ne pas alourdir le Punch des salariés sans véhicule.
+- [ ] **FLEET-006** — **Saisie du compteur avant le quart FACULTATIVE** : saisie manuelle ou photo du compteur au départ et à l'arrivée facultatives, désactivables par véhicule/entreprise/employé; jamais un prérequis à IN/OUT, pauses, horaires ni paie.
+- [ ] **FLEET-007** — Rappel **mensuel par défaut** du relevé de compteur, date, valeur et photo facultative; fréquence, canal et destinataire paramétrables; rappel jamais bloquant; corrections de compteur, changement de compteur et anomalies audités.
+- [ ] **FLEET-008** — Carnet de route quotidien enregistrant trajets maison ↔ chantier, entre chantiers et autres déplacements, avec étapes, dates, durée, distance, conducteur, véhicule, client, adresse, projet et note; saisie manuelle si GPS inactif.
+- [ ] **FLEET-009** — Catégories distinctes : professionnel, personnel, domicile-travail, non attribué; permettre correction et approbation. La classification fiscale réelle dépend du pays, de la situation et de la réglementation, pas d'un simple libellé ou de la destination.
+- [ ] **FLEET-010** — GPS seulement pour trajets professionnels explicites/consentis dans les secteurs admissibles (réutiliser politique `GPS`) : début/fin visibles et contrôlables. Le punch GPS ponctuel ne prouve pas un trajet ni une distance; ne jamais tracer automatiquement les destinations privées.
+- [ ] **FLEET-011** — Rattacher trajets professionnels valides aux chantiers/adresses `MLOC` et affectations d'horaire; gérer clients multiples la même journée et kilomètres entre lieux sans double attribution.
+- [ ] **FLEET-012** — Réconcilier **compteur réel** (relevé périodique) avec **distance GPS estimée** (trajets professionnels mesurés) et kilométrage manuel; afficher écart, incertitude et kilomètres non classés sans inventer des déplacements personnels.
+- [ ] **FLEET-013** — Tableaux et exports mensuels/annuels : total compteur, distances professionnelles/personnelles/domicile-travail/non attribuées, pourcentages, conducteurs, véhicules, justificatifs et corrections; rapports fiscaux préparatoires mais aucune déclaration fiscale automatique non validée.
+- [ ] **FLEET-014** — Dépenses par véhicule : carburant/charge, pneus, entretien, réparations, assurances, plaques, frais, financement et amortissement estimé; coûts mensuels/annuels et coût/km, différencier charges, décaissements et estimations.
+- [ ] **FLEET-015** — Imputer trajets et frais aux clients/chantiers/contrats et, si autorisé au contrat, à la facturation; distinguer frais refacturables, remboursement de l'employé, coûts patronaux et avantage imposable éventuel.
+- [ ] **FLEET-016** — Plan préventif : huile, pneus, freins, inspections, entretiens, révisions constructeur, réparations et garanties selon date, compteur ou heures moteur; prévisions indicatives si compteur pas à jour.
+- [ ] **FLEET-017** — Historique d'entretien avec garage, motif, date, coût, devise, taxes, kilométrage, pièces changées, photos, factures, preuve de service, état et date du prochain entretien.
+- [ ] **FLEET-018** — Plaques/immatriculation : autorité, documents, paiements, échéances et renouvellements locaux, avec versions réglementaires adaptées par pays/région; aucune échéance supposée sans renseignement fiable.
+- [ ] **FLEET-019** — Assurances : compagnie, numéro de police, garanties, franchises, primes, attestations, sinistres si pertinent, échéances, renouvellements et accès privé.
+- [ ] **FLEET-020** — Financement/location : contrat, mensualités, versements prévus, preuves de paiement, échéances, garanties et coût total. Ne pas inventer de paiement effectué ni en déclencher sans autorisation.
+- [ ] **FLEET-021** — Rappels automatiques configurables d'entretien en kilomètres/date, plaques, assurances, permis, paiements, inspections, garanties et rendez-vous (p. ex. 30/7/1 jours), sans notifications en double.
+- [ ] **FLEET-022** — Rendez-vous garage, pneus, inspection et maintenance au **calendrier existant**; véhicule temporairement indisponible, détection des conflits avec réservations/horaires et notification aux employés concernés.
+- [ ] **FLEET-023** — Contrôle avant/après utilisation si paramétré et légalement requis, listes adaptées au véhicule; signalement d'anomalie, incident, dommages et accident par photo, alerte admin et immobilisation administrative si nécessaire.
+- [ ] **FLEET-024** — Employé ou admin autorisé photographie/import JPG, PNG ou PDF d'une facture d'essence, garage, pneus, réparation, assurance ou immatriculation; document original en stockage privé, affecté au véhicule et à son dossier de dépenses.
+- [ ] **FLEET-025** — Reconnaissance OCR locale/libre **sans API IA payante ni tokens facturés** : lire fournisseur, date, total, taxes, devise, objet, compteur et plaque si visibles; suggérer véhicule/catégorie. Validation/correction humaine si erreur ou ambiguïté; éviter double dépense. Prévoir frais normaux éventuels de stockage/hébergement, sans promettre zéro coût absolu.
+- [ ] **FLEET-026** — Sécurité et confidentialité : isolation de compagnie via serveur/RLS, accès limité par rôle, conducteur et délégation, pièces privées et URLs temporaires, historique d'audit, conservation locale adaptée; pas de suivi des itinéraires privés sous prétexte de véhicule de compagnie.
+- [ ] **FLEET-027** — Recette entière : deux véhicules/deux chauffeurs, attribution et conflit, punch sans relevé, rappel mensuel, trajets GPS et manuels, 300 km non attribués, classification domicile-travail, export annuel, changement d'huile, échéance de plaques/assurance, rendez-vous garage bloquant réservation, reçu photographié → dossier correct, fonctionnement sans GPS et multientreprise.
+
+**Règle de lancement :** flotte en étapes (fiches/attributions/échéances et reçus, puis carnet de route, puis GPS intelligent sous consentement), sous forfait Pro activé par entreprise et permissions fines par employé. Les secteurs fixes peuvent garder le module Flotte désactivé.
+
+## P2 — Activation des fonctions par profil salarié (EMPFEATURE, 5 points)
+- [ ] **EMPFEATURE-001** — À la création/invitation d'un employé, proposer un **profil de fonctions** issu d'un modèle par entreprise, établissement, secteur et poste (p. ex. commerce fixe, entretien mobile, construction, conducteur); choix explicites visibles et éditables, avec valeurs sûres par défaut.
+- [ ] **EMPFEATURE-002** — Autorisations granulaires **Dépenses et demandes de remboursement, Véhicule attribué/Réservation, Carnet de route, GPS professionnel, Inspections, Documents**; activation/désactivation individualisée par Boss/Admin habilité, séparée des accès salariaux/RH.
+- [ ] **EMPFEATURE-003** — Ne pas afficher les fonctions désactivées dans l'interface employé, ni les exiger pour pointer; préserver navigation simple des commerces fixes. Interdire les actions non autorisées côté serveur même si bouton caché.
+- [ ] **EMPFEATURE-004** — Modifications ultérieures et transferts de poste datés/audités; ne pas effacer rétroactivement dépenses, décisions, kilomètres, reçus ni droits à consulter ses anciennes demandes.
+- [ ] **EMPFEATURE-005** — Tests de profil « caissier sans flotte/GPS », « caissier avec remboursement » et « employé mobile avec véhicule/GPS consenti », création/édition, retrait de droit, 2 compagnies, RLS et notifications appropriées.
+
+## P2 — Sous-traitance Pro suivie (SUBCON, 4 points)
+**Détails normatifs :** annexe « MODULE PRO — SOUS-TRAITANCE, PRÊT DE PERSONNEL ET FACTURATION DES HEURES ».
+- [ ] **SUBCON-001** — Temps approuvé relié client/contrat/lieu et segmentation sans doublon, y compris plusieurs emplacements par journée.
+- [ ] **SUBCON-002** — Coût complet employeur, tarif facturé, marge cible vs majoration et historique des taux; prix HT calculés et prévisualisés.
+- [ ] **SUBCON-003** — Brouillon depuis heures non facturées, correction via avoir, suivi contrats et relevé client avec accès externe restreint, sans divulgation des salaires/marges.
+- [ ] **SUBCON-004** — Recettes financières chiffrées, multi-compagnies, ajustements et facture unique par segment.
+
+## P2 — Factures internationales Pro suivies (INVOICEPRO, 5 points)
+**Détails normatifs :** annexe « MODULE PRO — FACTURATION PROFESSIONNELLE MULTIPAYS ».
+- [ ] **INVOICEPRO-001** — Six véritables modèles de facture PDF avec logo, identité légale, coordonnées, numéros fiscaux, langues, devises et formats A4/Lettre.
+- [ ] **INVOICEPRO-002** — Règles fiscales versionnées par juridiction, nature et lieu de fourniture, inscription et date; taxe non appliquée automatiquement selon la seule adresse client.
+- [ ] **INVOICEPRO-003** — Factures numérotées, états, paiement partiel, avance, avoirs, échéances, notifications et conservation des originaux, après approbation d'un responsable.
+- [ ] **INVOICEPRO-004** — Séparer taxes de facture, retenues de paie et frais/avantages imposables; ne pas supposer leur équivalence, ni considérer une facture émise comme encaissée.
+- [ ] **INVOICEPRO-005** — Tests Canada/Québec, autre province/pays, taxes applicables/non applicables, devises, PDF multipage, isolation, verrouillage et double facturation.
+
+## P2 — Paie, talons CCQ et internationale suivis (PAYPRO, 5 points)
+**Détails normatifs :** annexes « MODULE PRO — PRÉPARATION DE PAIE ET TALONS CCQ » et « ARCHITECTURE INTERNATIONALE ».
+- [ ] **PAYPRO-001** — Préparer heures approuvées, périodes et exports vers fournisseur, sans confondre heures payables, facturables, déclarables et travail effectif.
+- [ ] **PAYPRO-002** — Importer talons du partenaire de paie, associer salarié/période, protéger PDF, puis produire talons natifs uniquement avec moteur de règles validées.
+- [ ] **PAYPRO-003** — Pack construction CCQ : métier, classification, secteur, syndicat, MÉDIC, retraite, vacances, retenues salariales/charges employeur distinctes.
+- [ ] **PAYPRO-004** — Talons internationaux et calcul du net seulement pour juridictions réellement vérifiées; versements/remises par partenaire autorisé, aucune simulation de paiement.
+- [ ] **PAYPRO-005** — Recettes paie, cumuls, rétroactivité, corrections, changements de taux/régime, droits RH, concordance avec l'export et interdiction de paie non conforme.
+
+## P2 — Documents fiscaux annuels suivis (TAXDOC, 4 points)
+**Détails normatifs :** annexe « MODULE PRO — DOCUMENTS FISCAUX ANNUELS MULTIPAYS ».
+- [ ] **TAXDOC-001** — Préparer et rapprocher cumuls annuels provenant de paies validées, pas de simples pointages, et détecter les données fiscales manquantes.
+- [ ] **TAXDOC-002** — Formats T4 et RL-1 et autres formulaires si applicables, années et cases officielles versionnées, correction/duplicata et validations réglementaires avant émission.
+- [ ] **TAXDOC-003** — Packs fiscaux multipays (dont W-2 si pris en charge), PDF et formats de transmission propres à la juridiction, sans déclaration de dépôt sans accusé de réception.
+- [ ] **TAXDOC-004** — Documents privés, NAS/SIN protégés, contrôle d'accès par salarié, audit et tests de fuite; références visuelles utilisateur jamais publiées dans GitHub.
+
+## P2 — Fiches RH et architecture internationale suivies (HRINTL, 4 points)
+**Détails normatifs :** annexes « MODULE PRO — DOSSIER EMPLOYÉ RH, AVANTAGES ET RÉGIMES CCQ » et « ARCHITECTURE INTERNATIONALE — RH, PAIE, AVANTAGES ET CONFORMITÉ ».
+- [ ] **HRINTL-001** — Dossier salarié versionné : salaire, primes, bonus, avantages, assurance collective, syndicat, pension, licences et documents, avec autorisations par champ.
+- [ ] **HRINTL-002** — Séparer retenues employé, charges patronales, indemnités, avantages et allocations; appliquer uniquement des règles métier/convention et juridiction datées et validées.
+- [ ] **HRINTL-003** — Noyau universel et packs locaux CCQ/Canada/États-Unis/Europe activés uniquement si testés; travail transfrontalier et plusieurs employeurs sans fuite.
+- [ ] **HRINTL-004** — Préparer la fiche RH avant calcul réglementaire complet, et empêcher les coûts prévisionnels de devenir salaires ou bénéfices nets « officiels ».
 
 ## P2 — Design de l’écran Punch et interfaces (DESIGN, 22 points)
 **Objectif :** Harmoniser sans modifier Construction.
