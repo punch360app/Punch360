@@ -63,7 +63,6 @@ export function createBossHandoffController({
     const level=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(level.error)throw level.error;
     s.mfaLevel=level.data?.currentLevel||'aal1';
     s.status=s.mfaLevel==='aal2'?await rpc('essential_boss_handoff_status',{p_company:s.company}):null;
-    s.status=await rpc('essential_boss_handoff_status',{p_company:s.company});
    }else if(action[1]==='request'){
     if(s.role!=='boss'||(s.status&&s.status.status!=='expired'))throw Error('Seul un Boss peut demander un nouveau transfert.');
     const admins=getMembers().filter(m=>m.role==='admin'&&(m.status==null||m.status==='active'));
