@@ -4,7 +4,7 @@ Ce répertoire définit le fonctionnement **Drive → GitHub → ChatGPT Work �
 
 ## Source de vérité après consolidation
 
-**Un seul prompt à exécuter :** [`MASTER_PROMPT_20261025.md`](MASTER_PROMPT_20261025.md) (**568 exigences uniques, 29 lots**). L'ancien giga-prompt a été supprimé après son intégration; les spécifications techniques sur les absences servent de références détaillées, pas de deuxième liste d'exigences à coder. Les exigences horaires avancés et signalement volontaire sont rangées sous SHIFT-016–025, COVER-018–025, HR-018 et QA-018–020, sans réimplémenter les mécanismes existants. Avant de développer, vérifier le dernier `main`, les PR, la base officielle et les tests ; un document n'est pas une preuve de livraison.
+**Un seul prompt à exécuter :** [`MASTER_PROMPT_20261025.md`](MASTER_PROMPT_20261025.md) (**578 exigences uniques, 29 lots**). L'ancien giga-prompt a été supprimé après son intégration; les spécifications techniques sur les absences servent de références détaillées, pas de deuxième liste d'exigences à coder. Les exigences horaires avancés et signalement volontaire sont rangées sous SHIFT-016–025, COVER-018–025, HR-018 et QA-018–020, sans réimplémenter les mécanismes existants. Avant de développer, vérifier le dernier `main`, les PR, la base officielle et les tests ; un document n'est pas une preuve de livraison.
 
 ## Principe
 - **Google Drive** : boîte d'entrée des nouveaux prompts et visuels. Dossier existant intitulé `promt` dans le Drive autorisé du propriétaire.
