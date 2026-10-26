@@ -6,7 +6,7 @@ const escape=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>'
 function setup({role='boss',user=boss,askValue=null,status=null}={}){
  const calls=[];
  let current=status;
- const sb={rpc:async(name,args)=>{
+ const sb={auth:{mfa:{getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:'aal2'}}),listFactors:async()=>({data:{totp:[{id:'factor',status:'verified'}]}}),challengeAndVerify:async()=>({data:{}}),enroll:async()=>({data:{id:'factor',totp:{qr_code:'data:image/png;base64,xxx'}}})}},rpc:async(name,args)=>{
   calls.push({name,args});
   if(name==='essential_boss_handoff_status')return {data:current};
   if(name==='essential_boss_handoff_request'){current={id:'request1',version:1,from_user:boss,to_user:admin,status:'pending',can_accept:false,expires_at:'2026-10-28'};return {data:current};}
