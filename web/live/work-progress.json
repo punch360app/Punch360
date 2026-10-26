@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T23:46:11.779Z",
+  "generated_at": "2026-10-26T23:56:04.004Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1301,7 +1301,8 @@
       "external_required": true,
       "pr": [
         152,
-        156
+        156,
+        157
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1364,9 +1365,30 @@
         154
       ],
       "note": "Travail rattaché à la PR #154. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-009": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        157
+      ],
+      "note": "Travail rattaché à la PR #157. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 157,
+      "sha": "8b13bcb64c68bc4bd18ca27a6bc74feefe5234cf",
+      "ci": "success",
+      "ids": [
+        "MISSION-004",
+        "MISSION-009"
+      ],
+      "title": "Essentiel — tournée personnelle du jour et itinéraire par mission",
+      "merged_at": "2026-10-26T23:55:54Z"
+    },
     {
       "number": 156,
       "sha": "5ba9a829c8da1ebf123880e4cb3aedd4d496282b",
@@ -1894,15 +1916,6 @@
       "ids": [],
       "title": "P0-C — Vérifier l’identité des punchs en ligne sans briser le mode hors ligne",
       "merged_at": "2026-10-26T10:46:55Z"
-    },
-    {
-      "number": 104,
-      "sha": null,
-      "head_sha": "317c6d5cc25dc7d831a94772735671523d4de81a",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-C Auth : vérifier l’identité Supabase serveur avant de charger les compagnies",
-      "merged_at": "2026-10-26T10:39:41Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
