@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T19:45:53.715Z",
+  "generated_at": "2026-10-26T20:04:45.846Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 587,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1061,7 +1061,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        135
+        135,
+        138
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1081,7 +1082,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        135
+        135,
+        138
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1101,7 +1103,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        135
+        135,
+        138
       ],
       "note": "Travail rattaché à la PR #135. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1127,6 +1130,18 @@
     }
   },
   "activity": [
+    {
+      "number": 138,
+      "sha": "34b9904fb3b17f5d0ac0da8f93c1fc8446b16330",
+      "ci": "success",
+      "ids": [
+        "MLOC-002",
+        "MLOC-004",
+        "MLOC-006"
+      ],
+      "title": "Essentiel — adresses des clients sur les quarts publiés et itinéraires employés",
+      "merged_at": "2026-10-26T20:04:35Z"
+    },
     {
       "number": 137,
       "sha": "99d1cb6685cee9ae487632540a9f68925f75de3a",
@@ -1614,15 +1629,6 @@
       "ids": [],
       "title": "Suivi Validation : issue PDF Storage #81 résolue, recettes terrain toujours ouvertes",
       "merged_at": "2026-10-26T05:39:28Z"
-    },
-    {
-      "number": 84,
-      "sha": null,
-      "head_sha": "b7d904d115d2ffc7b4b2c613f6582e9220753ce9",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Archives : plafonner les blocs d'export, valider les tailles et masquer les erreurs PDF",
-      "merged_at": "2026-10-26T05:36:46Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
