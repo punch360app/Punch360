@@ -40,7 +40,7 @@ test('date, week, department, client, address and worker filters are consistent'
  assert.equal(weekStartIso('2026-11-05'),'2026-11-02');
  assert.deepEqual(scheduleViewWindow('2026-11-05','day'),{from:'2026-11-05',to:'2026-11-06'});
  assert.deepEqual(scheduleViewWindow('2026-11-05','week'),{from:'2026-11-02',to:'2026-11-09'});
- assert.throws(()=>scheduleViewWindow('2026-11-51','day'),/invalide/);
+ assert.throws(()=>scheduleViewWindow('2026-11-51','day'),/date valide/);
  assert.throws(()=>scheduleViewWindow('2026-11-05','month'),/Période/);
  const week=buildScheduleView({...base,mode:'site',period:'week'});
  assert.equal(week.rows.length,5);
