@@ -33,6 +33,8 @@ create table private.essential_missions (
 );
 create index essential_missions_employee_day on private.essential_missions(company_id,worker_id,mission_day,sort_order)
  where status <> 'cancelled';
+create unique index essential_missions_unique_published_order on private.essential_missions(company_id,worker_id,mission_day,sort_order)
+ where status in ('published','completed');
 alter table private.essential_missions enable row level security;
 revoke all on private.essential_missions from public,anon,authenticated;
 
@@ -110,8 +112,8 @@ begin
   select * into v_original from private.essential_missions where id=p_id and company_id=p_company for update;
   if not found then raise exception using errcode='42501',message='Mission absente de cette compagnie';end if;
   if v_original.version<>p_version then raise exception using errcode='22023',message='Mission modifiée par un autre responsable. Rechargez.';end if;
-  if v_original.status not in ('draft','published') then
-   raise exception using errcode='22023',message='Mission achevée ou annulée : nouvelle mission requise';end if;
+  if v_original.status<>'draft' then
+   raise exception using errcode='22023',message='Mission publiée ou terminée : modifications et réaffectations exigent un parcours publié distinct';end if;
   v_should_notify:=p_publish and
    (v_original.status<>'published' or v_original.worker_id<>p_worker or v_original.site_id<>p_site or
     v_original.mission_day<>p_day or v_original.sort_order<>p_order or v_original.title<>btrim(p_title));
