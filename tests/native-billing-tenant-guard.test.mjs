@@ -84,7 +84,7 @@ test('native BillingPanel consistently guards RPC, Stripe operations, redirects 
  assert.match(src,/const current=operationGuard\.current\.begin\(scopeKey\)/);
  assert.match(src,/if\(!current\(\)\)return; \/\/ e\.g\. Alert callback fired after sign-out/);
  assert.match(src,/const checked:Checked=operation=>billingGuardedResult\(current,operation\)/);
- assert.match(src,/catch\(e:any\)\{if\(current\(\)\)setError/);
+ assert.match(src,/catch\(e:any\)\{if\(current\(\)\&\&e\?\.message!=='STALE_BILLING_QUOTE'\)setError/);
  assert.match(src,/finally\{if\(current\(\)\)\{busyRef\.current=false;setBusy\(false\);\}\}/);
  assert.match(src,/await checked\(\(\)=>rpc\('essential_company_price_order'/);
  assert.match(src,/await checked\(\(\)=>rpc\('essential_billing_order'/);
