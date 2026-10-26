@@ -1,9 +1,10 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {Alert,AppState,Linking,Pressable,Text,TextInput,View} from 'react-native';
+import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-native';
 import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
 import {missionAddress,missionArgs,missionDate,missionProgress} from '../../web/live/missions.js';
+import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {navigationUrl,chooseNavigationPreference} from '../../web/live/navigation-choices.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
@@ -27,6 +28,8 @@ const input=(caption:string,value:string,change:(v:string)=>void)=>(
 export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:Row[]}){
  const [enabled,setEnabled]=useState(false),[missions,setMissions]=useState<Row[]>([]),
   [sites,setSites]=useState<Row[]>([]),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ const [truncated,setTruncated]=useState(false);
+ const [reviewWorker,setReviewWorker]=useState(''),[reviewStatus,setReviewStatus]=useState(''),[reviewClient,setReviewClient]=useState('');
  const [day,setDay]=useState(missionDate()),[worker,setWorker]=useState(''),[site,setSite]=useState(''),
   [order,setOrder]=useState('1'),[missionTitle,setMissionTitle]=useState(''),
   [instructions,setInstructions]=useState(''),[editing,setEditing]=useState<Row|null>(null);
@@ -43,13 +46,13 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      rpc('list_essential_missions',{p_company:companyId,p_day:date,p_worker:null,p_include_drafts:true})]);
     if(current!==counter.current)return;
     setSites((places.items||[]).filter((x:Row)=>x.active));
-    setMissions(listing.items||[]);
+    setMissions(listing.items||[]);setTruncated(!!listing.truncated);
     if(listing.truncated)setMessage('La journée contient plus de 200 missions. Réduisez ou segmentez le lot.');
-   }else{setSites([]);setMissions([])}
+   }else{setSites([]);setMissions([]);setTruncated(false)}
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setMessage('');
+  setWorker('');setSite('');setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -106,6 +109,31 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    {input('Instructions de mission (privées)',instructions,setInstructions)}
    {button('Enregistrer le brouillon',()=>save(false),busy)}
    {button('Approuver et publier',()=>save(true),busy)}
+   <View style={{gap:8,padding:11,backgroundColor:'#F4F7F2',borderRadius:10}}>
+    {title('Suivi des missions de la journée')}
+    {label('À faire ne signifie pas absent ni en retard. Aucune déduction GPS, kilométrique ou salariale.')}
+    {(()=>{
+     const report=missionDayReview(missions,{worker:reviewWorker,status:reviewStatus,client:reviewClient},truncated);
+     return <>
+      {label('À faire : '+report.counts.published+' · Terminées : '+report.counts.completed+
+       ' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
+      {label('Filtrer par employé')}
+      {options([{id:'',name:'Tous les employés'},...roster.filter(w=>w.status==='active')],reviewWorker,setReviewWorker,w=>w.id,w=>w.name)}
+      {label('Filtrer par état')}
+      {options(MISSION_STATES.map(([id,name])=>({id,name})),reviewStatus,setReviewStatus,w=>w.id,w=>w.name)}
+      {input('Rechercher un client',reviewClient,setReviewClient)}
+      {label(report.shown+' mission(s) affichée(s) sur '+report.scopedTotal)}
+      {report.visible.map(m=><View key={m.id} style={{padding:8,borderBottomWidth:1,borderColor:'#DCE8D6',gap:2}}>
+       {label(m.sort_order+' · '+[m.first_name,m.last_name].filter(Boolean).join(' ')+' · '+m.client_name)}
+       {label(m.title+' · '+m.site_name+' · '+(MISSION_STATES.find(z=>z[0]===m.status)?.[1]||m.status))}
+      </View>)}
+      {report.truncated?label('Liste tronquée à 200 missions : export CSV refusé.'):button('Partager la liste affichée (CSV)',()=>{
+       try{void Share.share({message:missionDayReviewCsv(report,day)}).catch(err=>setMessage(err.message));}
+       catch(err:any){setMessage(err.message)}
+      },busy)}
+     </>;
+    })()}
+   </View>
    {missions.map(m=><View key={m.id} style={{borderBottomWidth:1,borderColor:'#EFF2ED',paddingVertical:6,gap:3}}>
     {title(String(m.sort_order)+'. '+m.title)}
     {label([m.first_name,m.last_name].filter(Boolean).join(' ')+' · '+m.client_name+' · '+m.site_name+' · '+m.status)}
