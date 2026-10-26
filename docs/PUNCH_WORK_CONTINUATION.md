@@ -1,10 +1,14 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — Missions : avertir d’un chargement non confirmé (MISSION-010, partiel)
+## Lot actif — corriger l’adresse d’un établissement fixe (NAV-002 partiel)
 
-**Branche** `fix/essential-mission-offline-visibility-20261026`. Quand un salarié a **déjà utilisé le module Missions activé** dans son espace de travail, un échec d’actualisation sur Web/PWA ou source Expo n’efface plus la carte sans avertissement : une bannière **« Missions momentanément indisponibles »** indique que la connexion est nécessaire, que les missions ne sont pas confirmées et qu’aucune fin de mission ou sortie de pointage n’a été enregistrée. Le contenu de mission antérieur n’est **pas affiché comme valide**; aucun événement en attente n’est prétendu confirmé par le serveur. Si le compte, la compagnie ou le salarié change, l’avertissement et les données précédentes sont effacés. Pour une entreprise n’ayant jamais activé les missions, ne pas encombrer l’Accueil.
+**Branche** `feat/essential-fixed-location-address-update-20261026`; PR à ouvrir. Dans **Organisation** (Boss/Admin Essentiel, Web/PWA + source Expo), le gestionnaire corrige l’adresse d’un établissement **déjà existant**, sans créer de nouvelle succursale, siège facturable, poste, session ni horaire. Le formulaire montre l’adresse initiale, requiert une confirmation claire et valide la taille/la ligne; RPC `update_essential_location_address` refuse une adresse modifiée entre-temps (comparaison optimiste sur l’adresse attendue), un salarié ordinaire et une entreprise étrangère. L’adresse affichée par `essential_locations` et celle du job de pointage existant sont maintenues cohérentes en **une transaction**; l’identifiant et les règles GPS ne changent pas. Aucune géolocalisation, géocodage, forfait Stripe ni paiement.
 
-**Preuves :** `web/live/missions.js`, `src/workforce/MissionsPanel.tsx`, tests `tests/mission-offline-visibility.test.mjs` (succès préalable → échec réseau, alerte, pas d’appel completion/punch, changement entreprise, inactif sans mission). CI de branche sur tête définitive, PR et Pages à confirmer. **MISSION-010 reste partiel** : aucun cache chiffré de missions autorisées ni stockage hors ligne de preuves, aucun achèvement différé ou reprise idempotente sans réponse serveur n’est livré.
+**Supabase unique :** migration additive `20261026233628_essential_location_address_correction` **appliquée** à `mlabstdxxwjdpfaxiwmg`. Validation SQL sur la base réellement migrée en **BEGIN/ROLLBACK** avec deux entreprises, update/idempotence, version périmée, refus salarié/autre compagnie, conservation du nombre d’établissements/jobs et audit sans adresse; EXECUTE anonyme **false**. Web `web/live/planning.js`, Expo `src/workforce/EssentialPlanningPanel.tsx`; tests Node/DOM `tests/planning-ui.test.mjs`, CI finale et publication Pages **à confirmer**. **NAV-002 partiel** : pas encore de champ d’adresse principale distinct ni de repli explicite vers un siège autorisé sans affectation personnelle, ni recette navigateur/appareils réels. Ne jamais envoyer arbitrairement quelqu’un au bureau principal.
+
+## Dernier lot fusionné — Missions (MISSION-010 partiel)
+
+PR [#154](https://github.com/punch360app/Punch360/pull/154) fusionnée au commit `adeee017b74e6f62913d2e654da75556d8060d15`. Le salarié voit un avertissement lorsque ses missions précédemment consultées ne se chargent plus; les données et statuts périmés ne sont pas présentés comme confirmés. Les preuves Web/Expo sont logicielles et la publication GitHub Pages est à vérifier si non citée par le registre; tests physiques non attestés.
 
 ## Dernier lot fusionné/publié — tableau des missions (MISSION-011, partiel)
 
@@ -98,7 +102,7 @@ Branche `docs/master-execution-cleanup-20261026`. Nettoyage demandé par le prop
 
 ## Prochaine action exécutable
 
-Terminer le lot MISSION-010 « chargement non confirmé » : CI tête définitive, PR, fusion sans risque et Pages sur le SHA fusionné; ne pas l'annoncer « hors ligne robuste » complet. Vérifier registre de progression sans manipuler les compteurs. Ensuite évaluer une vraie tranche serveur+Web+Expo de MISSION-007 (état impossible/reporté et reprise), avec test SQL A/B en ROLLBACK et avis ciblé, sans déclencher de punch/GPS ni effacer missions publiées; ne pas créer un second moteur Missions. Stripe #35 et OAuth #102 attendent un changement externe pour recette. Préserver les prix/six IDs, contrats et éditions, SMS/Twilio en dernier.
+Créer/actualiser la PR NAV-002 (correction de l’adresse fixe) sur la branche `feat/essential-fixed-location-address-update-20261026`, contrôler la CI définitive, fusionner si verte, suivre GitHub Pages sur le SHA de fusion et vérifier la synchronisation automatique du registre. La migration **20261026233628** est déjà appliquée, ne pas la réappliquer ni supprimer l’ancien historique de migrations. Ensuite reprendre un lot métier distinct; les besoins GPS du véritable client et le transfert atomique MLOC-004 restent bloqués faute d’intégration éprouvée. Préserver toute la pile Missions (#152–154), NAV-006 (#146), prix/contrats, Stripe #35, OAuth #102 et SMS/Twilio dernier. Aucun essai physique prétendu sans appareil.
 
 ## Coordination et protections
 

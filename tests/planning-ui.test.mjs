@@ -46,3 +46,54 @@ test('iCalendar refuses truncated query and empty personal calendar',async()=>{
  assert.equal(count,0);assert.match(ui.state.error,/Aucun quart/);
  await w.happyDOM.close();
 });
+
+test('Boss corrects the address of an existing establishment without creating a second branch or punch job',async()=>{
+ const {w,ui,calls}=setup((name,args)=>name==='update_essential_location_address'?{data:{location_id:args.p_location,navigation_updated:true,gps_geofence_unchanged:true}}:{data:[]});
+ w.confirm=()=>true;
+ ui.state.showForm=false;
+ ui.state.locations=[{...location,address:'100 rue du Commerce, Québec'}];
+ w.document.body.innerHTML=ui.renderOrganization();
+ assert.match(w.document.body.textContent,/100 rue du Commerce/);
+ assert.ok(w.document.querySelector('[data-action="ess:plan-location-address-open"]'));
+ await ui.handle({dataset:{action:'ess:plan-location-address-open',id:'site'}});
+ w.document.body.innerHTML=ui.renderOrganization();
+ assert.equal(w.document.getElementById('plan-locationAddressCorrection').value,'100 rue du Commerce, Québec');
+ w.document.getElementById('plan-locationAddressCorrection').value='123 rue des Érables, Charlesbourg';
+ await ui.handle({dataset:{action:'ess:plan-location-address-save',id:'site'}});
+ const writes=calls.filter(x=>x.name==='update_essential_location_address');
+ assert.equal(writes.length,1);
+ assert.deepEqual(writes[0].args,{p_company:'tenant',p_location:'site',
+  p_expected_address:'100 rue du Commerce, Québec',p_new_address:'123 rue des Érables, Charlesbourg'});
+ assert.equal(calls.some(x=>x.name==='save_essential_location'||x.name==='save_essential_local_shift'||/punch/.test(x.name)),false);
+ assert.equal(ui.state.locationAddressEdit,null);
+ await w.happyDOM.close();
+});
+test('Employee cannot access or submit workplace address correction and bad values never hit RPC',async()=>{
+ const {w,ui,calls}=setup();
+ ui.state.role='employee';ui.state.showForm=false;
+ w.document.body.innerHTML=ui.renderOrganization();
+ assert.equal(w.document.querySelector('[data-action="ess:plan-location-address-open"]'),null);
+ await ui.handle({dataset:{action:'ess:plan-location-address-open',id:'site'}});
+ assert.equal(calls.filter(x=>x.name==='update_essential_location_address').length,0);
+ ui.state.role='boss';
+ ui.state.locations=[{...location,address:'100 rue du Commerce, Québec'}];
+ await ui.handle({dataset:{action:'ess:plan-location-address-open',id:'site'}});
+ w.document.body.innerHTML=ui.renderOrganization();
+ w.document.getElementById('plan-locationAddressCorrection').value='x';
+ await ui.handle({dataset:{action:'ess:plan-location-address-save',id:'site'}});
+ assert.equal(calls.filter(x=>x.name==='update_essential_location_address').length,0);
+ await w.happyDOM.close();
+});
+test('Concurrent address changes stop saving and leave the edit visible for review',async()=>{
+ const {w,ui,calls}=setup((name)=>name==='update_essential_location_address'?{error:{message:'Adresse modifiée entre-temps : actualisez et confirmez'}}:{data:[]});
+ w.confirm=()=>true;ui.state.showForm=false;
+ ui.state.locations=[{...location,address:'100 rue du Commerce, Québec'}];
+ await ui.handle({dataset:{action:'ess:plan-location-address-open',id:'site'}});
+ w.document.body.innerHTML=ui.renderOrganization();
+ w.document.getElementById('plan-locationAddressCorrection').value='123 rue des Érables, Charlesbourg';
+ await ui.handle({dataset:{action:'ess:plan-location-address-save',id:'site'}});
+ assert.match(ui.state.error,/modifiée entre-temps/);
+ assert.equal(ui.state.locationAddressEdit,'site');
+ assert.equal(calls.filter(x=>x.name==='update_essential_location_address').length,1);
+ await w.happyDOM.close();
+});
