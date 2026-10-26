@@ -1,3 +1,13 @@
+# Suivi Work automatique par exigences — 26 octobre 2026
+
+**Correction du compteur 0 % mal interprété** : `web/live/suivi.html` n'utilise plus les validations locales du propriétaire pour afficher le progrès global. `web/live/work-progress.json` contient un inventaire rétrospectif conservateur **de 24 IDs avec preuves de PR déjà fusionnées, tests logiciels et limites précises** (ce n'est PAS l'exhaustivité du travail déjà fait); `activity` contient jusqu'aux 50 PR historiques vérifiées fusionnées. Le compteur indique la **couverture de travail documentée dans GitHub**, pas les exigences commerciales entièrement livrées. Le nombre livré et recetté est séparé. L'audit des autres 554 IDs reste à exécuter, sans les assimiler à « zéro développement ».
+
+**Automatisation des prochaines PR** : `.github/workflows/work-progress.yml` déclenché sur fusion PR dans main; le script `scripts/update-work-progress.mjs` ajoute toute PR fusionnée à l'historique et relie les IDs explicitement notés sur une ligne `PUNCH-PROGRESS: ID1, ID2` du corps PR. L'état testé n'est enregistré que si la CI obligatoire `PUNCH TypeScript` s'est terminée en succès. Le workflow **ne déclare jamais une fonction déployée**, ni les secrets ou paiements réels. La page recharge le registre sans action du propriétaire et repoll chaque minute tant qu'elle est visible.
+
+**Prochaine étape Work :** continuer P0, et lors de l'audit de chaque ID retrouver les anciennes PR et CI pour compléter progressivement le registre rétroactif avec des preuves, pas avec une estimation. État réel de la publication GitHub Pages et des Edge Stripe à vérifier séparément. La PR #118 de déconnexion native reste brouillon indépendant. Voir `docs/prompt-board/WORK_START.md` pour le format obligatoire des PR et la source de vérité.
+
+---
+
 # Reprise P0-B — Invalidation des devis Boss après modification (26 octobre 2026)
 
 **Lot indépendant de la PR #118 native en brouillon (ne pas fusionner/écraser cette PR).** Le Web Boss doit invalider l'ancienne prévisualisation et commande lorsqu'un champ `billing-plan`, `billing-cadence` ou `billing-seats` change, y compris pendant un RPC lent. Correctif `web/live/billing.js`, branche `fix/p0-web-billing-quote-input-race-20261026`, tests `tests/billing-quote-input-race.test.mjs`; PR et CI doivent être vérifiées puis la branche fusionnée si verte.
