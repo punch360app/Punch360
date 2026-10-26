@@ -5,13 +5,14 @@ import {weeklyArgs,weeklyDaysLabel,weeklyPreviewLabel} from './weekly-availabili
 import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodLabel} from './schedule-preferences.js';
 import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availability-reminders.js';
 import {createClientDirectoryController} from './client-directory.js';
+import {buildScheduleView,scheduleViewOptions} from './schedule-location-views.js';
 import {assignedSiteForShift,assignedSiteAddress,assignedSiteMapsUrl,assignedSiteSummary,shiftSiteAssignmentArgs} from './shift-client-sites.js';
 /** Essentiel organization and planning UI. Every write is a validated server RPC. */
 export function createPlanningController({sb,redraw,notify,escape:e,document:doc,exportIcs=downloadCalendarIcs}){
  let generation=0;
  const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const future=()=>{const d=new Date();d.setDate(d.getDate()+31);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
- const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,siteChoices:[],siteHasMore:false,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
+ const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,siteChoices:[],siteHasMore:false,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',calendarViewMode:'employee',calendarViewPeriod:'all',calendarViewDay:today(),calendarViewDepartment:'',calendarViewClient:'',calendarViewSite:'',calendarViewWorker:'',clientSiteSearch:'',clientSiteChoice:''}};
  const clientDirectory=createClientDirectoryController({sb,escape:e,document:doc,redraw,notify});
  const manager=()=>['boss','admin'].includes(s.role),feature=f=>Array.isArray(s.entitlement.features)&&s.entitlement.features.includes(f);
  const canPlan=d=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan&&g.department_id===d));
@@ -125,7 +126,37 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    ${btn('Fermer','site-close')}
   </div>`;
  }
- function renderCalendar(){const visible=s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));return `<section class="ess-panel"><h3>Quarts publiés</h3>${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
+ function renderScheduleViewOptions(overview){
+  if(!manager())return '';
+  const opts=scheduleViewOptions(s.shifts,s.assignedSites);
+  return `<fieldset class="ess-panel" aria-label="Vue de l’horaire">
+   <legend><b>Voir la planification autrement</b></legend>
+   <div class="ess-form-grid">
+    ${select('Vue','calendarViewMode',[['employee','Par employé'],['site','Par emplacement']])}
+    ${select('Période','calendarViewPeriod',[['all','Tous les quarts chargés'],['day','Un jour'],['week','Une semaine']])}
+    ${field('Date du jour ou de la semaine','calendarViewDay','date')}
+    ${select('Équipe / département','calendarViewDepartment',[['','Tous les départements'],...s.departments.filter(d=>d.active).map(d=>[d.id,d.name])])}
+    ${select('Client','calendarViewClient',[['','Tous les clients'],...opts.clients.map(name=>[name,name])])}
+    ${select('Adresse','calendarViewSite',[['','Toutes les adresses'],...opts.sites.map(x=>[x.id,x.label])])}
+    ${select('Employé','calendarViewWorker',[['','Tous les employés'],...s.roster.filter(w=>w.id).map(w=>[w.id,w.name])])}
+   </div>
+   ${btn('Appliquer les filtres','calendar-view-apply')}
+   <p class="ess-fine">Vue en lecture seule des quarts déjà chargés (choisir Du/Au ci-dessous pour étendre). Les départements sont proposés comme filtres d’équipe. Les déplacements ne sont pas chronométrés ni suivis.</p>
+   <p role="status">Quarts affichés : ${overview.stats.shifts} · chevauchements : ${overview.stats.overlappingShifts} quart(s)
+    · quarts sans salarié : ${overview.stats.unassigned} · adresses client non attribuées : ${overview.stats.withoutClientSite}.</p>
+   ${overview.stats.immediateChanges?'<p>Changement de client entre deux quarts contigus signalé : le temps réel de trajet est inconnu.</p>':''}
+   ${s.assignedSitesUnavailable?'<p role="alert">Certains détails d’adresses ne sont pas chargés : affinez la période.</p>':''}
+  </fieldset>`;
+ }
+ function renderCalendar(){
+  const overview=manager()?buildScheduleView({shifts:s.shifts,assignedSites:s.assignedSites,
+    mode:s.form.calendarViewMode||'employee',period:s.form.calendarViewPeriod||'all',
+    day:s.form.calendarViewDay||today(),department:s.form.calendarViewDepartment||'',
+    client:s.form.calendarViewClient||'',site:s.form.calendarViewSite||'',worker:s.form.calendarViewWorker||'',
+    workerName,branchName:place}):null;
+  const visible=overview?overview.rows:s.shifts.filter(x=>!x.cancelled_at).sort((a,b)=>a.starts_at.localeCompare(b.starts_at));
+  return `<section class="ess-panel"><h3>Quarts publiés</h3>
+   ${overview?renderScheduleViewOptions(overview):''}${renderAbsenceForm()}${s.own?btn('Télécharger mon horaire (.ics)','export-ics')+'<p class="ess-fine">Export personnel de la période affichée, compatible avec les applications Calendrier. Fichier instantané : les changements futurs ne se synchronisent pas automatiquement.</p>':''}
  ${s.own?`<details class="ess-panel"><summary>Synchroniser mon horaire avec mon calendrier</summary>
  <p class="ess-fine">Lien privé iCalendar compatible avec les calendriers qui acceptent un abonnement par URL. Les mises à jour dépendent de la fréquence de synchronisation du calendrier.</p>
  <p class="ess-fine"><b>Confidentialité :</b> toute personne détenant le lien pourra consulter vos quarts jusqu'à sa révocation. Ne le publiez pas.</p>
@@ -134,7 +165,11 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  ${btn('Créer ou renouveler le lien privé','feed-rotate')}
  ${s.feedStatus?.active?btn('Révoquer le lien','feed-revoke'):''}
  ${s.feedUrl?`<label class="ess-field">Copiez ce lien maintenant — il ne sera pas réaffiché<input readonly aria-label="Lien privé calendrier" value="${e(s.feedUrl)}"></label>${btn('Copier le lien','feed-copy')}`:''}
- </details>`:''}<div class="ess-form-grid">${field('Du (UTC)','calendarFrom','date')}${field('Au exclusif (UTC)','calendarTo','date')}</div>${btn('Afficher cette période','reload')}${s.shifts.length>=1000?'<p class="ess-notice">Limite de 1 000 quarts : réduisez la période pour consulter tous les résultats.</p>':''}${!visible.length?'<p>Aucun quart planifié.</p>':''}${visible.map(x=>`<article class="plan-shift"><div><b>${x.worker_id?e(workerName(x.worker_id)):'Quart disponible'}</b><small>${e(date(x.starts_at,x.timezone))} → ${e(date(x.ends_at,x.timezone))}</small><small>${e(place(x.location_id))}${x.department_id?' · '+e(s.departments.find(d=>d.id===x.department_id)?.name||'Département'):''}${x.position_id?' · Poste : '+e(s.positions.find(p=>p.id===x.position_id)?.title||'Poste exclusif'):''} · v${x.version}</small><p>${e(x.note||'')}</p>${renderAssignedSite(x)}${renderSitePicker(x)}</div><div class="plan-actions">${canPlan(x.department_id)?btn('Modifier','edit',`data-id="${e(x.id)}"`)+btn('Annuler','cancel',`data-id="${e(x.id)}"`)+(manager()?btn('Associer une adresse client','site-open',`data-id="${e(x.id)}"`):'')+(manager()&&feature('minimum_coverage')?select('Poste exclusif','pos-'+x.id,[['','Aucun poste'],...s.positions.filter(p=>p.active&&p.location_id===x.location_id&&(!p.department_id||p.department_id===x.department_id)).map(p=>[p.id,p.title])])+btn('Affecter le poste','pos-assign',`data-id="${e(x.id)}"`):''):''}${x.user_id===s.user?(s.acks.some(a=>a.shift_id===x.id&&a.version===x.version)?'<span class="ess-badge">Lecture confirmée</span>':btn('Confirmer la lecture','ack',`data-id="${e(x.id)}"`)):''}${renderAbsenceControls(x)}${feature('shift_swaps')&&new Date(x.starts_at)>new Date()?(x.worker_id===s.own?btn('Demander un remplacement','release',`data-id="${e(x.id)}"`)+select('Proposer un échange','swap-'+x.id,[['','Choisir le quart du collègue'],...s.options.filter(o=>o.location_id===x.location_id&&o.department_id===x.department_id).map(o=>[o.id,o.name+' · '+date(o.starts_at,x.timezone)])])+btn('Proposer l’échange','swap',`data-id="${e(x.id)}"`):x.worker_id===null?btn('Me proposer pour ce quart','claim',`data-id="${e(x.id)}"`):''):''}</div></article>`).join('')}</section>`;}
+ </details>`:''}<div class="ess-form-grid">${field('Du (UTC)','calendarFrom','date')}${field('Au exclusif (UTC)','calendarTo','date')}</div>${btn('Afficher cette période','reload')}${s.shifts.length>=1000?'<p class="ess-notice">Limite de 1 000 quarts : réduisez la période pour consulter tous les résultats.</p>':''}${!visible.length?'<p>Aucun quart planifié.</p>':''}${visible.map((x,i)=>`${overview&&(i===0||visible[i-1].groupKey!==x.groupKey)?`<h4 class="ess-panel">${e(x.groupTitle)}</h4>`:''}<article class="plan-shift"><div><b>${x.worker_id?e(workerName(x.worker_id)):'Quart disponible'}</b><small>${e(date(x.starts_at,x.timezone))} → ${e(date(x.ends_at,x.timezone))}</small><small>${e(place(x.location_id))}${x.department_id?' · '+e(s.departments.find(d=>d.id===x.department_id)?.name||'Département'):''}${x.position_id?' · Poste : '+e(s.positions.find(p=>p.id===x.position_id)?.title||'Poste exclusif'):''} · v${x.version}</small><p>${e(x.note||'')}</p>${overview&&x.simultaneousConflict?'<p role="alert"><b>Conflit confirmé :</b> ce salarié a deux quarts qui se chevauchent réellement.</p>':''}
+ ${overview&&x.immediateSiteChange?'<p role="status">Changement d’adresse sans intervalle entre les quarts; durée de déplacement non vérifiée.</p>':''}
+ ${overview&&x.vacant?'<p>Quart sans salarié attribué.</p>':''}
+ ${overview&&x.withoutClientSite?'<p>Adresse de client non définie pour ce quart.</p>':''}
+ ${renderAssignedSite(x)}${renderSitePicker(x)}</div><div class="plan-actions">${canPlan(x.department_id)?btn('Modifier','edit',`data-id="${e(x.id)}"`)+btn('Annuler','cancel',`data-id="${e(x.id)}"`)+(manager()?btn('Associer une adresse client','site-open',`data-id="${e(x.id)}"`):'')+(manager()&&feature('minimum_coverage')?select('Poste exclusif','pos-'+x.id,[['','Aucun poste'],...s.positions.filter(p=>p.active&&p.location_id===x.location_id&&(!p.department_id||p.department_id===x.department_id)).map(p=>[p.id,p.title])])+btn('Affecter le poste','pos-assign',`data-id="${e(x.id)}"`):''):''}${x.user_id===s.user?(s.acks.some(a=>a.shift_id===x.id&&a.version===x.version)?'<span class="ess-badge">Lecture confirmée</span>':btn('Confirmer la lecture','ack',`data-id="${e(x.id)}"`)):''}${renderAbsenceControls(x)}${feature('shift_swaps')&&new Date(x.starts_at)>new Date()?(x.worker_id===s.own?btn('Demander un remplacement','release',`data-id="${e(x.id)}"`)+select('Proposer un échange','swap-'+x.id,[['','Choisir le quart du collègue'],...s.options.filter(o=>o.location_id===x.location_id&&o.department_id===x.department_id).map(o=>[o.id,o.name+' · '+date(o.starts_at,x.timezone)])])+btn('Proposer l’échange','swap',`data-id="${e(x.id)}"`):x.worker_id===null?btn('Me proposer pour ce quart','claim',`data-id="${e(x.id)}"`):''):''}</div></article>`).join('')}</section>`;}
  function loadPrefsForm(worker){
   const row=s.workerPrefs.find(p=>p.worker_id===worker);
   s.prefLoadedWorker=worker;s.prefLoadedVersion=Number(row?.version||0);s.prefRequest=null;
@@ -251,6 +286,20 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
    }
   if(a==='absence-open'){const shift=s.shifts.find(x=>x.id===id),already=absenceForShift(s.absences,id);if(!feature('advanced_schedules')||s.absenceUnavailable||!canReportShift(shift,s.own,already)){s.error='Ce quart ne peut plus être signalé.';}else{s.absenceShift=id;s.form.absenceReason='';s.form.absenceNote='';s.absenceRequest=null;}redraw();return true;}
   if(a==='absence-cancel'){s.absenceShift=null;s.absenceRequest=null;redraw();return true;}
+  if(a==='calendar-view-apply'){
+    if(!manager())return true;
+    Object.assign(s.form,{calendarViewMode:val('calendarViewMode'),
+     calendarViewPeriod:val('calendarViewPeriod'),calendarViewDay:val('calendarViewDay'),
+     calendarViewDepartment:val('calendarViewDepartment'),calendarViewClient:val('calendarViewClient'),
+     calendarViewSite:val('calendarViewSite'),calendarViewWorker:val('calendarViewWorker')});
+    try{buildScheduleView({shifts:s.shifts,assignedSites:s.assignedSites,
+      mode:s.form.calendarViewMode,period:s.form.calendarViewPeriod,day:s.form.calendarViewDay,
+      department:s.form.calendarViewDepartment,client:s.form.calendarViewClient,
+      site:s.form.calendarViewSite,worker:s.form.calendarViewWorker,workerName,branchName:place});
+      s.error='';
+    }catch(error){s.error=error.message;}
+    redraw();return true;
+  }
   if(a==='template-load'){const t=s.templates.find(t=>t.id===id&&t.active);if(!t)return true;Object.assign(s.form,scheduleTemplateForm(t));s.template=t;s.batch=null;s.editing=null;s.showForm=true;redraw();return true;}if(a==='toggle'){s.showForm=!s.showForm;s.editing=null;redraw();return true;}if(a==='tab'){s.tab=id;redraw();return true;}if(a==='edit'){edit(id);redraw();return true;}
   s.busy=true;try{
    if(a==='site-open'){
