@@ -16,6 +16,7 @@ import {Ionicons} from '@expo/vector-icons';
 import type {WorkspaceAccount} from '../auth/AuthGate';
 import {loadPunchState,punchIn,punchOut,punchBreak,hoursFor,PunchState} from '../punch/api';
 import {personalUpcomingClientVisit} from '../../web/live/personal-client-visit.js';
+import {PersonalMissionCard} from './MissionsPanel';
 import {navigationProviders,navigationUrl,navigationDestination,navigationPreferenceKey,chooseNavigationPreference,writeNavigationPreference} from '../../web/live/navigation-choices.js';
 import {journalSummary} from '../punch/journal';
 import {supabase} from '../lib/supabase';
@@ -32,6 +33,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
  const dimensions=useWindowDimensions(),compact=dimensions.height<850;
  const [language,setLanguage]=useState('fr'),[languageMenu,setLanguageMenu]=useState(false);
+ const [missionWorker,setMissionWorker]=useState<{key:string;id:string}|null>(null);
  const [myVisit,setMyVisit]=useState<ReturnType<typeof personalUpcomingClientVisit>|null>(null),[visitUnavailable,setVisitUnavailable]=useState(false),[visitExpanded,setVisitExpanded]=useState(false);
  const [fixedAddress,setFixedAddress]=useState(''),[fixedName,setFixedName]=useState('');
  const [navPref,setNavPref]=useState<string|null>(null),[navChooser,setNavChooser]=useState(false);
@@ -63,11 +65,11 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   const network=await Network.getNetworkStateAsync();
   if(network.isConnected===false||network.isInternetReachable===false){
    if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
-   if(visitContext.current===requestedFor){setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
+   if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
   }else{
    const channel=await supabase.from('company_workers').select('id,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();
-   if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}if(visitContext.current===requestedFor){setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
-   else if(channel.data){let job=account.defaultJobId;
+   if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
+   else if(channel.data){if(visitContext.current===requestedFor)setMissionWorker({key:requestedFor,id:channel.data.id});let job=account.defaultJobId;
     if(channel.data.location_id){const site=await supabase.from('essential_locations').select('punch_job_id,name,address').eq('company_id',account.companyId).eq('id',channel.data.location_id).maybeSingle();if(site.error)throw site.error;if(site.data){job=site.data.punch_job_id;if(visitContext.current===requestedFor){setFixedAddress(site.data.address||'');setFixedName(site.data.name||'');}}}else if(visitContext.current===requestedFor){setFixedAddress('');setFixedName('');}
     const allowed=channel.data.can_mobile_punch&&channel.data.personal_access;setSiteJob(job);setMobileAllowed(allowed);
     await AsyncStorage.setItem(cacheKey,JSON.stringify({job,allowed,checkedAt:Date.now()})).catch(()=>{});
@@ -82,7 +84,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
       setVisitUnavailable(!!result.data?.has_more);
      }
     }catch{if(visitContext.current===requestedFor){setMyVisit(null);setVisitUnavailable(true);}}
-   }else{setMobileAllowed(false);if(visitContext.current===requestedFor){setMyVisit(null);setVisitUnavailable(false);setFixedAddress('');setFixedName('');}}
+   }else{setMobileAllowed(false);if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(false);setFixedAddress('');setFixedName('');}}
   }
   setPunch(await loadPunchState(account.companyId));setPending((await journalSummary(account.companyId)).pending);
  }catch(e:any){setNotice(e.message)}}
@@ -169,6 +171,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   </View>)}
   <Pressable accessibilityRole="button" onPress={()=>setNavChooser(false)}>{txt('Annuler',{color:Z.muted})}</Pressable>
  </View>:null}
+ <PersonalMissionCard companyId={account.companyId} workerId={missionWorker?.key===visitContext.current?missionWorker.id:null} navProvider={navPref}/>
  {visitUnavailable?txt('Adresses d’intervention : consultation en ligne indisponible ou incomplète.',{fontSize:10,color:Z.muted}):null}
  <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(pending?tr('offline'):tr('synchronized'),{fontSize:15,marginTop:15,color:Z.sage})}</View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(tr('thisWeek').toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(weekly),{fontSize:36,fontWeight:'300',marginTop:8})}</View><ScrollView contentContainerStyle={{gap:9}}>{punch.sessions.map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(punch.segments.filter(p=>p.session_id===s.id),now,0,now,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
  <Pressable accessibilityRole="button" accessibilityLabel={tr('language')} accessibilityState={{expanded:languageMenu}} onPress={()=>setLanguageMenu(v=>!v)} style={[styles.menu,rtl&&{flexDirection:'row-reverse'}]}>
