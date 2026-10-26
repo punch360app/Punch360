@@ -1,3 +1,11 @@
+# Reprise — états de session traduits sur la borne (26 octobre 2026)
+
+Poursuite **du prompt original « Validation SQL archives »** après les PR #75 (sécurité SQL archives) et #76 (incidents multilingues), toutes deux fusionnées et validées. Cette branche ajoute 11 clés × 10 langues pour l'écran réel de la borne : salutation, statut provisoire hors ligne, horodatage serveur, politiques de pauses, compteur d'observations en attente, appairage et notices de réussite. Une opération terminée efface toujours l'identité et revient au français sur la borne partagée; les données privées ne sont pas stockées dans les préférences. Test `tests/kiosk-session-locale.test.mjs`; cache PWA renouvelé. Voir `docs/ESSENTIAL_KIOSK_SESSION_LOCALIZATION_20261026.md`. CI, fusion et Pages à vérifier. Aucun SQL, aucun abonnement ni compte client modifié.
+
+**Suite du prompt original :** couvrir le reste des traductions RH/paie/Super Admin et les notifications, QA appareil et RTL, Stripe sandbox/OAuth, export d'archives PDF authentifié, tests de charge et PRA. Ne pas démarrer le prompt maître avant la clôture de Validation. SMS/Twilio en dernier.
+
+---
+
 # Reprise — messages d'incident sûrs et multilingues pour la borne (26 octobre 2026)
 
 Suite au contrôle d'archives SQL de la PR #75 fusionnée (transaction lecture seule, aucun client modifié), le prompt original « Validation SQL archives » poursuit le lot de messages de sécurité de la borne dans `feat/essential-kiosk-localized-errors-20261026` : erreurs serveur et incidents hors ligne normalisés en quinze catégories explicites dans les dix langues déjà livrées. Le frontend **n'affiche jamais les détails d'erreurs fournisseur inconnus**; le traitement serveur, le journal provisoire, la conservation des observations, le NIP, le délai et la réconciliation ne changent pas. Test ajouté : `tests/kiosk-error-localization.test.mjs`. Version PWA ajustée pour forcer le renouvellement des ressources. Ce lot ne couvre pas encore l'ensemble des textes métier/politiques de pause, ni la revue humaine des traductions ou les appareils physiques. Stripe sandbox, OAuth, charge, PRA et builds restent ouverts; SMS dernier, prompt maître à traiter ensuite.
