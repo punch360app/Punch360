@@ -20,7 +20,7 @@ export function createBossHandoffController({
  const button=(label,action,disabled=false)=>`<button type="button" class="ess-btn" data-action="boss-handoff:${action}" ${disabled||s.busy?'disabled':''}>${label}</button>`;
  function render(role=s.role){
   if(!s.company)return '<p>Sélectionnez une entreprise.</p>';
-  const admins=getMembers().filter(x=>x.role==='admin'&&x.status==='active'&&x.user_id!==s.memberId);
+  const admins=getMembers().filter(x=>x.role==='admin'&&(x.status==null||x.status==='active')&&x.user_id!==s.memberId);
   const h=s.status;
   return `<section class="ess-panel"><h3>Transmission volontaire de la direction</h3>
   <p class="ess-fine">Transfert uniquement entre le Boss actuel et un administrateur de la même compagnie. Les deux doivent vérifier leur identité avec MFA. Il n’est jamais possible de consulter un mot de passe.</p>
@@ -49,7 +49,7 @@ export function createBossHandoffController({
     s.status=await rpc('essential_boss_handoff_status',{p_company:s.company});
    }else if(action[1]==='request'){
     if(s.role!=='boss'||s.status)throw Error('Seul un Boss peut demander un nouveau transfert.');
-    const admins=getMembers().filter(m=>m.role==='admin'&&m.status==='active');
+    const admins=getMembers().filter(m=>m.role==='admin'&&(m.status==null||m.status==='active'));
     if(!admins.some(m=>m.user_id===s.selected))throw Error('Choisir un administrateur actif.');
     if(s.reason.trim().length<8)throw Error('Motif détaillé obligatoire.');
     const expected=s.company+':'+s.selected;
