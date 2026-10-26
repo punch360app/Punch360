@@ -70,7 +70,7 @@ begin
  if preview->'shifts'->0->>'status'<>'unavailable' or preview->'shifts'->0->>'source'<>'absence' then
   raise exception 'Reported absence did not outrank recurring: %',preview;end if;
  execute 'reset role';
- delete from private.essential_shift_absences where company_id=tenant and shift_id=shift_id;
+ delete from private.essential_shift_absences a where a.company_id=tenant and a.shift_id=shift_row.id;
  execute 'set local role authenticated';
  exception_id:=public.set_essential_availability(tenant,shift_row.starts_at,shift_row.ends_at,false,'');
  preview:=public.essential_availability_shift_preview(tenant,shift_row.starts_at-interval '1 day',shift_row.ends_at+interval '1 day');
