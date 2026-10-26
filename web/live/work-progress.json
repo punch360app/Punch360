@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26",
+  "generated_at": "2026-10-26T14:26:27.528Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -284,7 +284,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        122
+        122,
+        123
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -294,7 +295,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        122
+        122,
+        123
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -897,6 +899,17 @@
   },
   "activity": [
     {
+      "number": 123,
+      "sha": "2301002076d38cd2c4d2e448257914489f9f1137",
+      "ci": "success",
+      "ids": [
+        "GOV-010",
+        "GOV-012"
+      ],
+      "title": "Suivi Work — rattacher 56 exigences supplémentaires aux anciennes PR fusionnées",
+      "merged_at": "2026-10-26T14:26:18Z"
+    },
+    {
       "number": 122,
       "sha": "c04abdbbfdfd2a23e5a1acfdb8e0b786faa6161c",
       "ci": "success",
@@ -1341,15 +1354,6 @@
       "ids": [],
       "title": "Essentiel et Construction : sélecteur sécurisé pour salariés multi-entreprises",
       "merged_at": "2026-10-26T04:07:55Z"
-    },
-    {
-      "number": 67,
-      "sha": null,
-      "head_sha": "f8800f58931cf56e66fe1d37d3878986bd5fa8bb",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Essentiel : 10 langues de navigation, préférence personnelle et RTL arabe",
-      "merged_at": "2026-10-26T03:50:00Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
