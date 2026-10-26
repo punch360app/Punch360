@@ -2,6 +2,8 @@ import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigatio
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
+/** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
+export function missionWarningEligible(previousEnabled,sameWorkspace){return !!previousEnabled&&!!sameWorkspace;}
 export function missionProgress(items){
  const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
  const done=ordered.filter(x=>x.status==='completed').length;
@@ -118,21 +120,24 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,error:'',truncated:false,busy:false,pending:new Map()};
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map()};
  let generation=0;
  async function load(company,user,worker,day=missionDate()){
-  const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,error:''});
+  const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,s.company===company&&s.user===user&&s.worker===worker);
+  const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
   try{
    const response=await sb.rpc('list_essential_missions',{p_company:company,p_day:day,p_worker:worker,p_include_drafts:false});
    if(response.error)throw response.error;
    if(gen!==generation)return;
-   s.items=response.data?.items||[];s.enabled=!!response.data?.enabled;s.truncated=!!response.data?.truncated;
+   s.items=response.data?.items||[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,error:''});s.pending.clear();}
+ function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:''});s.pending.clear();}
  function render(){
-  if(!s.company||!s.worker||!s.enabled)return '';
+  if(!s.company||!s.worker)return '';
+  if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
+  if(!s.enabled)return '';
   if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
   const p=missionProgress(s.items);
   if(!p.total)return '';
