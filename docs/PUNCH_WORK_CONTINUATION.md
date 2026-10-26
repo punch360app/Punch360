@@ -1,3 +1,11 @@
+# Reprise — traduction de la réconciliation hors ligne Boss/Admin (26 octobre 2026)
+
+Après la PR #77 fusionnée, la suite du prompt original « Validation SQL archives » concerne l'écran de supervision des observations provisoires : `kiosk-offline-review.js` lit maintenant la langue Essentiel du compte (FR/EN/ES/PT/IT/DE/AR/ZH/HI/TL) par le contrôleur déjà existant. Vingt clés ajoutées au dictionnaire commun, labels de décisions/états/pauses traduits, date en LTR sous RTL, refus de confirmer sans motif, serveur seul responsable de l'approbation et messages d'erreurs sécurisés. Nouveau test `tests/kiosk-offline-review-locale.test.mjs`; PWA actualisée et dictionnaire pré-caché. Voir `docs/ESSENTIAL_KIOSK_OFFLINE_REVIEW_LOCALE_20261026.md`. Aucune mutation de base, client ou pointage réel. Valider CI et Pages avant d'annoncer la livraison.
+
+**À poursuivre dans le prompt original :** textes de configuration des bornes Boss, autres traductions spécialisées, QA linguistique et terrain, Stripe sandbox, OAuth/SMTP, archives PDF binaires, charge/concurrence et PRA. SMS en dernier. Le prompt maître est distinct.
+
+---
+
 # Reprise — états de session traduits sur la borne (26 octobre 2026)
 
 Poursuite **du prompt original « Validation SQL archives »** après les PR #75 (sécurité SQL archives) et #76 (incidents multilingues), toutes deux fusionnées et validées. Cette branche ajoute 11 clés × 10 langues pour l'écran réel de la borne : salutation, statut provisoire hors ligne, horodatage serveur, politiques de pauses, compteur d'observations en attente, appairage et notices de réussite. Une opération terminée efface toujours l'identité et revient au français sur la borne partagée; les données privées ne sont pas stockées dans les préférences. Test `tests/kiosk-session-locale.test.mjs`; cache PWA renouvelé. Voir `docs/ESSENTIAL_KIOSK_SESSION_LOCALIZATION_20261026.md`. CI, fusion et Pages à vérifier. Aucun SQL, aucun abonnement ni compte client modifié.
