@@ -170,7 +170,7 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
    {overview.groups.length===0?text('Aucun quart avec ces filtres.'):null}
    {overview.groups.map(group=><View key={group.key} style={{gap:7,paddingVertical:9,borderBottomWidth:1,borderColor:'#E1E8DB'}}>
     {text(group.label,{fontWeight:'700',fontSize:16})}
-    {group.items.map(item=><View key={item.id} style={{gap:2,padding:9,borderRadius:8,backgroundColor:'#F4F7F2'}}>
+    {group.items.map((item:Row)=><View key={item.id} style={{gap:2,padding:9,borderRadius:8,backgroundColor:'#F4F7F2'}}>
      {text(item.workerName,{fontWeight:'600'})}
      {text(date(item.shift.starts_at,item.shift.timezone)+' → '+date(item.shift.ends_at,item.shift.timezone),{fontSize:12})}
      {text((item.clientName||'Client non attribué')+' · '+item.placeName,{fontSize:12})}
