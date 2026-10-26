@@ -32,15 +32,15 @@
 <section class="completion-card" aria-labelledby="completionHeading">
  <div>
   <div class="completion-kicker">Avancement des exigences</div>
-  <h2 class="completion-title" id="completionHeading">Complétées dans mon suivi</h2>
-  <div class="completion-fraction" id="progressFraction">0 / 578</div>
-  <p class="completion-meta" id="progressRemaining">578 exigences à vérifier dans le suivi</p>
+  <h2 class="completion-title" id="completionHeading">Avancement vérifié par Work</h2>
+  <div class="completion-fraction" id="progressFraction">— / 578</div>
+  <p class="completion-meta" id="progressRemaining">Chargement du registre officiel GitHub…</p>
  </div>
- <div class="completion-percent" id="progressPercent" aria-live="polite">0,0 %</div>
- <div class="completion-meter" id="progressMeter" role="progressbar" aria-label="Pourcentage d'exigences marquées validées sur cet appareil" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="completion-meter-fill" id="progressFill"></span></div>
- <p class="completion-note">Calcul basé sur les exigences marquées « Validé » dans ce navigateur. Ce compteur n'est <strong>pas une certification de déploiement</strong> : les preuves GitHub, les tests et les recettes restent indispensables. Les tâches non cochées ne sont pas nécessairement non développées.</p>
+ <div class="completion-percent" id="progressPercent" aria-live="polite">— %</div>
+ <div class="completion-meter" id="progressMeter" role="progressbar" aria-label="Proportion d’exigences avec travail vérifiable dans GitHub" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="completion-meter-fill" id="progressFill"></span></div>
+ <p class="completion-note"><strong>Source : travail de Work dans GitHub</strong>, vérifié par PR et CI. Le % principal recense les exigences <strong>avec travail attesté, même partiel</strong> (il ne représente donc pas le pourcentage fonctionnel réalisé). <span id="progressDetail">Livrées et recettées : à vérifier.</span> Les exigences historiques non encore auditées ne sont pas comptées. Les cases cochées localement n'affectent pas ce chiffre. <a href="https://github.com/punch360app/Punch360/blob/main/web/live/work-progress.json" target="_blank" rel="noopener">Voir les preuves et limites</a>.</p>
 </section>
-<div class="alert"><span style="font-size:18px">◉</span><span><b>Mode aperçu local.</b> Les sélections faites ici restent dans ce navigateur. Elles ne changent ni GitHub ni Work. Après intégration du tracker dans la branche publiée, Work devra actualiser les preuves et statuts dans GitHub.</span></div>
+<div class="alert"><span style="font-size:18px">◉</span><span><b>Suivi automatique de Work.</b> Le registre de travail vient du dépôt GitHub (PR, tests et étapes de livraison). Il se met à jour après publication des modifications GitHub; recharge la page pour voir le dernier état. Tes notes locales demeurent séparées. <span id="progressSync" aria-live="polite">Synchronisation en attente…</span></span></div>
 <section class="stats"><div class="stat"><div class="statline">Points inventoriés <span class="stat-icon">☑</span></div><div class="statvalue" id="reqCount">—</div><div class="statnote">Sans compter les duplications de texte</div></div><div class="stat"><div class="statline">Lots de travail <span class="stat-icon">▦</span></div><div class="statvalue" id="moduleCount">—</div><div class="statnote">Classés par priorité et domaine</div></div><div class="stat"><div class="statline">Source maîtresse <span class="stat-icon">▤</span></div><div class="statvalue">01</div><div class="statnote">Prompt maître officiel sur GitHub</div></div><div class="stat"><div class="statline">Notes locales « validées » <span class="stat-icon">◇</span></div><div class="statvalue" id="doneCount">0</div><div class="statnote">Non certifiées — preuve externe requise</div></div></section>
 <section class="panel" style="margin:19px 0 24px;padding:19px 22px">
  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -78,21 +78,46 @@ const labels={partiel:'Partiel · à valider',a_faire:'À réaliser',a_verifier:
 let active='home';let lastDetail=null;
 const total=mod.reduce((a,s)=>a+s.tasks.length,0);document.getElementById('reqCount').textContent=total;document.getElementById('moduleCount').textContent=mod.length;document.getElementById('navCount').textContent=total;
 const validTaskIds=new Set(mod.flatMap(section=>section.tasks.map(task=>task.id)));
-function localProgress(validIds,statuses){
- const total=validIds.size;
- const done=Array.from(validIds).reduce((n,id)=>n+(statuses[id]==='valide'?1:0),0);
- return {done,total,remaining:total-done,percent:total?Math.round(1000*done/total)/10:0};
+function summarizeWorkProgress(manifest){
+ const requirements=manifest?.requirements||{};
+ const statuses=Object.entries(requirements).filter(([id,r])=>validTaskIds.has(id)&&
+   (['partial','verified'].includes(r.developed)||r.tested==='software'||r.deployed===true));
+ const documented=statuses.length;
+ const developedTested=statuses.filter(([,r])=>['partial','verified'].includes(r.developed)&&r.tested==='software').length;
+ const delivered=statuses.filter(([,r])=>r.developed==='verified'&&r.tested==='software'&&r.deployed===true&&r.external_required!==true).length;
+ return {total:validTaskIds.size,documented,developedTested,delivered,
+  percent:validTaskIds.size?Math.round(1000*documented/validTaskIds.size)/10:0};
 }
 function totalValidated(){
- const result=localProgress(validTaskIds,notes);
- const localizedPercent=result.percent.toLocaleString('fr-CA',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';
- document.getElementById('doneCount').textContent=result.done;
- document.getElementById('progressFraction').textContent=result.done+' / '+result.total;
- document.getElementById('progressPercent').textContent=localizedPercent;
- document.getElementById('progressRemaining').textContent=result.remaining+' exigences non marquées « Validé » dans ce suivi';
+ // This small counter is retained solely for the owner's optional local notes.
+ const n=Array.from(validTaskIds).reduce((n,id)=>n+(notes[id]==='valide'?1:0),0);
+ document.getElementById('doneCount').textContent=n;
+ return n;
+}
+function renderWorkProgress(manifest){
+ const result=summarizeWorkProgress(manifest);
+ const pct=result.percent.toLocaleString('fr-CA',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';
+ document.getElementById('progressFraction').textContent=result.documented+' / '+result.total;
+ document.getElementById('progressPercent').textContent=pct;
+ document.getElementById('progressRemaining').textContent=result.developedTested+' exigences avec code et tests documentés · '+result.total+' exigences au maître';
+ document.getElementById('progressDetail').textContent='Livrées, testées et déployées de bout en bout : '+result.delivered+' / '+result.total+' confirmées. Ce n’est pas une estimation de tout le travail non audité.';
  document.getElementById('progressFill').style.width=result.percent+'%';
  document.getElementById('progressMeter').setAttribute('aria-valuenow',String(result.percent));
- return result.done;
+ document.getElementById('progressSync').textContent='Registre GitHub actualisé : '+(manifest.generated_at||'date non renseignée');
+}
+async function loadWorkProgress(){
+ try{
+  const res=await fetch('./work-progress.json?t='+Date.now(),{cache:'no-store'});
+  if(!res.ok)throw Error('HTTP_'+res.status);
+  const manifest=await res.json();
+  if(manifest.schema_version!==1||manifest.denominator!==validTaskIds.size||!manifest.requirements||typeof manifest.requirements!=='object')
+   throw Error('INVALID_WORK_PROGRESS');
+  if(Object.keys(manifest.requirements).some(id=>!validTaskIds.has(id)))throw Error('UNKNOWN_REQUIREMENT_ID');
+  renderWorkProgress(manifest);
+ }catch(error){
+  document.getElementById('progressRemaining').textContent='Registre GitHub momentanément indisponible : pourcentage non calculé';
+  document.getElementById('progressSync').textContent='Impossible de lire work-progress.json ('+(error?.message||'connexion')+')';
+ }
 }
 function card(s){return `<article class="module" role="button" tabindex="0" data-mod="${esc(s.code)}"><div class="module-top"><span class="kicker">${esc(s.priority)} &nbsp; · &nbsp; ${esc(s.code)}</span><span class="status ${s.status}">${labels[s.status]||'À auditer'}</span></div><h3>${esc(s.title)}</h3><p>${esc(s.summary)}</p><div class="module-foot"><span>${s.total} contrôles</span><b>Explorer le lot ↗</b></div></article>`;}
 function showDetail(code){lastDetail=code;const s=mod.find(x=>x.code===code);if(!s)return;setView('tasks',false);let o=document.getElementById('taskDetail');let rows=s.tasks.map(t=>`<div class="check"><span class="check-id">${esc(t.id)}</span><span class="check-name">${esc(t.label)}</span><select data-id="${esc(t.id)}" aria-label="Statut ${esc(t.id)}"><option value="a_verifier" ${(notes[t.id]||'a_verifier')==='a_verifier'?'selected':''}>À vérifier</option><option value="a_faire" ${notes[t.id]==='a_faire'?'selected':''}>À faire</option><option value="en_cours" ${notes[t.id]==='en_cours'?'selected':''}>En cours</option><option value="tester" ${notes[t.id]==='tester'?'selected':''}>À tester</option><option value="bloque" ${notes[t.id]==='bloque'?'selected':''}>Bloqué</option><option value="valide" ${notes[t.id]==='valide'?'selected':''}>Validé (note locale)</option></select></div>`).join('');o.innerHTML=`<div class="detail"><div class="detailhead"><div><span class="kicker">${esc(s.priority)} · ${esc(s.code)} · ${s.total} exigences</span><h3>${esc(s.title)}</h3><p>${esc(s.summary)}</p></div><button class="close" id="closeDetail" aria-label="Fermer">×</button></div><div class="note"><b>État initial :</b> ${labels[s.status]||'à vérifier'}. <b>Preuve/limite :</b> ${esc(s.evidence)}<div class="disclaimer">Modifier un statut ci-dessous crée seulement une note privée sur cet appareil; cela ne valide pas le travail dans GitHub.</div></div><div class="checks">${rows}</div></div>`;
@@ -109,6 +134,6 @@ const ss=D.source_documents;document.getElementById('sourceGrid').innerHTML=ss.m
 for(const id of ['searchInput','priorityFilter','statusFilter'])document.getElementById(id).addEventListener(id==='searchInput'?'input':'change',()=>{document.getElementById('taskDetail').innerHTML='';renderModules()});
 document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('Effacer uniquement vos notes locales sur cet appareil ?')){notes={};localStorage.removeItem(SK);totalValidated();if(lastDetail)showDetail(lastDetail);else renderModules()}});
 document.getElementById('exportBtn').addEventListener('click',()=>{let payload={project:D.project,generated_at:new Date().toISOString(),notice:'Notes locales non vérifiées, non synchronisées automatiquement avec GitHub',task_statuses:notes};let blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PUNCH360_notes_suivi.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)});
-init();})();
+init();void loadWorkProgress();})();
 </script>
 </body></html>
