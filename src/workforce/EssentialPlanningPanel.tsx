@@ -295,18 +295,22 @@ export function EssentialPlanningPanel({account,initial='calendar'}:{account:Wor
  {manager&&fixedAddressEdit?.id===l.id?<View style={{gap:6}}>
   {text('Met à jour le même établissement et la destination affichée dans Accueil. Aucun nouveau lieu facturable. Vérifiez séparément les règles GPS si le lieu physique a changé.',{fontSize:12})}
   {field('Adresse complète actuelle corrigée','locationAddressCorrection')}
-  {button('Confirmer la correction',()=>Alert.alert('Confirmer la nouvelle adresse ?',
-   'L’établissement et ses quarts restent identiques. Aucun paramètre GPS automatique ne sera modifié.',[
+  {button('Confirmer la correction',()=>{
+   const edit=fixedAddressEdit;
+   if(!edit||edit.id!==l.id)return;
+   Alert.alert('Confirmer la nouvelle adresse ?',
+    'L’établissement et ses quarts restent identiques. Aucun paramètre GPS automatique ne sera modifié.',[
     {text:'Annuler',style:'cancel'},
     {text:'Confirmer',onPress:()=>run(async()=>{
       const newAddress=String(form.locationAddressCorrection||'').trim();
       if(newAddress.length<6||newAddress.length>240||/[\r\n\t]/.test(newAddress))throw Error('Adresse de 6 à 240 caractères sur une ligne requise.');
       await rpc('update_essential_location_address',{p_company:account.companyId,
-       p_location:fixedAddressEdit.id,p_expected_address:fixedAddressEdit.expected,
+       p_location:edit.id,p_expected_address:edit.expected,
        p_new_address:newAddress});
       setFixedAddressEdit(null);
     })}
-   ]))}
+   ]);
+  })}
   {button('Annuler',()=>setFixedAddressEdit(null))}
  </View>:null}
  </View>)}{manager?<>{field('Nom du nouvel établissement','locationName')}{field('Adresse','address')}{field('Fuseau IANA','timezone')}{button('Créer l’établissement',()=>run(()=>rpc('save_essential_location',{p_company:account.companyId,p_name:form.locationName,p_address:form.address||'',p_timezone:form.timezone})))}</>:null}</View><View style={s.card}>{text('Départements',{fontSize:20,fontWeight:'600'})}{data.departments.map((d:Row)=><View key={d.id}>{text(d.name)}{manager&&feature('minimum_coverage')?<>{field('Minimum requis','minimum-'+d.id)}{button('Enregistrer le minimum',()=>run(()=>rpc('set_essential_minimum_staff',{p_department:d.id,p_minimum:Number(form['minimum-'+d.id])})))}</>:null}</View>)}{manager&&feature('departments')?<>{location('location')}{field('Nom du département','departmentName')}{button('Créer le département',()=>run(()=>rpc('save_essential_department',{p_company:account.companyId,p_location:form.location,p_name:form.departmentName})))}</>:null}</View>{manager&&feature('minimum_coverage')?<View style={s.card}>{text('Postes exclusifs · Pro',{fontSize:19,fontWeight:'600'})}{text('Un seul quart simultané par poste. Les certifications sont vérifiées côté serveur.')}
