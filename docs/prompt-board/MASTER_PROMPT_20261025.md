@@ -1429,3 +1429,18 @@ Le giga-prompt de continuation historique (PR #41, archives Git) a été **inté
 - Phase 3 : modules par pays, talons locaux et formulaires équivalents après validation légale et technique.
 - Tests : T4/RL-1 cohérents avec paies annuelles, employé avec plusieurs employeurs, rectificatifs, pays et devises différents, droits d'accès et absence de fuite de NAS, PDF imprimable, accès mobile, formats électroniques et accusés de réception.
 - Documenter l'état réel au suivi officiel. Cette section est une **exigence à développer**, non une fonctionnalité déjà livrée.
+
+
+## ORDRE D'EXÉCUTION — MODULES COMMERCIAUX ET PAIE (2026-10-26)
+
+Ces quatre sections détaillées ci-dessus sont les **sources fonctionnelles complémentaires** du prompt maître; elles ne remplacent ni les priorités P0, ni les dépendances de sécurité, ni les exigences antérieures. Les réaliser dans l'ordre suivant, après les fondations nécessaires :
+
+1. **Fondations** : comptes/compagnies, RLS et rôles, pointages fiables, affectations clients/contrats/emplacements, horaires multi-emplacements, corrections auditables et approbation des heures.
+2. **Sous-traitance** : segmentation des heures par client/contrat/emplacement, coûts internes, taux de vente et marges; aucune double attribution.
+3. **Facturation Pro — Canada/Québec** : brouillon depuis les heures approuvées, modèles PDF, numérotation, taxes vérifiées, émission, avoirs et suivi des paiements. Étendre les taxes et formats aux autres pays ensuite.
+4. **Préparation de paie** : heures payables et gains, contrôles de période, exports/imports avec prestataires de paie, accès privé aux talons; CCQ et règles québécoises en priorité.
+5. **Talons natifs et moteur réglementaire validé** : calcul des retenues seulement après validation officielle, talons détaillés CCQ, cumuls, corrections et contrôles d'accès; architecture de talons multipays.
+6. **Documents fiscaux annuels** : rapprochement des cumuls, T4 et RL-1 vérifiés, rectificatifs, formats de dépôt prescrits; équivalents multipays par juridiction validée.
+7. **Intégrations avancées** : transmissions fiscales, versements et remises via fournisseurs autorisés; ne jamais les simuler comme des opérations réellement effectuées.
+
+**Règles de livraison :** privilégier un parcours bout-en-bout opérationnel à chaque jalon; conserver des identifiants de tâches et tests de non-régression; ne jamais exposer les images originales de paie ou d'impôt fournies par l'utilisateur; ne pas qualifier « terminé » une exigence seulement écrite. Les images de référence sont décrites dans les sections concernées mais leurs originaux privés ne sont pas stockés dans ce dépôt.
