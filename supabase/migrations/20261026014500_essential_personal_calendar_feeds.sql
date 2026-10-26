@@ -100,7 +100,7 @@ begin
  into shifts from (
   select s.id,s.company_id,s.worker_id,s.location_id,s.starts_at,s.ends_at,s.version,s.cancelled_at
   from public.scheduled_shifts s where s.company_id=feed.company_id and s.worker_id=feed.worker_id
-   and s.cancelled_at is null and s.ends_at>=now()-interval '30 days'
+   and s.ends_at>=now()-interval '30 days'
    and s.starts_at<=now()+interval '365 days'
   order by s.starts_at,s.id limit 1001
  ) x;
@@ -113,7 +113,7 @@ begin
        from public.essential_locations loc where loc.company_id=feed.company_id
         and exists(select 1 from public.scheduled_shifts s where s.company_id=feed.company_id
           and s.worker_id=feed.worker_id and s.location_id=loc.id
-          and s.cancelled_at is null and s.ends_at>=now()-interval '30 days'
+          and s.ends_at>=now()-interval '30 days'
           and s.starts_at<=now()+interval '365 days')
  ) l;
  return jsonb_build_object('company_id',feed.company_id,'worker_id',feed.worker_id,
