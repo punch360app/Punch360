@@ -5,6 +5,7 @@ import {weeklyArgs,weeklyDaysLabel,weeklyPreviewLabel} from './weekly-availabili
 import {PERIOD_CHOICES,WEEKEND_CHOICES,preferencePayload,contractPayload,periodLabel} from './schedule-preferences.js';
 import {nextIsoMonday,reminderSelection,reminderResultLabel} from './availability-reminders.js';
 import {createClientDirectoryController} from './client-directory.js';
+import {locationAddressDraft,locationNavigationAddressArgs} from './fixed-location-address.js';
 import {buildMultiSiteOverview} from './multi-site-overview.js';
 import {navigationPlatform,navigationStopChoices,chooseNavigationPreference,navigationPreferenceKey} from './navigation-choices.js';
 import {plannedClientReport,plannedClientReportCsv} from './planned-client-report.js';
@@ -14,7 +15,7 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
  let generation=0;
  const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const future=()=>{const d=new Date();d.setDate(d.getDate()+31);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
- const s={company:null,user:null,own:null,role:null,entitlement:{},templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,accessShiftId:null,siteChoices:[],siteHasMore:false,clientPlannedReport:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',overviewDay:today(),overviewPeriod:'day',overviewView:'employee',overviewWorker:'',overviewSite:'',overviewDepartment:'',clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
+ const s={company:null,user:null,own:null,role:null,entitlement:{},editNavLocationId:null,templates:[],positions:[],positionAlerts:null,feedStatus:null,feedUrl:null,locations:[],departments:[],scopes:[],roster:[],workers:[],shifts:[],requests:[],absences:[],absenceShift:null,absenceRequest:null,absenceUnavailable:false,acks:[],availability:[],weeklyRules:[],weeklyPreview:[],weeklyUnavailable:false,weeklyRequest:null,workerPrefs:[],prefsUnavailable:false,prefLoadedWorker:null,prefLoadedVersion:0,prefRequest:null,reminderPreview:null,reminderKey:null,assignedSites:[],assignedSitesUnavailable:false,siteOpenShift:null,accessShiftId:null,siteChoices:[],siteHasMore:false,clientPlannedReport:null,options:[],error:'',busy:false,showForm:false,tab:'calendar',editing:null,report:null,template:null,batch:null,form:{mode:'single',first:today(),weeks:'2',days:'1,2,3,4,5',startTime:'07:00',endTime:'15:00',startTime2:'15:00',endTime2:'23:00',startTime3:'23:00',endTime3:'07:00',timezone:'America/Toronto',reportFrom:today(),reportTo:future(),calendarFrom:today(),calendarTo:future(),weeklyDays:'1,2,3,4,5',weeklyStart:'07:00',weeklyEnd:'15:00',weeklyFrom:today(),weeklyUntil:'',weeklyAvailable:'true',weeklyWorker:'',weeklyLocation:'',prefWorker:'',prefDesired:'',prefPeriods:'',prefWeekend:'flexible',prefVolunteer:'false',prefLastMinute:'false',prefExtra:'',contractMin:'',contractMax:'',contractSeniority:'',reminderWeek:nextIsoMonday(today()),reminderDue:nextIsoMonday(today()),reminderDepartment:'',overviewDay:today(),overviewPeriod:'day',overviewView:'employee',overviewWorker:'',overviewSite:'',overviewDepartment:'',clientReportWorker:'',clientReportSite:'',clientReportDepartment:'',clientSiteSearch:'',clientSiteChoice:''}};
  const clientDirectory=createClientDirectoryController({sb,escape:e,document:doc,redraw,notify});
  const manager=()=>['boss','admin'].includes(s.role),feature=f=>Array.isArray(s.entitlement.features)&&s.entitlement.features.includes(f);
  const canPlan=d=>manager()||(feature('supervisors')&&s.scopes.some(g=>g.active&&g.can_plan&&g.department_id===d));
@@ -66,7 +67,25 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }catch{s.assignedSitesUnavailable=true;}
  }
  async function reload(){await load({company_id:s.company,role:s.role},s.user,s.own,s.workers);}
- function renderOrganization(){return `<div class="plan-workspace"><h2>Établissements et départements</h2>${s.error?`<p class="ess-notice" role="alert">${e(s.error)}</p>`:''}<p class="ess-fine">Forfait : ${e(s.entitlement.title||'Essentiel')}${s.entitlement.simulated?' · environnement de test':''}</p><div class="ess-worker-layout"><section class="ess-panel"><h3>Établissements</h3>${s.locations.map(l=>`<article class="ess-person"><div><b>${e(l.name)}</b><small>${e(l.address)} · ${e(l.timezone)}</small></div></article>`).join('')}${manager()?`${field('Nom du nouvel établissement','locationName')}${field('Adresse','address')}${field('Fuseau IANA','timezone')}${btn('Créer l’établissement','location')}`:''}</section><section class="ess-panel"><h3>Départements</h3>${s.departments.map(d=>`<article class="ess-person"><div><b>${e(d.name)}</b><small>${e(place(d.location_id))}${feature('minimum_coverage')?' · minimum '+d.minimum_staff:''}</small></div>${manager()&&feature('minimum_coverage')?btn('Minimum','minimum',`data-id="${e(d.id)}"`):''}</article>`).join('')||'<p>Aucun département.</p>'}${manager()&&feature('departments')?`${locationSelect('orgLocation')}${field('Nom du département','departmentName')}${btn('Créer le département','department')}`:'<p class="ess-fine">Départements disponibles avec Plus et Pro.</p>'}</section></div>${manager()?renderAssignments():''}${manager()&&feature('minimum_coverage')?renderPositions():''}${s.role==='boss'&&feature('supervisors')?renderSupervisors():''}${manager()?clientDirectory.render():''}</div>`;}
+ function renderLocationNavigationForm(){
+  const site=s.locations.find(l=>l.id===s.editNavLocationId);
+  if(!site||!manager())return '';
+  return `<section class="ess-panel"><h4>Adresse de navigation — ${e(site.name)}</h4>
+    <p class="ess-fine">Ces coordonnées servent aux itinéraires. <strong>Le chantier de pointage et son périmètre GPS ne changent pas.</strong> Si le travail a réellement déménagé, faites aussi vérifier le GPS du pointage avant de l’utiliser sur place.</p>
+    <div class="ess-form-grid">
+     ${field('Numéro et rue','navLocLine')}
+     ${field('Local / unité','navLocUnit')}
+     ${field('Ville','navLocCity')}
+     ${field('Province / région','navLocRegion')}
+     ${field('Code postal','navLocPostal')}
+     ${field('Pays (CA/US...)','navLocCountry')}
+     ${field('Fuseau IANA','navLocTimezone')}
+    </div>
+    ${btn('Enregistrer l’adresse de navigation','location-address-save')}
+    ${btn('Annuler','location-address-cancel')}
+   </section>`;
+ }
+ function renderOrganization(){return `<div class="plan-workspace"><h2>Établissements et départements</h2>${s.error?`<p class="ess-notice" role="alert">${e(s.error)}</p>`:''}<p class="ess-fine">Forfait : ${e(s.entitlement.title||'Essentiel')}${s.entitlement.simulated?' · environnement de test':''}</p><div class="ess-worker-layout"><section class="ess-panel"><h3>Établissements</h3>${s.locations.map(l=>`<article class="ess-person"><div><b>${e(l.name)}</b><small>${e(l.address||'Adresse de navigation non configurée')} · ${e(l.timezone)}</small></div>${manager()?btn('Corriger l’adresse','location-address-edit',`data-id="${e(l.id)}"`):''}</article>`).join('')}${manager()?renderLocationNavigationForm():''}${manager()?`${field('Nom du nouvel établissement','locationName')}${field('Adresse','address')}${field('Fuseau IANA','timezone')}${btn('Créer l’établissement','location')}`:''}</section><section class="ess-panel"><h3>Départements</h3>${s.departments.map(d=>`<article class="ess-person"><div><b>${e(d.name)}</b><small>${e(place(d.location_id))}${feature('minimum_coverage')?' · minimum '+d.minimum_staff:''}</small></div>${manager()&&feature('minimum_coverage')?btn('Minimum','minimum',`data-id="${e(d.id)}"`):''}</article>`).join('')||'<p>Aucun département.</p>'}${manager()&&feature('departments')?`${locationSelect('orgLocation')}${field('Nom du département','departmentName')}${btn('Créer le département','department')}`:'<p class="ess-fine">Départements disponibles avec Plus et Pro.</p>'}</section></div>${manager()?renderAssignments():''}${manager()&&feature('minimum_coverage')?renderPositions():''}${s.role==='boss'&&feature('supervisors')?renderSupervisors():''}${manager()?clientDirectory.render():''}</div>`;}
  function renderAssignments(){return `<section class="ess-panel"><h3>Affecter un salarié</h3><div class="ess-form-grid">${select('Salarié','assignWorker',s.roster.map(w=>[w.id,w.name]))}${locationSelect('assignLocation')}${departments('assignDepartment',s.form.assignLocation)}</div>${btn('Enregistrer l’affectation','assign')}</section>`;}
  function renderPositions(){return `<section class="ess-panel"><h3>Postes exclusifs · Pro</h3><p class="ess-fine">Un seul quart à la fois par poste. Une qualification peut être exigée. Chaque quart peut recevoir un poste sans changer ses heures.</p>
  <div class="ess-form-grid">${locationSelect('posLocation')}${departments('posDepartment',s.form.posLocation)}${field('Nom du poste','posTitle')}${field('Certification requise (facultative)','posCertificate')}${field('Motif de configuration','posReason')}</div>${btn('Créer un poste','pos-create')}
@@ -383,6 +402,30 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
     await rpc('review_essential_shift_absence',{p_absence:id,p_decision:decision});
     notify('Signalement pris en charge. Le salarié a été informé.');
    }
+   else if(a==='location-address-edit'){
+    if(!manager())throw Error('Adresse réservée au responsable.');
+    const site=s.locations.find(x=>x.id===id&&x.active);
+    if(!site)throw Error('Établissement actif introuvable : actualisez.');
+    const d=locationAddressDraft(site);
+    s.editNavLocationId=id;
+    Object.assign(s.form,{navLocLine:d.line,navLocUnit:d.unit,navLocCity:d.city,navLocRegion:d.region,
+      navLocPostal:d.postal_code,navLocCountry:d.country,navLocTimezone:d.timezone});
+    return true;
+   }
+   else if(a==='location-address-cancel'){s.editNavLocationId=null;return true;}
+   else if(a==='location-address-save'){
+    if(!manager())throw Error('Adresse réservée au responsable.');
+    const site=s.locations.find(x=>x.id===s.editNavLocationId);
+    if(!site)throw Error('Établissement absent : rechargez.');
+    const draft={line:val('navLocLine'),unit:val('navLocUnit'),city:val('navLocCity'),
+     region:val('navLocRegion'),postal_code:val('navLocPostal'),country:val('navLocCountry'),
+     timezone:val('navLocTimezone')};
+    const params=locationNavigationAddressArgs(s.company,site,draft);
+    if(!doc.defaultView.confirm('Enregistrer cette adresse pour les itinéraires ? Cela ne déplace PAS le chantier ni le périmètre GPS du pointage.'))return true;
+    await rpc('set_essential_location_navigation_address',params);
+    s.editNavLocationId=null;
+    notify('Adresse de navigation enregistrée; périmètre GPS de pointage inchangé.');
+   }
    else if(a==='location'){await rpc('save_essential_location',{p_company:s.company,p_name:val('locationName'),p_address:val('address'),p_timezone:val('timezone')});}
    else if(a==='department'){await rpc('save_essential_department',{p_company:s.company,p_location:val('orgLocation'),p_name:val('departmentName')});}
    else if(a==='assign'){await rpc('assign_essential_worker',{p_worker:val('assignWorker'),p_location:val('assignLocation'),p_department:val('assignDepartment')||null});}
@@ -472,6 +515,6 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   }catch(err){s.error=err.message;notify(err.message);}finally{s.busy=false;redraw();}return true;
  }
  function input(el){if(!el?.id?.startsWith('plan-'))return;s.form[el.id.slice(5)]=el.type==='checkbox'?el.checked:el.value;if(['plan-location','plan-assignLocation','plan-mode'].includes(el.id)){if(el.id==='plan-location')s.form.department='';if(el.id==='plan-assignLocation')s.form.assignDepartment='';redraw();}}
- function reset(){generation++;clientDirectory.reset();s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.clientPlannedReport=null;s.siteOpenShift=null;s.accessShiftId=null;s.siteChoices=[];s.report=null;s.options=[];s.editing=null;s.batch=null;}
+ function reset(){generation++;clientDirectory.reset();s.template=null;s.templates=[];s.positions=[];s.positionAlerts=null;s.feedUrl=null;s.feedStatus=null;s.company=null;s.user=null;s.own=null;s.editNavLocationId=null;s.roster=[];s.workers=[];s.shifts=[];s.requests=[];s.scopes=[];s.locations=[];s.departments=[];s.availability=[];s.weeklyRules=[];s.weeklyPreview=[];s.workerPrefs=[];s.prefLoadedWorker=null;s.prefRequest=null;s.reminderPreview=null;s.reminderKey=null;s.assignedSites=[];s.clientPlannedReport=null;s.siteOpenShift=null;s.accessShiftId=null;s.siteChoices=[];s.report=null;s.options=[];s.editing=null;s.batch=null;}
  return {state:s,load,reload,renderOrganization,renderSchedule,handle,input,reset};
 }
