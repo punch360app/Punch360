@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T14:20:16.710Z",
+  "generated_at": "2026-10-26",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 578,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -297,6 +297,602 @@
         122
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "ARCHIVE-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        14,
+        75
+      ],
+      "note": "Archives chiffrées et signées codées; vérification complète hors logiciel non démontrée."
+    },
+    "ARCHIVE-002": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        14,
+        75
+      ],
+      "note": "Restrictions d'accès Boss et Super Admin intégrées; MFA Auth réel non recetté."
+    },
+    "ARCHIVE-005": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        14,
+        80
+      ],
+      "note": "Validation pré-import et PDF synthétique testés; recette fournisseur/Storage indépendante manquante."
+    },
+    "ARCHIVE-006": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        14
+      ],
+      "note": "Restauration additive conçue, sans preuve PRA de production."
+    },
+    "ARCHIVE-007": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        14,
+        75
+      ],
+      "note": "Garde compagnie d'origine dans parcours de restauration; audit réel multientreprise non clos."
+    },
+    "ARCHIVE-010": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        75,
+        80
+      ],
+      "note": "Cas archives invalides et idempotence abordés en tests synthétiques, recette complète ouverte."
+    },
+    "KIOSK-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        2,
+        79
+      ],
+      "note": "Borne URL publique et appairage sans lien secret; revue d'installation réelle ouverte."
+    },
+    "KIOSK-002": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        79
+      ],
+      "note": "Paramètres Boss/Admin de borne développés, recette appareil non documentée."
+    },
+    "KIOSK-003": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        79
+      ],
+      "note": "Lien d'ouverture et gestion borne implémentés, comportement réel appareil à recetter."
+    },
+    "KIOSK-006": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        2
+      ],
+      "note": "Pointage NIP borne implémenté en code, QA physique non validée."
+    },
+    "KIOSK-010": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        2,
+        17
+      ],
+      "note": "Moteur partagé borne/téléphone et journal hors ligne codés; parcours croisé réel incomplet."
+    },
+    "KIOSK-014": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        79
+      ],
+      "note": "Contrôles de liens secrets et contexte administratif ajoutés; isolation réelle à vérifier."
+    },
+    "LOCALE-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        67,
+        69,
+        74
+      ],
+      "note": "Infrastructure multilingue ajoutée; couverture de toutes les interfaces non certifiée."
+    },
+    "LOCALE-002": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        67,
+        69
+      ],
+      "note": "Traductions FR/EN intégrées sur les parcours ciblés; exhaustivité non certifiée."
+    },
+    "LOCALE-003": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        67,
+        69,
+        74
+      ],
+      "note": "Langues supplémentaires introduites en navigation/borne, pas intégralité des écrans."
+    },
+    "LOCALE-004": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        67,
+        69,
+        74
+      ],
+      "note": "Arabe et autres langues borne/navigation partiellement codées, recette complète non faite."
+    },
+    "LOCALE-005": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        67,
+        69,
+        74
+      ],
+      "note": "RTL ciblé navigation/borne codé et testé partiellement, revue globale ouverte."
+    },
+    "LOCALE-006": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        67,
+        69
+      ],
+      "note": "Préférence de langue personnelle et changement par compte ajoutés."
+    },
+    "LOCALE-009": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        76,
+        77,
+        78,
+        79
+      ],
+      "note": "Traductions d'erreurs borne et hors ligne, pas les courriels/systèmes entiers."
+    },
+    "HR-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        10
+      ],
+      "note": "Demandes de correction de punch et pause implémentées dans les parcours visés."
+    },
+    "HR-002": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        15
+      ],
+      "note": "Journée entièrement oubliée avec approbation et pauses implémentée."
+    },
+    "HR-003": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        19
+      ],
+      "note": "Appropriation des corrections par superviseur habilité abordée; autres rôles à recetter."
+    },
+    "HR-004": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        10,
+        15
+      ],
+      "note": "Historique et audit des corrections ajouté pour les chemins visés."
+    },
+    "HR-006": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        18
+      ],
+      "note": "Calcul des pauses payé/non payé au moyen de politiques versionnées commencé."
+    },
+    "HR-007": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        18
+      ],
+      "note": "Politiques de pauses versionnées par département développées."
+    },
+    "HR-009": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        54
+      ],
+      "note": "Certifications/échéances de postes traitées dans l'édition Pro; recette RH complète ouverte."
+    },
+    "HR-010": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        8
+      ],
+      "note": "Documents RH confidentiels et communications développés partiellement."
+    },
+    "HR-011": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        8
+      ],
+      "note": "Confidentialité des accès RH travaillée, validation de tous les droits non certifiée."
+    },
+    "HR-012": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        28
+      ],
+      "note": "Profils paie et taux avec contrôles CSV partiels, règles contractuelles exhaustives non validées."
+    },
+    "HR-013": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        28
+      ],
+      "note": "Exports de paie CSV et aperçus audités développés sur chemins ciblés."
+    },
+    "HR-014": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        8,
+        28
+      ],
+      "note": "Calculs salariaux d'estimation documentés, pas une paie officielle."
+    },
+    "INVITE-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        1,
+        23
+      ],
+      "note": "Création de compagnie, dossier salarié et invitation intégrés partiellement."
+    },
+    "INVITE-003": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        1,
+        2
+      ],
+      "note": "Dossier salarié/NIP accessible sans compte personnel direct, recette complète à vérifier."
+    },
+    "INVITE-006": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        23
+      ],
+      "note": "File d'invitation et jetons de canal courriel développés."
+    },
+    "INVITE-007": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        1,
+        23
+      ],
+      "note": "Invitations rôle/compagnie abordées, permissions réelles à tester."
+    },
+    "INVITE-008": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        23
+      ],
+      "note": "File d'envoi e-mail automatique codée, fournisseur délivrabilité non recetté."
+    },
+    "INVITE-009": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        23
+      ],
+      "note": "Statuts et traitement asynchrone d'invitation implémentés partiellement."
+    },
+    "INVITE-010": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        23
+      ],
+      "note": "Reprises et suivi de file d'invitations introduits."
+    },
+    "INVITE-014": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        62,
+        66
+      ],
+      "note": "Transfert Boss avec consentement MFA Web/Expo codé partiellement; recetter réel."
+    },
+    "INVITE-015": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        68,
+        70
+      ],
+      "note": "Sélecteur multientreprise et séparation des comptes salariés ajoutés."
+    },
+    "COMMERCIAL-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        4
+      ],
+      "note": "Deux éditions et présentation publique développées."
+    },
+    "COMMERCIAL-002": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        4,
+        9
+      ],
+      "note": "Cartes de forfaits publiques et comparatif mis en place, vérifier grille actuelle."
+    },
+    "COMMERCIAL-007": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        9
+      ],
+      "note": "FAQ accessible et comparatif dynamique livrés en source, recette responsive ouverte."
+    },
+    "COMMERCIAL-008": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        4,
+        6
+      ],
+      "note": "Parcours public inscription → forfait/Stripe connecté partiellement, sandbox non validé."
+    },
+    "COMMERCIAL-011": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        4
+      ],
+      "note": "Navigation vers inscription/connexion abordée dans page de vente."
+    },
+    "COMMERCIAL-012": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        4,
+        9
+      ],
+      "note": "Accessibilité et responsive étudiés/codés partiellement, matrice appareils pas complète."
+    },
+    "SAUTH-001": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        3
+      ],
+      "note": "Super Admin séparé des rôles d'entreprise avec logique centrale de plateforme."
+    },
+    "SAUTH-002": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        3,
+        24
+      ],
+      "note": "Contrôles identité plateforme au serveur abordés; audit total des RPC non terminé."
+    },
+    "SAUTH-003": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        3,
+        24,
+        82
+      ],
+      "note": "MFA sur actions sensibles de plateforme/Boss développé en partie; essai réel des AAL non clos."
+    },
+    "SAUTH-005": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        3,
+        25
+      ],
+      "note": "Console Super Admin distincte Web, écrans mobiles et PC à recetter."
+    },
+    "SAUTH-007": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        31
+      ],
+      "note": "Indicateurs et annuaire d'abonnements paginé implémentés partiellement."
+    },
+    "SAUTH-010": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        31
+      ],
+      "note": "Filtre éditions testé pour annuaire/indicateurs ciblés, pas toute console."
+    },
+    "SACATALOG-010": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        13
+      ],
+      "note": "Promotions Stripe Super Admin contrôlées en code, fournisseur sandbox non validé."
+    },
+    "SACATALOG-011": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        13
+      ],
+      "note": "Séparation des promotions test/réel partiellement développée; QA fournisseur nécessaire."
+    },
+    "SACATALOG-012": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        13
+      ],
+      "note": "Paramètres d'expiration et limites promotions implémentés partiellement."
+    },
+    "STRIPE-013": {
+      "developed": "partial",
+      "tested": "not_verified",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        30,
+        32,
+        34
+      ],
+      "note": "Sursis et suspensions commerciales par compagnie implémentés partiellement; recettes réelles ouvertes."
     }
   },
   "activity": [
@@ -756,5 +1352,5 @@
       "merged_at": "2026-10-26T03:50:00Z"
     }
   ],
-  "history_note": "Activité récente importée depuis les PR fusionnées. Les anciennes PR sans mapping ID ne gonflent pas les exigences; leurs CI ne sont pas automatiquement certifiées rétroactivement."
+  "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
 }
