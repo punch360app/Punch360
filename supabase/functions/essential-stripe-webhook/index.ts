@@ -1,5 +1,5 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
-import {stripeClient,verifyStripeSignature,stripeInvoiceSubscriptionId,verifyStripeWebhookInvoice} from '../_shared/stripe.mjs';
+import {stripeClient,verifyStripeSignature,stripeInvoiceSubscriptionId,verifyStripeWebhookInvoice,stripeWebhookSubscriptionPrice} from '../_shared/stripe.mjs';
 Deno.serve(async(req:Request)=>{
  if(req.method!=='POST')return new Response('METHOD_NOT_ALLOWED',{status:405});
  const secret=Deno.env.get('STRIPE_SECRET_KEY'),signing=Deno.env.get('STRIPE_WEBHOOK_SECRET');
@@ -20,7 +20,7 @@ Deno.serve(async(req:Request)=>{
   if(invoice)verifyStripeWebhookInvoice(invoice,sub,secret.startsWith('sk_live_'));
   const paid=invoice?.status==='paid',periodEnd=sub.current_period_end;
   const state={status:sub.status,paid_through:paid?periodEnd:null,first_unpaid_at:!paid&&['past_due','unpaid','incomplete'].includes(sub.status)?invoice?.created||event.created:null,canceled:sub.cancel_at_period_end||['canceled','incomplete_expired'].includes(sub.status)};
-  const priceId=sub.items.data[0]?.price?.id;
+  const priceId=stripeWebhookSubscriptionPrice(sub);
   const resolve=await admin.rpc('billing_service_resolve_order',{p_company:company,p_subscription:sub.id,p_price:priceId,p_original:sub.metadata.punch_order||null});if(resolve.error)throw resolve.error;if(!resolve.data)throw Error('UNKNOWN_CONTRACT_PRICE');
   let receivedInvoice=invoice;
   if(event.type.startsWith('invoice.')){
