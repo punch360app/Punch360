@@ -15,6 +15,9 @@ Les invitations peuvent être en attente tant que le collaborateur ne les a pas 
 
 **Rôles et sécurité :** accès GitHub avec droits d'écriture pour le code ; Supabase Developer plutôt que Owner. Ne pas demander d'accès Super Admin de production pour coder. Ne jamais échanger mot de passe, token, `service_role`, clé Stripe, secret Twilio, certificat ou code MFA dans les chats, commits ou captures. Les secrets restent dans les gestionnaires de secrets côté serveur.
 
+
+> **Décision du propriétaire — 26 octobre 2026 :** les forfaits actifs sont volontairement personnalisés. Essentiel : **19 $ CAD/mois, 20 membres inclus, +2 $/membre additionnel**; Plus : **39 $, 25 membres, +2 $**; Pro : **69 $, 50 membres, +2 $**; remise annuelle **15 %**. Conserver les versions actuelles du catalogue et **les six identifiants Stripe existants**, sans réinitialisation ni création automatique pour remplacer ces prix. L'ancienne grille 5 places et +3/4/5 $ est **historique et remplacée**. Préserver contrats/snapshots/produits, ne pas toucher Construction. Issue #90 résolue par confirmation du propriétaire; issue #35 encore ouverte pour les essais fournisseur.
+
 ## 2. Comprendre le produit en 60 secondes
 
 **Deux éditions commerciales distinctes, un moteur partagé et un Super Admin central :**
@@ -25,7 +28,7 @@ Les invitations peuvent être en attente tant que le collaborateur ne les a pas 
 | **PUNCH Construction** | Chantiers et équipes mobiles ; jobs, transferts, GPS, plans, commandes et messagerie selon les modules autorisés | Conserver ses fonctions, règles de sécurité, interface et prix indépendants |
 | **Super Admin PUNCH 360°** | Console unique pour superviser les deux éditions (clients, abonnements, forfaits, paiements, support) | Authentification forte, rôle plateforme vérifié côté serveur, pas d'accès privé injustifié |
 
-**Essentiel, forfaits décidés :** 19 / 39 / 69 $ CA par mois ; cinq personnes comprises ; +3 / +4 / +5 $ par personne supplémentaire par mois ; remise annuelle 15 % ; bornes comprises 1 / 3 / illimitées (usage raisonnable). Les tarifs doivent venir du catalogue serveur. **Ne pas remplacer les prix Construction par ceux d'Essentiel.** Une borne n'est pas une place humaine facturable.
+**Essentiel, forfaits actifs confirmés par le propriétaire le 26 octobre 2026 :** 19 / 39 / 69 $ CA/mois ; **20 / 25 / 50 membres compris** ; **+2 $ par personne supplémentaire** pour chaque forfait ; annuel −15 % ; bornes et fonctions selon les versions serveur. Les tarifs doivent venir du catalogue serveur. **Ne pas remplacer les prix Construction par ceux d'Essentiel.** Une borne n'est pas une place humaine facturable.
 
 ## 3. Où regarder dans le dépôt
 
