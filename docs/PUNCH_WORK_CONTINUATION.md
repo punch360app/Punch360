@@ -1,3 +1,11 @@
+# Reprise — borne Essentiel multilingue (10 langues) — lot initial
+
+Après la PR #69 (langues de navigation Expo/Web), le prompt original **Validation SQL archives** progresse sur la borne commune PWA : dictionnaire indépendant `web/live/kiosk-locale.js`, sélecteur de 10 langues, libellés d'identification, NIP, pointage et pauses, RTL arabe adapté aux textes sans inverser les chiffres. Langue temporaire par session, retour au français automatiquement : aucun stockage de préférence, NIP ni identité. La borne reste fonctionnelle hors ligne; fichier de langue ajouté au pré-cache du Service Worker, versions PWA relevées. Tests `tests/kiosk-locale.test.mjs` plus tests historiques de la borne; documentation `docs/ESSENTIAL_KIOSK_TEN_LANGUAGES_20261026.md`. Aucune migration Supabase ni modification de client réel.
+
+**Encore ouvert pour la fin du prompt original** : localisation complète des messages d'erreur de sécurité/offline, QA humaine des 10 langues et appareils, sous-pages RH/paie/Super Admin, prise en charge complète RTL, recette Stripe sandbox avec webhooks, appels OAuth et notifications, calendriers tiers, builds natifs, tests de charge et PRA. Twilio/SMS en dernier. **Ne pas passer au prompt maître consolidé tant que le prompt original n'est pas clos.**
+
+---
+
 # Reprise du prompt original — langues de base Expo Android/iOS (nouvelle PR)
 
 Après PR #67 (navigation Essentiel Web, 10 langues + RTL), le prochain bloc du **prompt original « Validation SQL archives »** élargit le même dictionnaire à Expo : `src/i18n/essential-native-locale.js`, gestion des préférences AsyncStorage par compte, sélecteurs de langue pour Boss/Admin et employés, navigation/onglets/pointage essentiel traduits, RTL arabe limité aux conteneurs pertinents. `web/live/essential-locale.js` contient les mêmes clés pour Web et Expo. Tests `tests/essential-native-locale.test.mjs`; documentation `docs/ESSENTIAL_EXPO_NATIVE_LOCALE_20261026.md`. CI et publication Web à confirmer avant fusion. **Aucune migration Supabase, aucun compte ou abonnement réel modifié.**
