@@ -288,15 +288,16 @@ export function createPlanningController({sb,redraw,notify,escape:e,document:doc
   if(a==='absence-cancel'){s.absenceShift=null;s.absenceRequest=null;redraw();return true;}
   if(a==='calendar-view-apply'){
     if(!manager())return true;
-    Object.assign(s.form,{calendarViewMode:val('calendarViewMode'),
+    const next={calendarViewMode:val('calendarViewMode'),
      calendarViewPeriod:val('calendarViewPeriod'),calendarViewDay:val('calendarViewDay'),
      calendarViewDepartment:val('calendarViewDepartment'),calendarViewClient:val('calendarViewClient'),
-     calendarViewSite:val('calendarViewSite'),calendarViewWorker:val('calendarViewWorker')});
-    try{buildScheduleView({shifts:s.shifts,assignedSites:s.assignedSites,
-      mode:s.form.calendarViewMode,period:s.form.calendarViewPeriod,day:s.form.calendarViewDay,
-      department:s.form.calendarViewDepartment,client:s.form.calendarViewClient,
-      site:s.form.calendarViewSite,worker:s.form.calendarViewWorker,workerName,branchName:place});
-      s.error='';
+     calendarViewSite:val('calendarViewSite'),calendarViewWorker:val('calendarViewWorker')};
+    try{
+      buildScheduleView({shifts:s.shifts,assignedSites:s.assignedSites,
+       mode:next.calendarViewMode,period:next.calendarViewPeriod,day:next.calendarViewDay,
+       department:next.calendarViewDepartment,client:next.calendarViewClient,
+       site:next.calendarViewSite,worker:next.calendarViewWorker,workerName,branchName:place});
+      Object.assign(s.form,next);s.error='';
     }catch(error){s.error=error.message;}
     redraw();return true;
   }
