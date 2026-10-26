@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {billingQuote,checkoutExpiryFromOrder,stripeClient,safeHostedUrl} from '../_shared/stripe.mjs';
-import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
+import {planPriceKeys,checkRegisteredPrices,checkStripeProductPair,selectRegisteredPrice,verifyStripeCustomerTenant,preflightStripeOrderCustomer,verifyStripeInvoiceListTenant,verifyStripeSubscriptionTenant,preflightBillingAction,orderPriceStrategy,checkOrderStripePrice,verifySubscriptionPreview} from '../_shared/essential-price-catalog.mjs';
 const origin='https://punch360app.github.io',returnUrl=origin+'/Punch360/?edition=essential';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const response=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -69,11 +69,10 @@ Deno.serve(async(req:Request)=>{
    verifyStripeSubscriptionTenant(a,sub,body.companyId,secret.startsWith('sk_live_'));
    item=preflightBillingAction(body.action,a,sub);
   }
-  // Verify an existing Customer before POST /prices: a stale or cross-company
-  // customer mapping must not leave an orphan custom Price at Stripe.
-  // For preview/confirm, a verified Customer is mandatory.
-  const existingCustomer=a?.customer_id?await verifiedCustomer():null;
-  if(body.action!=='checkout'&&!existingCustomer)throw Error('NO_CUSTOMER');
+  // Fail before /prices for wrong/missing provider Customer. Existing
+  // customer validation is reused for Checkout, preview and confirm.
+  const existingCustomer=await preflightStripeOrderCustomer(
+   body.action,a,body.companyId,liveMode,stripe);
   const interval=o.cadence==='yearly'?'year':'month';
   const registeredPrice=selectRegisteredPrice(registered,o.cadence,o.amount_cents);
   const strategy=orderPriceStrategy(body.action,registeredPrice,o.preview);
