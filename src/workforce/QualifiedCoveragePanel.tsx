@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Pressable,ScrollView,Text,TextInput,View} from 'react-native';
-import {createQualifiedCoverageController,summarizeCoverageDemand} from '../../web/live/qualified-coverage.js';
+import {createQualifiedCoverageController,summarizeCoverageDemand,candidateStatusLabel} from '../../web/live/qualified-coverage.js';
 import {supabase} from '../lib/supabase';
 import type {WorkspaceAccount} from '../auth/AuthGate';
 export function QualifiedCoveragePanel({account}:{account:WorkspaceAccount}){
@@ -24,5 +24,16 @@ export function QualifiedCoveragePanel({account}:{account:WorkspaceAccount}){
  <Text>Manques par département : {summary.departmentGaps===null?'Non disponible':summary.departmentGaps+' intervalle(s)'}</Text>
  </View>:null}
 {s.planningWarning?<Text accessibilityRole="alert">Rapport des quarts indisponible, mais analyse des qualifications accessible.</Text>:null}
-<Text>Résultat : {s.report.gap_count} intervalle(s) insuffisant(s)</Text><Text>{s.report.rules} règle(s) active(s) sur la période</Text><Text>{s.report.notice}</Text>{s.report.truncated?<Text accessibilityRole="alert">Résultat limité aux 2000 premiers intervalles. Réduire la période.</Text>:null}{s.report.gaps.map((g:any,i:number)=><View key={i}><Text>{g.title} · {g.department_name} · {g.certificate_title} : {g.staffed}/{g.minimum_staff}</Text><Text>{date(g.starts_at,g.timezone)} → {date(g.ends_at,g.timezone)} · {g.timezone}</Text></View>)}</View>:null}</>}</ScrollView>;
+<Text>Résultat : {s.report.gap_count} intervalle(s) insuffisant(s)</Text><Text>{s.report.rules} règle(s) active(s) sur la période</Text><Text>{s.report.notice}</Text>{s.report.truncated?<Text accessibilityRole="alert">Résultat limité aux 2000 premiers intervalles. Réduire la période.</Text>:null}{s.report.gaps.map((g:any,i:number)=><View key={i} style={{gap:6,paddingVertical:8}}>
+   <Text>{g.title} · {g.department_name} · {g.certificate_title} : {g.staffed}/{g.minimum_staff}</Text>
+   <Text>{date(g.starts_at,g.timezone)} → {date(g.ends_at,g.timezone)} · {g.timezone}</Text>
+   {s.editAllowed?button('Voir salariés admissibles (12 h max)','candidates',String(i)):null}
+ </View>)}
+ {s.candidates?<View style={{gap:7,padding:12,borderColor:'#E1E8DB',borderWidth:1,borderRadius:9}}>
+   <Text style={{fontWeight:'700'}}>Candidats avec certification requise</Text>
+   <Text>{s.candidates.available} disponible(s), {s.candidates.unknown} inconnu(s), {s.candidates.unavailable} indisponible(s).</Text>
+   {s.candidateWindow?.partial?<Text>Seulement les 12 premières heures du déficit sont évaluées.</Text>:null}
+   <Text>Aucun quart proposé ou attribué. Les raisons privées et coordonnées personnelles restent masquées.</Text>
+   {s.candidates.candidates.map((w:any)=><Text key={w.worker_id}>{w.name} · {candidateStatusLabel(w.status)}</Text>)}
+ </View>:null}</View>:null}</>}</ScrollView>;
 }

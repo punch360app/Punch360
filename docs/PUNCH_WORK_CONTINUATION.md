@@ -1,14 +1,18 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — besoins de couverture et copie de plages (SHIFT-021, SHIFT-029 partiels)
+## Lot actif — admissibilité des salariés pour les manques de qualification (SHIFT-021, partiel)
 
-**Branche** `feat/qualified-coverage-consolidated-view-20261026` ; PR à ouvrir. Réutilise `essential_qualified_coverage`, `qualified_coverage_report` et `essential_planning_report` déjà en production, sans migration SQL. Un Boss/Admin Pro peut consulter dans une vue commune les déficits par qualification, les heures-personnes de déficit, le nombre de quarts vacants, les heures planifiées et les déficits par département, ou copier une plage datée pour en créer une nouvelle indépendante après édition et enregistrement explicites. Les chiffres absents restent « Non disponible », jamais zéro implicite. La copie ne modifie ni la source, ni le planning publié. Web et Expo; tests Node de calcul, rendu, copie indépendante, retards de requêtes et régression.
+**PR [#134](https://github.com/punch360app/Punch360/pull/134)**, branche `feat/qualified-coverage-eligible-workers-20261026`. Depuis la vue Boss/Admin Pro existante, un intervalle de déficit de qualification révèle les salariés du département/site portant le certificat valide et leur statut **Disponible / Indisponible / Inconnu**, calculé au serveur d'après le congé approuvé, les affectations/absences, les exceptions datées puis la disponibilité hebdomadaire. Période de 12 heures maximum, explicitement annoncée quand un déficit est plus long. Les motifs privés, coordonnées et notes RH ne quittent pas le serveur; aucun quart, offre, salaire ou solde modifié. Permissions Boss/Admin Pro et RH Certifications, refus d'employé/entreprise différente.
 
-**Critères avant fusion :** réussite de la CI complète sur la tête définitive; code Web publié via GitHub Pages après fusion, vérifier le workflow sur le SHA exact. Recette Web authentifiée et Expo physique toujours non prouvées. Le moteur récurrent de besoins, les exceptions des Fêtes, la gestion de tous les postes et la génération automatique SHIFT-020/022–025/030–033 ne sont pas livrés par cette vue partielle.
+**Supabase exclusif :** migration `20261026190002_qualified_coverage_candidates` installée dans `mlabstdxxwjdpfaxiwmg` (aucune autre base). `supabase/tests/qualified_coverage_candidates.sql` exécuté sur le schéma réellement installé en **BEGIN/ROLLBACK** : deux entreprises synthétiques, deux salariés certifiés, inconnu sans règle, priorité exception datée, congé approuvé, quart existant, isolation multi-entreprise. Accès authentifié par RPC uniquement (anon interdit). **À finaliser :** CI sur SHA final de #134, fusion, Pages sur SHA fusionné, registre auto, recette navigateur authentifiée et appareils distincts.
 
-## Dernier lot fusionné et publié — préférences du salarié (SHIFT-019)
+## Dernier lot fusionné et publié — besoins consolidés/copie de plages (SHIFT-021/029, partiel)
 
-PR [#131](https://github.com/punch360app/Punch360/pull/131) fusionnée, commit `f5490672fab5612d8c04701f1099edc376b28727`, CI post-fusion [#40376947911](https://github.com/punch360app/Punch360/actions/runs/40376947911) **SUCCESS**, Pages [#40376947912](https://github.com/punch360app/Punch360/actions/runs/40376947912) **SUCCESS**, migration appliquée `20261026181713_essential_worker_schedule_preferences` uniquement dans `mlabstdxxwjdpfaxiwmg`. Employé : heures souhaitées, jour/soir/nuit/week-end, volontariat sans banque de temps gagnée. Gestionnaire : saisie déléguée et date d'ancienneté/minimum/maximum déclarés, audit; certifications existantes réutilisées. SQL multi-entreprise en ROLLBACK validé. **Recette mobile authentifiée/appareils non attestée.**
+PR [#133](https://github.com/punch360app/Punch360/pull/133) fusionnée, commit `238d4b03f1788936aef9ef385675447d8221888b`. CI post-fusion [#40381240935](https://github.com/punch360app/Punch360/actions/runs/40381240935) **SUCCESS**, Pages [#40381240885](https://github.com/punch360app/Punch360/actions/runs/40381240885) **SUCCESS**; aucun changement Supabase. Vue conjointe du besoin par qualification, quarts vacants, heures planifiées; copie indépendante de plages datées, sans modifier de quart publié. Web/Expo code et tests Node; appareils physiques et authentification navigateur non encore attestés.
+
+## Parcours précédent — préférences du salarié (SHIFT-019)
+
+PR [#131](https://github.com/punch360app/Punch360/pull/131) fusionnée, CI post-fusion #40376947911 **SUCCESS**, Pages #40376947912 **SUCCESS**, migration Supabase `20261026181713_essential_worker_schedule_preferences` appliquée et SQL rollback validé. Préférences de quarts, heures souhaitées et volontariat distinct des banques de temps; gestionnaire autorisé peut consigner ancienneté/limites déclarées, sans effet automatique sur paie ou horaires. Appareils physiques non attestés.
 
 **Mise à jour : 26 octobre 2026.** Les décisions et l’ordre global sont dans le [maître](prompt-board/MASTER_PROMPT_20261025.md); point d’entrée [WORK_START](prompt-board/WORK_START.md). Les anciens états sont [archivés](prompt-board/history/CONTINUATION_BEFORE_CLEANUP_20261026.md), sans consigne de reprise active.
 
@@ -38,7 +42,7 @@ Branche `docs/master-execution-cleanup-20261026`. Nettoyage demandé par le prop
 
 ## Prochaine action exécutable
 
-Finaliser la branche `feat/qualified-coverage-consolidated-view-20261026` : vérifier la CI complète après les derniers tests, créer et fusionner une PR avec `PUNCH-PROGRESS: SHIFT-021, SHIFT-029` seulement (travail partiel), vérifier Pages sur SHA fusionné et le registre de progression. Ensuite inspecter la fondation existante des besoins récurrents et des postes SHIFT-020/026–033 avant d'étendre le moteur. Préserver Stripe #35, OAuth #102, Super Admin `SACATALOG-016` non implémenté, éditions et prix actifs. Ne pas refaire de diagnostic fournisseur sans changement démontré.
+Finir la PR #134 : contrôler les tests de la tête définitive, fusionner si CI verte, attendre le résultat Pages sur le SHA de fusion, puis vérifier la synchronisation automatique de SHIFT-021 sans déclarer la fonctionnalité complète. Étape suivante : modèles de besoins récurrents et exceptions de plages/fêtes SHIFT-020/029–033, sans moteur parallèle ni écrasement d'un horaire publié. Blocages Stripe #35 et OAuth #102 inchangés; appareil Expo/recette Web authentifiée non prouvés. Préserver SACATALOG-016, contrats, prix propriétaires 19/39/69 et six IDs Stripe, Construction, Twilio en dernier.
 
 ## Coordination et protections
 

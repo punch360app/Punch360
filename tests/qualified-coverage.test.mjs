@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {coverageLocal,createQualifiedCoverageController,summarizeCoverageDemand} from '../web/live/qualified-coverage.js';
+import {coverageLocal,createQualifiedCoverageController,summarizeCoverageDemand,qualifiedCandidateWindow,candidateStatusLabel} from '../web/live/qualified-coverage.js';
 const escape=v=>String(v??'').replaceAll('<','&lt;');
-function fixture(){const calls=[];let resolve,delay=false;const rule={id:'r',department_id:'d',title:'<Night>',certificate_title:'First aid',starts_at:'2026-11-01T03:00:00Z',ends_at:'2026-11-01T08:00:00Z',version:2,minimum_staff:1,active:true};const ui=createQualifiedCoverageController({escape,redraw(){},sb:{from(){return{select(){return this},eq(){return this},order(){return this},limit(){return Promise.resolve({data:[rule]})}}},async rpc(name,args){calls.push({name,args});if(name==='essential_entitlements')return{data:{features:['minimum_coverage']}};if(name==='essential_hr_access')return{data:{certifications:true}};if(name==='qualified_coverage_report'){if(delay)await new Promise(r=>resolve=r);return{data:{rules:1,gap_count:1,truncated:true,notice:'<Review>',gaps:[{...rule,department_name:'<Team>',staffed:0,timezone:'America/Toronto'}]}}}if(name==='essential_planning_report')return{data:{vacant_shifts:2,planned_gross_ms:36000000,coverage_gaps:[{name:'Team'}]}};return{data:'r'}}}});return{ui,calls,delay(){delay=true},release(){resolve()}}}
+function fixture(){const calls=[];let resolve,delay=false;const rule={id:'r',department_id:'d',title:'<Night>',certificate_title:'First aid',starts_at:'2026-11-01T03:00:00Z',ends_at:'2026-11-01T08:00:00Z',version:2,minimum_staff:1,active:true};const ui=createQualifiedCoverageController({escape,redraw(){},sb:{from(){return{select(){return this},eq(){return this},order(){return this},limit(){return Promise.resolve({data:[rule]})}}},async rpc(name,args){calls.push({name,args});if(name==='essential_entitlements')return{data:{features:['minimum_coverage']}};if(name==='essential_hr_access')return{data:{certifications:true}};if(name==='qualified_coverage_report'){if(delay)await new Promise(r=>resolve=r);return{data:{rules:1,gap_count:1,truncated:true,notice:'<Review>',gaps:[{...rule,department_name:'<Team>',staffed:0,timezone:'America/Toronto'}]}}}if(name==='essential_planning_report')return{data:{vacant_shifts:2,planned_gross_ms:36000000,coverage_gaps:[{name:'Team'}]}};if(name==='qualified_coverage_candidates')return{data:{rule_id:'r',start:args.p_start,end:args.p_end,available:1,unknown:1,unavailable:0,candidates:[{worker_id:'employee-a',name:'Alex Test',status:'available',source:'weekly'},{worker_id:'employee-b',name:'Kim Tester',status:'unknown',source:'not_declared'}]}};return{data:'r'}}}});return{ui,calls,delay(){delay=true},release(){resolve()}}}
 const load=ui=>ui.load({company_id:'c',role:'boss'},[{id:'d',name:'Team',active:true,location_id:'l'}],[{id:'l',timezone:'America/Toronto'}]);
 test('qualification coverage edits preserve department local wall times across DST and expected versions',async()=>{const{ui,calls}=fixture();assert.equal(coverageLocal('2026-11-01T03:00:00Z','America/Toronto'),'2026-10-31T23:00');await load(ui);await ui.handle({dataset:{action:'qualified:edit',id:'r'}});ui.input({id:'qualified-reason',value:'Updated staffing'});await ui.handle({dataset:{action:'qualified:save'}});const args=calls.find(c=>c.name==='save_qualified_coverage').args;assert.equal(args.p_start_local,'2026-10-31T23:00');assert.equal(args.p_end_local,'2026-11-01T03:00');assert.equal(args.p_version,2);assert.equal(args.p_department,'d');ui.input({id:'qualified-minimum',value:'1.5'});await ui.handle({dataset:{action:'qualified:save'}});assert.equal(calls.filter(c=>c.name==='save_qualified_coverage').length,1)});
 test('coverage renders incomplete interval totals and escaped qualification labels',async()=>{const{ui}=fixture();await load(ui);await ui.handle({dataset:{action:'qualified:report',id:'r'}});assert.match(ui.render(),/2000 premiers/);assert.match(ui.render(),/&lt;Night>/);assert.match(ui.render(),/&lt;Team>/);assert.match(ui.render(),/0\/1/)});
@@ -62,4 +62,39 @@ test('summary never calls incomplete coverage numbers zero and respects truncati
  const incomplete=summarizeCoverageDemand({gap_count:0,gaps:[],truncated:false},{vacant_shifts:null,planned_gross_ms:null});
  assert.equal(incomplete.vacantShifts,null);
  assert.equal(incomplete.plannedHours,null);
+});
+
+test('manager can inspect real certified candidates for a gap without making an offer',async()=>{
+ const {ui,calls}=fixture();
+ await load(ui);
+ await ui.handle({dataset:{action:'qualified:report',id:'r'}});
+ await ui.handle({dataset:{action:'qualified:candidates',id:'0'}});
+ const rpc=calls.find(x=>x.name==='qualified_coverage_candidates');
+ assert.equal(rpc.args.p_rule,'r');
+ assert.equal(rpc.args.p_start,'2026-11-01T03:00:00.000Z');
+ assert.equal(rpc.args.p_end,'2026-11-01T08:00:00.000Z');
+ assert.equal(ui.state.candidates.available,1);
+ assert.equal(ui.state.candidates.unknown,1);
+ assert.match(ui.render(),/Alex Test/);
+ assert.match(ui.render(),/Kim Tester/);
+ assert.match(ui.render(),/Inconnu/);
+ assert.equal(calls.some(x=>/publish|offer|assign|save_essential_shift/.test(x.name)),false);
+});
+test('candidate window takes only the first twelve hours of long gaps and never invents availability',()=>{
+ const gap={id:'rule',starts_at:'2026-11-02T08:00:00Z',ends_at:'2026-11-03T06:00:00Z'};
+ const p=qualifiedCandidateWindow(gap);
+ assert.equal(p.partial,true);
+ assert.equal(p.p_end,'2026-11-02T20:00:00.000Z');
+ assert.throws(()=>qualifiedCandidateWindow({...gap,ends_at:'2026-11-02T07:00:00Z'}),/invalide/);
+ assert.equal(candidateStatusLabel('unknown'),'Inconnu');
+ assert.equal(candidateStatusLabel('other'),'Inconnu');
+});
+test('candidate search remains hidden without HR-certification permission',async()=>{
+ const {ui,calls}=fixture();
+ await load(ui);
+ await ui.handle({dataset:{action:'qualified:report',id:'r'}});
+ ui.state.editAllowed=false;
+ assert.doesNotMatch(ui.render(),/data-action="qualified:candidates"/);
+ await ui.handle({dataset:{action:'qualified:candidates',id:'0'}});
+ assert.equal(calls.some(x=>x.name==='qualified_coverage_candidates'),false);
 });
