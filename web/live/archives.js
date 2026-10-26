@@ -2,7 +2,7 @@ import {encryptArchive,decryptArchive,inspectArchive} from './archive-codec.js';
 /** Secrets and decrypted bytes stay in memory; only an AES-GCM envelope is downloaded. */
 export function createArchivesController({sb,redraw,escape:e,document:doc=globalThis.document,crypto=globalThis.crypto,companies=()=>[],download=(text,name)=>{const url=URL.createObjectURL(new Blob([text],{type:'application/json'})),a=doc.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}}){
  let revision=0;const s={company:null,platform:false,busy:false,error:'',notice:'',reason:'',confirmation:'',summary:null,plan:null,files:[],header:null,archive:null,result:null,cleanup:[],restoreRequest:null};
- const rpc=async(name,p)=>{const r=await sb.rpc(name,p);if(r.error)throw Error(r.error.message||'Opération refusée');return r.data};
+ const rpc=async(name,p)=>{const r=await sb.rpc(name,p);if(r.error)throw Error('Opération serveur refusée. Réessayez ou contactez le support.');return r.data};
  function reset(company=null,platform=false){revision++;Object.assign(s,{company,platform,busy:false,error:'',notice:'',reason:'',confirmation:'',summary:null,plan:null,files:[],header:null,archive:null,result:null,cleanup:[],restoreRequest:null})}
  const input=el=>{if(el.id==='archive-company'){reset(el.value,true);redraw()}if(el.id==='archive-reason')s.reason=el.value;if(el.id==='archive-confirmation')s.confirmation=el.value};
  const btn=(label,action,disabled=false)=>`<button class="ess-btn" data-action="archive:${action}" ${s.busy||disabled?'disabled':''}>${label}</button>`;
