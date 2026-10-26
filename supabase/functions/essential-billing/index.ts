@@ -14,7 +14,7 @@ Deno.serve(async(req:Request)=>{
   const raw=await req.text();if(raw.length>4096)return response(413,{error:'REQUEST_TOO_LARGE'});const body=JSON.parse(raw);
   const uuid=(x:unknown)=>typeof x==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
   if(!uuid(body.companyId)||!['status','checkout','preview','confirm','portal','invoices','cancel','resume'].includes(body.action))return response(400,{error:'INVALID_REQUEST'});
-  const context=await admin.rpc('billing_service_context',{p_actor:auth.data.user.id,p_company:body.companyId,p_order:body.orderId||null});if(context.error)return response(403,{error:context.error.message});
+  const context=await admin.rpc('billing_service_context',{p_actor:auth.data.user.id,p_company:body.companyId,p_order:body.orderId||null});if(context.error)return response(403,{error:'CONTRACT_ACCESS_DENIED'});
   const secret=Deno.env.get('STRIPE_SECRET_KEY'),enabled=Deno.env.get('PUNCH_STRIPE_ENABLED')==='true';
   if(body.action==='status')return response(200,{configured:!!secret&&enabled,mode:secret?.startsWith('sk_live_')?'live':'test'});
   if(!enabled||!secret)return response(503,{error:'STRIPE_NOT_CONFIGURED'});

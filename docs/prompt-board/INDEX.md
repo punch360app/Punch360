@@ -22,6 +22,10 @@ Le giga-prompt de continuation GitHub a été rapproché du [Prompt maître](MAS
 
 Les **tâches résiduelles** sont intégrées à la section `PASSATION DU PROMPT « VALIDATION SQL ARCHIVES »` du [prompt maître](MASTER_PROMPT_20261025.md). **Aucun nouveau fichier de prompt autonome, aucun nouvel ID ni nouvelle exigence** : les activités relèvent des IDs SAUTH/SACATALOG/STRIPE/INVITE/ARCHIVE/LOCALE/QA/SERVICES et de l'issue #35. Les correctifs archives déjà livrés (notamment PR #83, issue #81 fermée) ne sont pas repris. Cette passation ne change pas le statut des cinq prompts privés Drive, non audités à ce stade, ni le total de 578 exigences.
 
+## Reprise Super Admin P0 — 26 octobre 2026
+
+Le développement a repris **sur le code actuel**, sans créer un sixième prompt Drive ni modifier les **578 IDs**. Pour l'issue [#35](https://github.com/punch360app/Punch360/issues/35), le sous-lot de sécurité Boss « réponses de facturation tardives interentreprises » est développé dans la branche `fix/p0-boss-billing-tenant-race-20261026`; trois nouveaux tests Node/DOM et une réponse Edge sans détail SQL ont été ajoutés. **Développé : oui / Testé : CI à confirmer / Déployé : non vérifié / Intervention externe : Stripe sandbox + Edge + appareils.** Voir [preuve](../SUPER_ADMIN_BOSS_BILLING_RACE_20261026.md). Le suivi Drive P-001–P-005 **reste non audité**, sans changement artificiel.
+
 ## Tableau récapitulatif initial
 - Prompts repérés et indexés : **5**
 - Prompts audités : **0**

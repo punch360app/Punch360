@@ -1,5 +1,7 @@
 # PUNCH Essentiel — suivi maître
 
+> **Lot Super Admin P0-A — correctif Boss en PR (26 oct. 2026).** Le devis négocié, l'approbation et l'affichage Boss sont déjà codés : aucun redéveloppement. Correction isolée des réponses tardives entre sociétés, anciennes commandes, prévisualisations et URLs portail, et masquage d'erreurs Edge dans `web/live/billing.js` / `essential-billing`. Trois tests de non-régression ajoutés; CI, fusion, Pages et Edge à vérifier. **E24/E25 et l'issue #35 restent EN COURS**, Stripe test/prorata/taxes/webhooks et recette appareil non prouvés. Suivi à quatre colonnes dans [rapport de ce lot](SUPER_ADMIN_BOSS_BILLING_RACE_20261026.md).
+
 **Mise à jour du 26 octobre 2026 :** les travaux **restants** de l'ancien prompt « Validation SQL archives » ont été transférés au seul prompt maître dans `docs/prompt-board/MASTER_PROMPT_20261025.md`, section **PASSATION DU PROMPT**. Priorité **Super Admin / contrats et Stripe** avant les recettes finales d'archives, QA et fournisseurs. Ne pas reconstruire les fonctions déjà fusionnées (#14, #75, #80, #82–85, #87); le défaut PDF #81 est clôturé par #83. Il ne s'agit pas de nouvelles exigences en plus des 578 IDs. Voir aussi `docs/PUNCH_WORK_CONTINUATION.md`.
 
 État du 24 octobre 2026. Les statuts s’appliquent à chaque exigence entière, pas à la seule présence d’un écran. `EN COURS` comprend les fonctions codées/testées auxquelles manque encore une partie de la recette ou du périmètre. Les preuves détaillées se trouvent dans les documents liés; les SMS restent à la fin.

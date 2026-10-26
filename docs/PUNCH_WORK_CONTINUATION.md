@@ -1,3 +1,11 @@
+# Lot courant — P0-A Boss / facturation, garde anti-réponses tardives (26 octobre 2026)
+
+Après lecture de `docs/prompt-board/WORK_START.md`, du maître de 578 IDs et de l'issue #35, le prochain correctif **ciblé** protège `web/live/billing.js` quand le Boss change d'entreprise ou se déconnecte pendant une offre négociée, un devis Stripe ou l'ouverture d'un portail. Une ancienne réponse n'ouvre plus le portail ni ne remplit une autre société. Le serveur `essential-billing` masque maintenant les erreurs internes d'autorisation. Tests `tests/billing-tenant-isolation.test.mjs` (trois scénarios).
+
+**Développé :** oui, sur branche/PR. **Testé :** CI à confirmer; aucun paiement fournisseur. **Déployé :** non vérifié (Edge officielle `essential-billing` toujours v1 au début du lot). **Intervention externe :** configuration Stripe sandbox et recette deux entreprises, appareils, publication Edge. Aucun SQL écrit ni donnée réelle modifiée. Détails dans [rapport P0-A](SUPER_ADMIN_BOSS_BILLING_RACE_20261026.md). L'issue #35 reste ouverte : ne pas annoncer la facturation négociée entièrement prête. **P0-B ensuite; SMS/Twilio en dernier.**
+
+---
+
 # Transfert acté vers le prompt maître — 26 octobre 2026
 
 **Décision officielle :** le **reste** du travail du prompt « Validation SQL archives » est maintenant consigné **uniquement** dans `docs/prompt-board/MASTER_PROMPT_20261025.md`, section **PASSATION DU PROMPT « VALIDATION SQL ARCHIVES »**. Ne plus demander à Work de recommencer cet ancien prompt; lire `docs/prompt-board/WORK_START.md` et avancer sur les IDs existants par priorité. **Départ P0 : Super Admin prix particuliers / issue #35 → Stripe test et facturation → MFA/permissions multi-compagnies → Google/Apple/courriel.** Ensuite P1 : une vraie recette PDF **synthétique** sur Supabase avec Auth/Storage, exercice de sauvegarde/PRA, tests concurrence et vrais Android/iOS/iPad. Puis traductions spécialisées/notifications; **SMS/Twilio en dernier**. Les 578 exigences du maître restent inchangées. Pas de modification des contrats, documents, heures ou paiements réels.
