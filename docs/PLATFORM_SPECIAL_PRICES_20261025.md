@@ -31,3 +31,16 @@ Le prompt de **« Validation SQL archives »** est toujours en cours. Ne pas com
 Le schéma a été appliqué exclusivement au projet `mlabstdxxwjdpfaxiwmg`, version `20261025214230`. Après installation, le scénario SQL complet a été relancé sur cette version avec rollback et a réussi. Lecture de contrôle : **0 proposition réelle**, permission `anon` à `platform_company_price_draft` refusée. Le design de la fonction ne modifie aucun état Stripe; la mise à disposition du formulaire Web ne vaut pas activation du prix négocié.
 
 Les modèles public et privé ont conservé leur isolation. Les avertissements du conseiller Supabase concernant `SECURITY DEFINER` exécutables par `authenticated` sont intentionnels pour les RPC protégées par `private.assert_live_platform_session`; ils nécessitent une revue régulière, sans élargissement des grants.
+
+## Rectificatif propriétaire — 26 octobre 2026 (P0-A / SACATALOG)
+
+Le texte historique ci-dessus décrivait l'ancien formulaire comme si les 5 places, +3 $ et des lots indépendants restaient la référence. **Ces valeurs ne sont plus valables.** La décision formelle du propriétaire du 26 octobre confirme les forfaits courants : **Essentiel 19 $/20 places, Plus 39 $/25, Pro 69 $/50, +2 $ CAD/personne supplémentaire**, −15 % annuel, avec six Price IDs historiques conservés.
+
+La console `web/live/platform-price-proposals.js` préremplissait encore `seats=5`, `included=5` et `extra=300`. Elle affiche maintenant 20/1900/20/200 pour Essentiel, 25/3900/25/200 pour Plus et 50/6900/50/200 pour Pro. Le changement de forfait met à jour les valeurs **uniquement si le Super Admin ne les a pas personnalisées**; les valeurs déjà saisies restent inchangées avec une invitation à les revérifier. Un devis négocié demeure une proposition non active tant que le Boss/Stripe n'ont pas confirmé la transaction. Aucun seed ou contrat historique n'est modifié.
+
+- **Développé :** valeurs Web, garde pour saisie personnalisée, tests Node/DOM.
+- **Testé :** CI à vérifier pour la PR dédiée; aucune approbation commerciale ou recette Stripe sandbox réalisée.
+- **Déployé :** publication GitHub Pages à vérifier séparément.
+- **Intervention externe :** toute nouvelle proposition réelle exige le contrôle Super Admin, le Boss, les preuves et la recette fournisseur; issue #35 ouverte.
+
+Le prompt unique courant est **578 exigences/29 lots**, non la référence historique « 453 supplémentaires ». Ne pas repartir de la validation PDF ni réinitialiser les tarifs du propriétaire.
