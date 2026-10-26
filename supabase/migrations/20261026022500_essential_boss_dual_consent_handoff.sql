@@ -63,6 +63,8 @@ begin
  then raise exception using errcode='22023',message='UUID et motif de transfert obligatoires';end if;
  perform 1 from public.companies where id=p_company and product_edition='essential' for update;
  if not found then raise exception using errcode='42501',message='Compagnie Essentiel requise';end if;
+ if (select count(*) from public.company_members where company_id=p_company and role='boss' and status='active')<>1
+ then raise exception using errcode='40001',message='Un Boss actif unique est requis avant une succession';end if;
  if not exists(select 1 from public.company_members where company_id=p_company
  and user_id=p_successor and role='admin' and status='active')
  then raise exception using errcode='42501',message='Successeur administrateur actif requis';end if;
@@ -121,6 +123,8 @@ begin
  if not exists(select 1 from auth.sessions where id=h.accepted_session
  and user_id=h.to_user and aal='aal2' and (not_after is null or not_after>clock_timestamp()))
  then raise exception using errcode='42501',message='Le successeur doit confirmer avec une session MFA vivante';end if;
+ if (select count(*) from public.company_members where company_id=p_company and role='boss' and status='active')<>1
+ then raise exception using errcode='40001',message='Plusieurs Boss actifs : transfert manuel requis';end if;
  if (select count(*) from public.company_members where company_id=p_company and status='active'
   and user_id in(h.from_user,h.to_user) and ((user_id=h.from_user and role='boss') or (user_id=h.to_user and role='admin')))<>2
  then raise exception using errcode='40001',message='Rôles ou comptes changés, recommencer le transfert';end if;
