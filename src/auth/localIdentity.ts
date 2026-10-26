@@ -3,16 +3,13 @@ import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
 import {requireServerVerifiedIdentity} from './serverVerifiedIdentity';
 import {selectNativeDeviceIdentity} from './deviceIdentityGate';
+import {createNativeIdentityCache} from './nativeIdentityCache';
 export type LocalIdentity={id:string;email?:string};
 const KEY='punch-last-identity';
-export async function rememberLocalIdentity(user:LocalIdentity){await AsyncStorage.setItem(KEY,JSON.stringify({id:user.id,email:user.email}));}
-export async function forgetLocalIdentity(){await AsyncStorage.removeItem(KEY);}
-export async function cachedLocalIdentity():Promise<LocalIdentity|null>{
- try{
-  const raw=await AsyncStorage.getItem(KEY);
-  return raw?JSON.parse(raw) as LocalIdentity:null;
- }catch{return null;}
-}
+const cache=createNativeIdentityCache(AsyncStorage,KEY);
+export function rememberLocalIdentity(user:LocalIdentity):Promise<void>{return cache.remember(user);}
+export function forgetLocalIdentity():Promise<void>{return cache.forget();}
+export function cachedLocalIdentity():Promise<LocalIdentity|null>{return cache.read();}
 export async function getLocalIdentity():Promise<LocalIdentity>{
  const network=await Network.getNetworkStateAsync();
  const offline=network.isConnected===false||network.isInternetReachable===false;
