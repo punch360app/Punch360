@@ -1,7 +1,7 @@
 import {arrivalIssuePayload,arrivalIssueForShift,canReportArrivalIssue,arrivalStatusLabel,ARRIVAL_ISSUE_LABELS} from './arrival-issues.js';
 
 /** Private sidecar of the published schedule. Never calls punch/GPS/absence/payment. */
-export function createArrivalIssuesController({sb,document:doc,escape:e,redraw,notify}){
+export function createArrivalIssuesController({sb,document:doc,escape:e,redraw,notify,workerLabel=(id)=>id}){
  let revision=0;
  const s={company:null,user:null,own:null,manager:false,items:[],hasMore:false,unavailable:false,
   openShift:null,openKind:null,request:null,error:'',busy:false};
@@ -55,7 +55,7 @@ export function createArrivalIssuesController({sb,document:doc,escape:e,redraw,n
   (s.hasMore?'<p role="alert">Plus de 500 signalements. Le résultat est limité : consulter l’historique séparément.</p>':'')+
   (s.items.length?s.items.map(x=>'<article class="ess-person"><div>'+
    '<b>'+e(x.kind==='late'?'Retard déclaré':'Problème d’accès')+'</b>'+
-   '<small>Salarié : '+e(x.worker_id)+' · Quart : '+e(x.shift_id)+'</small>'+
+   '<small>Salarié : '+e(workerLabel(x.worker_id))+' · Quart : '+e(x.shift_id)+'</small>'+
    (x.estimate_minutes?'<small>Estimation volontaire : '+e(x.estimate_minutes)+' min (non vérifiée)</small>':'')+
    (x.private_message?'<p>'+e(x.private_message)+'</p>':'')+
    '<small>'+e(arrivalStatusLabel(x))+'</small></div>'+
