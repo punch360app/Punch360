@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:37:23.172Z",
+  "generated_at": "2026-10-27T10:47:57.595Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1340,7 +1340,8 @@
         164,
         165,
         174,
-        175
+        175,
+        176
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1363,7 +1364,8 @@
         153,
         163,
         174,
-        175
+        175,
+        176
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1414,7 +1416,8 @@
       "pr": [
         163,
         174,
-        175
+        175,
+        176
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1443,6 +1446,18 @@
     }
   },
   "activity": [
+    {
+      "number": 176,
+      "sha": "b126577a77be4ad862aed001ed40a47f865e19ea",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-011",
+        "MISSION-013"
+      ],
+      "title": "Missions — démarrage volontaire En cours, puis Terminer ou Signaler",
+      "merged_at": "2026-10-27T10:47:47Z"
+    },
     {
       "number": 175,
       "sha": "23def3d8faf98b5dc5bdd5dae1ee3d31dca6fd5b",
@@ -1995,20 +2010,6 @@
       ],
       "title": "Suivi Work — rattacher 56 exigences supplémentaires aux anciennes PR fusionnées",
       "merged_at": "2026-10-26T14:26:18Z"
-    },
-    {
-      "number": 122,
-      "sha": "c04abdbbfdfd2a23e5a1acfdb8e0b786faa6161c",
-      "ci": "success",
-      "ids": [
-        "GOV-009",
-        "GOV-010",
-        "GOV-011",
-        "GOV-012",
-        "GOV-014"
-      ],
-      "title": "Suivi PUNCH — vrai avancement Work depuis GitHub, avec rétroactivité et mise à jour automatique",
-      "merged_at": "2026-10-26T14:20:07Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
