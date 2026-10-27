@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T19:08:56.531Z",
+  "generated_at": "2026-10-27T20:39:18.097Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 194,
+      "sha": "5db3e305681fdff1e1f0e4b083cccf02f703485e",
+      "ci": "success",
+      "ids": [],
+      "title": "CI visuelle : captures Web, comparaison Figma approuvée et dossier de correction Work",
+      "merged_at": "2026-10-27T20:39:08Z"
+    },
+    {
       "number": 193,
       "sha": "b9a01ad754c4072b050593853dbe9414adfe8d49",
       "ci": "success",
@@ -2030,16 +2038,6 @@
       ],
       "title": "Essentiel — prochaine intervention personnelle sur Accueil Punch",
       "merged_at": "2026-10-26T21:01:52Z"
-    },
-    {
-      "number": 140,
-      "sha": "3bf769b09bff8b9800e3caec488356f33e018e49",
-      "ci": "success",
-      "ids": [
-        "MLOC-003"
-      ],
-      "title": "Essentiel — calendrier par employé et par lieu d’intervention",
-      "merged_at": "2026-10-26T20:50:25Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
