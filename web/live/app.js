@@ -388,6 +388,10 @@ if(a==='navRemember'||a==='navForget'){
  localStorage.setItem(ctx.key,id);
  window.open(url,'_blank','noopener,noreferrer');draw();return;
 }
+if(['mission:upcoming-toggle','mission:upcoming-load'].includes(a)){
+  if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
+  await personalMissions.handleUpcoming(a.slice('mission:upcoming-'.length));draw();return;
+}
 if(['mission:issue-open','mission:issue-close','mission:issue-submit'].includes(a)){
   if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
   await personalMissions.handleIssue(a.slice('mission:'.length),id);draw();return;
