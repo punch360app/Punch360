@@ -1,5 +1,5 @@
 // Compare Chromium screenshots with SHA-256-verified, owner-reviewed references.
-// A Figma frame is not automatically an approved baseline, particularly for a different screen/role.
+// A generated image or a screenshot is not automatically an approved baseline, especially for another screen/role.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -33,12 +33,12 @@ for (const name of images) {
     continue;
   }
   if (!approval) {
-    results.push({image:name,status:'awaiting-approved-Figma-baseline',reason:'No owner-approved manifest entry'});
+    results.push({image:name,status:'awaiting-approved-baseline',reason:'No owner-approved manifest entry'});
     continue;
   }
-  // There must be an explicit approved hash AND an identified Figma node and screen state.
+  // Require an approved hash, documented approved source and exact screen state.
   if (!/^[a-f0-9]{64}$/i.test(String(approval.approvedSha256||'')) ||
-      !/^\d+[:-]\d+$/.test(String(approval.figmaNodeId||'')) ||
+      !['capture-reelle-validee','design-valide'].includes(approval.approvedSource) ||
       approval.screen!=='logged-out' || !approval.approvedBy || !approval.approvedAt) {
     results.push({image:name,status:'failed',reason:'Incomplete approval metadata'});
     failures++;
@@ -82,7 +82,7 @@ for (const name of images) {
       failures++;
       fs.writeFileSync(path.join(output,'diff-'+name),PNG.sync.write(overlay));
     }
-    results.push({image:name,status,differentPixels:different,totalPixels:total,differentRatio:Number(ratio.toFixed(6)),figmaNodeId:approval.figmaNodeId});
+    results.push({image:name,status,differentPixels:different,totalPixels:total,differentRatio:Number(ratio.toFixed(6)),approvedSource:approval.approvedSource});
   } catch (error) {
     results.push({image:name,status:'failed',reason:String(error.message)});
     failures++;
@@ -107,9 +107,9 @@ for (const device of ['S25','iPad','PC']) {
 }
 const report={
   generatedAt:new Date().toISOString(),
-  coverage:'Public logged-out Web only; no Supabase, Stripe, private Figma contents or authenticated screens',
+  coverage:'Public logged-out Web only; no Supabase, Stripe, private services or authenticated screens',
   screenshots:images.length,
-  approvedBaselines:results.filter(result=>result.status==='passed'||(result.status==='failed' && result.figmaNodeId)).length,
+  approvedBaselines:results.filter(result=>result.status==='passed'||(result.status==='failed' && result.approvedSource)).length,
   failures, results, audits
 };
 const feedback=buildFeedback(report,audits);
@@ -120,7 +120,6 @@ const lines=[
   '# Work — revue visuelle automatique PUNCH 360°',
   '',
   'Etat : '+feedback.state+'; captures : '+report.screenshots+'; references approuvees comparees : '+report.approvedBaselines+'; echecs : '+failures,
-  'Figma (orientation conceptuelle, pas une reference d ecran deconnecte) : '+feedback.figmaBoard,
   '',
   '## Actions classees par priorite',
   ...feedback.issues.map(item=>'- **'+item.priority+' / '+item.device+' / '+item.code+'** : '+item.finding+' Action : '+item.nextStep),

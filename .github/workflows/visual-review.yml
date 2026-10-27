@@ -53,7 +53,7 @@ jobs:
           exit 1
       - name: Capture and audit unauthenticated mobile, tablet and desktop UI
         run: node .github/scripts/visual-capture.cjs
-      - name: Compare only owner-approved Figma baselines and create Work recommendations
+      - name: Compare owner-approved screenshot baselines and create Work recommendations
         if: always()
         run: node .github/scripts/visual-compare.cjs
       - name: Preserve screenshots, diffs, HTML and Work repair instructions

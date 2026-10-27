@@ -51,6 +51,10 @@ En l’absence d’un défaut critique ouvert et réalisable, suivre les jalons 
 
 Un prérequis réellement bloqué empêche uniquement la livraison qui en dépend. Documenter la cause et avancer sur le prochain parcours indépendant, y compris d’un jalon suivant. Ne pas déclarer le jalon bloqué terminé et ne pas affaiblir une protection pour le contourner.
 
+## Gouvernance UX/UI autonome — sans outil de design obligatoire
+
+Pour chaque lot comportant un nouvel écran, un changement visuel ou un parcours utilisateur, appliquer le [protocole UX/UI autonome Work](UX_UI_AUTONOME_WORKFLOW.md) : regard du designer, utilisateur final par rôle, accessibilité, critique proactive, captures réelles avant/après et tests ciblés. Corriger directement les retouches mineures; obtenir l'accord du propriétaire avant une refonte majeure ou un changement de comportement. Le code exécuté, les droits, les forfaits et les décisions métier priment toujours sur les images conceptuelles. **Aucun outil graphique, abonnement, crédit IA ou maquette tierce ne doit bloquer le développement.**
+
 ## Méthode par lots locaux — décision du 27 octobre 2026
 
 **Exécution prioritaire : développer et tester localement des parcours complets, puis faire un push groupé et une seule PR par parcours.** Appliquer le [protocole opérationnel des lots locaux](LOCAL_BATCH_WORKFLOW.md) avec un vrai espace Git/terminal lorsqu'il est disponible; inspecter les branches/PR pertinentes une seule fois avant le lot, réutiliser la copie locale et les modules existants, coder ensemble Web/Expo/backend/SQL/RLS/tests, faire des contrôles ciblés au fil du développement, et éviter les micro-pushs et attentes GitHub pour chaque fichier. Le lot peut être substantiel mais doit rester cohérent et récupérable.

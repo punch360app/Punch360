@@ -2,7 +2,7 @@
 
 ## Reprendre l’état réel
 
-**Design UX/UI Figma :** lire le [contrat de collaboration Figma/Work](FIGMA_UX_WORKFLOW.md) pour les nouveaux écrans et refontes importantes. Le style simple et épuré est validé par le propriétaire; préserver l'avancement des parcours métier, ne jamais transformer un travail Figma en prérequis bloquant de chaque lot.
+**Direction UX/UI autonome :** appliquer le [protocole Work UX/UI](UX_UI_AUTONOME_WORKFLOW.md) sur les écrans et parcours touchés; utiliser les captures réelles, respecter la charte approuvée et les droits, corriger les retouches simples directement, soumettre les refontes majeures à validation. Aucun outil graphique tiers n'est un prérequis ni un motif pour bloquer les lots.
 
 1. Lire le [prompt maître](MASTER_PROMPT_20261025.md) : décisions actuelles, ordre global, exigences et critères du module choisi.
 2. Lire **l’état courant unique** dans [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md). Les autres passations et anciens rapports sont historiques, pas des ordres de reprise.
