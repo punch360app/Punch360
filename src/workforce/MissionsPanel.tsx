@@ -268,6 +268,9 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
  const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false),[tourOpen,setTourOpen]=useState(false),[tourRouteId,setTourRouteId]=useState<string|null>(null);
  const [issueOpen,setIssueOpen]=useState(false),[issueReason,setIssueReason]=useState(''),[issueNote,setIssueNote]=useState('');
+ const [detailOpen,setDetailOpen]=useState(false),[detailBusy,setDetailBusy]=useState(false),
+  [detailInstructions,setDetailInstructions]=useState(''),[detailError,setDetailError]=useState('');
+ const detailGeneration=useRef(0);
  const [upcomingOpen,setUpcomingOpen]=useState(false),[upcomingDay,setUpcomingDay]=useState(nextMissionDay()),
   [upcomingLoadedDay,setUpcomingLoadedDay]=useState<string|null>(null),[upcomingItems,setUpcomingItems]=useState<Row[]>([]),
   [upcomingTruncated,setUpcomingTruncated]=useState(false),[upcomingError,setUpcomingError]=useState(''),[upcomingBusy,setUpcomingBusy]=useState(false);
@@ -281,16 +284,34 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    setEnabled(!!res.enabled);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
   }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;upcomingGeneration.current++;setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
-  return()=>{current.current++;upcomingGeneration.current++;subscription.remove()};
+  return()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;subscription.remove()};
  },[companyId,workerId]);
  const progress=missionProgress(items),next=progress.next;
  const missionConflict='ambiguous' in progress&&progress.ambiguous===true;
  const missionConflictRank='ambiguousRank' in progress?progress.ambiguousRank:null;
  const tour=personalMissionTour(items,workerId);
- useEffect(()=>{setNavOpen(false);setIssueOpen(false);setIssueReason('');setIssueNote('')},[next?.id]);
+ useEffect(()=>{detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setNavOpen(false);setIssueOpen(false);setIssueReason('');setIssueNote('')},[next?.id,next?.version]);
+ const showDetails=()=>{
+  if(!next||busy||truncated||missionConflict)return;
+  if(detailOpen){detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');return;}
+  const gen=++detailGeneration.current,id=next.id,version=next.version;
+  setDetailOpen(true);setDetailBusy(true);setDetailInstructions('');setDetailError('');
+  void (async()=>{
+   try{
+    const network=await Network.getNetworkStateAsync();
+    if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise pour ouvrir les instructions privées.');
+    if(gen!==detailGeneration.current)return;
+    const data=await rpc('get_essential_published_mission_details',{p_company:companyId,p_id:id,p_version:version});
+    if(gen!==detailGeneration.current)return;
+    if(data.id!==id||data.version!==version)throw Error('Mission modifiée : rechargez les détails.');
+    setDetailInstructions(String(data.instructions||''));
+   }catch(e:any){if(gen===detailGeneration.current){setDetailInstructions('');setDetailError(e.message||'Instructions privées indisponibles.');}}
+   finally{if(gen===detailGeneration.current)setDetailBusy(false)}
+  })();
+ };
  const reportIssue=()=>{
   if(!next||busy||truncated||missionConflict)return;
   if(!MISSION_ISSUE_REASONS.some(([key])=>key===issueReason)){setMessage('Choisissez un motif de signalement.');return;}
@@ -369,6 +390,14 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
     {label('Destination de cette mission seulement. Aucun trajet, GPS PUNCH ou pointage déclenché.')}
     {routes.choices.map(route=><View key={route.id}>{button(route.label+' · juste cette fois',
       ()=>{void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))})}</View>)}
+   </View>:null}
+   {button(detailOpen?'Masquer les détails':'Détails de la mission',showDetails,detailBusy)}
+   {detailOpen?<View style={{padding:10,borderRadius:9,backgroundColor:'white',gap:5}}>
+    {label('Instructions de cette mission — consultées sur demande')}
+    {detailBusy?label('Chargement sécurisé...'):detailError?
+     <Text accessibilityRole="alert" style={{color:'#B04C37'}}>{detailError}</Text>:
+     <Text style={{color:'#243B2A'}}>{detailInstructions||'Aucune instruction supplémentaire publiée.'}</Text>}
+    {label('Aucun pointage ni GPS déclenché.')}
    </View>:null}
    {button('Terminer',complete,busy)}
    {button(issueOpen?'Fermer le signalement':'Signaler une mission impossible',()=>setIssueOpen(v=>!v),busy)}

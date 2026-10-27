@@ -284,13 +284,13 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
- let generation=0,upcomingGeneration=0;
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
+ let generation=0,upcomingGeneration=0,detailsGeneration=0;
  async function load(company,user,worker,day=missionDate()){
   const same=s.company===company&&s.user===user&&s.worker===worker;
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
   if(!same){s.pending.clear();s.issue=null;s.upcoming.open=false;s.upcoming.day=nextMissionDay();}
-  upcomingGeneration++;Object.assign(s.upcoming,{loadedDay:null,items:[],truncated:false,error:'',busy:false});
+  upcomingGeneration++;detailsGeneration++;s.details=null;Object.assign(s.upcoming,{loadedDay:null,items:[],truncated:false,error:'',busy:false});
   const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
   try{
@@ -300,7 +300,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    s.items=response.data?.items||[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;upcomingGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:'',issue:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
+ function reset(){generation++;upcomingGeneration++;detailsGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:'',issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker)return '';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
@@ -374,7 +374,14 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
      routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
      '</details>':'')+
    renderTour()+
-   '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button>'+ 
+   '<p>Terminer cette mission ne termine pas votre journée.</p>'+ 
+   '<button type="button" class="ess-btn" data-action="mission:details-'+(s.details?.id===x.id?'close':'open')+'" data-id="'+e(x.id)+'"> '+(s.details?.id===x.id?'Masquer les détails':'Détails de la mission')+'</button>'+
+   (s.details?.id===x.id?'<section class="ess-panel" aria-label="Instructions de mission"><h4>Instructions de cette mission</h4>'+
+     (s.details.loading?'<p role="status">Chargement sécurisé...</p>':
+      s.details.error?'<p role="alert">'+e(s.details.error)+'</p>':
+      '<p>'+e(s.details.instructions||'Aucune instruction supplémentaire publiée.')+'</p>')+
+     '<p class="ess-fine">Informations consultées sur demande. Ne modifie pas le pointage et ne démarre aucun GPS.</p></section>':'')+
+   '<button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button>'+ 
    '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler une mission impossible</button>'+
    (s.issue?.id===x.id?'<div class="ess-panel"><p>Le responsable sera informé. Aucun retard, absence ou pointage ne sera déduit.</p>'+
     '<label>Motif<select id="mission-issue-reason"><option value="">Choisir un motif</option>'+MISSION_ISSUE_REASONS.map(([k,v])=>'<option value="'+e(k)+'" '+(s.issue.reason===k?'selected':'')+'>'+e(v)+'</option>').join('')+'</select></label>'+
@@ -403,6 +410,30 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    u.items=response.data.items||[];u.truncated=!!response.data.truncated;u.loadedDay=day;return true;
   }catch(err){if(gen===upcomingGeneration)u.error=err.message||'Interventions à venir indisponibles.';return false;}
   finally{if(gen===upcomingGeneration){u.busy=false;redraw();}}
+ }
+ async function handleDetails(action,id){
+  if(!s.company||!s.user||!s.worker||!s.enabled||s.truncated||s.busy)
+   throw Error('Détails non autorisés pour cette compagnie.');
+  if(action==='close'){
+   detailsGeneration++;s.details=null;redraw();return true;
+  }
+  const next=missionProgress(s.items).next;
+  if(action!=='open'||!next||next.id!==id||next.status!=='published'||missionProgress(s.items).ambiguous)
+   throw Error('Mission publiée absente ou modifiée : actualisez.');
+  const gen=++detailsGeneration,company=s.company,user=s.user,worker=s.worker,version=next.version;
+  s.details={id,version,loading:true,error:'',instructions:''};redraw();
+  try{
+   if(doc.defaultView.navigator.onLine===false)throw Error('Connexion requise pour afficher les instructions privées.');
+   const response=await sb.rpc('get_essential_published_mission_details',{p_company:company,p_id:id,p_version:version});
+   if(response.error)throw response.error;
+   if(gen!==detailsGeneration||s.company!==company||s.user!==user||s.worker!==worker)return false;
+   const current=missionProgress(s.items).next;
+   if(!current||current.id!==id||current.version!==version||
+    response.data?.id!==id||response.data?.version!==version)
+    throw Error('Mission actualisée entre-temps. Rechargez les détails.');
+   s.details.instructions=String(response.data.instructions||'');return true;
+  }catch(err){if(gen===detailsGeneration){s.details.instructions='';s.details.error=err.message||'Détails indisponibles.';}return false;}
+  finally{if(gen===detailsGeneration){s.details.loading=false;redraw();}}
  }
  async function handleIssue(action,id){
   if(!s.company||!s.worker||!s.enabled||s.busy||s.truncated)throw Error('Mission non autorisée ou tournée incomplète.');
@@ -449,5 +480,5 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{s.error='Fin non confirmée : réessayez la même demande après vérification.';return false;}
   finally{s.busy=false;redraw();}
  }
- return {state:s,load,render,finish,handleIssue,handleUpcoming,reset};
+ return {state:s,load,render,finish,handleIssue,handleUpcoming,handleDetails,reset};
 }
