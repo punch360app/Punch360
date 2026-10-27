@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T00:17:31.362Z",
+  "generated_at": "2026-10-27T01:01:43.663Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1373,12 +1373,34 @@
       "external_required": true,
       "pr": [
         157,
-        159
+        159,
+        160
       ],
       "note": "Travail rattaché à la PR #157. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-008": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        160
+      ],
+      "note": "Travail rattaché à la PR #160. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 160,
+      "sha": "e4262dc0a282b2460370ac4761159e4ce88c089a",
+      "ci": "success",
+      "ids": [
+        "MISSION-008",
+        "MISSION-009"
+      ],
+      "title": "Missions — réordonner deux étapes déjà publiées sans toucher aux heures",
+      "merged_at": "2026-10-27T01:01:34Z"
+    },
     {
       "number": 159,
       "sha": "7cd9e6e6bdd7312b1eb7b8ade040159e4cd47f6f",
@@ -1909,15 +1931,6 @@
       "ids": [],
       "title": "P0-B — Refuser les paniers Stripe multi-lignes avant le webhook de facturation",
       "merged_at": "2026-10-26T11:00:24Z"
-    },
-    {
-      "number": 106,
-      "sha": null,
-      "head_sha": "c7373d72473e2f2863daf304efbee0e55c72e077",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-C — Empêcher l’ancienne identité de revenir après déconnexion hors ligne",
-      "merged_at": "2026-10-26T10:52:59Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
