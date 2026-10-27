@@ -45,7 +45,7 @@ test('Boss moves published mission from Nadine to Mathieu, and only Mathieu sees
  assert.deepEqual(fx.notices,['worker-a','worker-b']);
  assert.equal(fx.calls.filter(c=>/punch|payroll|scheduled_shift|gps/.test(c.name)).length,0);
  const old=createPersonalMissionController({sb:fx.sb,document:fx.window.document,escape,redraw(){},notify(){}});
- await old.load('company','user-a','worker-a',day);assert.equal(old.render(),'');
+ await old.load('company','user-a','worker-a',day);assert.match(old.render(),/Aucune mission pour aujourd’hui/);assert.doesNotMatch(old.render(),/Nettoyage/);
  const newer=createPersonalMissionController({sb:fx.sb,document:fx.window.document,escape,redraw(){},notify(){}});
  await newer.load('company','user-b','worker-b',day);assert.match(newer.render(),/Nettoyage/);
  await fx.window.happyDOM.close();

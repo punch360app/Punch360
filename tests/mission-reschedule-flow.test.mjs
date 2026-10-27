@@ -61,7 +61,7 @@ test('Boss reprograms published mission on Web, employee old day loses it and ne
  assert.equal(fx.rows[0].worker_id,'worker-1');
  assert.deepEqual(fx.notifications,['worker-1']);
  const old=createPersonalMissionController({sb:fx.sb,document:fx.win.document,escape:e,redraw(){},notify(){}});
- await old.load('company-1','user-1','worker-1',today);assert.equal(old.render(),'');
+ await old.load('company-1','user-1','worker-1',today);assert.match(old.render(),/Aucune mission pour aujourd’hui/);assert.doesNotMatch(old.render(),/Charlesbourg/);
  const next=createPersonalMissionController({sb:fx.sb,document:fx.win.document,escape:e,redraw(){},notify(){}});
  await next.load('company-1','user-1','worker-1',tomorrow);
  assert.match(next.render(),/Charlesbourg/);

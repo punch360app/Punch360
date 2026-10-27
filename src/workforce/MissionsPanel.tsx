@@ -9,6 +9,7 @@ import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../we
 import {missionCancelArgs} from '../../web/live/mission-cancel.js';
 import {missionReassignArgs} from '../../web/live/mission-reassign.js';
 import {missionRescheduleArgs} from '../../web/live/mission-reschedule.js';
+import {nextMissionDay,validateUpcomingMissionDay} from '../../web/live/mission-upcoming.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
 async function rpc(name:string,args:Row):Promise<Row>{
@@ -267,6 +268,10 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
  const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false),[tourOpen,setTourOpen]=useState(false),[tourRouteId,setTourRouteId]=useState<string|null>(null);
  const [issueOpen,setIssueOpen]=useState(false),[issueReason,setIssueReason]=useState(''),[issueNote,setIssueNote]=useState('');
+ const [upcomingOpen,setUpcomingOpen]=useState(false),[upcomingDay,setUpcomingDay]=useState(nextMissionDay()),
+  [upcomingLoadedDay,setUpcomingLoadedDay]=useState<string|null>(null),[upcomingItems,setUpcomingItems]=useState<Row[]>([]),
+  [upcomingTruncated,setUpcomingTruncated]=useState(false),[upcomingError,setUpcomingError]=useState(''),[upcomingBusy,setUpcomingBusy]=useState(false);
+ const upcomingGeneration=useRef(0);
  async function refresh(){
   if(!workerId||!companyId)return;
   const gen=++current.current;
@@ -276,10 +281,10 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    setEnabled(!!res.enabled);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
   }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;upcomingGeneration.current++;setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
-  return()=>{current.current++;subscription.remove()};
+  return()=>{current.current++;upcomingGeneration.current++;subscription.remove()};
  },[companyId,workerId]);
  const progress=missionProgress(items),next=progress.next;
  const missionConflict='ambiguous' in progress&&progress.ambiguous===true;
@@ -323,17 +328,35 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      finally{setBusy(false)}
     })()}}]);
  };
+ const loadUpcoming=()=>{
+  if(!workerId||!companyId||!enabled||upcomingBusy)return;
+  setUpcomingItems([]);setUpcomingLoadedDay(null);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(true);
+  const gen=++upcomingGeneration.current;
+  void (async()=>{
+   try{
+    validateUpcomingMissionDay(upcomingDay,missionDate());
+    const network=await Network.getNetworkStateAsync();
+    if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise pour consulter vos interventions à venir.');
+    if(gen!==upcomingGeneration.current)return;
+    const result=await rpc('list_essential_missions',{p_company:companyId,p_day:upcomingDay,p_worker:workerId,p_include_drafts:false});
+    if(gen!==upcomingGeneration.current)return;
+    if(!result.enabled)throw Error('Le module Missions est désactivé pour cette compagnie.');
+    setUpcomingItems(result.items||[]);setUpcomingTruncated(!!result.truncated);setUpcomingLoadedDay(upcomingDay);
+   }catch(e:any){if(gen===upcomingGeneration.current){setUpcomingItems([]);setUpcomingLoadedDay(null);setUpcomingError(e.message||'Interventions futures indisponibles.');}}
+   finally{if(gen===upcomingGeneration.current)setUpcomingBusy(false)}
+  })();
+ };
+ const futureTour=upcomingLoadedDay?personalMissionTour(upcomingItems,workerId,25,upcomingLoadedDay):null;
  if(!workerId)return null;
  if(connectionWarning&&!enabled)return <View accessibilityRole="alert" style={{padding:12,borderRadius:11,backgroundColor:'#F7FAF5',borderWidth:1,borderColor:'#DCE8D6',gap:6}}>
   {title('Missions momentanément indisponibles')}
   {label('Connexion requise pour actualiser vos missions. Aucune fin ni sortie de pointage n’a été enregistrée.')}
  </View>;
  if(!enabled)return null;
- if(!progress.total&& !message)return null;
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
-  {title(progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
+  {title(!progress.total?'Aucune mission pour aujourd’hui':progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
   {!next&&progress.blocked&&!missionConflict?label('Aucune prochaine mission publiée. Les étapes signalées nécessitent un suivi; le pointage ne change pas.'):null}
   {missionConflict?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
    Plusieurs missions publiées portent le rang {String(missionConflictRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
@@ -378,6 +401,32 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    </View>)}
    {tour.hasMore?label('Seules les 25 premières missions sont affichées; contactez le responsable pour une tournée segmentée.'):null}
   </View>:null}
+  <View style={{gap:6,padding:9,backgroundColor:'white',borderRadius:9}}>
+   {button(upcomingOpen?'Masquer mes interventions à venir':'Consulter mes prochaines interventions',()=>{
+    upcomingGeneration.current++;setUpcomingOpen(v=>!v);setUpcomingItems([]);setUpcomingLoadedDay(null);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);
+   })}
+   {upcomingOpen?<View style={{gap:6}}>
+    {label('Consultez les 14 prochains jours, uniquement vos missions publiées pour la compagnie actuelle. Aucun pointage ni trajet automatique.')}
+    {input('Date future AAAA-MM-JJ',upcomingDay,setUpcomingDay)}
+    {button('Afficher cette journée',loadUpcoming,upcomingBusy)}
+    {upcomingBusy?label('Chargement des interventions...'):null}
+    {!!upcomingError?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>{upcomingError}</Text>:null}
+    {upcomingTruncated?label('Plus de 200 missions : tournée future incomplète. Contactez votre responsable.'):null}
+    {futureTour&&!upcomingTruncated&&!upcomingBusy?<>
+     {label('Interventions du '+upcomingLoadedDay+' · '+futureTour.total+' mission(s)'+(futureTour.hasMore?' (25 premières affichées)':''))}
+     {futureTour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Plusieurs missions portent le même rang. Confirmez l’ordre avec votre responsable.</Text>:null}
+     {futureTour.rows.map((stop:Row)=><View key={stop.id} style={{gap:4,padding:8,borderRadius:8,backgroundColor:'#F7FAF5'}}>
+      {title(stop.sort_order+'. '+stop.title)}
+      {label(stop.client_name+' · '+stop.site_name+' · '+(stop.status==='published'?'À faire':stop.status==='completed'?'Terminée':'À traiter'))}
+      {label(missionAddress(stop))}
+      {stop.status==='published'?missionNavigationOptions(stop,Platform.OS,navProvider).choices.map(route=>
+       <View key={route.id}>{button(route.label+' · cette intervention',()=>{
+        void Linking.openURL(route.url).catch(err=>setUpcomingError(err.message||'Navigation indisponible'));
+       })}</View>):null}
+     </View>)}
+    </>:null}
+   </View>:null}
+  </View>
   {!!message?<Text accessibilityLiveRegion="polite" style={{color:'#B04C37'}}>{message}</Text>:null}
   {truncated?label('Plus de 200 missions : demandez une tournée segmentée au responsable.'):null}
  </View>;

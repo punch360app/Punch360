@@ -1,5 +1,19 @@
 # PUNCH 360° — État courant unique
 
+## État courant vérifié — 26 octobre 2026, 22 h EDT
+
+**Dernier lot fusionné :** [PR #167](https://github.com/punch360app/Punch360/pull/167), `MISSION-008` partiel. Boss/Admin Essentiel peut reprogrammer explicitement une mission encore publiée (date, adresse client active, rang du même salarié) sur Web et source Expo, avec version, idempotence, audit, notification et droits entre compagnies. Fusion `9aa1c5364e6b95e8e7711f15471021870ff82e47`. Migration Supabase **appliquée uniquement dans `mlabstdxxwjdpfaxiwmg`** sous `20261027022156_essential_published_mission_reschedule`; test transactionnel SQL avec deux compagnies exécuté avec succès (ROLLBACK). CI finale de PR `40438060066`/`40438063932`, CI post-fusion `40438191199`, Pages `40438191114` et registre `40438193402` **SUCCESS**. Recette Web réellement authentifiée et installations Android/iOS **non attestées** : ne pas déclarer l'exigence entière terminée.
+
+**Lot actif :** branche `feat/essential-personal-upcoming-missions-20261026`, `MISSION-004/009` partiels. Employé Essentiel ouvre volontairement « Consulter mes prochaines interventions », choisit une journée dans les 14 prochains jours et voit uniquement ses missions publiées et adresses autorisées de la compagnie sélectionnée, même sans mission aujourd'hui. Aucun changement de mission, heure, trajet enregistré ou pointage. Source Web/Expo et tests en préparation; PR, CI finale, fusion et Pages à vérifier. Ne pas réutiliser de résultats en cache après erreur ni changement de compagnie.
+
+**Concurrence à préserver :** branche distincte `feat/sacatalog-unlimited-included-public-20261026` (SACATALOG-016), avec CI échouée précédemment sur SHA `6b0049f1`; ne pas y toucher. PR #86 Storage reste préparation seulement, non livrée. Les anciens paragraphes ci-dessous sont des **archives historiques**, pas un ordre de reprise actuel.
+
+**Prochaine action exacte :** corriger les tests du lot actif, confirmer TypeScript et tests Node sur le SHA final, ouvrir PR `PUNCH-PROGRESS: MISSION-004, MISSION-009`; fusionner seulement si propre, vérifier CI/Pages et l'enregistrement du suivi, puis reprendre un autre parcours sans nouvel audit général. La recette sur navigateur connecté et appareils demeure un travail externe à valider séparément.
+
+---
+
+## Historique des anciennes passations — ne pas utiliser comme état courant
+
 ## Parcours reconstruit et validé par CI — mission impossible (MISSION-007/011/013 partiels)
 
 La [PR #163](https://github.com/punch360app/Punch360/pull/163) reprend depuis la branche historique **non fusionnée** le signalement volontaire de mission impossible et le porte sur le `main` plus récent, sans perdre la tournée personnelle ni l'échange d'ordre #160. Le salarié Web/Expo choisit un motif, une note privée facultative puis confirme; la RPC `report_essential_mission_issue` effectue l'action idempotente sur la mission publiée uniquement, en vérifiant rôle, salarié, entreprise et version, et notifie les Boss/Admin sans leur transmettre les notes via l'alerte. Le responsable dispose d'un compteur, filtre, motif, note privée autorisée et export CSV limité au motif. Aucune sortie de travail, absence, trajet GPS, salaire ou kilométrage n'est déclenché.
