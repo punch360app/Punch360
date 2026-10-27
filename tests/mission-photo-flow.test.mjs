@@ -74,3 +74,26 @@ test('old completion API remains unchanged when photo policy is off',async()=>{
  assert.equal(completed,true);
  await win.happyDOM.close();
 });
+
+
+test('optional photo policy permits completion without upload and hides media from worker',async()=>{
+ const win=new Window();win.confirm=()=>true;win.crypto.randomUUID=()=> 'a12abc8d-a121-4e17-bde9-7ab0312b3e8c';
+ const calls=[];let complete=false;
+ const sb={rpc:async(name,args)=>{
+  calls.push({name,args});
+  if(name==='list_essential_missions')return{data:{enabled:true,photo_required:false,photo_optional:true,
+   comment_required:false,checklist_required:false,checklist_items:[],truncated:false,items:complete?[]:[
+    {id:'optional-1',worker_id:'worker-1',mission_day:day,status:'published',version:1,
+     sort_order:1,title:'Contrôle facultatif',client_name:'Client',site_name:'Lieu',city:'Québec',address_line:'rue Test'}]}};
+  if(name==='complete_essential_mission'){complete=true;return{data:{status:'completed',version:2}};}
+  throw Error('Unexpected '+name);
+ },functions:{invoke:async()=>{throw Error('No photo upload should occur')}}};
+ const e=createPersonalMissionController({sb,document:win.document,escape,redraw(){},notify(){}});
+ await e.load('tenant-1','user-1','worker-1',day);
+ win.document.body.innerHTML=e.render();
+ assert.match(e.render(),/Photo privée facultative/);
+ assert.equal(await e.finish('optional-1'),true);
+ assert.equal(calls.filter(c=>c.name==='complete_essential_mission').length,1);
+ assert.equal(calls.filter(c=>c.name==='complete_essential_mission_v4').length,0);
+ await win.happyDOM.close();
+});
