@@ -1,6 +1,7 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
+import {missionCancelArgs} from './mission-cancel.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 /** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
@@ -79,10 +80,12 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},edit:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},edit:null,cancelId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
+ const cancelRequests=new Map();
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
+  if(s.company!==company){cancelRequests.clear();s.cancelId=null;}
   const gen=++generation;Object.assign(s,{company,roster,enabled:false,missions:[],sites:[],error:''});
   if(!company)return;
   try{
@@ -97,7 +100,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null});}
+ function reset(){generation++;cancelRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,cancelId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -136,6 +139,8 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
       ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée du salarié : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
+    (x.status==='published'?button(s.cancelId===x.id?'Fermer l’annulation':'Annuler la mission publiée','cancel-open',x.id):'')+
+    (s.cancelId===x.id?'<label class="ess-field">Motif de l’annulation (obligatoire, 5 à 200 caractères)<input id="mission-cancel-reason-'+e(x.id)+'" maxlength="200" placeholder="Ex. client indisponible"></label>'+button('Confirmer l’annulation','cancel-submit',x.id):'')+
     (x.status==='published'&&!s.truncated&&publishedSwapTargets(x,s.missions).length?
      '<label class="ess-field">Échanger le rang avec<select id="mission-swap-'+e(x.id)+'">'+
      '<option value="">Choisir une mission publiée</option>'+
@@ -166,6 +171,22 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
+   }else if(action==='cancel-open'){
+    const x=s.missions.find(m=>m.id===el.dataset.id&&m.status==='published');
+    if(!x)throw Error('Mission publiée introuvable. Actualisez.');
+    s.cancelId=s.cancelId===x.id?null:x.id;
+   }else if(action==='cancel-submit'){
+    if(s.truncated)throw Error('Liste tronquée : rechargez avant annulation.');
+    const x=s.missions.find(m=>m.id===el.dataset.id&&m.status==='published');
+    if(!x||s.cancelId!==x.id)throw Error('Mission publiée modifiée : actualisez.');
+    const reason=doc.getElementById('mission-cancel-reason-'+x.id)?.value||'';
+    const key='cancel:'+x.id,request=cancelRequests.get(key)||doc.defaultView.crypto.randomUUID();
+    const args=missionCancelArgs(s.company,x,reason,request);
+    if(!doc.defaultView.confirm('Annuler « '+x.title+' » pour ce salarié ? Le salarié sera averti; les pointages et heures restent inchangés.'))return true;
+    cancelRequests.set(key,request);
+    await rpc('cancel_essential_published_mission',args);
+    cancelRequests.delete(key);s.cancelId=null;
+    await load(s.company,s.roster);notify('Mission annulée; avis interne envoyé si le salarié possède un compte actif.');
    }else if(action==='swap-order'){
     if(s.truncated)throw Error('Tournée tronquée : rechargez un lot complet avant de modifier l’ordre.');
     const source=s.missions.find(x=>x.id===el.dataset.id);

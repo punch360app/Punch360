@@ -6,6 +6,7 @@ import {supabase} from '../lib/supabase';
 import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour,publishedSwapTargets,publishedSwapArgs} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
+import {missionCancelArgs} from '../../web/live/mission-cancel.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
 async function rpc(name:string,args:Row):Promise<Row>{
@@ -33,6 +34,8 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
  const [day,setDay]=useState(missionDate()),[worker,setWorker]=useState(''),[site,setSite]=useState(''),
   [order,setOrder]=useState('1'),[missionTitle,setMissionTitle]=useState(''),
   [instructions,setInstructions]=useState(''),[editing,setEditing]=useState<Row|null>(null),[swapSource,setSwapSource]=useState<Row|null>(null);
+ const [cancelTarget,setCancelTarget]=useState<Row|null>(null),[cancelReason,setCancelReason]=useState('');
+ const cancelRequests=useRef<Map<string,string>>(new Map());
  const counter=useRef(0);
  async function load(date=day){
   const current=++counter.current;
@@ -52,7 +55,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setSwapSource(null);setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
+  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -82,6 +85,22 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     setEditing(null);setMissionTitle('');setInstructions('');setOrder(String(Number(order)+1));
     await load(day);setMessage('Brouillon enregistré.');
   });
+ };
+ const cancelPublished=()=>{
+  const m=cancelTarget;if(!m||busy||truncated)return;
+  const key='cancel:'+m.id,request=cancelRequests.current.get(key)||Crypto.randomUUID();
+  let args:Row;
+  try{args=missionCancelArgs(companyId,m,cancelReason,request)}
+  catch(e:any){setMessage(e.message||'Motif obligatoire (5 à 200 caractères)');return;}
+  Alert.alert('Annuler la mission publiée ?',
+   'L’employé recevra un avis. Les heures, la session de pointage et les itinéraires restent indépendants.',
+   [{text:'Retour',style:'cancel'},{text:'Annuler la mission',style:'destructive',
+    onPress:()=>void work(async()=>{
+     cancelRequests.current.set(key,request);
+     await rpc('cancel_essential_published_mission',args);
+     cancelRequests.current.delete(key);setCancelTarget(null);setCancelReason('');
+     await load(day);setMessage('Mission annulée. Avis interne envoyé si le compte salarié est actif.');
+    })}]);
  };
  const swapWith=(second:Row)=>{
   const first=swapSource;if(!first)return;
@@ -156,6 +175,13 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      setOrder(String(m.sort_order));setMissionTitle(m.title);setInstructions('');
      setMessage('Les anciennes instructions privées ne sont pas réaffichées.');
     },busy):null}
+    {m.status==='published'&&!truncated?button(cancelTarget?.id===m.id?'Fermer le formulaire d’annulation':'Annuler cette mission',()=>{
+     setCancelTarget(v=>v?.id===m.id?null:m);setCancelReason('');
+    },busy):null}
+    {cancelTarget?.id===m.id?<View style={{gap:6,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
+     {input('Motif de l’annulation (5 à 200 caractères)',cancelReason,setCancelReason)}
+     {button('Confirmer l’annulation',cancelPublished,busy)}
+    </View>:null}
     {m.status==='published'&&!truncated&&publishedSwapTargets(m,missions).length?
      button(swapSource?.id===m.id?'Annuler l’échange':'Modifier l’ordre de ce salarié',
       ()=>setSwapSource(previous=>previous?.id===m.id?null:m),busy):null}
