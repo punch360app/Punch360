@@ -64,6 +64,7 @@ function gh(args) {
 function main() {
   if(!['push','schedule','workflow_dispatch'].includes(process.env.GITHUB_EVENT_NAME))
     throw new Error('Forbidden: only trusted main runs');
+  if(process.env.GITHUB_REF!=='refs/heads/main') throw new Error('Only main may publish the issue');
   if(!process.env.GH_TOKEN) throw new Error('GitHub token missing');
   const repo=process.env.GITHUB_REPOSITORY;
   const report=JSON.parse(fs.readFileSync('visual-captures/report.json','utf8'));
