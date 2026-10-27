@@ -55,7 +55,7 @@ function fixture(){
 }
 const day=missionDate();
 test('pure mission projection chooses next in explicit order and never confuses completion with punch exit',()=>{
- assert.deepEqual(missionProgress([]),{total:0,done:0,next:null,allDone:false});
+ assert.deepEqual(missionProgress([]),{total:0,done:0,blocked:0,next:null,allDone:false});
  const rows=[{id:'b',sort_order:2,status:'published'},{id:'a',sort_order:1,status:'completed'},{id:'c',sort_order:3,status:'draft'}];
  const p=missionProgress(rows);assert.equal(p.total,2);assert.equal(p.done,1);assert.equal(p.next.id,'b');
  assert.equal(p.allDone,false);

@@ -1,5 +1,11 @@
 # PUNCH 360° — État courant unique
 
+## Parcours reconstruit et validé par CI — mission impossible (MISSION-007/011/013 partiels)
+
+La [PR #163](https://github.com/punch360app/Punch360/pull/163) reprend depuis la branche historique **non fusionnée** le signalement volontaire de mission impossible et le porte sur le `main` plus récent, sans perdre la tournée personnelle ni l'échange d'ordre #160. Le salarié Web/Expo choisit un motif, une note privée facultative puis confirme; la RPC `report_essential_mission_issue` effectue l'action idempotente sur la mission publiée uniquement, en vérifiant rôle, salarié, entreprise et version, et notifie les Boss/Admin sans leur transmettre les notes via l'alerte. Le responsable dispose d'un compteur, filtre, motif, note privée autorisée et export CSV limité au motif. Aucune sortie de travail, absence, trajet GPS, salaire ou kilométrage n'est déclenché.
+
+**Base :** `20261026222338_essential_mission_issues` figure déjà parmi les migrations de `mlabstdxxwjdpfaxiwmg`. Vérification directe en lecture seule : fonction RPC et colonne `issue_reason` présentes, `authenticated` autorisé, `anon` refusé. Les fichiers migration et fixture SQL ont été réintroduits dans Git sans réexécuter DDL. La tentative de rejouer la fixture SQL `BEGIN/ROLLBACK` via le connecteur a été **bloquée par un contrôle de sécurité**; ne pas la marquer réussie dans cette reprise. CI TypeScript/Node/Web [#40432643806](https://github.com/punch360app/Punch360/actions/runs/40432643806) **SUCCESS** sur le commit avant l'ajout de cette passation; CI sur SHA final, fusion, Pages et recette navigateur authentifié/appareil à attester. **Ne pas fusionner la branche historique `feat/essential-mission-impossible-workflow-20261026` telle quelle.**
+
 ## État vérifié sur main après la PR #160 (26 octobre 2026)
 
 - `main` observé au commit `0c81bab9e25bd3821950c10dc5734139e1d95756` (enregistrement du suivi #160); PR #160 fusionnée sur `e4262dc0a282b2460370ac4761159e4ce88c089a`. L'échange de deux rangs de missions publiées décrit ci-dessous n'est **plus en attente de PR/fusion**. Migration `20261027005724_essential_published_mission_order_swap` confirmée installée dans `mlabstdxxwjdpfaxiwmg`. État Git/SQL distinct de la recette Web authentifiée et mobile installée (non attestées).

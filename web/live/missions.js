@@ -1,18 +1,20 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
+import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 /** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
 export function missionWarningEligible(previousEnabled,sameWorkspace){return !!previousEnabled&&!!sameWorkspace;}
 export function missionProgress(items){
- const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
+ const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed','impossible'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
  const done=ordered.filter(x=>x.status==='completed').length;
+ const blocked=ordered.filter(x=>x.status==='impossible').length;
  const pending=ordered.filter(x=>x.status==='published');
  // A stable database id is NOT permission to invent an order for two published
  // missions at the same rank. Leave the next stop unresolved until a manager
  // explicitly resolves the conflict; completed steps never compete with it.
  const ambiguous=pending.length>1&&Number(pending[0].sort_order)===Number(pending[1].sort_order);
- const result={total:ordered.length,done,next:ambiguous?null:(pending[0]||null),
+ const result={total:ordered.length,done,blocked,next:ambiguous?null:(pending[0]||null),
   allDone:ordered.length>0&&done===ordered.length};
  return ambiguous?{...result,ambiguous:true,ambiguousRank:pending[0].sort_order}:result;
 }
@@ -40,13 +42,13 @@ export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
  if(!workerId)return {rows:[],total:0,hasMore:false,ambiguous:false};
  if(!Number.isInteger(limit)||limit<1||limit>50)throw Error('Limite de tournée invalide');
  const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
-  ['published','completed'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
+  ['published','completed','impossible'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
   .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
  const pending=eligible.filter(m=>m.status==='published');
  const ambiguity=pending.some((m,i)=>i>0&&m.sort_order===pending[i-1].sort_order);
  const rows=eligible.slice(0,limit).map(m=>({
   id:m.id,title:m.title||'Mission',client_name:m.client_name||'Client',
-  site_name:m.site_name||'Lieu',status:m.status,sort_order:m.sort_order,
+  site_name:m.site_name||'Lieu',status:m.status,issue_reason:m.issue_reason||null,sort_order:m.sort_order,
   address_line:m.address_line||'',unit:m.unit||'',city:m.city||'',
   region:m.region||'',postal_code:m.postal_code||'',country:m.country||''
  }));
@@ -117,7 +119,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<h4>Suivi des missions — '+e(s.day)+'</h4>'+
     '<p class="ess-fine">Statuts explicites; une mission non terminée n’est pas une absence ou un retard. Aucun temps de travail ni trajet n’est inféré.</p>'+
     '<p role="status">À faire : '+analysis.counts.published+
-    ' · Terminées : '+analysis.counts.completed+' · Brouillons : '+analysis.counts.draft+
+    ' · Terminées : '+analysis.counts.completed+' · À traiter : '+analysis.counts.impossible+' · Brouillons : '+analysis.counts.draft+
     ' · Annulées : '+analysis.counts.cancelled+'</p>'+
     select('Filtrer par salarié','review-worker',s.review.worker,[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
     select('Filtrer par état','review-status',s.review.status,MISSION_STATES)+
@@ -128,12 +130,12 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<div style="overflow-x:auto"><table><thead><tr><th>Ordre</th><th>Salarié</th><th>Client</th><th>Lieu</th><th>Mission</th><th>État</th></tr></thead><tbody>'+
     analysis.visible.map(x=>'<tr><td>'+e(x.sort_order)+'</td><td>'+e([x.first_name,x.last_name].filter(Boolean).join(' '))+
      '</td><td>'+e(x.client_name)+'</td><td>'+e(x.site_name)+'</td><td>'+e(x.title)+'</td><td>'+
-      e(MISSION_STATES.find(s=>s[0]===x.status)?.[1]||x.status)+'</td></tr>').join('')+
+      e(MISSION_STATES.find(s=>s[0]===x.status)?.[1]||x.status)+(x.status==='impossible'?' · '+e(missionIssueLabel(x.issue_reason)):'')+'</td></tr>').join('')+
     '</tbody></table></div></section>';
    body+='<h4>Interventions du '+e(s.day)+'</h4>'+
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
-      ' · '+e(x.status)+'</small></div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
+      ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée du salarié : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
     (x.status==='published'&&!s.truncated&&publishedSwapTargets(x,s.missions).length?
      '<label class="ess-field">Échanger le rang avec<select id="mission-swap-'+e(x.id)+'">'+
      '<option value="">Choisir une mission publiée</option>'+
@@ -195,10 +197,12 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map()};
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null};
  let generation=0;
  async function load(company,user,worker,day=missionDate()){
-  const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,s.company===company&&s.user===user&&s.worker===worker);
+  const same=s.company===company&&s.user===user&&s.worker===worker;
+  const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
+  if(!same){s.pending.clear();s.issue=null;}
   const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
   try{
@@ -208,7 +212,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    s.items=response.data?.items||[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:''});s.pending.clear();}
+ function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:'',issue:null});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker)return '';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
@@ -226,8 +230,9 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       tour.rows.map(stop=>{
        const options=missionNavigationOptions(stop,platform,pref).choices;
        return '<article class="ess-person"><b>'+e(stop.title)+'</b><small>'+
-        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':'À faire')+
-        '</small><small>'+e(missionAddress(stop))+'</small>'+
+        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'À traiter':'À faire')+
+        '</small><small>'+e(missionAddress(stop))+'</small>'+ 
+        (stop.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(stop.issue_reason))+'</small>':'')+
         (stop.status==='published'?options.map(route=>'<a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+
         e(route.label)+' · cette étape ↗</a>').join(''):'')+'</article>';
       }).join('')+
@@ -235,13 +240,14 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       '</details>';
   };
   if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>'+renderTour();
+  if(!p.next&&!p.ambiguous&&p.blocked)return '<section class="zen-company" role="status"><b>Mission signalée au responsable</b><p>Aucune prochaine étape publiée. Le responsable doit traiter le signalement; votre pointage reste inchangé.</p></section>'+renderTour();
   if(p.ambiguous)return '<section class="zen-company" aria-label="Ordre des missions à confirmer">'+
    '<p role="alert"><b>Prochaine mission indéterminée</b> : plusieurs interventions publiées ont le même rang ('+
    e(p.ambiguousRank)+'). Demandez au responsable de confirmer la séquence. Aucun itinéraire n’est choisi automatiquement et aucune mission n’a été terminée.</p>'+
    renderTour()+'</section>';
   const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
-  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
+  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+p.blocked+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
    (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
    (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
@@ -249,7 +255,43 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
      routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
      '</details>':'')+
    renderTour()+
-   '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
+   '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button>'+ 
+   '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler une mission impossible</button>'+
+   (s.issue?.id===x.id?'<div class="ess-panel"><p>Le responsable sera informé. Aucun retard, absence ou pointage ne sera déduit.</p>'+
+    '<label>Motif<select id="mission-issue-reason"><option value="">Choisir un motif</option>'+MISSION_ISSUE_REASONS.map(([k,v])=>'<option value="'+e(k)+'" '+(s.issue.reason===k?'selected':'')+'>'+e(v)+'</option>').join('')+'</select></label>'+
+    '<label>Précision privée (facultative)<textarea id="mission-issue-note" maxlength="300">'+e(s.issue.note||'')+'</textarea></label>'+
+    '<button type="button" class="ess-btn" data-action="mission:issue-submit" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Confirmer le signalement</button>'+
+    '<button type="button" class="ess-btn" data-action="mission:issue-close" data-id="'+e(x.id)+'">Annuler</button></div>':'')+
+   '</div></section>';
+ }
+ async function handleIssue(action,id){
+  if(!s.company||!s.worker||!s.enabled||s.busy||s.truncated)throw Error('Mission non autorisée ou tournée incomplète.');
+  const progress=missionProgress(s.items);
+  if(progress.ambiguous||progress.next?.id!==id)throw Error('Ordre modifié : actualisez avant de signaler.');
+  const mission=s.items.find(x=>x.id===id&&x.status==='published');
+  if(!mission)throw Error('Mission modifiée : actualisez.');
+  if(action==='issue-open'){s.issue={id,reason:'',note:''};redraw();return true;}
+  if(action==='issue-close'){s.issue=null;redraw();return true;}
+  if(action!=='issue-submit'||s.issue?.id!==id)throw Error('Ouvrez le signalement de cette mission.');
+  const reason=doc.getElementById('mission-issue-reason')?.value||'';
+  const note=doc.getElementById('mission-issue-note')?.value||'';
+  if(!MISSION_ISSUE_REASONS.some(x=>x[0]===reason))throw Error('Choisissez un motif.');
+  if(String(note).trim().length>300)throw Error('Précision trop longue (300 caractères maximum).');
+  s.issue={id,reason,note};
+  if(doc.defaultView.navigator.onLine===false)throw Error('Connexion requise : aucun signalement enregistré.');
+  if(!doc.defaultView.confirm('Signaler cette mission impossible ? Votre pointage ne change pas.'))return false;
+  const key='issue:'+id,request=s.pending.get(key)||doc.defaultView.crypto.randomUUID();
+  const args=missionIssueArgs(s.company,mission,reason,note,request);
+  s.pending.set(key,request);s.busy=true;s.error='';
+  try{
+   const result=await sb.rpc('report_essential_mission_issue',args);
+   if(result.error)throw result.error;
+   s.pending.delete(key);s.issue=null;
+   await load(s.company,s.user,s.worker,s.day);
+   notify('Mission impossible signalée au responsable. Aucun pointage modifié.');
+   return true;
+  }catch{ s.error='Signalement non confirmé : vérifiez la connexion et réessayez la même demande.';return false; }
+  finally{s.busy=false;redraw();}
  }
  async function finish(id){
   if(!s.company||!s.worker||!s.enabled||s.busy)throw Error('Mission non autorisée.');
@@ -267,5 +309,5 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{s.error='Fin non confirmée : réessayez la même demande après vérification.';return false;}
   finally{s.busy=false;redraw();}
  }
- return {state:s,load,render,finish,reset};
+ return {state:s,load,render,finish,handleIssue,reset};
 }
