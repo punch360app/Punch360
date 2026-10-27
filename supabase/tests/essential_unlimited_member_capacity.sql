@@ -3,14 +3,14 @@
 begin;
 do $test$
 declare
- actor uuid;invitee uuid:=gen_random_uuid();
+ actor uuid:=gen_random_uuid();invitee uuid:=gen_random_uuid();
  unlimited_company uuid:=gen_random_uuid();
  numeric_company uuid:=gen_random_uuid();
  subscription text:='sub_test_unlimited_'||replace(unlimited_company::text,'-','');
  result jsonb;worker public.company_workers;denied boolean;
 begin
- select id into actor from auth.users limit 1;
- if actor is null then raise exception 'No fixture auth account exists';end if;
+ insert into auth.users(id,email,email_confirmed_at)
+ values(actor,'sacatalog-owner@fixture.invalid',now());
  insert into public.companies(id,name,created_by,product_edition,billing_status,billing_mode,is_test,seat_limit)
  values
  (unlimited_company,'SACATALOG isolated unlimited',actor,'essential','active','production',false,1),
