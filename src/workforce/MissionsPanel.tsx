@@ -6,6 +6,7 @@ import {supabase} from '../lib/supabase';
 import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour,publishedSwapTargets,publishedSwapArgs} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
+import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from '../../web/live/mission-issue-decision.js';
 import {missionCancelArgs} from '../../web/live/mission-cancel.js';
 import {missionReassignArgs} from '../../web/live/mission-reassign.js';
 import {missionRescheduleArgs} from '../../web/live/mission-reschedule.js';
@@ -39,6 +40,8 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   [instructions,setInstructions]=useState(''),[editing,setEditing]=useState<Row|null>(null),[swapSource,setSwapSource]=useState<Row|null>(null);
  const [cancelTarget,setCancelTarget]=useState<Row|null>(null),[cancelReason,setCancelReason]=useState('');
  const cancelRequests=useRef<Map<string,string>>(new Map());
+ const [decisionTarget,setDecisionTarget]=useState<Row|null>(null),[decisionAction,setDecisionAction]=useState('resume'),[decisionReason,setDecisionReason]=useState('');
+ const decisionRequests=useRef<Map<string,string>>(new Map());
  const [reassignTarget,setReassignTarget]=useState<Row|null>(null),[reassignWorker,setReassignWorker]=useState(''),[reassignOrder,setReassignOrder]=useState('1'),[reassignReason,setReassignReason]=useState('');
  const reassignRequests=useRef<Map<string,string>>(new Map());
  const [rescheduleTarget,setRescheduleTarget]=useState<Row|null>(null),[rescheduleDay,setRescheduleDay]=useState(missionDate()),
@@ -63,7 +66,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
+  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setDecisionTarget(null);setDecisionAction('resume');setDecisionReason('');decisionRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -93,6 +96,26 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     setEditing(null);setMissionTitle('');setInstructions('');setOrder(String(Number(order)+1));
     await load(day);setMessage('Brouillon enregistré.');
   });
+ };
+ const resolveIssue=()=>{
+  const m=decisionTarget;if(!m||busy||truncated)return;
+  const key=['decision',m.id,decisionAction,decisionReason.trim()].join(':');
+  const request=decisionRequests.current.get(key)||Crypto.randomUUID();
+  let args:Row;
+  try{args=missionIssueDecisionArgs(companyId,m,decisionAction,decisionReason,request)}
+  catch(e:any){setMessage(e.message||'Décision et motif requis');return;}
+  Alert.alert('Confirmer la décision de mission ?',
+   'L’employé sera avisé. Aucun horaire, heure ni pointage ne change.',
+   [{text:'Retour',style:'cancel'},
+    {text:decisionAction==='resume'?'Reprendre la mission':'Annuler après examen',
+     onPress:()=>void work(async()=>{
+      decisionRequests.current.set(key,request);
+      await rpc('resolve_essential_mission_issue',args);
+      decisionRequests.current.delete(key);
+      setDecisionTarget(null);setDecisionReason('');
+      await load(day);
+      setMessage('Décision enregistrée. Avis interne au salarié si son compte est actif.');
+     })}]);
  };
  const cancelPublished=()=>{
   const m=cancelTarget;if(!m||busy||truncated)return;
@@ -215,6 +238,16 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     {title(String(m.sort_order)+'. '+m.title)}
     {label([m.first_name,m.last_name].filter(Boolean).join(' ')+' · '+m.client_name+' · '+m.site_name+' · '+m.status)}
     {m.status==='impossible'?<>{label('Motif : '+missionIssueLabel(m.issue_reason))}{m.issue_note?label('Précision privée du salarié : '+m.issue_note):null}</>:null}
+    {m.issue_decision_at?label('Décision du responsable : '+issueDecisionLabel(m.issue_decision)+' · '+(m.issue_decision_reason||'')):null}
+    {m.status==='impossible'&&!truncated?button(decisionTarget?.id===m.id?'Fermer la décision':'Traiter le signalement',()=>{
+     setDecisionTarget(v=>v?.id===m.id?null:m);setDecisionAction('resume');setDecisionReason('');
+    },busy):null}
+    {decisionTarget?.id===m.id?<View style={{gap:6,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
+     {label('Décision explicite : reprendre ou annuler cette intervention. Aucun effet automatique sur le pointage ou les heures.')}
+     {ISSUE_DECISIONS.map(([v,name])=><View key={v}>{button((decisionAction===v?'✓ ':'')+name,()=>setDecisionAction(v),busy)}</View>)}
+     {input('Motif visible par le salarié (5 à 200 caractères)',decisionReason,setDecisionReason)}
+     {button('Confirmer la décision',resolveIssue,busy)}
+    </View>:null}
     {m.status==='draft'?button('Modifier le brouillon',()=>{
      setEditing(m);setWorker(m.worker_id);setSite(m.site_id);setDay(m.mission_day);
      setOrder(String(m.sort_order));setMissionTitle(m.title);setInstructions('');
@@ -377,6 +410,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
+  {items.filter((m:Row)=>m.issue_decision_at).map((m:Row)=><View key={'decision-'+m.id} style={{padding:8,backgroundColor:'#E8F2E8',borderRadius:8}}>{label('Décision du responsable : '+resolvedMissionNotice(m))}</View>)}
   {title(!progress.total?'Aucune mission pour aujourd’hui':progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
   {!next&&progress.blocked&&!missionConflict?label('Aucune prochaine mission publiée. Les étapes signalées nécessitent un suivi; le pointage ne change pas.'):null}
   {missionConflict?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>

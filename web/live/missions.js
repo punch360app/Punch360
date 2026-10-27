@@ -1,6 +1,7 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
+import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
 import {missionCancelArgs} from './mission-cancel.js';
 import {missionReassignArgs} from './mission-reassign.js';
 import {missionRescheduleArgs} from './mission-reschedule.js';
@@ -83,14 +84,15 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  const cancelRequests=new Map();
  const reassignRequests=new Map();
  const rescheduleRequests=new Map();
+ const decisionRequests=new Map();
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
-  if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
+  if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
   const gen=++generation;Object.assign(s,{company,roster,enabled:false,missions:[],sites:[],error:''});
   if(!company)return;
   try{
@@ -105,7 +107,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,cancelId:null,reassignId:null,rescheduleId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -143,7 +145,13 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    body+='<h4>Interventions du '+e(s.day)+'</h4>'+
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
-      ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée du salarié : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
+      ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée du salarié : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.issue_decision_at?'<small>Décision : '+e(issueDecisionLabel(x.issue_decision))+' · '+e(x.issue_decision_reason||'')+'</small>':'')+
+    (x.status==='impossible'&&!s.truncated?button(s.decisionId===x.id?'Fermer la décision':'Traiter le signalement','decision-open',x.id):'')+
+    (s.decisionId===x.id?'<div class="ess-panel"><p>Reprendre la mission publiée ou annuler après examen. Aucun pointage, heure ni paie ne changera.</p>'+
+     '<label class="ess-field">Décision<select id="mission-decision-action-'+e(x.id)+'">'+ISSUE_DECISIONS.map(([v,t])=>'<option value="'+e(v)+'" '+(v===s.decisionAction?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>'+
+     '<label class="ess-field">Motif communiqué à l’employé (5 à 200 caractères)<input maxlength="200" id="mission-decision-reason-'+e(x.id)+'"></label>'+
+     button('Confirmer la décision du responsable','decision-submit',x.id)+'</div>':'')+
+    (x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
     (x.status==='published'?button(s.cancelId===x.id?'Fermer l’annulation':'Annuler la mission publiée','cancel-open',x.id):'')+
     (s.cancelId===x.id?'<label class="ess-field">Motif de l’annulation (obligatoire, 5 à 200 caractères)<input id="mission-cancel-reason-'+e(x.id)+'" maxlength="200" placeholder="Ex. client indisponible"></label>'+button('Confirmer l’annulation','cancel-submit',x.id):'')+
     (x.status==='published'&&!s.truncated?button(s.reassignId===x.id?'Fermer la réaffectation':'Réaffecter à un autre salarié','reassign-open',x.id):'')+
@@ -194,6 +202,28 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
+   }else if(action==='decision-open'){
+    const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='impossible');
+    if(!m||s.truncated)throw Error('Signalement non disponible ou liste tronquée. Rechargez.');
+    s.decisionId=s.decisionId===m.id?null:m.id;s.decisionAction='resume';
+   }else if(action==='decision-submit'){
+    if(s.truncated)throw Error('Liste tronquée : rechargez avant la décision.');
+    const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='impossible');
+    if(!m||s.decisionId!==m.id)throw Error('Signalement traité ou modifié : actualisez.');
+    const decision=doc.getElementById('mission-decision-action-'+m.id)?.value||'';
+    const reason=doc.getElementById('mission-decision-reason-'+m.id)?.value||'';
+    const key=['decision',m.id,decision,String(reason).trim()].join(':');
+    const request=decisionRequests.get(key)||doc.defaultView.crypto.randomUUID();
+    const args=missionIssueDecisionArgs(s.company,m,decision,reason,request);
+    if(!doc.defaultView.confirm((decision==='resume'?'Remettre la mission à faire':'Annuler la mission après examen')+
+     ' ? Le salarié sera avisé dans sa compagnie. Ses heures et son pointage restent inchangés.'))return true;
+    decisionRequests.set(key,request);
+    const company=s.company,gen=generation;
+    await rpc('resolve_essential_mission_issue',args);
+    if(company!==s.company||gen!==generation)return true;
+    decisionRequests.delete(key);s.decisionId=null;
+    await load(company,s.roster);
+    notify('Décision enregistrée. L’employé a été avisé si son compte est actif.');
    }else if(action==='cancel-open'){
     const x=s.missions.find(m=>m.id===el.dataset.id&&m.status==='published');
     if(!x)throw Error('Mission publiée introuvable. Actualisez.');
@@ -312,6 +342,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   const renderUpcoming=()=>{
     const u=s.upcoming;
     let html='<section class="ess-panel" aria-label="Interventions à venir">'+
+      s.items.filter(x=>x.issue_decision_at).map(x=>'<p role="status">Décision du responsable : '+e(resolvedMissionNotice(x))+'</p>').join('')+
       '<button type="button" class="ess-btn" data-action="mission:upcoming-toggle">'+
       (u.open?'Masquer mes interventions à venir':'Consulter mes prochaines interventions')+'</button>';
     if(!u.open)return html+'</section>';
