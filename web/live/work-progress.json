@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T15:28:43.150Z",
+  "generated_at": "2026-10-27T15:46:20.111Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1357,7 +1357,8 @@
         179,
         180,
         186,
-        189
+        189,
+        191
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1440,7 +1441,8 @@
         179,
         180,
         186,
-        189
+        189,
+        191
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1486,12 +1488,25 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        189
+        189,
+        191
       ],
       "note": "Travail rattaché à la PR #189. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 191,
+      "sha": "bd92018641b27b53cba31e81113e6d7599d0bdc0",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-013",
+        "SEC-014"
+      ],
+      "title": "Missions — nettoyage physique des photos expirées, Vault + cron sécurisé",
+      "merged_at": "2026-10-27T15:46:10Z"
+    },
     {
       "number": 190,
       "sha": "be5166e9cc5099012d88518ff54d509bf894045c",
@@ -2029,16 +2044,6 @@
       ],
       "title": "Essentiel — adresses des clients sur les quarts publiés et itinéraires employés",
       "merged_at": "2026-10-26T20:04:35Z"
-    },
-    {
-      "number": 137,
-      "sha": "99d1cb6685cee9ae487632540a9f68925f75de3a",
-      "ci": "success",
-      "ids": [
-        "MLOC-001"
-      ],
-      "title": "Essentiel — carnet clients et adresses d’intervention illimités",
-      "merged_at": "2026-10-26T19:45:43Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
