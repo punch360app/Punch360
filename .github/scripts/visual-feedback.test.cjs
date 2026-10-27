@@ -76,3 +76,50 @@ test('audits generate concrete recommendations, never claim correction ran',()=>
   assert.ok(feedback.issues.some(x=>x.code==='small-touch-targets'));
   assert.ok(!renderHtml(report,feedback).includes('undefined'));
 });
+
+test('essential login is a distinct screen and not approved by a construction baseline',t=>{
+  const dir=workspace(t,30,30,false);
+  const different='punch-S25-essential-login.png';
+  fs.renameSync(path.join(dir,'visual-captures',filename),
+    path.join(dir,'visual-captures',different));
+  const image=png(30);
+  fs.writeFileSync(path.join(dir,'visual-baselines',different),image);
+  const hash=crypto.createHash('sha256').update(image).digest('hex');
+  fs.writeFileSync(path.join(dir,'visual-baselines','manifest.json'),JSON.stringify({
+    screens:{[different]:{
+      approvedSha256:hash,approvedSource:'design-valide',
+      screen:'logged-out',edition:'construction',
+      approvedBy:'owner',approvedAt:'2026-10-27'
+    }}
+  }));
+  const result=run(dir);
+  assert.equal(result.status,1);
+  assert.equal(result.report.results[0].status,'failed');
+  assert.match(result.report.results[0].reason,/Incomplete approval metadata/);
+});
+test('essential login passes only if the approval matches its edition and exact state',t=>{
+  const dir=workspace(t,30,30,false);
+  const different='punch-S25-essential-login.png';
+  fs.renameSync(path.join(dir,'visual-captures',filename),
+    path.join(dir,'visual-captures',different));
+  const image=png(30);
+  fs.writeFileSync(path.join(dir,'visual-baselines',different),image);
+  fs.writeFileSync(path.join(dir,'visual-baselines','manifest.json'),JSON.stringify({
+    screens:{[different]:{
+      approvedSha256:crypto.createHash('sha256').update(image).digest('hex'),
+      approvedSource:'design-valide',
+      screen:'login',edition:'essential',
+      approvedBy:'owner',approvedAt:'2026-10-27'
+    }}
+  }));
+  const result=run(dir);
+  assert.equal(result.status,0);
+  assert.equal(result.report.results[0].status,'passed');
+});
+test('missing approvals become one actionable recommendation instead of alert spam',()=>{
+  const results=Array.from({length:24},(_,i)=>({
+    image:'punch-S25-essential-'+i+'.png',status:'awaiting-approved-baseline'
+  }));
+  const feedback=buildFeedback({results,approvedBaselines:0,failures:0,screenshots:24},[]);
+  assert.equal(feedback.issues.filter(x=>x.code==='reference-pending').length,1);
+});
