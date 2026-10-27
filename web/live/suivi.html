@@ -71,24 +71,11 @@
 <section class="panel" style="margin:19px 0 24px;padding:19px 22px">
  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
   <div><h2 class="ptitle">Dernières preuves de développement</h2><p class="psub" style="margin-bottom:9px">Fusion GitHub et CI réussie ≠ déploiement des applications et fournisseurs.</p></div>
-  <a class="btn" href="https://github.com/punch360app/Punch360/blob/main/docs/prompt-board/AUTOPILOT_HANDOFF_20261026.md" target="_blank" rel="noopener">Point de reprise</a> <a class="btn" href="https://github.com/punch360app/Punch360/pulls?q=is%3Apr+is%3Amerged" target="_blank" rel="noopener">Voir les PR</a>
+  <a class="btn" href="https://github.com/punch360app/Punch360/blob/main/docs/PUNCH_WORK_CONTINUATION.md" target="_blank" rel="noopener">Point de reprise</a> <a class="btn" href="https://github.com/punch360app/Punch360/pulls?q=is%3Apr+is%3Amerged" target="_blank" rel="noopener">Voir les PR</a>
  </div>
- <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px">
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/115" target="_blank" rel="noopener">PR #115 · Super Admin : forfaits corrigés ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/114" target="_blank" rel="noopener">PR #114 · Factures Stripe limitées à 100 ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/113" target="_blank" rel="noopener">PR #113 · Webhooks bornés ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/112" target="_blank" rel="noopener">PR #112 · Résiliation / reprise ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/110" target="_blank" rel="noopener">PR #110 · Facturation mobile ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/109" target="_blank" rel="noopener">PR #109 · Renouvellement ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/108" target="_blank" rel="noopener">PR #108 · Confirmation Stripe ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/106" target="_blank" rel="noopener">PR #106 · Cache déconnexion ✓ CI</a>
-  <a class="chip" href="https://github.com/punch360app/Punch360/pull/104" target="_blank" rel="noopener">PR #104 · Auth serveur ✓ CI</a>
- </div>
- <div class="alert" style="margin-top:9px"><span>!</span><div>
-  <b>Points P0 toujours ouverts :</b> <a style="text-decoration:underline" href="https://github.com/punch360app/Punch360/issues/35" target="_blank" rel="noopener">#35 Stripe sandbox / Super Admin</a>
-  et <a style="text-decoration:underline" href="https://github.com/punch360app/Punch360/issues/102" target="_blank" rel="noopener">#102 Auth / Android / iPhone</a>.
-  Contrôle Supabase du 26 octobre : fonctions Stripe encore v2; migration de confirmation 20261026110100 absente. Les nouveaux correctifs Edge ne sont pas publiés. Aucun % de livraison calculé à partir des seules PR.
- </div></div>
+ <div id="latestEvidence" style="display:grid;gap:8px;margin:8px 0 12px" aria-live="polite"></div>
+ <p class="psub" id="latestEvidenceSync">Chargement des preuves du registre…</p>
+ <p class="psub">Les limites et prochaines actions sont consignées dans le <a href="https://github.com/punch360app/Punch360/blob/main/docs/PUNCH_WORK_CONTINUATION.md" target="_blank" rel="noopener" style="text-decoration:underline">point de reprise courant</a>. Une fusion ne confirme pas à elle seule une recette sur appareil ou chez un fournisseur.</p>
 </section>
 <div class="tabs"><button class="tab active" data-view="home">Vue générale</button><button class="tab" data-view="tasks">Toutes les tâches</button><button class="tab" data-view="sources">Documents sources</button></div>
 <section id="overview" class="view"><div class="split"><div class="panel"><h2 class="ptitle">Feuille de route par priorité</h2><div class="psub">Répartition des exigences inventoriées · ne représente pas leur avancement technique.</div><div id="priorityBars"></div><div class="smalllead">P0 : fiabilité · P1 : opérations · P2 : modules Pro · P3 : finition · P4 : fournisseurs et SMS</div></div><div class="panel"><h2 class="ptitle">État des lots</h2><div class="psub">Classification prudente du code existant et des nouveaux besoins.</div><div class="donutwrap"><div class="donut" id="donut"><div class="donutlabel"><strong id="partialCount">0</strong><span>lots partiels</span></div></div><div class="legend"><div class="legendrow"><i class="legenddot" style="background:#82a683"></i><span id="partialLabel">Partiel / à valider</span></div><div class="legendrow"><i class="legenddot" style="background:#f0c791"></i><span id="newLabel">À auditer / à faire</span></div></div></div></div></div><div class="sectionhead"><div><h2>À traiter en premier</h2><p>Les premiers lots sont critiques pour la sécurité et la commercialisation.</p></div><button class="btn" data-view="tasks">Voir toutes les tâches →</button></div><div class="sectiongrid" id="featured"></div></section>
@@ -152,6 +139,16 @@ function renderWorkProgress(manifest){
  document.getElementById('progressDeliveredFill').style.width=result.deliveredPercent+'%';
  document.getElementById('progressDeliveredMeter').setAttribute('aria-valuenow',String(result.deliveredPercent));
  document.getElementById('progressSync').textContent='Registre GitHub actualisé : '+(manifest.generated_at||'date non renseignée');
+ const evidence=document.getElementById('latestEvidence');
+ evidence.replaceChildren();
+ for(const pr of (manifest.activity||[]).filter(p=>Number.isSafeInteger(p.number)&&p.number>0).slice(0,10)){
+  const link=document.createElement('a');link.className='chip';
+  link.href='https://github.com/punch360app/Punch360/pull/'+pr.number;
+  link.target='_blank';link.rel='noopener noreferrer';
+  link.textContent='PR #'+pr.number+' · '+(pr.title||'PR fusionnée')+(pr.ci==='success'?' ✓ CI':' · CI non attestée');
+  evidence.appendChild(link);
+ }
+ document.getElementById('latestEvidenceSync').textContent='Preuves issues du registre GitHub · '+(manifest.generated_at||'date non renseignée');
  const recent=document.getElementById('workRecent');
  recent.replaceChildren();
  const label=document.createElement('span');label.className='workactivity-label';label.textContent='Dernières PR fusionnées :';recent.appendChild(label);

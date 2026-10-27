@@ -53,3 +53,15 @@ test('offline mobile browser shows last verified snapshot, not stuck on dashes',
  assert.ok(!text('progressRemaining').includes('Chargement'));
  await window.happyDOM.close();
 });
+
+test('development evidence panel uses the current register, including newer PR titles',async()=>{
+ const next=structuredClone(manifest);
+ next.activity=[{number:999,title:'Nouvelle preuve de mission',ci:'success'}];
+ const window=await boot(async()=>({ok:true,json:async()=>next}));
+ const panel=window.document.getElementById('latestEvidence');
+ assert.match(panel.textContent,/PR #999 · Nouvelle preuve de mission ✓ CI/);
+ assert.equal(panel.querySelector('a').href,'https://github.com/punch360app/Punch360/pull/999');
+ assert.doesNotMatch(html,/fonctions Stripe encore v2|PR #115 · Super Admin/);
+ assert.doesNotMatch(html,/AUTOPILOT_HANDOFF_20261026/);
+ window.happyDOM.abort();
+});
