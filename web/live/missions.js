@@ -118,7 +118,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<h4>Suivi des missions — '+e(s.day)+'</h4>'+
     '<p class="ess-fine">Statuts explicites; une mission non terminée n’est pas une absence ou un retard. Aucun temps de travail ni trajet n’est inféré.</p>'+
     '<p role="status">À faire : '+analysis.counts.published+
-    ' · Terminées : '+analysis.counts.completed+' · Brouillons : '+analysis.counts.draft+
+    ' · Terminées : '+analysis.counts.completed+' · Impossibles : '+analysis.counts.impossible+' · Brouillons : '+analysis.counts.draft+
     ' · Annulées : '+analysis.counts.cancelled+'</p>'+
     select('Filtrer par salarié','review-worker',s.review.worker,[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
     select('Filtrer par état','review-status',s.review.status,MISSION_STATES)+
