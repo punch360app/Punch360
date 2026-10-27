@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T23:56:04.004Z",
+  "generated_at": "2026-10-27T00:17:31.362Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1372,12 +1372,23 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        157
+        157,
+        159
       ],
       "note": "Travail rattaché à la PR #157. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 159,
+      "sha": "7cd9e6e6bdd7312b1eb7b8ade040159e4cd47f6f",
+      "ci": "success",
+      "ids": [
+        "MISSION-009"
+      ],
+      "title": "Missions — ne plus choisir arbitrairement la prochaine étape si deux rangs sont identiques",
+      "merged_at": "2026-10-27T00:17:22Z"
+    },
     {
       "number": 157,
       "sha": "8b13bcb64c68bc4bd18ca27a6bc74feefe5234cf",
@@ -1907,15 +1918,6 @@
       "ids": [],
       "title": "P0-C — Empêcher l’ancienne identité de revenir après déconnexion hors ligne",
       "merged_at": "2026-10-26T10:52:59Z"
-    },
-    {
-      "number": 105,
-      "sha": null,
-      "head_sha": "41c91946260a79355a1b9dd9e7db6feb48d04c53",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-C — Vérifier l’identité des punchs en ligne sans briser le mode hors ligne",
-      "merged_at": "2026-10-26T10:46:55Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
