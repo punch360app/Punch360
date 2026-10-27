@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T22:12:45.452Z",
+  "generated_at": "2026-10-27T23:49:38.574Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 197,
+      "sha": "e6bff73ce02782d1168a497b5d86116542de1103",
+      "ci": "success",
+      "ids": [],
+      "title": "CI visuelle : 24 parcours publics interactifs Construction/Essentiel sur S25, iPad et PC",
+      "merged_at": "2026-10-27T23:49:29Z"
+    },
+    {
       "number": 196,
       "sha": "947796d86a6de61c4be11649573ae39a0288ad2e",
       "ci": "success",
@@ -2013,16 +2021,6 @@
       ],
       "title": "Essentiel — itinéraire vers client ou lieu habituel, choix Maps/Waze/Plans",
       "merged_at": "2026-10-26T21:29:36Z"
-    },
-    {
-      "number": 143,
-      "sha": "0f70f8aae1ddd28b449e3f7ba64abc12c55246f5",
-      "ci": "success",
-      "ids": [
-        "MLOC-007"
-      ],
-      "title": "Essentiel — heures prévues par client et adresse, conflits dédupliqués",
-      "merged_at": "2026-10-26T21:18:17Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
