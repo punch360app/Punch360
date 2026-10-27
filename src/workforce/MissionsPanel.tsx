@@ -6,6 +6,7 @@ import {supabase} from '../lib/supabase';
 import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour,publishedSwapTargets,publishedSwapArgs} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
+import {missionChecklistItems,missionChecklistConfirmed} from '../../web/live/mission-checklist.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from '../../web/live/mission-issue-decision.js';
 import {missionPostponeArgs} from '../../web/live/mission-postpone.js';
 import {missionCancelArgs} from '../../web/live/mission-cancel.js';
@@ -32,7 +33,7 @@ const input=(caption:string,value:string,change:(v:string)=>void)=>(
  onChangeText={change} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:43,color:'#243B2A'}}/></View>
 );
 export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:Row[]}){
- const [enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[missions,setMissions]=useState<Row[]>([]),
+ const [enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[checklistRequired,setChecklistRequired]=useState(false),[checklistDraft,setChecklistDraft]=useState(''),[checklistSavedItems,setChecklistSavedItems]=useState<string[]>([]),[missions,setMissions]=useState<Row[]>([]),
   [sites,setSites]=useState<Row[]>([]),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  const [truncated,setTruncated]=useState(false);
  const [reviewWorker,setReviewWorker]=useState(''),[reviewStatus,setReviewStatus]=useState(''),[reviewClient,setReviewClient]=useState('');
@@ -57,6 +58,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    const conf=await rpc('essential_missions_configuration',{p_company:companyId,p_enabled:null});
    if(current!==counter.current)return;
    setEnabled(!!conf.enabled);setCommentRequired(!!conf.comment_required);
+   setChecklistRequired(!!conf.checklist_required);setChecklistSavedItems(Array.isArray(conf.checklist_items)?conf.checklist_items:[]);setChecklistDraft(Array.isArray(conf.checklist_items)?conf.checklist_items.join('\n'):'');
    if(conf.enabled){
     const [places,listing]=await Promise.all([
      rpc('list_essential_client_sites',{p_company:companyId,p_search:'',p_after:null,p_limit:100}),
@@ -68,7 +70,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    }else{setSites([]);setMissions([]);setTruncated(false)}
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
- useEffect(()=>{setEnabled(false);setCommentRequired(false);setMissions([]);setSites([]);setEditing(null);
+ useEffect(()=>{setEnabled(false);setCommentRequired(false);setChecklistRequired(false);setChecklistDraft('');setChecklistSavedItems([]);setMissions([]);setSites([]);setEditing(null);
   setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setDecisionTarget(null);setDecisionAction('resume');setDecisionReason('');decisionRequests.current.clear();setPostponeTarget(null);setPostponeDay(missionDate());setPostponeOrder('1');setPostponeReason('');postponeRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
@@ -92,6 +94,17 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    [{text:'Retour',style:'cancel'},{text:'Confirmer',onPress:()=>void work(async()=>{
     await rpc('set_essential_mission_proof_policy',{p_company:companyId,p_comment_required:required});
     await load();setMessage(required?'Commentaire obligatoire activé.':'Preuve obligatoire désactivée.');
+   })}]);
+ };
+ const saveChecklistPolicy=(required:boolean)=>{
+  let items:string[]=[];
+  try{items=required?missionChecklistItems(checklistDraft):checklistSavedItems}
+  catch(e:any){setMessage(e.message||'Checklist invalide');return;}
+  Alert.alert('Checklist de fin de mission',
+   required?'Exiger la confirmation de toutes les étapes avant de terminer ?':'Ne plus exiger de checklist pour cette compagnie ?',
+   [{text:'Annuler',style:'cancel'},{text:'Confirmer',onPress:()=>void work(async()=>{
+    await rpc('set_essential_mission_checklist_policy',{p_company:companyId,p_required:required,p_items:items});
+    await load();setMessage(required?'Checklist obligatoire enregistrée.':'Checklist obligatoire désactivée.');
    })}]);
  };
  const save=(publish:boolean)=>{
@@ -226,6 +239,12 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   {button(enabled?'Désactiver le module':'Activer le module',toggle,busy)}
   {label('Preuve de fin : '+(commentRequired?'commentaire obligatoire de 5 à 1000 caractères':'aucune preuve obligatoire'))}
   {button(commentRequired?'Ne plus exiger de commentaire':'Exiger un commentaire de fin',toggleProofPolicy,busy)}
+  {label('Checklist de fin : '+(checklistRequired?'obligatoire':'non exigée'))}
+  {label('Définissez jusqu’à huit étapes, une par ligne (3 à 120 caractères).')}
+  <TextInput accessibilityLabel="Étapes de checklist de fin" multiline maxLength={1000}
+   value={checklistDraft} onChangeText={setChecklistDraft} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:95,color:'#243B2A'}}/>
+  {button(checklistRequired?'Enregistrer les étapes obligatoires':'Exiger cette checklist',()=>saveChecklistPolicy(true),busy)}
+  {checklistRequired?button('Ne plus exiger la checklist',()=>saveChecklistPolicy(false),busy):null}
   {!!message?<Text accessibilityLiveRegion="polite" style={{color:'#B04C37'}}>{message}</Text>:null}
   {enabled?<>
    {input('Date AAAA-MM-JJ',day,setDay)}
@@ -271,6 +290,8 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     {m.status==='impossible'?<>{label('Motif : '+missionIssueLabel(m.issue_reason))}{m.issue_note?label('Précision privée du salarié : '+m.issue_note):null}</>:null}
     {m.issue_decision_at?label('Décision du responsable : '+issueDecisionLabel(m.issue_decision)+' · '+(m.issue_decision_reason||'')):null}
     {m.status==='completed'&&m.completion_comment?label('Preuve privée de fin : '+m.completion_comment):null}
+    {m.status==='completed'&&Array.isArray(m.completion_checklist)&&m.completion_checklist.length?
+     label('Checklist privée confirmée : '+m.completion_checklist.join(' · ')):null}
     {m.status==='impossible'&&!truncated?button(decisionTarget?.id===m.id?'Fermer la décision':'Traiter le signalement',()=>{
      setDecisionTarget(v=>v?.id===m.id?null:m);setDecisionAction('resume');setDecisionReason('');
     },busy):null}
@@ -338,7 +359,8 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
  </View>;
 }
 export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:string;workerId:string|null;navProvider:string|null}){
- const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[completionComment,setCompletionComment]=useState(''),[busy,setBusy]=useState(false),
+ const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[completionComment,setCompletionComment]=useState(''),
+  [checklistRequired,setChecklistRequired]=useState(false),[checklistItems,setChecklistItems]=useState<string[]>([]),[checklistChecked,setChecklistChecked]=useState<number[]>([]),[busy,setBusy]=useState(false),
   [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
  const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false),[tourOpen,setTourOpen]=useState(false),[tourRouteId,setTourRouteId]=useState<string|null>(null);
@@ -356,10 +378,11 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   try{
    const res=await rpc('list_essential_missions',{p_company:companyId,p_day:missionDate(),p_worker:workerId,p_include_drafts:false});
    if(gen!==current.current)return;
-   setEnabled(!!res.enabled);setCommentRequired(!!res.comment_required);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
-  }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setCommentRequired(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
+   setEnabled(!!res.enabled);setCommentRequired(!!res.comment_required);setChecklistRequired(!!res.checklist_required);
+   setChecklistItems(Array.isArray(res.checklist_items)?res.checklist_items:[]);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
+  }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setCommentRequired(false);setChecklistRequired(false);setChecklistItems([]);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setCompletionComment('');setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setCompletionComment('');setChecklistRequired(false);setChecklistItems([]);setChecklistChecked([]);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;subscription.remove()};
@@ -368,7 +391,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const missionConflict='ambiguous' in progress&&progress.ambiguous===true;
  const missionConflictRank='ambiguousRank' in progress?progress.ambiguousRank:null;
  const tour=personalMissionTour(items,workerId);
- useEffect(()=>{detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setNavOpen(false);setIssueOpen(false);setIssueReason('');setIssueNote('');setCompletionComment('')},[next?.id,next?.version]);
+ useEffect(()=>{detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setNavOpen(false);setIssueOpen(false);setIssueReason('');setIssueNote('');setCompletionComment('');setChecklistChecked([])},[next?.id,next?.version]);
  const showDetails=()=>{
   if(!next||busy||truncated||missionConflict)return;
   if(detailOpen){detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');return;}
@@ -431,6 +454,9 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   if(commentRequired&&(!proof||proof.length<5||proof.length>1000)){
    setMessage('Commentaire de fin obligatoire (5 à 1000 caractères).');return;
   }
+  if(checklistRequired&&!missionChecklistConfirmed(checklistItems,checklistChecked)){
+   setMessage('Cochez toutes les étapes de la checklist avant de terminer.');return;
+  }
   Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
    [{text:'Annuler',style:'cancel'},{text:'Terminer',onPress:()=>{void (async()=>{
      setBusy(true);setMessage('');
@@ -439,9 +465,10 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      try{
       const network=await Network.getNetworkStateAsync();
       if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
-      await rpc(commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
-       p_company:companyId,p_id:id,p_version:next.version,p_request:request,...(commentRequired?{p_comment:proof}:{})});
-      requests.current.delete(id);setCompletionComment('');await refresh();setMessage('Mission terminée. Le pointage reste inchangé.');
+      await rpc(checklistRequired?'complete_essential_mission_v3':commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
+       p_company:companyId,p_id:id,p_version:next.version,p_request:request,
+       ...(commentRequired||checklistRequired?{p_comment:proof}:{}),...(checklistRequired?{p_checklist:checklistItems}:{})});
+      requests.current.delete(id);setCompletionComment('');setChecklistChecked([]);await refresh();setMessage('Mission terminée. Le pointage reste inchangé.');
      }catch{setMessage('Fin non confirmée : reconnectez-vous et réessayez (même demande).');}
      finally{setBusy(false)}
     })()}}]);
@@ -498,12 +525,18 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
     {label('Aucun pointage ni GPS déclenché.')}
    </View>:null}
    {next.status==='published'?button('Commencer cette mission',startMission,busy):label('En cours — mission démarrée volontairement, pointage inchangé.')}
+   {checklistRequired?<View style={{gap:5,padding:10,borderRadius:9,backgroundColor:'white'}}>
+    {label('Checklist obligatoire — confirmez toutes les étapes pour terminer.')}
+    {checklistItems.map((item,i)=><View key={i}>{button((checklistChecked.includes(i)?'✓ ':'□ ')+item,()=>{
+      setChecklistChecked(old=>old.includes(i)?old.filter(x=>x!==i):[...old,i]);
+    },busy)}</View>)}
+   </View>:null}
    {commentRequired?<View style={{gap:4,padding:10,borderRadius:9,backgroundColor:'white'}}>
     {label('Commentaire de fin obligatoire (5 à 1000 caractères). Visible seulement par les responsables de cette compagnie.')}
     <TextInput accessibilityLabel="Commentaire privé de fin de mission" value={completionComment} onChangeText={setCompletionComment}
      multiline maxLength={1000} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:85,color:'#243B2A'}}/>
    </View>:null}
-   {button(commentRequired?'Terminer avec commentaire':'Terminer',complete,busy)}
+   {button(checklistRequired?'Terminer avec checklist':commentRequired?'Terminer avec commentaire':'Terminer',complete,busy)}
    {button(issueOpen?'Fermer le signalement':'Signaler une mission impossible',()=>setIssueOpen(v=>!v),busy)}
    {issueOpen?<View style={{gap:6,padding:10,backgroundColor:'white',borderRadius:9}}>
     {label('Choisissez un motif. Aucun pointage, retard ou absence ne sera déduit.')}
