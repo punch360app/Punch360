@@ -234,11 +234,11 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   {label('Connexion requise pour actualiser vos missions. Aucune fin ni sortie de pointage n’a été enregistrée.')}
  </View>;
  if(!enabled)return null;
- if(!progress.total&& !message)return null;
+ if(!progress.total&&!tour.total&&!message)return null;
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
-  {title(progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
+  {title(progress.total===0&&tour.total?'Mission signalée impossible · suivi requis':progress.allDone&&tour.rows.some((x:Row)=>x.status==='impossible')?'Missions terminées ou signalées à traiter':progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
   {missionConflict?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
    Plusieurs missions publiées portent le rang {String(missionConflictRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
   </Text>:null}
@@ -273,7 +273,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    {tour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Deux missions ont le même rang; confirmer l’ordre avec le responsable.</Text>:null}
    {tour.rows.map((stop:Row)=><View key={stop.id} style={{padding:9,backgroundColor:'white',borderWidth:1,borderColor:'#DCE8D6',borderRadius:8,gap:5}}>
     {title(stop.title+' · '+stop.client_name)}
-    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':'À faire'))}
+    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'Impossible · responsable avisé':'À faire'))}
     {label(missionAddress(stop))}
     {stop.status==='published'&&missionNavigationOptions(stop,Platform.OS,navProvider).choices.length?
      button(tourRouteId===stop.id?'Masquer les itinéraires':'Itinéraire vers cette étape',
