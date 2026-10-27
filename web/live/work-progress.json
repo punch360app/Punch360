@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T02:41:27.984Z",
+  "generated_at": "2026-10-27T09:53:24.109Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1420,9 +1420,29 @@
         166
       ],
       "note": "Travail rattaché à la PR #166. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SACATALOG-016": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        170
+      ],
+      "note": "Travail rattaché à la PR #170. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 170,
+      "sha": "274524e49acb47f3fcc97ee271cf5f8a8d74bdf2",
+      "ci": "success",
+      "ids": [
+        "SACATALOG-016"
+      ],
+      "title": "Super Admin — membres inclus illimités, calcul contrat et affichage Web/Expo",
+      "merged_at": "2026-10-27T09:53:14Z"
+    },
     {
       "number": 169,
       "sha": "fa7e7b8c9894eca8615395ed01e5991e55db2f0f",
@@ -1969,15 +1989,6 @@
       "ids": [],
       "title": "Suivi autonome — enregistrer les PR #112–#115 et prochaine reprise P0",
       "merged_at": "2026-10-26T13:03:19Z"
-    },
-    {
-      "number": 115,
-      "sha": null,
-      "head_sha": "f010adeac4483f7e040f26d4e1563a1d4405faaf",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0 Super Admin — corriger l'ancienne grille préremplie des offres négociées",
-      "merged_at": "2026-10-26T12:59:35Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
