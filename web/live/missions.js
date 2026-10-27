@@ -408,7 +408,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    s.checklistItems=Array.isArray(response.data?.checklist_items)?response.data.checklist_items:[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;upcomingGeneration++;detailsGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],commentRequired:false,photoRequired:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,error:'',issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
+ function reset(){generation++;upcomingGeneration++;detailsGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,error:'',issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker)return '';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
