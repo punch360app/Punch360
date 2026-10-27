@@ -54,3 +54,12 @@ test('server quote parameters use correct selected plan and cannot create a Stri
  assert.equal(ctrl.state.base,'3900');
  assert.equal(ctrl.state.included,'25');
 });
+
+test('negotiated inclusion defaults to numeric and resets when changing untouched tiers',()=>{
+ const {ctrl}=setup();
+ assert.equal(ctrl.state.includedUnlimited,false);
+ ctrl.input({id:'platform-price-includedUnlimited',checked:true});
+ assert.equal(ctrl.state.includedUnlimited,true);
+ ctrl.reset();
+ assert.equal(ctrl.state.includedUnlimited,false);
+});
