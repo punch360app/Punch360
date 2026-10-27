@@ -1,6 +1,19 @@
 # PUNCH 360° — État courant unique
 
-## Reprise vérifiée — 27 octobre 2026 après lots #186–189
+## Dernier lot — 27 octobre 2026, preuves photos réellement expirables (#191)
+
+**PR [#191](https://github.com/punch360app/Punch360/pull/191) fusionnée**, merge `bd92018641b27b53cba31e81113e6d7599d0bdc0` ; SHA final PR `ccc3a96343483234a0571363e07069f856eeb330` : CI [40533994669](https://github.com/punch360app/Punch360/actions/runs/40533994669) **SUCCESS** ; CI sur merge [40534268230](https://github.com/punch360app/Punch360/actions/runs/40534268230) **SUCCESS**.
+
+**Rétention physique installée** uniquement sur Supabase `mlabstdxxwjdpfaxiwmg` : migration `mission_photo_retention` appliquée; `pg_cron` + `pg_net` et job `punch-mission-photo-expiration` **actif toutes les heures à :17 UTC** ; token interne 256 bits généré dans Vault, non enregistré dans Git ou dans `cron.job`. Edge **`mission-photo-retention` ACTIVE v1**, `verify_jwt=false` intentionnellement car elle utilise **son propre secret Vault** validé par RPC service_role-only, sans entrée utilisateur pouvant spécifier les fichiers. L'Edge interactive `mission-photo` reste ACTIVE v2, `verify_jwt=true`.
+
+Le nettoyage sélectionne seulement `pending/ready` expirées après 24 h ou `linked` ayant atteint `retention_until` (180 jours), en **lots bornés**, claims sous verrou, délai et retry. Fichiers supprimés via **Storage API**, puis métadonnées et référence de mission effacées seulement après succès. Aucun `DELETE FROM storage.objects`. **SQL transaction/ROLLBACK multi-états et droits réussie** (tentative initiale du test bloquée par rôle privé, corrigée sans toucher les droits de production). Preuve HTTP pg_net : demande autorisée **200** avec `claimed=0,deleted=0,failed=0`, fausse clé **403**. État du jour : **0 photo en table et 0 objet dans ce bucket** ; aucune suppression de photo réelle n'a été exécutée ni attestée. Le cron est actif mais **son premier déclenchement périodique naturel n'est pas encore attesté** ; suivre `cron.job_run_details` après la prochaine heure :17, et vérifier les réponses `net._http_response` avant expiration des logs. La recette complète avec **un vrai objet Storage expiré** et un appareil authentifié manque encore; ne pas l'inventer.
+
+**Travaux suivants** : vérifier le premier déclenchement horaire et la suppression effective d'un objet **strictement synthétique et autorisé** sans suppression de données réelles; ensuite continuer les variantes restantes de MISSION-007 (signature/confirmation client avec décision produit explicite, permissions, rétention et contrôle fournisseur) et MISSION-010 hors-ligne selon jalon. Préserver intégralement #186–189, les forfaits et le bon projet Supabase. Aucune nouvelle revue générale Stripe/PDF/PR historiques. Conserver le mode gros lots de `LOCAL_BATCH_WORKFLOW.md`.
+
+---
+
+
+## Historique — reprise après les lots #186–189
 
 **Dernier lot livré : [PR #189](https://github.com/punch360app/Punch360/pull/189) — assainissement des photos de fin de mission.** Merge `e6a7ed992a0b793c6a9afb6875d5b2b3cdb2ed9e`. CI sur SHA final `ca8ead8f8ec1363da76165dd37b4ffb052db650c` : [run 40530480485](https://github.com/punch360app/Punch360/actions/runs/40530480485) **SUCCESS**. Edge `mission-photo` **ACTIVE version 2**, `verify_jwt=true`, déployée exclusivement sur `mlabstdxxwjdpfaxiwmg`. Avant l'écriture du fichier, l'Edge nettoie GPS, EXIF, XMP, commentaires et données privées des nouveaux JPEG/PNG/WebP; l'orientation JPEG indispensable est reconstruite sans géolocalisation. Tests Node ciblés + CI complète, images synthétiques décodées localement; **pas de test authentifié Web/appareil** et pas de rétro-nettoyage des anciens fichiers.
 
