@@ -14,7 +14,7 @@ export function missionIssueLabel(value){
 /** @param {string} company @param {Record<string,any>} mission @param {string} reason @param {string} note @param {string} request */
 export function missionIssueArgs(company,mission,reason,note,request){
  const v=Number(mission?.version),message=String(note??'').trim();
- if(!company||!mission?.id||mission.status!=='published'||!Number.isInteger(v)||v<1||
+ if(!company||!mission?.id||!['published','in_progress'].includes(mission.status)||!Number.isInteger(v)||v<1||
   !MISSION_ISSUE_REASONS.some(x=>x[0]===reason)||message.length>300||
   !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(request||'')))
   throw Error('Mission, motif ou confirmation invalide. Actualisez si nécessaire.');
