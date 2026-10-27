@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T01:01:43.663Z",
+  "generated_at": "2026-10-27T01:07:18.179Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1391,6 +1391,14 @@
   },
   "activity": [
     {
+      "number": 162,
+      "sha": "a25920950bfb9d4c0fda29efee92f092a72aaf90",
+      "ci": "success",
+      "ids": [],
+      "title": "Passation — refléter #160 fusionnée et éviter la duplication NAV-007",
+      "merged_at": "2026-10-27T01:07:05Z"
+    },
+    {
       "number": 160,
       "sha": "e4262dc0a282b2460370ac4761159e4ce88c089a",
       "ci": "success",
@@ -1922,15 +1930,6 @@
       "ids": [],
       "title": "P0-B Stripe : distinguer confirmation en cours et paiement confirmé sans rétrograder une commande",
       "merged_at": "2026-10-26T11:01:09Z"
-    },
-    {
-      "number": 107,
-      "sha": null,
-      "head_sha": "46037bb59bc1bddf0018a839fd0357f008329ae5",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B — Refuser les paniers Stripe multi-lignes avant le webhook de facturation",
-      "merged_at": "2026-10-26T11:00:24Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
