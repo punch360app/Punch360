@@ -498,7 +498,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
       const network=await Network.getNetworkStateAsync();
       if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
       const previousPhoto=stagedPhoto.current;
-       let photo=previousPhoto?.id===id&&previousPhoto?.version===next.version?previousPhoto.photoId:null;
+       let photo=previousPhoto?.id===id&&previousPhoto?.version===next.version?(previousPhoto?.photoId??null):null;
        if(photoRequired&&!photo){
         if(!photoAsset)throw Error('Photo manquante');
         const body=new FormData();
