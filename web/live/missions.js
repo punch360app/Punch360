@@ -1,5 +1,6 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
+import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 /** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
@@ -195,7 +196,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map()};
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issueTarget:null,issueReason:'',issueNote:'',issuePending:new Map()};
  let generation=0;
  async function load(company,user,worker,day=missionDate()){
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,s.company===company&&s.user===user&&s.worker===worker);
@@ -208,7 +209,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    s.items=response.data?.items||[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:''});s.pending.clear();}
+ function reset(){generation++;Object.assign(s,{company:null,user:null,worker:null,items:[],enabled:false,previouslyEnabled:false,error:''});s.pending.clear();s.issuePending.clear();s.issueTarget=null;s.issueReason='';s.issueNote='';}
  function render(){
   if(!s.company||!s.worker)return '';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
@@ -249,7 +250,50 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
      routes.choices.map(route=>'<p><a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+e(route.label)+' · juste cette fois ↗</a></p>').join('')+
      '</details>':'')+
    renderTour()+
-   '<p>Terminer cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button></div></section>';
+   '<p>Terminer ou signaler cette mission ne termine pas votre journée.</p><button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button>'+
+   '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler un problème</button>'+
+   (s.issueTarget===x.id?'<section class="ess-panel" aria-label="Mission impossible">'+
+    '<h4>Pourquoi cette mission ne peut-elle pas être terminée ?</h4>'+
+    '<p>Le responsable sera averti. Aucune absence, fin de quart ou sortie de pointage.</p>'+
+    '<label class="ess-field">Motif<select id="mission-issue-reason"><option value="">Choisir un motif</option>'+
+     MISSION_ISSUE_REASONS.map(([id,label])=>'<option value="'+e(id)+'" '+(s.issueReason===id?'selected':'')+'>'+e(label)+'</option>').join('')+
+    '</select></label>'+
+    '<label class="ess-field">Précision facultative<textarea id="mission-issue-note" maxlength="300">'+e(s.issueNote)+'</textarea></label>'+
+    '<button type="button" class="ess-btn" data-action="mission:issue-send" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Confirmer le signalement</button>'+
+    '<button type="button" class="ess-btn" data-action="mission:issue-cancel">Annuler</button>'+
+    '</section>':'')+
+   '</div></section>';
+ }
+ function openIssue(id){
+  const latest=missionProgress(s.items);
+  if(!s.company||!s.worker||!s.enabled||s.truncated||latest.ambiguous||latest.next?.id!==id)
+   throw Error('Mission ou ordre non confirmé, rechargez la tournée.');
+  s.issueTarget=id;s.issueReason='';s.issueNote='';redraw();return true;
+ }
+ function cancelIssue(){s.issueTarget=null;s.issueReason='';s.issueNote='';redraw();return true;}
+ async function reportIssue(id){
+  if(s.busy||s.issueTarget!==id)throw Error('Choisissez d’abord une mission à signaler.');
+  const latest=missionProgress(s.items);
+  if(s.truncated||latest.ambiguous||latest.next?.id!==id)throw Error('Ordre modifié : rechargez la tournée.');
+  const mission=s.items.find(x=>x.id===id&&x.status==='published');
+  if(!mission)throw Error('Mission modifiée : rechargez.');
+  if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise : signalement non enregistré.');
+  const reason=doc.getElementById('mission-issue-reason')?.value||'';
+  const note=doc.getElementById('mission-issue-note')?.value||'';
+  const request=s.issuePending.get(id)||doc.defaultView.crypto.randomUUID();
+  const args=missionIssueArgs(s.company,mission,reason,note,request);
+  s.issueReason=reason;s.issueNote=note;
+  if(!doc.defaultView.confirm('Signaler « '+mission.title+' » : '+missionIssueLabel(reason)+' ? Votre pointage reste actif.'))return false;
+  s.issuePending.set(id,request);s.busy=true;
+  try{
+   const resp=await sb.rpc('report_essential_mission_issue',args);
+   if(resp.error)throw resp.error;
+   s.issuePending.delete(id);s.issueTarget=null;s.issueReason='';s.issueNote='';
+   await load(s.company,s.user,s.worker,s.day);
+   notify('Mission signalée au responsable. Votre pointage continue.');
+   return true;
+  }catch{ s.error='Signalement non confirmé : reconnectez-vous puis réessayez la même demande.';return false;}
+  finally{s.busy=false;redraw();}
  }
  async function finish(id){
   if(!s.company||!s.worker||!s.enabled||s.busy)throw Error('Mission non autorisée.');
@@ -267,5 +311,5 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{s.error='Fin non confirmée : réessayez la même demande après vérification.';return false;}
   finally{s.busy=false;redraw();}
  }
- return {state:s,load,render,finish,reset};
+ return {state:s,load,render,finish,openIssue,cancelIssue,reportIssue,reset};
 }
