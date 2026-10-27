@@ -42,8 +42,8 @@ export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
  const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
   ['published','completed'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
   .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
- const ambiguity=eligible.some((m,i)=>i>0&&m.status==='published'&&eligible[i-1].status==='published'
-  &&m.sort_order===eligible[i-1].sort_order);
+ const pending=eligible.filter(m=>m.status==='published');
+ const ambiguity=pending.some((m,i)=>i>0&&m.sort_order===pending[i-1].sort_order);
  const rows=eligible.slice(0,limit).map(m=>({
   id:m.id,title:m.title||'Mission',client_name:m.client_name||'Client',
   site_name:m.site_name||'Lieu',status:m.status,sort_order:m.sort_order,
