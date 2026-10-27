@@ -67,3 +67,20 @@ html.essential{color-scheme:light;--bg:#f5f7f3;--fg:#23382e;--muted:#7b8980;--pa
 .essential .phone[dir="rtl"] input[type="datetime-local"],
 .essential .phone[dir="rtl"] code,
 .essential .phone[dir="rtl"] textarea[readonly]{direction:ltr;unicode-bidi:isolate}
+
+/* QA visuelle : les liens d'authentification doivent offrir 44px minimum de zone tactile.
+   Portee limitee aux ecrans publics, sans impact sur les boutons metier ou la navigation connectee. */
+.onboarding .onboard-header .onboard-link {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  padding:10px 8px;
+}
+.onboarding .onboard-main button.text-link {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  padding:10px 8px;
+}

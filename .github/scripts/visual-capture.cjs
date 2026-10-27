@@ -54,6 +54,12 @@ async function metrics(page) {
 async function shot(page,device,edition,state,pageErrors,blockedCount) {
   await waitForReady(page);
   const measurements=await metrics(page);
+  // These four public auth screens must have real 44px touch targets.
+  // Check the rendered DOM, not a CSS declaration or visual guess.
+  if (measurements.tapTargets.smallCount>0) {
+    throw new Error('Small touch targets on '+device+'/'+edition+'/'+state+': '+
+      JSON.stringify(measurements.tapTargets.examples));
+  }
   const name=fileName(device,edition,state);
   // Short stabilisation; the same browser and viewport are reused across each journey.
   await page.waitForTimeout(120);
