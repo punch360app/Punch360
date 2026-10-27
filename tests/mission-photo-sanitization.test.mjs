@@ -4,15 +4,23 @@ import {sanitizeMissionPhoto} from '../supabase/functions/mission-photo/image-sa
 
 // Real 20x12 images with SYNTHETIC location and camera metadata.
 const fixtures = {
-  jpeg: '/9j/4AAQSkZJRgABAQAAAQABAAD/4QBYRXhpZgAATU0AKgAAAAgAAgEOAAIAAAAdAAAAJgEPAAIAAAALAAAARAAAAABncHM6NDYuNzcsLTcxLjMyIFtzeW50aGV0aWNdAABDYW1lcmFUZXN0AAD/4QBPaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLwA8R1BTTG9jYXRpb24+c3ludGhldGljIGNvb3JkaW5hdGVzPC9HUFNMb2NhdGlvbj7/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAMABQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDn6KKK2P00KKKKAP/Z',
   png: 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAIAAADtbgqsAAAAIXRFWHRHUFNMb2NhdGlvbgBzeW50aGV0aWMgY29vcmRpbmF0ZXMEgYZnAAAAGUlEQVR4nGO8JZ/LQC5gIlvnqOZRzTTXDAAisQF+bra80AAAAABJRU5ErkJggg==',
   webp: 'UklGRuQAAABXRUJQVlA4WAoAAAAMAAAAEwAACwAAVlA4IDYAAACwAgCdASoUAAwAPm0skUWkIqGYBABABsSgC7ADKUAA/u1NwTdh3//aWf/9tD//20P+XMV8AABFWElGUAAAAE1NACoAAAAIAAIBDgACAAAAHQAAACYBDwACAAAACwAAAEQAAAAAZ3BzOjQ2Ljc3LC03MS4zMiBbc3ludGhldGljXQAAQ2FtZXJhVGVzdAAAWE1QIDAAAAA8R1BTTG9jYXRpb24+c3ludGhldGljIGNvb3JkaW5hdGVzPC9HUFNMb2NhdGlvbj4='
 };
 const bytes = type => new Uint8Array(Buffer.from(fixtures[type], 'base64'));
 const has = (raw, text) => Buffer.from(raw).includes(Buffer.from(text));
+// Structural JPEG sample with a private APP1 section; actual JPEG decodability
+// was checked separately using synthetic 20x12 images and a pixel decoder.
+function jpegSample() {
+  const segment = (marker, payload) => [255,marker,(payload.length + 2) >>> 8,(payload.length + 2) & 255,...payload];
+  return new Uint8Array([255,216,
+    ...segment(0xe1,[...new TextEncoder().encode('gps:46.77 CameraTest')]),
+    ...segment(0xc0,[8,0,1,0,1,1,1,0x11,0]),
+    ...segment(0xda,[1,1,0,0,63,0]),42,52,255,217]);
+}
 
 test('JPEG: strip camera/GPS/XMP without changing the encoded proof format', () => {
-  const before = bytes('jpeg');
+  const before = jpegSample();
   assert.ok(has(before, 'gps:46.77'));
   const result = sanitizeMissionPhoto(before);
   assert.equal(result.mime, 'image/jpeg');
