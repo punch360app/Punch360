@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
-import {missionDate,personalMissionTour,createPersonalMissionController} from '../web/live/missions.js';
+import {missionDate,missionProgress,personalMissionTour,createPersonalMissionController} from '../web/live/missions.js';
 const today=missionDate(),tomorrow=new Date(Date.parse(today+'T12:00:00Z')+86400000).toISOString().slice(0,10);
 const one={id:'one',mission_day:today,worker_id:'worker',status:'published',sort_order:2,
  title:'Nettoyage bureaux',client_name:'Clinique Nadine',site_name:'Étage 2',
@@ -65,6 +65,43 @@ test('completed daily tour remains accessible after the final mission, with no e
  assert.match(win.document.body.textContent,/Toutes les missions sont terminées/);
  assert.match(win.document.body.textContent,/Voir mes interventions de la journée \(2\)/);
  assert.equal(win.document.querySelectorAll('details a[href]').length,0);
+ assert.equal(calls.length,0);
+ await win.happyDOM.close();
+});
+
+test('ambiguous published priority has no guessed next mission; completed ranks do not tie',()=>{
+ const tied=[{...one,id:'z',sort_order:1},{...two,id:'a',sort_order:1},done,draft];
+ const p=missionProgress(tied);
+ assert.equal(p.total,3);
+ assert.equal(p.next,null);
+ assert.equal(p.ambiguous,true);
+ assert.equal(p.ambiguousRank,1);
+ assert.equal(p.allDone,false);
+ const safe=missionProgress([{...one,id:'done',status:'completed',sort_order:1},{...two,id:'todo',sort_order:1}]);
+ assert.equal(safe.ambiguous,false);
+ assert.equal(safe.next.id,'todo');
+ const later=missionProgress([{...one,sort_order:1},{...two,id:'second',sort_order:2},{...one,id:'third',sort_order:2}]);
+ assert.equal(later.ambiguous,false);
+ assert.equal(later.next.id,'one');
+});
+test('Web card never chooses an arbitrary address or completes a tied-rank mission',async()=>{
+ const win=new Window(),calls=[];
+ win.confirm=()=>true;
+ const ui=createPersonalMissionController({document:win.document,escape:esc,redraw(){},notify(){},
+  sb:{rpc:async(name,args)=>{calls.push({name,args});return {data:{items:[],enabled:true}}}}});
+ Object.assign(ui.state,{company:'tenant',user:'user',worker:'worker',enabled:true,
+  items:[{...one,id:'first',sort_order:1},{...two,id:'second',sort_order:1}],truncated:false});
+ win.document.body.innerHTML=ui.render();
+ assert.match(win.document.body.textContent,/Prochaine mission indéterminée/);
+ assert.match(win.document.body.textContent,/confirmer la séquence/);
+ assert.equal(win.document.querySelector('[data-action="mission:finish"]'),null);
+ assert.equal(win.document.querySelectorAll('details a[href*="waze.com"]').length,2);
+ assert.equal(await ui.finish('first').catch(err=>err.message),
+  'Ordre des missions non confirmé ou modifié : rechargez et contactez votre responsable.');
+ assert.equal(calls.length,0);
+ ui.state.truncated=true;
+ assert.equal(await ui.finish('second').catch(err=>err.message),
+  'Ordre des missions non confirmé ou modifié : rechargez et contactez votre responsable.');
  assert.equal(calls.length,0);
  await win.happyDOM.close();
 });
