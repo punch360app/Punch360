@@ -41,7 +41,7 @@ export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
  if(!workerId)return {rows:[],total:0,hasMore:false,ambiguous:false};
  if(!Number.isInteger(limit)||limit<1||limit>50)throw Error('Limite de tournée invalide');
  const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
-  ['published','completed'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
+  ['published','completed','impossible'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
   .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
  const pending=eligible.filter(m=>m.status==='published');
  const ambiguity=pending.some((m,i)=>i>0&&m.sort_order===pending[i-1].sort_order);
@@ -216,7 +216,6 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   if(!s.enabled)return '';
   if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
   const p=missionProgress(s.items);
-  if(!p.total)return '';
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
   let pref=null;try{pref=chooseNavigationPreference(doc.defaultView.localStorage.getItem(navigationPreferenceKey(s.user,s.company)),platform);}catch{}
   const renderTour=()=>{
@@ -227,7 +226,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       tour.rows.map(stop=>{
        const options=missionNavigationOptions(stop,platform,pref).choices;
        return '<article class="ess-person"><b>'+e(stop.title)+'</b><small>'+
-        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':'À faire')+
+        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'Impossible · responsable avisé':'À faire')+
         '</small><small>'+e(missionAddress(stop))+'</small>'+
         (stop.status==='published'?options.map(route=>'<a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+
         e(route.label)+' · cette étape ↗</a>').join(''):'')+'</article>';
@@ -235,6 +234,10 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       (tour.hasMore?'<p>Seules les 25 premières étapes sont affichées; demander une tournée segmentée au responsable.</p>':'')+
       '</details>';
   };
+  const impossible=s.items.filter(x=>x.status==='impossible').length;
+  if(!p.total)return impossible?'<section class="zen-company"><b>Mission signalée impossible · suivi requis</b><small>Votre pointage reste indépendant.</small></section>'+renderTour():'';
+  if(!p.next&&!p.allDone)return '<section class="zen-company"><b>Interventions à suivre</b></section>'+renderTour();
+  if(p.allDone&&impossible)return '<section class="zen-company"><b>Interventions terminées ou signalées impossibles.</b><small>Le responsable doit traiter les problèmes signalés.</small></section>'+renderTour();
   if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>'+renderTour();
   if(p.ambiguous)return '<section class="zen-company" aria-label="Ordre des missions à confirmer">'+
    '<p role="alert"><b>Prochaine mission indéterminée</b> : plusieurs interventions publiées ont le même rang ('+
