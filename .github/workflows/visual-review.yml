@@ -51,11 +51,18 @@ jobs:
           done
           cat /tmp/punch-visual-server.log
           exit 1
-      - name: Capture and audit unauthenticated mobile, tablet and desktop UI
+      - name: Exercise and capture public onboarding journeys on phone, tablet and PC
         run: node .github/scripts/visual-capture.cjs
+      - name: Verify all 24 distinct public screen states were visited
+        run: |
+          node -e "const fs=require('fs');const p='visual-captures/functional-journeys.json';const x=JSON.parse(fs.readFileSync(p,'utf8'));if(x.visits!==24||new Set(x.results.map(r=>r.image)).size!==24){console.error('Incomplete public journey coverage',x.visits);process.exit(1)};for(const r of x.results){if(!fs.statSync('visual-captures/'+r.image).size)process.exit(1)}"
       - name: Compare owner-approved screenshot baselines and create Work recommendations
         if: always()
         run: node .github/scripts/visual-compare.cjs
+      - name: Verify deliverable files in the visual report
+        if: always()
+        run: |
+          node -e "const fs=require('fs');for(const n of ['review.html','report.json','WORK_VISUAL_FIX.md']){const p='visual-captures/'+n;if(!fs.existsSync(p)||!fs.statSync(p).size)throw Error('Missing artifact file: '+p)}"
       - name: Preserve screenshots, diffs, HTML and Work repair instructions
         if: always()
         uses: actions/upload-artifact@v4
