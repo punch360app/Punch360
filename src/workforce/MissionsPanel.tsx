@@ -129,7 +129,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      const report=missionDayReview(missions,{worker:reviewWorker,status:reviewStatus,client:reviewClient},truncated);
      return <>
       {label('À faire : '+report.counts.published+' · Terminées : '+report.counts.completed+
-       ' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
+       ' · Impossibles : '+report.counts.impossible+' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
       {label('Filtrer par employé')}
       {options([{id:'',name:'Tous les employés'},...roster.filter(w=>w.status==='active')],reviewWorker,setReviewWorker,w=>w.id,w=>w.name)}
       {label('Filtrer par état')}
