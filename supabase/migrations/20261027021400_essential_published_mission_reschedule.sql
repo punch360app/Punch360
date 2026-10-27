@@ -31,7 +31,7 @@ begin
  v_reason:=btrim(coalesce(p_reason,''));
  if p_id is null or p_version is null or p_version<1 or p_request is null or
   p_target_day is null or p_target_day<current_date or p_target_day>current_date+180 or
-  p_target_site is null or p_target_order not between 1 and 999 or
+  p_target_site is null or p_target_order is null or p_target_order not between 1 and 999 or
   length(v_reason) not between 5 and 200 then
   raise exception using errcode='22023',message='Date, lieu, rang, version ou motif invalide';end if;
  -- Shared company route lock with reorder/reassignment, then row-version check.
