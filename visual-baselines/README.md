@@ -33,3 +33,21 @@ Ce répertoire conserve les PNG de référence **explicitement approuvés par le
 - Les captures, HTML, JSON et images de diff sont conservés 14 jours comme artefacts du run.
 - Work peut utiliser ces preuves **dans une session ouverte**; un workflow Actions ne démarrera ni ne pilotera Work en arrière-plan.
 - Tester des parcours authentifiés nécessite un environnement de test isolé et des identités fictives. Aucune automatisation visuelle ne peut modifier Stripe, RLS, données Supabase, droits, pointages ou paie.
+
+## Extension : 24 écrans publics contrôlés en vrai navigateur
+
+Le workflow visite les interfaces réelles, avec des clics et validations non destructives, sur S25 (412×915), iPad (820×1180) et PC (1440×900), pour **chacune** des deux éditions Construction et Essentiel : accueil déconnecté, connexion, inscription et mot de passe oublié.
+
+Les 24 captures ont chacune un audit JSON. Le fichier `functional-journeys.json` vérifie la couverture. Le navigateur ne saisit aucun compte, ne soumet aucun formulaire et bloque tout appel réseau sauf vers le serveur statique local.
+
+Le nom historique `punch-S25-logged-out.png` (et équivalent iPad/PC) représente Construction / accueil déconnecté seulement. Les autres captures utilisent par exemple `punch-S25-essential-login.png` et `punch-PC-construction-signup.png`.
+
+Pour un nouveau nom de capture, la référence approuvée doit déclarer le même `screen` (`welcome`, `login`, `signup`, `reset`) et la même `edition` (`essential` ou `construction`). Exemple de métadonnées uniquement, **pas une approbation** :
+
+```json
+{ "screens": { "punch-S25-essential-login.png": { "approvedSha256": "REMPLACER_APRES_APPROBATION", "approvedSource": "design-valide", "screen": "login", "edition": "essential", "approvedBy": "proprietaire", "approvedAt": "AAAA-MM-JJ" } } }
+```
+
+Chaque PNG doit être exactement du même écran, état et viewport que sa référence. Les écrans Figma employés/admin connectés ne constituent pas des références valables pour ce parcours déconnecté.
+
+**Limites réelles :** ces tests ne certifient pas les parcours RH, les droits, Stripe, les pointages ni les comptes Supabase. Le transfert récurrent vers une maquette Figma et le lancement automatique de Work ne sont pas encore actifs.
