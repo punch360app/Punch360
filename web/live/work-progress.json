@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T01:42:16.080Z",
+  "generated_at": "2026-10-27T01:52:13.029Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1334,7 +1334,8 @@
       "pr": [
         152,
         163,
-        164
+        164,
+        165
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1378,7 +1379,8 @@
         157,
         159,
         160,
-        164
+        164,
+        165
       ],
       "note": "Travail rattaché à la PR #157. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1389,7 +1391,8 @@
       "external_required": true,
       "pr": [
         160,
-        164
+        164,
+        165
       ],
       "note": "Travail rattaché à la PR #160. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1405,6 +1408,18 @@
     }
   },
   "activity": [
+    {
+      "number": 165,
+      "sha": "8ab1a96e80f86cee88b30e3449f35eb6c788544b",
+      "ci": "success",
+      "ids": [
+        "MISSION-008",
+        "MISSION-009",
+        "MISSION-013"
+      ],
+      "title": "Missions — réaffecter une étape publiée à un autre salarié (Web/Expo)",
+      "merged_at": "2026-10-27T01:52:04Z"
+    },
     {
       "number": 164,
       "sha": "1ea028d93503ed96fdcc5829433c16c00d42bcee",
@@ -1942,15 +1957,6 @@
       "ids": [],
       "title": "Publier le centre de suivi HTML PUNCH 360° (578 exigences / 29 lots)",
       "merged_at": "2026-10-26T12:27:45Z"
-    },
-    {
-      "number": 110,
-      "sha": null,
-      "head_sha": "1895d45bdd02eec8c9cb092510c0e29c65d01584",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-A — Isoler les actions Stripe mobiles entre comptes et compagnies",
-      "merged_at": "2026-10-26T11:20:24Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
