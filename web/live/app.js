@@ -388,6 +388,13 @@ if(a==='navRemember'||a==='navForget'){
  localStorage.setItem(ctx.key,id);
  window.open(url,'_blank','noopener,noreferrer');draw();return;
 }
+if(a==='mission:issue-open'||a==='mission:issue-cancel'||a==='mission:issue-send'){
+ if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
+ if(a==='mission:issue-open')personalMissions.openIssue(id);
+ else if(a==='mission:issue-cancel')personalMissions.cancelIssue();
+ else await personalMissions.reportIssue(id);
+ draw();return;
+}
 if(a==='mission:finish'){
   if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
   await personalMissions.finish(id);draw();return;
