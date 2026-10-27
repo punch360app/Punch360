@@ -8,6 +8,7 @@ import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/liv
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
 import {missionCancelArgs} from '../../web/live/mission-cancel.js';
 import {missionReassignArgs} from '../../web/live/mission-reassign.js';
+import {missionRescheduleArgs} from '../../web/live/mission-reschedule.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
 async function rpc(name:string,args:Row):Promise<Row>{
@@ -39,6 +40,9 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
  const cancelRequests=useRef<Map<string,string>>(new Map());
  const [reassignTarget,setReassignTarget]=useState<Row|null>(null),[reassignWorker,setReassignWorker]=useState(''),[reassignOrder,setReassignOrder]=useState('1'),[reassignReason,setReassignReason]=useState('');
  const reassignRequests=useRef<Map<string,string>>(new Map());
+ const [rescheduleTarget,setRescheduleTarget]=useState<Row|null>(null),[rescheduleDay,setRescheduleDay]=useState(missionDate()),
+  [rescheduleSite,setRescheduleSite]=useState(''),[rescheduleOrder,setRescheduleOrder]=useState('1'),[rescheduleReason,setRescheduleReason]=useState('');
+ const rescheduleRequests=useRef<Map<string,string>>(new Map());
  const counter=useRef(0);
  async function load(date=day){
   const current=++counter.current;
@@ -58,7 +62,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
+  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -122,6 +126,24 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     reassignRequests.current.delete(key);
     setReassignTarget(null);setReassignWorker('');setReassignReason('');
     await load(day);setMessage('Mission réaffectée; les pointages et heures sont inchangés.');
+   })}]);
+ };
+ const reschedulePublished=()=>{
+  const m=rescheduleTarget;if(!m||busy||truncated)return;
+  if(!sites.some(s=>s.id===rescheduleSite&&s.active)){setMessage('Sélectionnez une adresse client active.');return;}
+  const key=['reschedule',m.id,rescheduleDay,rescheduleSite,rescheduleOrder,rescheduleReason.trim()].join(':');
+  const request=rescheduleRequests.current.get(key)||Crypto.randomUUID();
+  let args:Row;
+  try{args=missionRescheduleArgs(companyId,m,rescheduleDay,rescheduleSite,rescheduleOrder,rescheduleReason,request)}
+  catch(e:any){setMessage(e.message||'Programmation invalide');return;}
+  Alert.alert('Reprogrammer la mission publiée ?',
+   'Vérifiez les disponibilités et la nouvelle adresse. Un avis sera envoyé au salarié si son compte est actif. Les heures et pointages ne changent pas.',
+   [{text:'Retour',style:'cancel'},{text:'Reprogrammer',onPress:()=>void work(async()=>{
+    rescheduleRequests.current.set(key,request);
+    await rpc('reschedule_essential_published_mission',args);
+    rescheduleRequests.current.delete(key);
+    setRescheduleTarget(null);setRescheduleReason('');setDay(rescheduleDay);
+    await load(rescheduleDay);setMessage('Mission reprogrammée. Le salarié a été avisé si son compte est actif.');
    })}]);
  };
  const swapWith=(second:Row)=>{
@@ -213,6 +235,19 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      {input('Rang dans sa tournée (1 à 999)',reassignOrder,setReassignOrder)}
      {input('Motif obligatoire (5 à 200 caractères)',reassignReason,setReassignReason)}
      {button('Confirmer la réaffectation',reassignPublished,busy)}
+    </View>:null}
+    {m.status==='published'&&!truncated?button(rescheduleTarget?.id===m.id?'Fermer la reprogrammation':'Reprogrammer jour, lieu ou rang',()=>{
+     setRescheduleTarget(v=>v?.id===m.id?null:m);setRescheduleDay(m.mission_day);setRescheduleSite(m.site_id);
+     setRescheduleOrder(String(m.sort_order));setRescheduleReason('');
+    },busy):null}
+    {rescheduleTarget?.id===m.id?<View style={{gap:5,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
+     {label('Même salarié; vérifiez manuellement ses disponibilités. Aucune session de pointage ni heure modifiée.')}
+     {input('Nouvelle date AAAA-MM-JJ',rescheduleDay,setRescheduleDay)}
+     {label('Nouvelle adresse client active')}
+     {options(sites,rescheduleSite,setRescheduleSite,s=>s.id,s=>s.client_name+' · '+s.name+' · '+s.city)}
+     {input('Rang dans la journée (1 à 999)',rescheduleOrder,setRescheduleOrder)}
+     {input('Motif obligatoire (5 à 200 caractères)',rescheduleReason,setRescheduleReason)}
+     {button('Confirmer la nouvelle programmation',reschedulePublished,busy)}
     </View>:null}
     {m.status==='published'&&!truncated&&publishedSwapTargets(m,missions).length?
      button(swapSource?.id===m.id?'Annuler l’échange':'Modifier l’ordre de ce salarié',
