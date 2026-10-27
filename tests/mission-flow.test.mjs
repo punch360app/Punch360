@@ -2,12 +2,13 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
 import {createMissionManager,createPersonalMissionController,missionArgs,missionDate,missionProgress,publishedSwapTargets,publishedSwapArgs,personalMissionTour} from '../web/live/missions.js';
+import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../web/live/mission-issues.js';
 const esc=x=>String(x??'').replace(/[&<>"']/g,z=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[z]));
 function fixture(){
  const win=new Window();win.confirm=()=>true;
  const sites=[{id:'site-a',name:'Édifice A',client_name:'Clinique Nadine',city:'Québec',active:true}];
  const roster=[{id:'worker-a',name:'Nadine',status:'active'}],list=[],calls=[],notifications=[];
- let enabled=false,failFinish=false;
+ let enabled=false,failFinish=false,failIssue=false;
  const sb={rpc:async(name,args)=>{
   calls.push({name,args});
   if(name==='essential_missions_configuration'){
@@ -16,7 +17,7 @@ function fixture(){
   if(name==='list_essential_client_sites')return {data:{items:sites,has_more:false}};
   if(name==='list_essential_missions'){
    return {data:{enabled,items:!enabled?[]:list.filter(x=>x.mission_day===args.p_day&&
-    (args.p_include_drafts||x.status==='published'||x.status==='completed')&&
+    (args.p_include_drafts||x.status==='published'||x.status==='completed'||x.status==='impossible')&&
     (!args.p_worker||x.worker_id===args.p_worker)).map(x=>({...x})),truncated:false}};
   }
   if(name==='save_essential_mission'){
@@ -42,6 +43,14 @@ function fixture(){
    first.version++;second.version++;notifications.push('swap:'+first.worker_id);
    return{data:{first_id:first.id,second_id:second.id,first_version:first.version,second_version:second.version}};
   }
+  if(name==='report_essential_mission_issue'){
+   if(failIssue)return {error:{message:'Connexion interrompue'}};
+   const m=list.find(x=>x.id===args.p_mission);
+   if(!m||m.status!=='published'||m.version!==args.p_version)return{error:{message:'Mission modifiée'}};
+   m.status='impossible';m.issue_reason=args.p_reason;m.version++;
+   notifications.push('issue:boss');
+   return{data:{id:m.id,version:m.version,status:m.status,duplicate:false}};
+  }
   if(name==='complete_essential_mission'){
    if(failFinish)return {error:{message:'Réseau indisponible'}};
    const entry=list.find(x=>x.id===args.p_id);
@@ -51,7 +60,7 @@ function fixture(){
   }
   throw Error('Unexpected API '+name);
  }};
- return {win,sb,sites,roster,list,calls,notifications,setFail:v=>{failFinish=v}};
+ return {win,sb,sites,roster,list,calls,notifications,setFail:v=>{failFinish=v},setIssueFail:v=>{failIssue=v}};
 }
 const day=missionDate();
 test('pure mission projection chooses next in explicit order and never confuses completion with punch exit',()=>{
@@ -173,4 +182,54 @@ test('tour marks duplicate published ranks ambiguous even with a completed rank 
  const actual=personalMissionTour(sample,'w',25,day);
  assert.equal(actual.ambiguous,true);
  assert.equal(missionProgress(sample).ambiguous,true);
+});
+
+test('mission impossible requires an authorized published mission, explicit reason, and max 300 characters',()=>{
+ const mission={id:'m',version:2,status:'published'};
+ assert.equal(MISSION_ISSUE_REASONS.length,5);
+ assert.equal(missionIssueLabel('access_blocked'),'Accès impossible');
+ assert.equal(missionIssueArgs('co',mission,'client_absent','  Fermé  ','req').p_note,'Fermé');
+ assert.throws(()=>missionIssueArgs('co',mission,'invalid','', 'req'),/motif valide/);
+ assert.throws(()=>missionIssueArgs('co',{...mission,status:'completed'},'client_absent','', 'req'),/mission publiée/);
+ assert.throws(()=>missionIssueArgs('co',mission,'other','x'.repeat(301),'req'),/300/);
+});
+test('employee reports an impossible next mission; Boss alerted and next stop updates without any punch action',async()=>{
+ const fx=fixture();
+ fx.list.push({id:'visit1',version:1,worker_id:'worker-a',mission_day:day,title:'Ménage',status:'published',
+  sort_order:1,client_name:'Clinique Nadine',site_name:'Porte',address_line:'123 rue A',city:'Québec',country:'CA'},
+ {id:'visit2',version:1,worker_id:'worker-a',mission_day:day,title:'Inspection',status:'published',
+  sort_order:2,client_name:'Condo Mathieu',site_name:'Bureau',address_line:'456 rue B',city:'Québec',country:'CA'});
+ await fx.sb.rpc('essential_missions_configuration',{p_company:'company',p_enabled:true});
+ const ctrl=createPersonalMissionController({sb:fx.sb,document:fx.win.document,escape:esc,redraw(){},notify(){}});
+ await ctrl.load('company','user','worker-a',day);
+ assert.equal(ctrl.openIssue('visit1'),true);
+ fx.win.document.body.innerHTML=ctrl.render();
+ assert.match(fx.win.document.body.textContent,/Signaler un problème/);
+ fx.win.document.getElementById('mission-issue-reason').value='access_blocked';
+ fx.win.document.getElementById('mission-issue-note').value='Portail fermé';
+ assert.equal(await ctrl.reportIssue('visit1'),true);
+ assert.equal(fx.list[0].status,'impossible');
+ assert.equal(fx.list[0].issue_reason,'access_blocked');
+ assert.equal(fx.notifications.filter(x=>x==='issue:boss').length,1);
+ assert.equal(missionProgress(ctrl.state.items).next?.id,'visit2');
+ assert.match(ctrl.render(),/Inspection/);
+ assert.equal(fx.calls.filter(x=>/punch|scheduled_shift|payroll|gps/.test(x.name)).length,0);
+ await fx.win.happyDOM.close();
+});
+test('mission issue failed response retains same request UUID on explicit retry; no server success claim',async()=>{
+ const fx=fixture();fx.list.push({id:'blocked',version:2,worker_id:'worker-a',mission_day:day,title:'Accès',
+  status:'published',sort_order:1,client_name:'Client',site_name:'Lieu',address_line:'123 rue A',city:'Québec'});
+ await fx.sb.rpc('essential_missions_configuration',{p_company:'company',p_enabled:true});
+ const ctrl=createPersonalMissionController({sb:fx.sb,document:fx.win.document,escape:esc,redraw(){},notify(){}});
+ await ctrl.load('company','user','worker-a',day);ctrl.openIssue('blocked');
+ fx.win.document.body.innerHTML=ctrl.render();
+ fx.win.document.getElementById('mission-issue-reason').value='client_absent';
+ fx.setIssueFail(true);assert.equal(await ctrl.reportIssue('blocked'),false);
+ assert.equal(fx.list[0].status,'published');assert.match(ctrl.state.error,/non confirmé/);
+ fx.setIssueFail(false);fx.win.document.body.innerHTML=ctrl.render();
+ assert.equal(await ctrl.reportIssue('blocked'),true);
+ const calls=fx.calls.filter(x=>x.name==='report_essential_mission_issue');
+ assert.equal(calls.length,2);assert.equal(calls[0].args.p_request,calls[1].args.p_request);
+ assert.equal(fx.list[0].status,'impossible');
+ await fx.win.happyDOM.close();
 });
