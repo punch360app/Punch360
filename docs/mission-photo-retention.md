@@ -1,0 +1,11 @@
+# Mission photo retention — bounded physical Storage cleanup
+
+New evidence is private in the mission-photo-evidence bucket. Pending and ready rows expire after 24 hours, linked proof at retention_until (180 days after mission completion). **The object is deleted only via Supabase Storage API, not SQL against storage.objects**.
+
+A recurring hourly pg_cron job calls the dedicated mission-photo-retention Edge function through pg_net. The 256-bit credential is minted in the SQL migration and lives only in Vault. Edge gateway JWT validation is intentionally disabled for this **different cron-only function**; it requires the random bearer and validates it through a service-role-only SQL RPC before any read. The interactive mission-photo Edge function remains verify_jwt=true, untouched.
+
+The worker claims up to 4 x 25 expiring photo rows per invocation with short leases and skip-locked semantics. It validates the exact company/mission/photo Storage path, deletes a single object with service-role Storage.remove, then finalizes metadata deletion and clears any mission reference. Failed deletions release their lease and retry hourly. If the function stops, leases expire after 20 minutes. Expiry is rechecked with a row lock; no future-dated proof can be deleted by claim.
+
+Security: no user-facing API can claim/finalize cleanup; table auth is private with RLS; the cron token never appears in Git or in the stored cron command. Logs/responses expose only aggregate counts. The cron endpoint never accepts a company, photo ID or Storage path from a caller. No Stripe, pointage, payroll, GPS, Construction data or company settings are altered.
+
+Validation: run node --test tests/mission-photo-retention.test.mjs; after migration in the exclusive mlabstdxxwjdpfaxiwmg project, execute supabase/tests/mission_photo_retention.sql in a rollback transaction; confirm the Edge function deployed with verify_jwt=false, and a safe cron request yields HTTP 200 with 0 objects before enabling production attestations. Distinguish live scheduled invocation from initial deployment and fixture tests. Keep signed links limited to 60 seconds. A user with an already-issued signed link might retain access until that link expires.
