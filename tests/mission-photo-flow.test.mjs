@@ -9,14 +9,14 @@ test('manager enables private photo, employee completes with upload and V4, proo
  const row={id:'mission-A',company_id:'company-A',worker_id:'worker-A',status:'published',version:1,
   sort_order:1,mission_day:day,title:'Nettoyage étage',client_name:'Client A',site_name:'Bâtiment A',
   first_name:'Nadine',city:'Québec',address_line:'23 rue des Pins'};
- let required=false;const calls=[],uploads=[],requests=[];
+ let mode='none';const calls=[],uploads=[],requests=[];
  const sb={
   rpc:async(name,args)=>{
    calls.push({name,args});
-   if(name==='essential_missions_configuration')return{data:{enabled:true,comment_required:false,checklist_required:false,photo_required:required,checklist_items:[]}};
-   if(name==='set_essential_mission_photo_policy'){assert.equal(args.p_company,'company-A');required=args.p_required;return{data:{photo_required:required}};}
+   if(name==='essential_missions_configuration')return{data:{enabled:true,comment_required:false,checklist_required:false,photo_required:mode==='required',photo_optional:mode==='optional',checklist_items:[]}};
+   if(name==='set_essential_mission_photo_mode'){assert.equal(args.p_company,'company-A');mode=args.p_mode;return{data:{photo_required:mode==='required',photo_optional:mode==='optional'}};}
    if(name==='list_essential_client_sites')return{data:{items:[]}};
-   if(name==='list_essential_missions')return{data:{enabled:true,comment_required:false,checklist_required:false,photo_required:required,checklist_items:[],
+   if(name==='list_essential_missions')return{data:{enabled:true,comment_required:false,checklist_required:false,photo_required:mode==='required',photo_optional:mode==='optional',checklist_items:[],
     items:[{...row,completion_photo_id:args.p_include_drafts?row.completion_photo_id||null:null}],truncated:false}};
    if(name==='complete_essential_mission_v4'){
     requests.push(args);assert.equal(args.p_company,'company-A');
@@ -38,9 +38,9 @@ test('manager enables private photo, employee completes with upload and V4, proo
  };
  const manager=createMissionManager({sb,document:win.document,escape,redraw(){},notify(){}});
  await manager.load('company-A',[{id:'worker-A',status:'active',name:'Nadine'}]);
- assert.match(manager.render(),/Exiger une photo de fin/);
- await manager.handle('photo-policy',{dataset:{}});
- assert.equal(required,true);assert.match(manager.render(),/Photo privée de fin/);
+ assert.match(manager.render(),/Exiger une photo/);
+ await manager.handle('photo-mode-required',{dataset:{}});
+ assert.equal(mode,'required');assert.match(manager.render(),/Photo privée de fin/);
  const employee=createPersonalMissionController({sb,document:win.document,escape,redraw(){},notify(){}});
  await employee.load('company-A','user-A','worker-A',day);
  win.document.body.innerHTML=employee.render();
