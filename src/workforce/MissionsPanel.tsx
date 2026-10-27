@@ -7,6 +7,7 @@ import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEli
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
 import {missionCancelArgs} from '../../web/live/mission-cancel.js';
+import {missionReassignArgs} from '../../web/live/mission-reassign.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
 async function rpc(name:string,args:Row):Promise<Row>{
@@ -36,6 +37,8 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   [instructions,setInstructions]=useState(''),[editing,setEditing]=useState<Row|null>(null),[swapSource,setSwapSource]=useState<Row|null>(null);
  const [cancelTarget,setCancelTarget]=useState<Row|null>(null),[cancelReason,setCancelReason]=useState('');
  const cancelRequests=useRef<Map<string,string>>(new Map());
+ const [reassignTarget,setReassignTarget]=useState<Row|null>(null),[reassignWorker,setReassignWorker]=useState(''),[reassignOrder,setReassignOrder]=useState('1'),[reassignReason,setReassignReason]=useState('');
+ const reassignRequests=useRef<Map<string,string>>(new Map());
  const counter=useRef(0);
  async function load(date=day){
   const current=++counter.current;
@@ -55,7 +58,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
+  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -101,6 +104,25 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      cancelRequests.current.delete(key);setCancelTarget(null);setCancelReason('');
      await load(day);setMessage('Mission annulée. Avis interne envoyé si le compte salarié est actif.');
     })}]);
+ };
+ const reassignPublished=()=>{
+  const m=reassignTarget;if(!m||busy||truncated)return;
+  const key='reassign:'+m.id,request=reassignRequests.current.get(key)||Crypto.randomUUID();
+  if(!roster.some(w=>w.id===reassignWorker&&w.status==='active')){
+   setMessage('Sélectionnez un salarié actif.');return;
+  }
+  let args:Row;
+  try{args=missionReassignArgs(companyId,m,reassignWorker,reassignOrder,reassignReason,request)}
+  catch(e:any){setMessage(e.message||'Réaffectation invalide');return;}
+  Alert.alert('Réaffecter la mission publiée ?',
+   'Vérifiez qualifications et disponibilités du nouveau salarié. Les deux employés seront avisés si leurs comptes sont actifs; aucun pointage ne change.',
+   [{text:'Retour',style:'cancel'},{text:'Réaffecter',onPress:()=>void work(async()=>{
+    reassignRequests.current.set(key,request);
+    await rpc('reassign_essential_published_mission',args);
+    reassignRequests.current.delete(key);
+    setReassignTarget(null);setReassignWorker('');setReassignReason('');
+    await load(day);setMessage('Mission réaffectée; les pointages et heures sont inchangés.');
+   })}]);
  };
  const swapWith=(second:Row)=>{
   const first=swapSource;if(!first)return;
@@ -181,6 +203,16 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     {cancelTarget?.id===m.id?<View style={{gap:6,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
      {input('Motif de l’annulation (5 à 200 caractères)',cancelReason,setCancelReason)}
      {button('Confirmer l’annulation',cancelPublished,busy)}
+    </View>:null}
+    {m.status==='published'&&!truncated?button(reassignTarget?.id===m.id?'Fermer la réaffectation':'Réaffecter à un autre salarié',()=>{
+     setReassignTarget(v=>v?.id===m.id?null:m);setReassignWorker('');setReassignOrder(String(m.sort_order));setReassignReason('');
+    },busy):null}
+    {reassignTarget?.id===m.id?<View style={{gap:5,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
+     {label('Sélectionnez un salarié actif. Vérifiez manuellement ses qualifications et disponibilités avant la validation.')}
+     {options(roster.filter(w=>w.status==='active'&&w.id!==m.worker_id),reassignWorker,setReassignWorker,w=>w.id,w=>w.name||w.first_name)}
+     {input('Rang dans sa tournée (1 à 999)',reassignOrder,setReassignOrder)}
+     {input('Motif obligatoire (5 à 200 caractères)',reassignReason,setReassignReason)}
+     {button('Confirmer la réaffectation',reassignPublished,busy)}
     </View>:null}
     {m.status==='published'&&!truncated&&publishedSwapTargets(m,missions).length?
      button(swapSource?.id===m.id?'Annuler l’échange':'Modifier l’ordre de ce salarié',
