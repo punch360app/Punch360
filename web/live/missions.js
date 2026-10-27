@@ -86,7 +86,7 @@ export function missionArgs(company,form,existing=null,publish=false){
   p_title:title,p_instructions:String(form.instructions||''),p_publish:!!publish};
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,enabled:false,commentRequired:false,photoRequired:false,checklistRequired:false,checklistItems:[],checklistDraft:'',day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
+ const s={company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
   review:{status:'',worker:'',client:''},postponeId:null,decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  const cancelRequests=new Map();
@@ -97,11 +97,11 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
   if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();s.postponeId=null;s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
-  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],error:''});
+  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],error:''});
   if(!company)return;
   try{
    const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
-   if(gen!==generation)return;s.enabled=!!cfg?.enabled;s.commentRequired=!!cfg?.comment_required;s.photoRequired=!!cfg?.photo_required;s.checklistRequired=!!cfg?.checklist_required;
+   if(gen!==generation)return;s.enabled=!!cfg?.enabled;s.commentRequired=!!cfg?.comment_required;s.photoRequired=!!cfg?.photo_required;s.photoOptional=!!cfg?.photo_optional;s.checklistRequired=!!cfg?.checklist_required;
    s.checklistItems=Array.isArray(cfg?.checklist_items)?cfg.checklist_items:[];s.checklistDraft=s.checklistItems.join('\n');
    if(s.enabled){
     const [sites,missions]=await Promise.all([
@@ -112,7 +112,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -124,7 +124,10 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    '<p>Module '+(s.enabled?'activé':'désactivé')+' pour cette compagnie.</p>'+button(s.enabled?'Désactiver':'Activer','toggle')+
    '<p>Preuve à la fin : <b>'+(s.commentRequired?'commentaire obligatoire (5 à 1000 caractères)':'aucune preuve exigée')+'</b>.</p>'+
    button(s.commentRequired?'Ne plus exiger de commentaire':'Exiger un commentaire de fin','proof-policy')+
-    '<p>Photo privée de fin : <b>'+(s.photoRequired?'obligatoire':'non exigée')+'</b>. JPEG, PNG ou WebP, 5 Mio maximum.</p>'+button(s.photoRequired?'Ne plus exiger de photo':'Exiger une photo de fin','photo-policy')+
+    '<p>Photo privée de fin : <b>'+(s.photoRequired?'obligatoire':s.photoOptional?'facultative':'désactivée')+'</b>. JPEG, PNG ou WebP, 5 Mio maximum.</p>'+
+    (!s.photoRequired?button('Exiger une photo','photo-mode-required'):'')+
+    (!s.photoOptional?button('Autoriser une photo facultative','photo-mode-optional'):'')+
+    (s.photoRequired||s.photoOptional?button('Désactiver la photo','photo-mode-none'):'')+
    '<p>Checklist de fin : <b>'+(s.checklistRequired?'obligatoire':'non exigée')+'</b>.</p>'+
    '<label class="ess-field">Étapes à confirmer (une par ligne, maximum 8)<textarea id="mission-checklist-policy" rows="5" maxlength="1000">'+e(s.checklistDraft)+'</textarea></label>'+
    button(s.checklistRequired?'Enregistrer les étapes obligatoires':'Exiger cette checklist','checklist-enable')+
@@ -219,13 +222,14 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     await rpc('set_essential_mission_proof_policy',{p_company:company,p_comment_required:required});
     if(gen!==generation||s.company!==company)return true;
     await load(company,s.roster);notify(required?'Commentaire de fin obligatoire.':'Aucune preuve de fin obligatoire.');
-    }else if(action==='photo-policy'){
-     const required=!s.photoRequired;
-     if(!doc.defaultView.confirm(required?'Exiger une photo privée avant la fin de chaque mission ?':'Ne plus exiger de photo ? Les anciennes preuves restent privées.'))return true;
+    }else if(action.startsWith('photo-mode-')){
+     const mode=action.slice('photo-mode-'.length);
+     if(!['none','optional','required'].includes(mode))throw Error('Choix de photo invalide.');
+     if(!doc.defaultView.confirm(mode==='none'?'Désactiver les futures preuves photo pour cette compagnie ?':mode==='required'?'Exiger une photo avant chaque fin de mission ?':'Autoriser une photo facultative au salarié ?'))return true;
      const company=s.company,gen=generation;
-     await rpc('set_essential_mission_photo_policy',{p_company:company,p_required:required});
+     await rpc('set_essential_mission_photo_mode',{p_company:company,p_mode:mode});
      if(s.company!==company||gen!==generation)return true;
-     await load(company,s.roster);notify(required?'Photo obligatoire enregistrée.':'Photo obligatoire désactivée.');
+     await load(company,s.roster);notify('Politique de photo enregistrée.');
     }else if(action==='view-photo'){
      const company=s.company;
      const result=await sb.functions.invoke('mission-photo',{body:{action:'view',company,photo:el?.dataset?.id}});
@@ -387,20 +391,20 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],commentRequired:false,photoRequired:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
  let generation=0,upcomingGeneration=0,detailsGeneration=0;
  async function load(company,user,worker,day=missionDate()){
   const same=s.company===company&&s.user===user&&s.worker===worker;
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
   if(!same){s.pending.clear();s.uploadedPhoto=null;s.issue=null;s.completionDraft=null;s.completionChecks=null;s.upcoming.open=false;s.upcoming.day=nextMissionDay();}
   upcomingGeneration++;detailsGeneration++;s.details=null;Object.assign(s.upcoming,{loadedDay:null,items:[],truncated:false,error:'',busy:false});
-  const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,commentRequired:false,photoRequired:false,checklistRequired:false,checklistItems:[],previouslyEnabled:previous,error:''});
+  const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
   try{
    const response=await sb.rpc('list_essential_missions',{p_company:company,p_day:day,p_worker:worker,p_include_drafts:false});
    if(response.error)throw response.error;
    if(gen!==generation)return;
-   s.items=response.data?.items||[];s.commentRequired=!!response.data?.comment_required;s.photoRequired=!!response.data?.photo_required;s.checklistRequired=!!response.data?.checklist_required;
+   s.items=response.data?.items||[];s.commentRequired=!!response.data?.comment_required;s.photoRequired=!!response.data?.photo_required;s.photoOptional=!!response.data?.photo_optional;s.checklistRequired=!!response.data?.checklist_required;
    s.checklistItems=Array.isArray(response.data?.checklist_items)?response.data.checklist_items:[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
@@ -491,7 +495,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
      s.checklistItems.map((item,i)=>'<label class="ess-field"><input type="checkbox" id="mission-proof-check-'+e(x.id)+'-'+i+'" '+
       (s.completionChecks?.id===x.id&&s.completionChecks.checked.includes(i)?'checked':'')+'> '+e(item)+'</label>').join('')+'</div>':'')+
    (s.commentRequired?'<label class="ess-field">Commentaire de fin obligatoire (5 à 1000 caractères)<textarea id="mission-completion-comment-'+e(x.id)+'" maxlength="1000" rows="4">'+e(s.completionDraft?.id===x.id?s.completionDraft.text:'')+'</textarea></label><p class="ess-fine">Commentaire privé, visible uniquement par les responsables autorisés de cette compagnie.</p>':'')+
-   (s.photoRequired?'<label class="ess-field">Photo privée obligatoire (JPEG, PNG ou WebP, maximum 5 Mio)<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" id="mission-photo-file-'+e(x.id)+'"></label>'+(s.uploadedPhoto?.mission===x.id&&s.uploadedPhoto?.version===x.version?'<p role="status">Photo déjà téléversée, en attente de la fin.</p>':''):'')+
+   ((s.photoRequired||s.photoOptional)?'<label class="ess-field">Photo privée '+(s.photoRequired?'obligatoire':'facultative')+' (JPEG, PNG ou WebP, maximum 5 Mio)<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" id="mission-photo-file-'+e(x.id)+'"></label>'+(s.uploadedPhoto?.mission===x.id&&s.uploadedPhoto?.version===x.version?'<p role="status">Photo déjà téléversée, en attente de la fin.</p>':''):'')+
     '<button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>'+(s.checklistRequired?'Terminer avec checklist':s.commentRequired?'Terminer avec commentaire':'Terminer')+'</button>'+ 
    '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler une mission impossible</button>'+
    (s.issue?.id===x.id?'<div class="ess-panel"><p>Le responsable sera informé. Aucun retard, absence ou pointage ne sera déduit.</p>'+
@@ -608,7 +612,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    s.completionChecks={id,checked};
    if(!missionChecklistConfirmed(s.checklistItems,checked))throw Error('Cochez toutes les étapes de la checklist avant de terminer.');
   }
-  const candidate=s.photoRequired?doc.getElementById('mission-photo-file-'+id)?.files?.[0]:null;
+  const candidate=(s.photoRequired||s.photoOptional)?doc.getElementById('mission-photo-file-'+id)?.files?.[0]:null;
   const cached=s.uploadedPhoto?.mission===id&&s.uploadedPhoto?.version===x.version?s.uploadedPhoto:null;
   if(s.photoRequired&&!candidate&&!cached)throw Error('Choisissez une photo de fin de mission.');
   if(candidate&&(candidate.size<16||candidate.size>5*1024*1024||
@@ -619,7 +623,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   s.pending.set(id,request);s.busy=true;
   try{
    let photo=cached?.photoId||null;
-   if(s.photoRequired&&!photo){
+   if((s.photoRequired||s.photoOptional)&&candidate&&!photo){
     const body=new doc.defaultView.FormData();
     body.append('company',s.company);body.append('mission',id);body.append('version',String(x.version));
     body.append('file',candidate,candidate.name);
@@ -628,9 +632,9 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
     photo=uploaded.data.photo_id;
     s.uploadedPhoto={mission:id,version:x.version,photoId:photo};
    }
-   const resp=await sb.rpc(s.photoRequired?'complete_essential_mission_v4':s.checklistRequired?'complete_essential_mission_v3':s.commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
-    p_company:s.company,p_id:id,p_version:x.version,p_request:request,...(s.commentRequired||s.checklistRequired||s.photoRequired?{p_comment:proof}:{}),
-    ...(s.checklistRequired||s.photoRequired?{p_checklist:s.checklistRequired?s.checklistItems:null}:{}),...(s.photoRequired?{p_photo:photo}:{})});
+   const resp=await sb.rpc(photo?'complete_essential_mission_v4':s.checklistRequired?'complete_essential_mission_v3':s.commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
+    p_company:s.company,p_id:id,p_version:x.version,p_request:request,...(s.commentRequired||s.checklistRequired||photo?{p_comment:proof}:{}),
+    ...(s.checklistRequired||photo?{p_checklist:s.checklistRequired?s.checklistItems:null}:{}),...(photo?{p_photo:photo}:{})});
    if(resp.error)throw resp.error;s.pending.delete(id);s.completionDraft=null;s.completionChecks=null;s.uploadedPhoto=null;
    await load(s.company,s.user,s.worker,s.day);notify('Mission terminée; votre pointage ne change pas.');return true;
   }catch(err){s.error='Fin non confirmée : '+(String(err?.message||'').includes('Commentaire')?'commentaire requis; actualisez les missions.':'vérifiez la connexion et réessayez la même demande.');return false;}
