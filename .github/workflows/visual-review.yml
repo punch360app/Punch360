@@ -7,6 +7,15 @@ on:
       - '.github/workflows/visual-review.yml'
       - '.github/scripts/visual-*.cjs'
       - 'visual-baselines/**'
+  push:
+    branches: [main]
+    paths:
+      - 'web/live/**'
+      - '.github/workflows/visual-review.yml'
+      - '.github/scripts/visual-*.cjs'
+      - 'visual-baselines/**'
+  schedule:
+    - cron: '17 11 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,6 +28,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -28,16 +39,24 @@ jobs:
         run: npm ci --prefer-offline --no-audit --no-fund
       - name: Install screenshot and PNG tools without saving a lockfile
         run: npm install --no-save --no-package-lock playwright@1.56.0 pngjs@7.0.0
+      - name: Verify comparison, approvals and recommendations
+        run: node --test .github/scripts/visual-feedback.test.cjs
       - run: npx playwright install --with-deps chromium
       - name: Serve the real Punch Web interface locally
         run: |
           python3 -m http.server 8765 -d web/live > /tmp/punch-visual-server.log 2>&1 &
-      - name: Capture unauthenticated mobile, tablet and desktop UI without real backend calls
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8765/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/punch-visual-server.log
+          exit 1
+      - name: Capture and audit unauthenticated mobile, tablet and desktop UI
         run: node .github/scripts/visual-capture.cjs
-      - name: Compare only owner-approved Figma baselines
+      - name: Compare only owner-approved Figma baselines and create Work recommendations
         if: always()
         run: node .github/scripts/visual-compare.cjs
-      - name: Preserve screenshots, diffs and Work repair instructions
+      - name: Preserve screenshots, diffs, HTML and Work repair instructions
         if: always()
         uses: actions/upload-artifact@v4
         with:
