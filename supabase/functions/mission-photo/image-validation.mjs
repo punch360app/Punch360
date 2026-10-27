@@ -8,7 +8,7 @@ export function identifyMissionPhoto(data) {
   const p = (...bytes) => bytes.every((v, i) => data[i] === v);
   if (p(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) {
     if (data[12] !== 0x49 || data[13] !== 0x48 || data[14] !== 0x44 || data[15] !== 0x52 ||
-        data[16] !== 0 || data[17] !== 0 || data[18] === 0 || data[20] !== 0 || data[21] !== 0 || data[22] === 0) {
+        !new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(16) || !new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(20)) {
       throw new Error('PNG invalide.');
     }
     return { mime: 'image/png', extension: 'png' };
