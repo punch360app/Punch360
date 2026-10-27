@@ -2,7 +2,7 @@ begin;
 do $$
 declare boss uuid:=gen_random_uuid();boss_b uuid:=gen_random_uuid();
  employee uuid:=gen_random_uuid();coworker uuid:=gen_random_uuid();
- c uuid;other_company uuid;worker uuid;client uuid;site uuid;id uuid;result jsonb;details jsonb;
+ c uuid;other_company uuid;worker uuid;client uuid;site uuid;mission_id uuid;result jsonb;details jsonb;
  denied boolean;before_punch int;before_shift int;before_jobs int;d date:=current_date+2;
 begin
  insert into auth.users(id,email,email_confirmed_at) values
@@ -28,34 +28,34 @@ begin
  perform public.essential_missions_configuration(c,true);
  result:=public.save_essential_mission(c,null,0,worker,site,d,1,'Inspecter le chantier',
   'Entrer par la porte principale avant 14h.',true);
- id:=(result->>'id')::uuid;
+ mission_id:=(result->>'id')::uuid;
  perform set_config('request.jwt.claim.sub',employee::text,true);
- details:=public.get_essential_published_mission_details(c,id,1);
+ details:=public.get_essential_published_mission_details(c,mission_id,1);
  if details->>'title'<>'Inspecter le chantier' or
   details->>'instructions'<>'Entrer par la porte principale avant 14h.' then
   raise exception 'Worker authorized instructions not returned: %',details;end if;
  if details::text like '%CODE-ACCES-SITE-INTERDIT%' or details::text like '%NOTE-CLIENT-INTERDITE%'
   or details::text like '%worker_id%' or details::text like '%company_id%'
  then raise exception 'Private data leaked through details: %',details;end if;
- denied:=false;begin perform public.get_essential_published_mission_details(c,id,2);
+ denied:=false;begin perform public.get_essential_published_mission_details(c,mission_id,2);
  exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Stale version allowed';end if;
  perform set_config('request.jwt.claim.sub',coworker::text,true);
- denied:=false;begin perform public.get_essential_published_mission_details(c,id,1);
+ denied:=false;begin perform public.get_essential_published_mission_details(c,mission_id,1);
  exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Coworker read another mission';end if;
  perform set_config('request.jwt.claim.sub',boss_b::text,true);
- denied:=false;begin perform public.get_essential_published_mission_details(c,id,1);
+ denied:=false;begin perform public.get_essential_published_mission_details(c,mission_id,1);
  exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Foreign company user read instructions';end if;
  perform set_config('request.jwt.claim.sub',boss::text,true);
- denied:=false;begin perform public.get_essential_published_mission_details(c,id,1);
+ denied:=false;begin perform public.get_essential_published_mission_details(c,mission_id,1);
  exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Manager without personal employee assignment read worker details';end if;
  perform set_config('request.jwt.claim.sub',employee::text,true);
- result:=public.complete_essential_mission(c,id,1,gen_random_uuid());
+ result:=public.complete_essential_mission(c,mission_id,1,gen_random_uuid());
  perform set_config('request.jwt.claim.sub',employee::text,true);
- denied:=false;begin perform public.get_essential_published_mission_details(c,id,2);
+ denied:=false;begin perform public.get_essential_published_mission_details(c,mission_id,2);
  exception when insufficient_privilege then denied:=true;end;
  if not denied then raise exception 'Completed mission exposed through published-only details';end if;
  execute 'reset role';
