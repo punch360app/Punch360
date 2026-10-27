@@ -17,7 +17,9 @@ begin
     or p_first_version<1 or p_second_version<1 then
   raise exception using errcode='22023',message='Deux missions distinctes et leurs versions sont requises';
  end if;
- -- Locks serialize swaps for this pair even if the manager double-clicks.
+ -- Serialize all route swaps inside one company; other non-swap writers still
+ -- meet the unique-index and version checks, rolling back on any collision.
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('mission_route_swap:'||p_company::text,0));
  select * into v_first from private.essential_missions
  where company_id=p_company and id=p_first for update;
  select * into v_second from private.essential_missions
