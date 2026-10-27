@@ -165,10 +165,12 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   return()=>{current.current++;subscription.remove()};
  },[companyId,workerId]);
  const progress=missionProgress(items),next=progress.next;
+ const missionConflict='ambiguous' in progress&&missionConflict===true;
+ const missionConflictRank='ambiguousRank' in progress?missionConflictRank:null;
  const tour=personalMissionTour(items,workerId);
  useEffect(()=>{setNavOpen(false)},[next?.id]);
  const complete=()=>{
-  if(!next||busy||truncated||progress.ambiguous)return;
+  if(!next||busy||truncated||missionConflict)return;
   Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
    [{text:'Annuler',style:'cancel'},{text:'Terminer',onPress:()=>{void (async()=>{
      setBusy(true);setMessage('');
@@ -193,9 +195,9 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
-  {title(progress.allDone?'Toutes les missions sont terminées':progress.ambiguous?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
-  {progress.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
-   Plusieurs missions publiées portent le rang {String(progress.ambiguousRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
+  {title(progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
+  {missionConflict?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
+   Plusieurs missions publiées portent le rang {String(missionConflictRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
   </Text>:null}
   {next&&!truncated?<>{title(next.title+' · '+next.client_name)}{label(next.site_name+' · '+address)}
    {routes.preferred?button('Itinéraire avec '+routes.preferred.label,
