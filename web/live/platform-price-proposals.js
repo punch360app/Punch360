@@ -4,9 +4,9 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
  // Owner-approved public starting values. These ONLY prefill a negotiation form;
  // contracts and Stripe's six saved Price IDs remain authoritative and untouched.
  const approved=Object.freeze({
-  essential:Object.freeze({seats:'20',base:'1900',included:'20',extra:'200'}),
-  essential_plus:Object.freeze({seats:'25',base:'3900',included:'25',extra:'200'}),
-  essential_pro:Object.freeze({seats:'50',base:'6900',included:'50',extra:'200'})
+  essential:Object.freeze({seats:'20',base:'1900',included:'20',extra:'200',includedUnlimited:false}),
+  essential_plus:Object.freeze({seats:'25',base:'3900',included:'25',extra:'200',includedUnlimited:false}),
+  essential_pro:Object.freeze({seats:'50',base:'6900',included:'50',extra:'200',includedUnlimited:false})
  });
  const fresh=()=>({company:'',companyName:'',reason:'',plan:'essential',cadence:'monthly',...approved.essential,
   discount:'15',pricingEdited:false,effective:new Date(Date.now()+7*86400000).toISOString().slice(0,10),
@@ -20,12 +20,12 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   if(s.busy)return;
   const k=el.id?.replace(/^platform-price-/,'');
   if(!k||!(k in s))return;
-  s[k]=el.value;
+  s[k]=k==='includedUnlimited'?el.checked===true:el.value;
   if(k==='plan'&&approved[s.plan]){
    if(!s.pricingEdited)Object.assign(s,approved[s.plan]);
    else s.notice='Valeurs négociées conservées : vérifiez les places et les prix pour ce forfait.';
   }
-  if(['seats','base','included','extra','discount'].includes(k))s.pricingEdited=true;
+  if(['seats','base','included','includedUnlimited','extra','discount'].includes(k))s.pricingEdited=true;
   if(k==='company')s.companyName='';
   if(k==='company'||k==='reason'){s.list=null;s.approval=null;s.confirmation='';s.approveConfirmation='';}
   s.preview=null;if(k!=='plan')s.notice='';
@@ -36,7 +36,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   if(!/^\d{4}-\d\d-\d\d$/.test(s.effective))throw Error('Date d’effet invalide.');
   const integer=k=>{const x=String(s[k]??'').trim();if(!/^\d+$/.test(x))throw Error('Montants et quantités doivent être des entiers en cents CAD.');const n=Number(x);if(!Number.isSafeInteger(n))throw Error('Montant trop élevé.');return n;};
   return {p_company:s.company,p_plan:s.plan,p_cadence:s.cadence,p_seats:integer('seats'),p_base:integer('base'),
-  p_included:integer('included'),p_extra:integer('extra'),p_discount:integer('discount'),
+  p_included:integer('included'),p_included_unlimited:s.includedUnlimited===true,p_extra:integer('extra'),p_discount:integer('discount'),
   p_effective_on:s.effective,p_reason:s.reason.trim()};
  }
  async function rpc(name,parameters){const r=await sb.rpc(name,parameters);if(r.error){const err=Error('Opération Super Admin refusée. Vérifiez votre session MFA et réessayez.');err.code=r.error.code;throw err;}return r.data;}
@@ -47,14 +47,14 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
   <label class="ess-field">Identifiant de compagnie Essentiel réelle<input id="platform-price-company" value="${e(s.company)}" autocomplete="off"></label>
   <label class="ess-field">Motif détaillé<input id="platform-price-reason" value="${e(s.reason)}" maxlength="1000"></label>
   ${btn('Charger les projets et la version','load')}
-  ${s.list?`<p>Version : ${Number(s.list.version)} · Dernières propositions (max. 20) · approbation v${Number(s.approval?.version||0)}</p>${(s.list.items||[]).map((x,i)=>`<p>v${Number(x.proposal_version)} · ${e(x.plan_id)} · ${money(x.due_cents)} / ${e(x.cadence)} · ${e(x.status)}. ${s.approval?.proposal_id===x.id?'Approuvée, en attente d’acceptation du Boss et de confirmation Stripe.':'Non approuvée.'} ${i===0&&s.approval?.proposal_id!==x.id?btn('Approuver cette proposition pour le Boss','approve',false,`data-id="${e(x.id)}"`):''}</p>`).join('')}<label class="ess-field">Pour approuver, recopier l’identifiant de l’entreprise<input id="platform-price-approveConfirmation" value="${e(s.approveConfirmation)}" autocomplete="off"></label><p>${e(s.company)}</p><p>Cette approbation seule n’effectue aucun paiement. Le Boss devra accepter le devis chez Stripe.</p>`:''}
+  ${s.list?`<p>Version : ${Number(s.list.version)} · Dernières propositions (max. 20) · approbation v${Number(s.approval?.version||0)}</p>${(s.list.items||[]).map((x,i)=>`<p>v${Number(x.proposal_version)} · ${e(x.plan_id)} · ${money(x.due_cents)} / ${e(x.cadence)} · ${x.included_seats_unlimited===true?'Membres illimités':'Membres inclus : '+e(x.included_seats??'—')} · ${e(x.status)}. ${s.approval?.proposal_id===x.id?'Approuvée, en attente d’acceptation du Boss et de confirmation Stripe.':'Non approuvée.'} ${i===0&&s.approval?.proposal_id!==x.id?btn('Approuver cette proposition pour le Boss','approve',false,`data-id="${e(x.id)}"`):''}</p>`).join('')}<label class="ess-field">Pour approuver, recopier l’identifiant de l’entreprise<input id="platform-price-approveConfirmation" value="${e(s.approveConfirmation)}" autocomplete="off"></label><p>${e(s.company)}</p><p>Cette approbation seule n’effectue aucun paiement. Le Boss devra accepter le devis chez Stripe.</p>`:''}
   <fieldset ${s.busy?'disabled':''}><legend>Créer un devis négocié, sans activation</legend><p class="ess-fine">Valeurs de départ : Essentiel 19 $ / 20 places, Plus 39 $ / 25 places, Pro 69 $ / 50 places, +2 $ par personne supplémentaire et −15 % annuel. Vous pouvez personnaliser le devis; les contrats et prix Stripe déjà enregistrés ne sont pas modifiés.</p>
   <label class="ess-field">Forfait<select id="platform-price-plan">${[['essential','Essentiel'],['essential_plus','Plus'],['essential_pro','Pro']].map(([v,n])=>`<option value="${v}" ${s.plan===v?'selected':''}>${n}</option>`).join('')}</select></label>
   <label class="ess-field">Périodicité<select id="platform-price-cadence"><option value="monthly" ${s.cadence==='monthly'?'selected':''}>Mensuelle</option><option value="yearly" ${s.cadence==='yearly'?'selected':''}>Annuelle</option></select></label>
-  ${[['seats','Nombre de places'],['base','Prix de base mensuel (cents CAD)'],['included','Places incluses'],['extra','Supplément par place (cents CAD)'],['discount','Réduction annuelle (%)']].map(([key,title])=>`<label class="ess-field">${title}<input id="platform-price-${key}" type="number" min="0" step="1" value="${e(s[key])}"></label>`).join('')}
+  ${[['seats','Nombre de places'],['base','Prix de base mensuel (cents CAD)'],['included','Places incluses en mode numérique'],['extra','Supplément par place (cents CAD)'],['discount','Réduction annuelle (%)']].map(([key,title])=>`<label class="ess-field">${title}<input id="platform-price-${key}" type="number" min="0" step="1" value="${e(s[key])}"></label>`).join('')}<label class="ess-field"><input type="checkbox" id="platform-price-includedUnlimited" ${s.includedUnlimited?'checked':''}> Membres inclus illimités (zéro supplément)</label><p class="ess-fine">Ce mode supprime le supplément par membre, mais le nombre réel de personnes et les limites des autres modules restent suivis. Toute offre exige l’acceptation du Boss et la confirmation Stripe.</p>
   <label class="ess-field">Date d’effet proposée<input type="date" id="platform-price-effective" value="${e(s.effective)}"></label>
   ${btn('Prévisualiser','preview',!s.list)}
-  ${s.preview?`<p>Prix prévu : ${money(s.preview.monthly_cents)} / mois ou ${money(s.preview.annual_cents)} / an. Montant selon la période : <strong>${money(s.preview.due_cents)}</strong>. Avant taxes.</p><p><b>Aucun paiement ou contrat modifié.</b></p>
+  ${s.preview?`<p>${s.preview.included_seats_unlimited===true?'Membres inclus : illimité · supplément membre : 0 $ · ':''}Prix prévu : ${money(s.preview.monthly_cents)} / mois ou ${money(s.preview.annual_cents)} / an. Montant selon la période : <strong>${money(s.preview.due_cents)}</strong>. Avant taxes.</p><p><b>Aucun paiement ou contrat modifié.</b></p>
   <label class="ess-field">Recopier l'identifiant exact de la compagnie<input id="platform-price-confirmation" autocomplete="off" value="${e(s.confirmation)}"></label><p>${e(s.company)}</p>
   ${btn('Enregistrer le projet immuable','draft')}`:''}
   </fieldset></section>`;
@@ -82,7 +82,7 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
    }else{
     const params=args();
     if(a[1]==='load'){
-     const list=await rpc('platform_company_price_list',{p_company:params.p_company,p_reason:params.p_reason});
+     const list=await rpc('platform_company_price_list_v2',{p_company:params.p_company,p_reason:params.p_reason});
      if(!active())return true;
      const approval=await rpc('platform_company_price_approval_status',{p_company:params.p_company,p_reason:params.p_reason});
      if(!active())return true;
@@ -90,16 +90,16 @@ export function createPlatformPriceProposalsController({sb,redraw,escape:e}){
     }else{
      if(!s.list||s.list.company_id!==params.p_company)throw Error('Charger d’abord la version courante.');
      if(a[1]==='preview'){
-      const preview=await rpc('platform_company_price_preview',params);
+      const preview=await rpc('platform_company_price_preview_v2',params);
       if(!active())return true;
       s.preview=preview;
      }else if(a[1]==='draft'){
       if(!s.preview)throw Error('Prévisualiser le devis avant sa création.');
       if(s.confirmation!==params.p_company)throw Error('Confirmation de l’identifiant de la compagnie incorrecte.');
-      const saved=await rpc('platform_company_price_draft',{...params,p_expected_version:s.list.version,p_expected_plan_version:s.preview.plan_version,p_confirmation:s.confirmation});
+      const saved=await rpc('platform_company_price_draft_v2',{...params,p_expected_version:s.list.version,p_expected_plan_version:s.preview.plan_version,p_confirmation:s.confirmation});
       if(!active())return true;
       // A saved server draft is not active and must be reloaded from the same company.
-      const list=await rpc('platform_company_price_list',{p_company:params.p_company,p_reason:params.p_reason});
+      const list=await rpc('platform_company_price_list_v2',{p_company:params.p_company,p_reason:params.p_reason});
       if(!active())return true;
       s.notice='Projet v'+saved.version+' enregistré. Aucune activation Stripe.';
       s.list=list;s.preview=null;s.confirmation='';
