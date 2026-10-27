@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
-import { boundedRequestBody, identifyMissionPhoto, MAX_PHOTO_BYTES } from './image-validation.mjs';
+import { boundedRequestBody, MAX_PHOTO_BYTES } from './image-validation.mjs';
+import { sanitizeMissionPhoto } from './image-sanitization.mjs';
 
 // Photo evidence is never written through a public bucket or an authenticated
 // client Storage policy. The privileged client is used ONLY after user-scoped RPC.
@@ -48,23 +49,22 @@ Deno.serve(async request=>{
    !(file instanceof File)||file.size<16||file.size>MAX_PHOTO_BYTES)
    return response({error:'Mission ou photo invalide'},400);
   const raw=new Uint8Array(await file.arrayBuffer());
-  let identified;
-  try {identified=identifyMissionPhoto(raw)}
+  let sanitized;
+  try {sanitized=sanitizeMissionPhoto(raw)}
   catch{return response({error:'Contenu image refusé'},415);}
   // SQL validates the actual employee, company, mission, current version and state.
   const stage=await userClient.rpc('prepare_essential_mission_photo',
    {p_company:company,p_mission:mission,p_version:version});
   if(stage.error||!uuid(stage.data?.photo_id)||!stage.data?.path)
    return response({error:'Mission modifiée ou accès refusé'},403);
-  const path=stage.data.path+'.'+identified.extension;
   // The generated storage path is scoped to the validated company and mission.
   // The DB key includes the base path; store at that exact key to avoid mismatch.
   const objectPath=stage.data.path;
-  const upload=await storageClient.storage.from(BUCKET).upload(objectPath,raw,
-   {contentType:identified.mime,upsert:false,cacheControl:'0'});
+  const upload=await storageClient.storage.from(BUCKET).upload(objectPath,sanitized.bytes,
+   {contentType:sanitized.mime,upsert:false,cacheControl:'0'});
   if(upload.error)return response({error:'Téléversement non confirmé; réessayez'},503);
   const mark=await storageClient.rpc('commit_essential_mission_photo_upload',
-   {p_photo:stage.data.photo_id,p_mime:identified.mime,p_bytes:raw.byteLength});
+   {p_photo:stage.data.photo_id,p_mime:sanitized.mime,p_bytes:sanitized.bytes.byteLength});
   if(mark.error){
    await storageClient.storage.from(BUCKET).remove([objectPath]);
    return response({error:'Photo non confirmée par le serveur'},503);
