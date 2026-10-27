@@ -168,7 +168,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const tour=personalMissionTour(items,workerId);
  useEffect(()=>{setNavOpen(false)},[next?.id]);
  const complete=()=>{
-  if(!next||busy)return;
+  if(!next||busy||truncated||progress.ambiguous)return;
   Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
    [{text:'Annuler',style:'cancel'},{text:'Terminer',onPress:()=>{void (async()=>{
      setBusy(true);setMessage('');
@@ -193,8 +193,11 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
-  {title(progress.allDone?'Toutes les missions sont terminées':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
-  {next?<>{title(next.title+' · '+next.client_name)}{label(next.site_name+' · '+address)}
+  {title(progress.allDone?'Toutes les missions sont terminées':progress.ambiguous?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
+  {progress.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
+   Plusieurs missions publiées portent le rang {String(progress.ambiguousRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
+  </Text>:null}
+  {next&&!truncated?<>{title(next.title+' · '+next.client_name)}{label(next.site_name+' · '+address)}
    {routes.preferred?button('Itinéraire avec '+routes.preferred.label,
     ()=>{const route=routes.preferred;if(route)void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))}):null}
    {routes.choices.length?button(routes.preferred?"Changer d’application d’itinéraire":"Choisir l’application d’itinéraire",()=>setNavOpen(v=>!v)):null}
