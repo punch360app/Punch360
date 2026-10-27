@@ -41,6 +41,8 @@ jobs:
         run: npm install --no-save --no-package-lock playwright@1.56.0 pngjs@7.0.0
       - name: Verify comparison, approvals and recommendations
         run: node --test .github/scripts/visual-feedback.test.cjs
+      - name: Verify deduplicated Work issue handoff contract
+        run: node --test .github/scripts/visual-issue.test.cjs
       - run: npx playwright install --with-deps chromium
       - name: Serve the real Punch Web interface locally
         run: |
@@ -71,3 +73,26 @@ jobs:
           path: visual-captures/
           retention-days: 14
           if-no-files-found: warn
+
+  publish-work-handoff:
+    name: Handoff visual findings to one GitHub issue
+    needs: capture-and-compare
+    if: ${{ always() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: punch-visual-captures
+          path: visual-captures
+      - name: Create or update one deduplicated GitHub issue for Work
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/visual-issue.cjs
