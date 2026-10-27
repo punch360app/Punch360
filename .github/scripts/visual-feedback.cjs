@@ -4,24 +4,24 @@ function buildFeedback(report, audits) {
   const items = [];
   const add = (priority, code, device, finding, nextStep) =>
     items.push({priority, code, device, finding, nextStep});
+  const pending=report.results.filter(result=>result.image && result.status==='awaiting-approved-baseline');
+  if (pending.length) add('P2','reference-pending',pending.length+' ecrans',
+    pending.length+' captures n ont aucune reference visuelle approuvee (liste exacte dans report.json).',
+    'Comparer chaque ecran du meme etat, de la meme edition et du meme viewport; faire approuver puis enregistrer PNG et SHA-256 dans visual-baselines/manifest.json.');
   for (const result of report.results) {
     if (!result.image) continue;
-    if (result.status === 'awaiting-approved-baseline') {
-      add('P2', 'reference-pending', result.image,
-        'Aucune image de reference approuvee pour cet ecran.',
-        'Faire approuver une capture du MEME ecran et du MEME etat, puis enregistrer son PNG et son SHA-256 dans visual-baselines/manifest.json.');
-    } else if (result.status === 'failed') {
+    if (result.status === 'failed') {
       add('P1', 'visual-regression', result.image,
         'Ecart visuel mesure : '+(result.differentRatio === undefined ? (result.reason || 'comparaison impossible') : (result.differentRatio * 100).toFixed(2)+' % des pixels.'),
         'Ouvrir capture, reference et diff; corriger uniquement le rendu Web, sans toucher aux permissions, a la facturation ou au serveur.');
     }
   }
   for (const audit of audits) {
-    const device = audit.device || 'unknown';
+    const device = [audit.device || 'unknown',audit.edition,audit.screen].filter(Boolean).join('/');
     if (audit.pageErrors && audit.pageErrors.length) {
       add('P1', 'runtime-error', device,
         audit.pageErrors.length+' erreur(s) JavaScript pendant le chargement.',
-        'Corriger les erreurs visibles dans audit-'+device+'.json avant de valider le rendu.');
+        'Lire le fichier JSON d audit de cet ecran avant de valider le rendu.');
     }
     if (audit.layout && audit.layout.overflowPx > 3) {
       add('P2', 'horizontal-overflow', device,
