@@ -111,7 +111,8 @@ test('personal controller hides other employee and disabled missions without lea
  await fx.sb.rpc('essential_missions_configuration',{p_company:'company',p_enabled:true});
  const c=createPersonalMissionController({sb:fx.sb,document:fx.win.document,redraw(){},notify(){},escape:esc});
  await c.load('company','user','worker-a',day);
- assert.equal(c.render(),'');
+ assert.match(c.render(),/Aucune mission pour aujourd’hui/);
+ assert.doesNotMatch(c.render(),/Client confidentiel|Secret street/);
  await fx.sb.rpc('essential_missions_configuration',{p_company:'company',p_enabled:false});
  await c.load('company','user','worker-a',day);
  assert.equal(c.state.enabled,false);assert.equal(c.render(),'');
