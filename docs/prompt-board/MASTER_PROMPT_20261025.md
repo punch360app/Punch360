@@ -51,12 +51,23 @@ En l’absence d’un défaut critique ouvert et réalisable, suivre les jalons 
 
 Un prérequis réellement bloqué empêche uniquement la livraison qui en dépend. Documenter la cause et avancer sur le prochain parcours indépendant, y compris d’un jalon suivant. Ne pas déclarer le jalon bloqué terminé et ne pas affaiblir une protection pour le contourner.
 
+## Mode accéléré — cadence officielle, sans perte de qualité (26 octobre 2026)
+
+Le développement doit privilégier les **parcours complets livrables**. Le détail opérationnel de ce mode est dans `WORK_START.md`; ses règles de cadence remplacent toute instruction historique d'audit ou de passation répétitive. Les 691 exigences, priorités métier et protections de sécurité restent intégralement conservées.
+
+- **Un audit initial ciblé** de `main`, des travaux actifs pertinents, des fichiers du lot et du SQL concerné. Après cela, consulter les différences récentes seulement; ne pas scanner systématiquement tout GitHub, Drive, Supabase ou les anciennes passations.
+- **Une PR cohérente par parcours métier** : regrouper UI, backend, permissions, notifications/erreurs et tests. Les micro-PR purement documentaires ou par bouton/filtre ne doivent pas interrompre un parcours, sauf risque indépendant, P0 ou nécessité réelle.
+- **Tests selon le risque** : ciblés en cours de codage, contrôles obligatoires sur le SHA final de PR avant fusion, SQL/RLS/multi-entreprises si le schéma ou les droits changent. Ne pas refaire une suite verte sur code inchangé ni contourner les protections pour aller plus vite.
+- **Enchaînement concret** : fusion autorisée, déploiement pertinent suivi et publié, preuve brève puis prochain parcours. Préparer au plus un lot indépendant pendant une CI/fournisseur en attente, sans repartir dans des audits globaux.
+- **Suivi automatisé et synthétique** : identifiants `PUNCH-PROGRESS`, registre par workflow, passation courte uniquement à la fin d'une livraison significative ou d'une session; ne pas réécrire les longs historiques.
+- **Cible indicative : 80 % d'implémentation et 20 % de vérification/coordination.** Aucun quota ne justifie une CI rouge, une migration non vérifiée, une protection affaiblie ni un résultat fournisseur inventé. Toute dépendance externe bloquée est consignée précisément puis contournée par un autre lot indépendant.
+
 ## Méthode d’exécution et de livraison
 
-- Définir **un lot principal** : IDs concernés, comportement manquant prouvé, résultat utilisateur attendu, critères de validation et dépendances. Au plus un lot indépendant pendant une attente CI/fournisseur; ne pas modifier les mêmes fichiers en parallèle sans coordination.
+- Définir **un lot principal suffisamment large pour un parcours complet utilisable** : IDs concernés, comportement manquant prouvé, résultat utilisateur attendu, critères de validation et dépendances. Au plus un lot indépendant pendant une attente CI/fournisseur; ne pas modifier les mêmes fichiers en parallèle sans coordination.
 - Développer ensemble interface, serveur, permissions, erreurs et synchronisation nécessaires au parcours. Regrouper les corrections liées dans une PR cohérente; séparer les risques indépendants. Le nombre de commits, de tests ou de documents ne mesure pas l’avancement.
 - Reproduire les défauts, en identifier la cause et tester le comportement réel. Après deux tentatives infructueuses, réexaminer les hypothèses et changer d’approche; en cas de dépendance externe démontrée, consigner le blocage puis passer ailleurs. Sans accès, preuve, résultat ou code nouveau, ne pas refaire le même diagnostic.
-- Exécuter les contrôles ciblés durant le développement, puis les contrôles obligatoires du dépôt avant fusion. Ne pas relancer une suite identique déjà réussie sur du code inchangé sans raison précise. Ne pas affaiblir un test pour masquer une régression.
+- Exécuter les contrôles ciblés des changements durant le développement, puis les contrôles obligatoires du dépôt sur le SHA final avant fusion. Ne pas relancer une suite identique déjà réussie sur du code inchangé sans risque nouveau. Ne pas affaiblir un test pour masquer une régression.
 - Commit sur branche → PR → CI obligatoire **jusqu’au résultat final sur le bon SHA** → lecture/correction des logs si échec → fusion autorisée par les règles applicables → déploiement pertinent jusqu’au résultat final → vérification publiée → preuves et prochaine tâche. Le succès CI ou la création d’une PR n’est pas un signal d’arrêt.
 - Distinguer Pages Web, migration effectivement appliquée, Edge active et compatible, source Expo compilée, build installée et essai physique. Planifier les déploiements liés ensemble; ne pas accumuler des correctifs backend sans nommer la condition qui empêche leur publication.
 - Blocage Stripe : préparer migration validée, compatibilité des clients/Edge et parcours sandbox complet. Si environnement, secret ou autorisation indispensable manque, nommer exactement cet élément et avancer sur un autre lot; ne pas recommencer automatiquement le catalogue ou empiler des microcorrections sans défaut nouveau.
@@ -70,7 +81,7 @@ Le maître est l’inventaire; `web/live/work-progress.json` contient les preuve
 
 Chaque PR indique les IDs réellement touchés sur une ligne `PUNCH-PROGRESS: ID-001, ID-002`. Le workflow post-fusion enregistre travail documenté et CI; il ne certifie pas automatiquement le déploiement. Les trois ratios sont **travail documenté / développement avec tests / livré et validé**; les notes locales du propriétaire ne les alimentent pas. Préserver toutes les preuves antérieures et ne pas augmenter les statuts pour un simple ajout au cahier des charges.
 
-Après un lot significatif, actualiser **l’état courant unique** dans `PUNCH_WORK_CONTINUATION.md` : lot actif, dernier livré, branche/PR/SHA, tests/déploiements prouvés, workflows en cours, blocages, prochaine action exacte et travaux concurrents. Archiver les anciens états. Si une limite réelle impose l’arrêt, sauvegarder le travail cohérent, identifier les incomplets et les exécutions à revérifier; ne pas prétendre poursuivre en arrière-plan.
+Après une livraison significative ou à la fin réelle de session, actualiser **brièvement l’état courant unique** dans `PUNCH_WORK_CONTINUATION.md` : lot actif, dernier livré, branche/PR/SHA, tests/déploiements prouvés, workflows en cours, blocages, prochaine action exacte et travaux concurrents. Archiver les anciens états. Si une limite réelle impose l’arrêt, sauvegarder le travail cohérent, identifier les incomplets et les exécutions à revérifier; ne pas prétendre poursuivre en arrière-plan.
 
 ## Critères complémentaires et conservation des acquis
 
@@ -88,7 +99,7 @@ Le reste de « Validation SQL archives » et le giga-prompt historique sont int�
 - [ ] **GOV-002** — Confirmer l’unique projet Supabase mlabstdxxwjdpfaxiwmg avant toute opération.
 - [ ] **GOV-003** — Lire les sept documents de travail Drive et les deux sous-dossiers de visuels.
 - [ ] **GOV-004** — Lire ce prompt maître, le README collaborateur, le dernier suivi de continuation, la roadmap et les spécifications techniques pertinentes. Ne pas se servir des instructions historiques périmées du fichier de continuation.
-- [ ] **GOV-005** — Inventorier toutes les PR ouvertes et branches de collaborateurs avant d’écrire.
+- [ ] **GOV-005** — Inventorier une seule fois les PR ouvertes et branches de collaborateurs pertinentes au démarrage, puis surveiller uniquement les nouveaux chevauchements du lot; ne pas relancer cet inventaire à chaque sous-tâche.
 - [ ] **GOV-006** — Réconcilier les migrations du dépôt et de Supabase sans rejouer les migrations appliquées.
 - [ ] **GOV-007** — Ne jamais repartir de zéro ou remplacer le moteur de pointage partagé.
 - [ ] **GOV-008** — Conserver PUNCH Construction intact et ses prix, autorisations et écrans séparés.
