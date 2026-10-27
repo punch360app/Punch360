@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T15:24:39.923Z",
+  "generated_at": "2026-10-27T15:28:43.150Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1493,6 +1493,14 @@
   },
   "activity": [
     {
+      "number": 190,
+      "sha": "be5166e9cc5099012d88518ff54d509bf894045c",
+      "ci": "success",
+      "ids": [],
+      "title": "Work — synchroniser la passation réelle après les lots Missions #186–189",
+      "merged_at": "2026-10-27T15:28:33Z"
+    },
+    {
       "number": 189,
       "sha": "e6a7ed992a0b793c6a9afb6875d5b2b3cdb2ed9e",
       "ci": "success",
@@ -2031,16 +2039,6 @@
       ],
       "title": "Essentiel — carnet clients et adresses d’intervention illimités",
       "merged_at": "2026-10-26T19:45:43Z"
-    },
-    {
-      "number": 136,
-      "sha": "0fdc740ed825d0b0b47c374aad6cc4173f9924cf",
-      "ci": "success",
-      "ids": [
-        "SHIFT-021"
-      ],
-      "title": "Essentiel Plus/Pro — rappels de disponibilité internes et sans doublon",
-      "merged_at": "2026-10-26T19:19:40Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
