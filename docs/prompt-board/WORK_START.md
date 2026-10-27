@@ -2,6 +2,8 @@
 
 ## Reprendre l’état réel
 
+**Design UX/UI Figma :** lire le [contrat de collaboration Figma/Work](FIGMA_UX_WORKFLOW.md) pour les nouveaux écrans et refontes importantes. Le style simple et épuré est validé par le propriétaire; préserver l'avancement des parcours métier, ne jamais transformer un travail Figma en prérequis bloquant de chaque lot.
+
 1. Lire le [prompt maître](MASTER_PROMPT_20261025.md) : décisions actuelles, ordre global, exigences et critères du module choisi.
 2. Lire **l’état courant unique** dans [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md). Les autres passations et anciens rapports sont historiques, pas des ordres de reprise.
 3. **Une fois au début de chaque reprise**, récupérer le dernier `main` et examiner uniquement les PR, branches, modifications locales et workflows **actifs ou pertinents au lot retenu**. Vérifier les fichiers concernés avant d'écrire. Ensuite suivre seulement les nouveaux changements, sans refaire l'audit global à chaque commit, test, PR ou déploiement. Préserver le travail concurrent.
