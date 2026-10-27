@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:13:22.821Z",
+  "generated_at": "2026-10-27T10:26:28.867Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1338,7 +1338,8 @@
         152,
         163,
         164,
-        165
+        165,
+        174
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1359,7 +1360,8 @@
       "external_required": true,
       "pr": [
         153,
-        163
+        163,
+        174
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1407,7 +1409,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        163
+        163,
+        174
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1436,6 +1439,18 @@
     }
   },
   "activity": [
+    {
+      "number": 174,
+      "sha": "a0e40f51860ae9c11db1c5aeb7b1438b8c0b66f2",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-011",
+        "MISSION-013"
+      ],
+      "title": "Missions impossibles — décision responsable et retour salarié (Web/Expo)",
+      "merged_at": "2026-10-27T10:26:17Z"
+    },
     {
       "number": 173,
       "sha": "dcb799741ad7ddc0bdbca742b30aa3eacfca5193",
@@ -1986,15 +2001,6 @@
       "ids": [],
       "title": "Suivi HTML PUNCH — afficher en tête le nombre et % d'exigences marquées terminées",
       "merged_at": "2026-10-26T14:00:06Z"
-    },
-    {
-      "number": 120,
-      "sha": null,
-      "head_sha": "d72644a39b51302fea0c6faca8834130f5222b31",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Expo — invalider un devis Stripe dès la modification du forfait ou des places",
-      "merged_at": "2026-10-26T13:53:59Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
