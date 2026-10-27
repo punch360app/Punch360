@@ -247,7 +247,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    renderTour()+'</section>';
   const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
-  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
+  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+p.blocked+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
    (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
    (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
