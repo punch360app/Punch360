@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:51:54.777Z",
+  "generated_at": "2026-10-27T10:52:10.641Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1448,6 +1448,14 @@
   },
   "activity": [
     {
+      "number": 178,
+      "sha": "4576254a6b1452d8b162b6f7bc00265115f1ce60",
+      "ci": "success",
+      "ids": [],
+      "title": "CI — supprimer les doubles runs Punch et accélérer les installations",
+      "merged_at": "2026-10-27T10:52:00Z"
+    },
+    {
       "number": 177,
       "sha": "117fb2bd39f0883bf9bfa135c75e8cb59e705b02",
       "ci": "success",
@@ -1998,18 +2006,6 @@
       ],
       "title": "P0 Suivi HTML — réparer le JavaScript bloqué et protéger les prochains déploiements Pages",
       "merged_at": "2026-10-26T15:55:04Z"
-    },
-    {
-      "number": 124,
-      "sha": "db67c3a8338bc7c94e6fe520676b3c672df5b1c7",
-      "ci": "success",
-      "ids": [
-        "GOV-010",
-        "GOV-012",
-        "GOV-014"
-      ],
-      "title": "Suivi Work PUNCH : trois compteurs automatiques d'avancement et preuves",
-      "merged_at": "2026-10-26T14:52:23Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
