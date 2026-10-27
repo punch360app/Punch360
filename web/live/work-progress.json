@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T13:26:51.692Z",
+  "generated_at": "2026-10-27T13:34:52.524Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1435,7 +1435,8 @@
       "pr": [
         166,
         173,
-        177
+        177,
+        181
       ],
       "note": "Travail rattaché à la PR #166. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1453,6 +1454,16 @@
     }
   },
   "activity": [
+    {
+      "number": 181,
+      "sha": "1136e37ac88cf49a0875e2faa50ceccbda9b9f32",
+      "ci": "success",
+      "ids": [
+        "GOV-005"
+      ],
+      "title": "Passation Punch — preuves commentaire/checklist publiées et prochaine photo privée",
+      "merged_at": "2026-10-27T13:34:42Z"
+    },
     {
       "number": 180,
       "sha": "0201770a0beecd8b1f6a912f11344cb76af413b9",
@@ -2001,18 +2012,6 @@
       ],
       "title": "P0-C — Bloquer les réponses Auth en ligne après déconnexion explicite",
       "merged_at": "2026-10-26T16:19:00Z"
-    },
-    {
-      "number": 128,
-      "sha": "5cfd11edfc5cd3fe8ccba5590463465989ef324e",
-      "ci": "success",
-      "ids": [
-        "GOV-010",
-        "GOV-012",
-        "GOV-014"
-      ],
-      "title": "Suivi : total et nouvelles exigences générés automatiquement depuis le maître",
-      "merged_at": "2026-10-26T16:16:13Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
