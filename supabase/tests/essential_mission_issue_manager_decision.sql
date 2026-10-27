@@ -2,7 +2,7 @@ begin;
 do $$
 declare boss uuid:=gen_random_uuid();boss_b uuid:=gen_random_uuid();
  emp uuid:=gen_random_uuid();coworker uuid:=gen_random_uuid();
- c uuid;c_b uuid;worker_a uuid;site_id uuid;client_id uuid;mission_id uuid;
+ c uuid;c_b uuid;worker_a uuid;site_id uuid;client_id uuid;mission_id uuid;second_mission uuid;
  day date:=current_date+3;request_id uuid:=gen_random_uuid();
  result jsonb;data jsonb;denied boolean;punch_before integer;shift_before integer;jobs_before integer;
 begin
@@ -98,11 +98,25 @@ begin
  -- Separate issue can be restored to published after a new manager decision.
  perform set_config('request.jwt.claim.sub',boss::text,true);
  result:=public.save_essential_mission(c,null,0,worker_a,site_id,day,2,'Deuxième visite','',true);
- -- Reusing the same employee's published route tests the resumed state.
-
+ second_mission:=(result->>'id')::uuid;
+ perform set_config('request.jwt.claim.sub',emp::text,true);
+ result:=public.report_essential_mission_issue(c,second_mission,1,gen_random_uuid(),'client_absent','Le client ne répond pas');
+ if result->>'status'<>'impossible' then raise exception 'Second issue not submitted';end if;
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ result:=public.resolve_essential_mission_issue(c,second_mission,2,gen_random_uuid(),'resume','Nouvelle autorisation du client');
+ if result->>'status'<>'published' or result->>'version'<>'3' then
+  raise exception 'Resumption failed: %',result;end if;
+ perform set_config('request.jwt.claim.sub',emp::text,true);
+ data:=public.list_essential_missions(c,day,null,false);
+ if jsonb_array_length(data->'items')<>2 or data->'items'->1->>'status'<>'published' or
+  data->'items'->1->>'issue_decision'<>'resume' or
+  data->'items'->1->>'issue_decision_reason'<>'Nouvelle autorisation du client' then
+  raise exception 'Worker cannot see resumed mission: %',data;end if;
  execute 'reset role';
- if (select count(*) from public.app_notifications where company_id=c and recipient_id=boss and kind='mission_issue')<>1
+ if (select count(*) from public.app_notifications where company_id=c and recipient_id=boss and kind='mission_issue')<>2
  then raise exception 'Expected one targeted manager alert';end if;
+ if (select count(*) from public.app_notifications where company_id=c and recipient_id=emp and kind='mission_issue_decision')<>2 then
+  raise exception 'Worker did not receive two decision notices';end if;
  if exists(select 1 from public.app_notifications where company_id=c and kind='mission_issue' and body ilike '%porte%')
  then raise exception 'Private problem note leaked in notification';end if;
  if (select count(*) from public.punch_sessions where company_id=c)<>punch_before or
@@ -110,6 +124,8 @@ begin
     (select count(*) from public.jobs where company_id=c)<>jobs_before then
   raise exception 'Mission issue created punch, shift or job';end if;
  if has_table_privilege('authenticated','private.essential_mission_issue_requests','select') or
+  has_table_privilege('authenticated','private.essential_mission_issue_decisions','select') or
+  has_function_privilege('anon','public.resolve_essential_mission_issue(uuid,uuid,integer,uuid,text,text)','execute') or
   has_function_privilege('anon','public.report_essential_mission_issue(uuid,uuid,integer,uuid,text,text)','execute')
  then raise exception 'Private issue data made publicly visible';end if;
 end $$;
