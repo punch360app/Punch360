@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:02:08.628Z",
+  "generated_at": "2026-10-27T10:09:59.548Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1428,12 +1428,23 @@
       "external_required": true,
       "pr": [
         170,
-        171
+        171,
+        172
       ],
       "note": "Travail rattaché à la PR #170. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 172,
+      "sha": "879593283111c9a7f79efdd473be3e07ad61bcc3",
+      "ci": "success",
+      "ids": [
+        "SACATALOG-016"
+      ],
+      "title": "SACATALOG-016 — permettre employés et invitations au-delà des places avec contrat illimité payé",
+      "merged_at": "2026-10-27T10:09:49Z"
+    },
     {
       "number": 171,
       "sha": "065fded27e394134a7e0ce1a74118e38f0b8bd33",
@@ -1982,15 +1993,6 @@
       "ids": [],
       "title": "P0-B — Révoquer un ancien devis Stripe Boss dès qu’un choix change",
       "merged_at": "2026-10-26T13:46:53Z"
-    },
-    {
-      "number": 117,
-      "sha": null,
-      "head_sha": "9219bd7baead1e077044806623ef96fcf8eaba99",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Actualiser le tableau HTML PUNCH avec PR #112–#115 et déploiement vérifié",
-      "merged_at": "2026-10-26T13:06:58Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
