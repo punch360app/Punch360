@@ -165,8 +165,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   return()=>{current.current++;subscription.remove()};
  },[companyId,workerId]);
  const progress=missionProgress(items),next=progress.next;
- const missionConflict='ambiguous' in progress&&missionConflict===true;
- const missionConflictRank='ambiguousRank' in progress?missionConflictRank:null;
+ const missionConflict='ambiguous' in progress&&progress.ambiguous===true;
+ const missionConflictRank='ambiguousRank' in progress?progress.ambiguousRank:null;
  const tour=personalMissionTour(items,workerId);
  useEffect(()=>{setNavOpen(false)},[next?.id]);
  const complete=()=>{
