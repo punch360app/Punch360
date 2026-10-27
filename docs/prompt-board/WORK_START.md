@@ -23,6 +23,10 @@
 
 Ces règles optimisent la cadence, **sans supprimer ni renuméroter les exigences du maître**. Si un ancien texte exige des inspections ou comptes rendus répétitifs, appliquer le mode accéléré; si un contrôle de sécurité ou CI est requis, l'exécuter entièrement.
 
+## Clôture prioritaire des parcours (27 octobre 2026)
+
+Appliquer les **Règles de clôture des parcours** du maître : achever le parcours réalisable avant d'en étendre un autre, regrouper ses variantes liées et rattacher les preuves réelles de publication dans le même lot. Aucun lot autonome de documentation, audit général ou suivi sans demande propriétaire ou défaut confirmé. Le bilan dit ce qui est utilisable, ce qui manque et la prochaine action; les ratios de preuves ne sont jamais un pourcentage global du projet. Ne pas terminer volontairement la session à une attente CI, un commit ou une PR; suivre le résultat et enchaîner dans la durée réelle disponible. Les contrôles de sécurité et CI finale restent obligatoires.
+
 ## Livrer et enchaîner
 
 Un lot principal couvrant un parcours métier utilisable avec IDs, résultat utilisateur et critères de recette; au plus un lot indépendant pendant une attente. Regrouper les corrections liées. Développer, tester selon le risque, pousser une branche et une PR, suivre la CI obligatoire jusqu’au résultat final sur le bon SHA, corriger les échecs, fusionner selon les règles applicables, suivre le déploiement concerné et vérifier la version publiée. Actualiser la passation après un lot significatif et enchaîner sans demander « continue ».

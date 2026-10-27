@@ -6,7 +6,7 @@
 
 1. Les décisions explicites les plus récentes du propriétaire priment sur les références historiques. Ne pas rétablir une ancienne configuration depuis la mémoire, un seed ou un rapport.
 2. Ce maître définit les exigences, les décisions produit et l’unique ordre global de livraison ci-dessous.
-3. [WORK_START.md](WORK_START.md) est l’entrée de reprise; [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md) contient le seul état courant, les blocages et la prochaine action. Vérifier le dernier `main`, les branches, PR, issues et workflows avant de choisir le lot.
+3. [WORK_START.md](WORK_START.md) est l’entrée de reprise; [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md) contient le seul état courant, les blocages et la prochaine action. Vérifier une fois le dernier `main` et les travaux actifs qui chevauchent le parcours retenu; consulter ensuite seulement les nouveaux changements pertinents.
 4. Les spécifications de module et leurs tests détaillent les comportements. La roadmap et INDEX sont des correspondances et preuves, pas des ordres concurrents.
 5. Les anciens bilans restent consultables dans Git et dans [l’historique des passations](history/MASTER_CONTEXT_BEFORE_CLEANUP_20261026.md). Un ancien « commencer par Stripe », une PR alors ouverte ou un diagnostic de code daté n’est pas une instruction actuelle.
 
@@ -62,6 +62,17 @@ Le développement doit privilégier les **parcours complets livrables**. Le dét
 - **Suivi automatisé et synthétique** : identifiants `PUNCH-PROGRESS`, registre par workflow, passation courte uniquement à la fin d'une livraison significative ou d'une session; ne pas réécrire les longs historiques.
 - **Cible indicative : 80 % d'implémentation et 20 % de vérification/coordination.** Aucun quota ne justifie une CI rouge, une migration non vérifiée, une protection affaiblie ni un résultat fournisseur inventé. Toute dépendance externe bloquée est consignée précisément puis contournée par un autre lot indépendant.
 
+## Règles de clôture des parcours — correction de cadence du 27 octobre 2026
+
+- **Achever avant d'étendre.** Choisir le premier parcours réalisable du jalon courant; énoncer ce que Boss et Employé pourront réellement faire et les critères restant à satisfaire. Réutiliser l'existant puis traiter ensemble les manques réalisables. Ne pas ouvrir un nouveau sous-parcours après chaque petite amélioration du même flux.
+- **Regrouper les variantes liées.** Par exemple, pour les preuves de fin de mission, commentaire, checklist et photo privée appartiennent au même parcours lorsqu'ils sont réalisables ensemble. Une séparation exige une dépendance externe, un risque indépendant ou un défaut critique précis; la facilité de faire une petite PR ne suffit pas.
+- **Éviter les boucles de préparation.** Une lecture ciblée puis implémentation. Aucun nouveau rapport, audit général, nettoyage documentaire ou changement du suivi comme lot autonome sans demande du propriétaire ou défaut confirmé qui empêche le travail. Une CI en cours n'impose pas de terminer la session.
+- **Clôturer les preuves dans le lot.** Après publication, rattacher aux IDs touchés les preuves réellement obtenues : code/CI, Web publié, migration appliquée, Edge active, build et recette appareil/fournisseur séparément. Ne pas laisser une publication attestée décrite comme inconnue; ne pas transformer une publication Web en validation de toute l'exigence. Conserver les sous-critères manquants explicitement.
+- **Rendre compte du résultat utilisateur.** Pour une livraison significative : « utilisable maintenant / manque encore / blocage exact / prochaine action ». Les ratios du registre mesurent une couverture de preuves; ne jamais les présenter comme le pourcentage de code ou de projet terminé. Ne pas inventer un pourcentage alternatif.
+- **Enchaîner jusqu'à une limite réelle.** Après CI finale verte, fusion autorisée et publication vérifiée, poursuivre le prochain manque réalisable du parcours, puis le prochain parcours. Ne pas s'arrêter volontairement à un commit, une PR, une attente de test ou un compte rendu. En cas d'arrêt réel, laisser une passation courte et exacte, sans promettre de travail en arrière-plan.
+
+Ces règles renforcent le mode accéléré et priment sur les formulations générales de reprise documentaire. Elles ne suppriment aucune exigence ni aucun contrôle de sécurité, et ne rendent pas réalisable une recette nécessitant un appareil ou un accès fournisseur absent.
+
 ## Méthode d’exécution et de livraison
 
 - Définir **un lot principal suffisamment large pour un parcours complet utilisable** : IDs concernés, comportement manquant prouvé, résultat utilisateur attendu, critères de validation et dépendances. Au plus un lot indépendant pendant une attente CI/fournisseur; ne pas modifier les mêmes fichiers en parallèle sans coordination.
@@ -106,11 +117,11 @@ Le reste de « Validation SQL archives » et le giga-prompt historique sont int�
 - [ ] **GOV-009** — Éclater les prompts volumineux en exigences avec identifiants stables et critères vérifiables.
 - [ ] **GOV-010** — Associer chaque exigence à ses fichiers, RPC, Edge Functions, PR et tests.
 - [ ] **GOV-011** — Maintenir GitHub comme source de vérité du suivi; Drive reste boîte d’entrée.
-- [ ] **GOV-012** — Mettre à jour le tracker, la roadmap et `PUNCH_WORK_CONTINUATION.md` après chaque lot; l'ancien giga-prompt redirige vers ce maître et ne doit pas redevenir un second registre.
+- [ ] **GOV-012** — Laisser le workflow mettre à jour le registre; actualiser brièvement `PUNCH_WORK_CONTINUATION.md` à une livraison significative ou fin réelle de session, et la roadmap seulement si son contenu change; l'ancien giga-prompt redirige vers ce maître et ne doit pas redevenir un second registre.
 - [ ] **GOV-013** — Garder les prompts bruts et secrets hors du dépôt GitHub public.
 - [ ] **GOV-014** — Différencier développé, testé, déployé et intervention externe pour chaque point.
 - [ ] **GOV-015** — Ne jamais affirmer qu’un prompt est terminé si une de ses sous-exigences manque.
-- [ ] **GOV-016** — Lors de chaque reprise, confronter PR/CI/Pages, schéma Supabase et rapports techniques les plus récents à l'état des exigences; ignorer comme instructions actives les bilans historiques périmés; préserver les migrations déjà appliquées et les contrats.
+- [ ] **GOV-016** — Lors de chaque reprise, vérifier une fois les preuves récentes pertinentes au parcours retenu; consulter le schéma Supabase uniquement pour un changement SQL, de droits ou un défaut DB justifié; ignorer comme instructions actives les bilans historiques périmés; préserver les migrations déjà appliquées et les contrats.
 
 ## P0 — Sécurité, RLS et isolation (SEC, 17 points)
 **Objectif :** Priorité à la confidentialité et à la protection des données officielles.
