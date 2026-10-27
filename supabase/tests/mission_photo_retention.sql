@@ -62,21 +62,27 @@ begin
  raise exception 'Invalid claim removed a photo';end if;
  if public.finish_expired_mission_photo(f1,token1,false) then
  raise exception 'Storage deletion failure marked success';end if;
+ execute 'reset role';
  if not exists(select 1 from private.essential_mission_photos where id=f1)
  then raise exception 'Failure removed metadata';end if;
+ execute 'set local role service_role';
  if not public.finish_expired_mission_photo(f2,token2,true)
  then raise exception 'Expired linked photo did not finalize';end if;
+ execute 'reset role';
  if exists(select 1 from private.essential_mission_photos where id=f2)
  then raise exception 'Linked expired metadata persists';end if;
  if (select completion_photo_id from private.essential_missions where id=m2) is not null
  then raise exception 'Mission retains deleted proof';end if;
+ execute 'set local role service_role';
  claims:=public.claim_expired_mission_photos(25);
  if jsonb_array_length(claims)<>1 or claims->0->>'id'<>f1::text
  then raise exception 'Failure not eligible for retry: %',claims;end if;
  if not public.finish_expired_mission_photo(f1,(claims->0->>'claim')::uuid,true)
  then raise exception 'Pending proof not removed';end if;
+ execute 'reset role';
  if not exists(select 1 from private.essential_mission_photos where id=f3)
  then raise exception 'Unexpired photo removed';end if;
+ execute 'set local role service_role';
  if jsonb_array_length(public.claim_expired_mission_photos(25))<>0
  then raise exception 'Queue not empty after cleanup';end if;
  execute 'reset role';
