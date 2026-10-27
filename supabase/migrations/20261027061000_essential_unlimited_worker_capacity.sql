@@ -11,7 +11,6 @@ returns boolean language sql stable security definer set search_path='' as $fn$
    on contract.company_id=c.id and contract.stripe_subscription_id=a.subscription_id
   where c.id=p_company
    and c.product_edition='essential' and not c.is_test
-   and c.billing_status='active'
    and a.status='active' and a.paid_through>clock_timestamp()
    and private.essential_billing_state(c.id)='active'
    and contract.pricing_snapshot->'included_seats_unlimited'='true'::jsonb
