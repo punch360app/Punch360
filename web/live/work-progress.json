@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T14:44:33.713Z",
+  "generated_at": "2026-10-27T14:59:23.320Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1481,6 +1481,14 @@
   },
   "activity": [
     {
+      "number": 187,
+      "sha": "7a40e99d9446e38435eac0eec41587f25007f9fd",
+      "ci": "success",
+      "ids": [],
+      "title": "Missions — photo de preuve facultative ou obligatoire selon compagnie",
+      "merged_at": "2026-10-27T14:59:13Z"
+    },
+    {
       "number": 186,
       "sha": "b73a105a8a7fe9d3b641adbbd400f4dde93cb132",
       "ci": "success",
@@ -2028,17 +2036,6 @@
       ],
       "title": "Essentiel Pro — salariés admissibles pour combler les besoins certifiés",
       "merged_at": "2026-10-26T19:02:12Z"
-    },
-    {
-      "number": 133,
-      "sha": "238d4b03f1788936aef9ef385675447d8221888b",
-      "ci": "success",
-      "ids": [
-        "SHIFT-021",
-        "SHIFT-029"
-      ],
-      "title": "Essentiel Pro — besoins de couverture consolidés et copie de plage",
-      "merged_at": "2026-10-26T18:49:57Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
