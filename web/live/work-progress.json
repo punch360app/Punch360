@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T14:09:12.700Z",
+  "generated_at": "2026-10-27T14:44:33.713Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1355,7 +1355,8 @@
         175,
         176,
         179,
-        180
+        180,
+        186
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1381,7 +1382,8 @@
         175,
         176,
         179,
-        180
+        180,
+        186
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1435,7 +1437,8 @@
         175,
         176,
         179,
-        180
+        180,
+        186
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1477,6 +1480,18 @@
     }
   },
   "activity": [
+    {
+      "number": 186,
+      "sha": "b73a105a8a7fe9d3b641adbbd400f4dde93cb132",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-011",
+        "MISSION-013"
+      ],
+      "title": "Missions — preuve photo privée Web/Expo, contrôle serveur et accès responsable",
+      "merged_at": "2026-10-27T14:44:24Z"
+    },
     {
       "number": 185,
       "sha": "6c59067b64099c262abb3e9bdcd7b58633a7814d",
@@ -2024,16 +2039,6 @@
       ],
       "title": "Essentiel Pro — besoins de couverture consolidés et copie de plage",
       "merged_at": "2026-10-26T18:49:57Z"
-    },
-    {
-      "number": 131,
-      "sha": "f5490672fab5612d8c04701f1099edc376b28727",
-      "ci": "success",
-      "ids": [
-        "SHIFT-019"
-      ],
-      "title": "Essentiel Plus/Pro — préférences horaires des salariés et limites déclarées",
-      "merged_at": "2026-10-26T18:20:59Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
