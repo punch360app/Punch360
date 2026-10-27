@@ -3,7 +3,7 @@ import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-
 import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
-import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour} from '../../web/live/missions.js';
+import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour,publishedSwapTargets,publishedSwapArgs} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
@@ -31,7 +31,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
  const [reviewWorker,setReviewWorker]=useState(''),[reviewStatus,setReviewStatus]=useState(''),[reviewClient,setReviewClient]=useState('');
  const [day,setDay]=useState(missionDate()),[worker,setWorker]=useState(''),[site,setSite]=useState(''),
   [order,setOrder]=useState('1'),[missionTitle,setMissionTitle]=useState(''),
-  [instructions,setInstructions]=useState(''),[editing,setEditing]=useState<Row|null>(null);
+  [instructions,setInstructions]=useState(''),[editing,setEditing]=useState<Row|null>(null),[swapSource,setSwapSource]=useState<Row|null>(null);
  const counter=useRef(0);
  async function load(date=day){
   const current=++counter.current;
@@ -51,7 +51,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
+  setWorker('');setSite('');setSwapSource(null);setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -81,6 +81,19 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     setEditing(null);setMissionTitle('');setInstructions('');setOrder(String(Number(order)+1));
     await load(day);setMessage('Brouillon enregistré.');
   });
+ };
+ const swapWith=(second:Row)=>{
+  const first=swapSource;if(!first)return;
+  let args:Row;
+  try{args=publishedSwapArgs(companyId,first,second)}catch(e:any){setMessage(e.message);return;}
+  Alert.alert('Changer l’ordre de la tournée ?',
+   'Échanger « '+first.title+' » et « '+second.title+' » pour le même salarié. La mission terminée et les pointages restent inchangés.',
+   [{text:'Annuler',style:'cancel'},
+    {text:'Échanger',onPress:()=>void work(async()=>{
+     await rpc('swap_essential_published_missions',args);
+     setSwapSource(null);await load(day);
+     setMessage('Ordre publié mis à jour. L’employé recevra un avis interne si son compte est actif.');
+    })}]);
  };
  const options=(values:Row[],chosen:string,pick:(id:string)=>void,key:(v:Row)=>string,name:(v:Row)=>string)=>(
   <View style={{gap:5}}>
@@ -141,6 +154,14 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      setOrder(String(m.sort_order));setMissionTitle(m.title);setInstructions('');
      setMessage('Les anciennes instructions privées ne sont pas réaffichées.');
     },busy):null}
+    {m.status==='published'&&!truncated&&publishedSwapTargets(m,missions).length?
+     button(swapSource?.id===m.id?'Annuler l’échange':'Modifier l’ordre de ce salarié',
+      ()=>setSwapSource(previous=>previous?.id===m.id?null:m),busy):null}
+    {swapSource?.id===m.id?<View style={{gap:6,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
+     {label('Choisissez la deuxième mission publiée du même employé et du même jour :')}
+     {publishedSwapTargets(m,missions).map((other:Row)=>
+      <View key={other.id}>{button(other.sort_order+' · '+other.title,()=>swapWith(other),busy)}</View>)}
+    </View>:null}
    </View>)}
   </>:null}
  </View>;
