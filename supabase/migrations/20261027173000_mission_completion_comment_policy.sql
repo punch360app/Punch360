@@ -57,7 +57,7 @@ begin
  if v.status not in ('published','in_progress') or v.version<>p_version then
   raise exception using errcode='22023',message='Mission modifiée ou déjà terminée : actualisez la liste';end if;
  select completion_comment_required into required from private.essential_mission_settings
-  where company_id=p_company;
+  where company_id=p_company for share;
  proof:=nullif(btrim(coalesce(p_comment,'')),'');
  if (coalesce(required,false) and (proof is null or length(proof)<5)) or
   (proof is not null and length(proof)>1000)
