@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T15:46:20.111Z",
+  "generated_at": "2026-10-27T15:49:24.788Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 192,
+      "sha": "0aa0bbf6238c016660e29d64ec48849daa283143",
+      "ci": "success",
+      "ids": [],
+      "title": "Work — retenir les preuves réelles du nettoyage des photos et la prochaine action",
+      "merged_at": "2026-10-27T15:49:10Z"
+    },
+    {
       "number": 191,
       "sha": "bd92018641b27b53cba31e81113e6d7599d0bdc0",
       "ci": "success",
@@ -2032,18 +2040,6 @@
       "ids": [],
       "title": "Prompt maître : flotte, remboursements photo et suivi des modules Pro internationaux",
       "merged_at": "2026-10-26T20:32:53Z"
-    },
-    {
-      "number": 138,
-      "sha": "34b9904fb3b17f5d0ac0da8f93c1fc8446b16330",
-      "ci": "success",
-      "ids": [
-        "MLOC-002",
-        "MLOC-004",
-        "MLOC-006"
-      ],
-      "title": "Essentiel — adresses des clients sur les quarts publiés et itinéraires employés",
-      "merged_at": "2026-10-26T20:04:35Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
