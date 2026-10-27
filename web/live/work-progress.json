@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T01:07:18.179Z",
+  "generated_at": "2026-10-27T01:31:19.258Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1332,7 +1332,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        152
+        152,
+        163
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1352,7 +1353,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        153
+        153,
+        163
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1387,9 +1389,31 @@
         160
       ],
       "note": "Travail rattaché à la PR #160. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-007": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        163
+      ],
+      "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 163,
+      "sha": "d8abbe437d36d2f3a3575daed157e11247d8fade",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-011",
+        "MISSION-013"
+      ],
+      "title": "Missions — signaler une intervention impossible (Web et Expo)",
+      "merged_at": "2026-10-27T01:31:09Z"
+    },
     {
       "number": 162,
       "sha": "a25920950bfb9d4c0fda29efee92f092a72aaf90",
@@ -1921,15 +1945,6 @@
       "ids": [],
       "title": "P0-B Stripe : fiabiliser l'identifiant de résiliation et de reprise",
       "merged_at": "2026-10-26T11:11:08Z"
-    },
-    {
-      "number": 108,
-      "sha": null,
-      "head_sha": "af37572e57c0c7fb26cb587820812d73eb6c10e2",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B Stripe : distinguer confirmation en cours et paiement confirmé sans rétrograder une commande",
-      "merged_at": "2026-10-26T11:01:09Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
