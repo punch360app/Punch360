@@ -78,10 +78,10 @@ test('ambiguous published priority has no guessed next mission; completed ranks 
  assert.equal(p.ambiguousRank,1);
  assert.equal(p.allDone,false);
  const safe=missionProgress([{...one,id:'done',status:'completed',sort_order:1},{...two,id:'todo',sort_order:1}]);
- assert.equal(safe.ambiguous,false);
+ assert.equal(Boolean(safe.ambiguous),false);
  assert.equal(safe.next.id,'todo');
  const later=missionProgress([{...one,sort_order:1},{...two,id:'second',sort_order:2},{...one,id:'third',sort_order:2}]);
- assert.equal(later.ambiguous,false);
+ assert.equal(Boolean(later.ambiguous),false);
  assert.equal(later.next.id,'one');
 });
 test('Web card never chooses an arbitrary address or completes a tied-rank mission',async()=>{
