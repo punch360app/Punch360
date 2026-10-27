@@ -51,6 +51,15 @@ export function missionNavigationOptions(m,platform='web',preferred=null){
   return {choices,preferred:choices.find(c=>c.id===selected)||null};
  }catch{return {choices:[],preferred:null};}
 }
+/** Rank-only update. Does not reuse draft-edit RPC or touch worker/client/status. */
+export function missionPublishedOrderArgs(company,mission,order){
+ const rank=Number(order),text=String(order??'').trim();
+ if(!company||!mission?.id||mission.status!=='published'||
+    !Number.isInteger(Number(mission.version))||Number(mission.version)<1||
+    !/^[0-9]{1,3}$/.test(text)||!Number.isInteger(rank)||rank<1||rank>999)
+  throw Error('Choisissez une mission publiée et un nouveau rang entre 1 et 999.');
+ return {p_company:company,p_mission:mission.id,p_expected_version:Number(mission.version),p_order:rank};
+}
 /** @param {string} company @param {Record<string,any>} form @param {{id?:string,version?:number}|null} [existing] @param {boolean} [publish] */
 export function missionArgs(company,form,existing=null,publish=false){
  const day=String(form.day||''),order=Number(form.order),title=String(form.title||'').trim();
@@ -61,7 +70,7 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},edit:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},edit:null,orderEdit:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
@@ -79,7 +88,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null});}
+ function reset(){generation++;Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,orderEdit:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -117,7 +126,16 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    body+='<h4>Interventions du '+e(s.day)+'</h4>'+
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
-      ' · '+e(x.status)+'</small></div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+'</article>').join('');
+      ' · '+e(x.status)+'</small></div>'+
+      (x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
+      (x.status==='published'?button('Corriger le rang publié','order-edit',x.id):'')+
+      '</article>').join('')+
+    (s.orderEdit?'<section class="ess-panel"><h4>Corriger le rang d’une mission publiée</h4>'+
+      '<p class="ess-fine">Seul l’ordre de cette mission changera. Le salarié sera informé, aucune mission terminée ne sera modifiée. Utilisez un rang libre pour ce salarié et cette journée.</p>'+
+      '<p>'+e(s.orderEdit.title)+' · rang actuel '+e(s.orderEdit.sort_order)+'</p>'+
+      field('Nouveau rang libre','order-correct',String(s.orderEdit.sort_order),'number')+
+      button('Confirmer le nouvel ordre','order-save')+button('Annuler','order-close')+
+      '</section>':'');
    if(s.truncated)body+='<p role="alert">Plus de 200 interventions : liste tronquée.</p>';
    if(s.sites.length>=100)body+='<p>Adresses limitées à 100 par chargement; un carnet très volumineux exige un filtre avant attribution.</p>';
   }
@@ -141,6 +159,21 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
+   }else if(action==='order-edit'){
+    const mission=s.missions.find(x=>x.id===el.dataset.id&&x.status==='published');
+    if(!mission)throw Error('Mission publiée introuvable : actualisez.');
+    s.orderEdit=mission;
+   }else if(action==='order-close'){
+    s.orderEdit=null;
+   }else if(action==='order-save'){
+    if(!s.orderEdit)throw Error('Sélectionnez une mission publiée.');
+    const value=doc.getElementById('mission-order-correct')?.value??'';
+    const args=missionPublishedOrderArgs(s.company,s.orderEdit,value);
+    if(!doc.defaultView.confirm('Modifier le rang de cette mission publiée de '+s.orderEdit.sort_order+' à '+args.p_order+' et informer le salarié ?'))return true;
+    const result=await rpc('set_essential_published_mission_order',args);
+    s.orderEdit=null;
+    await load(s.company,s.roster);
+    notify(result.changed?'Rang modifié et salarié informé si son compte est actif.':'Rang inchangé.');
    }else if(action==='edit'){
     const item=s.missions.find(x=>x.id===el.dataset.id&&x.status==='draft');
     if(!item)throw Error('Brouillon non trouvé.');
