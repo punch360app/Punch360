@@ -13,6 +13,14 @@
 7. Après intégration dans **les vrais écrans Web/Expo**, vérifier le rendu avant/après et les interactions au moyen des tests ciblés existants. Les comparaisons automatisées n'utilisent que des références du **même écran, état, rôle et viewport** approuvées explicitement et identifiées par empreinte SHA-256. Sans référence, indiquer « à approuver », jamais « conforme ».
 8. Pour chaque lot visuel significatif, fournir une note courte : **écran / constat observable / impact utilisateur / correction précise / priorité / capture avant-après / tests et appareils réels ou émulés / limites / état déployé**. N'effectuer ni revue exhaustive ni nouvelle maquette pour chaque bouton : la cadence par gros lots continue.
 
+## Boucle de jugement UX — automatique pendant chaque lot Work concerné
+
+- **Déclenchement :** à chaque ajout ou modification d'écran, navigation ou composant visible dans le lot en cours, intégrer la revue UX à la routine Work, sans prompt supplémentaire du propriétaire. Grouper les micro-corrections d'un même parcours pour éviter les audits répétitifs.
+- **Avant :** établir le comportement et la capture de référence réelle lorsque possible, ainsi que l'objectif utilisateur et les critères du prompt maître. **Après :** exécuter le vrai parcours modifié, capturer le rendu final aux formats affectés et confronter à la référence, au comportement attendu, à l'accessibilité et à la charte.
+- **Verdict obligatoire :** `UX OK` si vérification réelle et critères satisfaits; `À CORRIGER` avec problèmes précis et priorités si échec; `NON VÉRIFIÉ` quand les outils, accès ou captures manquent. Une compilation ou une réussite CI seule ne donne jamais `UX OK`.
+- **Boucle corrective :** pour les corrections dans le mandat déjà approuvé, corriger immédiatement, retester et réévaluer **dans la même session active**, en regroupant les modifications. Répéter jusqu'à conformité ou blocage réel documenté; ne pas exiger « continue » entre les vérifications ordinaires.
+- **Limites :** une refonte majeure non approuvée est une proposition, pas un correctif automatique. Ne pas attendre un outil tiers, ne pas suspendre les parcours indépendants et ne pas annoncer un jugement IA qui aurait été fait hors session. GitHub Actions exécute ses tests sur PR/push, mais ne déclenche pas à lui seul un jugement créatif par Work.
+
 ## Autorité, sécurité et coût
 
 - Réutiliser l'identité sauge et le logo officiel « Heure validée », les composants existants, les deux éditions séparées, et les permissions/forfaits réels. Protéger le sens de lecture QR : **employé montre son QR; caméra de tablette le scanne**.
