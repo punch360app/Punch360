@@ -1,21 +1,60 @@
 name: PUNCH TypeScript
-on: [push, pull_request]
+# Feature branches are checked by pull_request, main by push: no duplicate runs.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: punch-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect application changes (full validation on uncertainty)
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          FORCE_FULL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          code=true
+          if [[ "$FORCE_FULL" != "true" && "$BASE_SHA" =~ ^[0-9a-f]{40}$ && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            if git fetch --no-tags --depth=1 origin "$BASE_SHA" && git diff --name-only "$BASE_SHA" HEAD > /tmp/ci-changed-paths; then
+              code=false
+              while IFS= read -r path; do
+                case "$path" in
+                  README.md|docs/PUNCH_WORK_CONTINUATION.md) ;;
+                  *) code=true; break ;;
+                esac
+              done < /tmp/ci-changed-paths
+            fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Application validation required: $code"
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.code == 'true'
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
       - name: Install
-        run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.code == 'true'
+        run: npm ci --prefer-offline --no-audit --no-fund
       - name: Verify Expo dependencies
+        if: steps.scope.outputs.code == 'true'
         run: npx expo install --check
       - name: TypeScript
+        if: steps.scope.outputs.code == 'true'
         run: npm run check
       - name: Offline journal and UI tests
+        if: steps.scope.outputs.code == 'true'
         run: npm test
       - name: Web syntax
+        if: steps.scope.outputs.code == 'true'
         run: |
           for file in web/live/*.js; do node --check "$file"; done
