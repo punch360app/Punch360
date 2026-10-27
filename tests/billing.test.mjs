@@ -26,3 +26,15 @@ test('30-day grace expires at the boundary; cancellation does not renew grace',(
  const s={paidThrough:'2026-10-01T00:00:00Z',firstUnpaidAt:'2026-10-01T00:00:00Z',canceled:false};
  assert.equal(accessState(s,'2026-10-30T23:59:59Z'),'grace');assert.equal(accessState(s,'2026-10-31T00:00:00Z'),'restricted');assert.equal(accessState({...s,canceled:true},'2026-10-02T00:00:00Z'),'restricted');
 });
+
+test('SACATALOG-016 unlimited included seats means zero extras at any headcount',()=>{
+ const historic=structuredClone(essentialPlanSeeds[0].pricing);
+ const unlimited={...historic,baseCents:1900,seatsIncluded:20,extraSeatCents:200,seatsIncludedUnlimited:true};
+ const q=quote(275,unlimited,'yearly');
+ assert.deepEqual({extra:q.extraSeats,monthly:q.monthlyCents,annual:q.annualCents},
+  {extra:0,monthly:1900,annual:19380});
+ assert.equal(quote(275,{...unlimited,seatsIncludedUnlimited:false}).extraSeats,255);
+ assert.equal(quote(275,historic).extraSeats,270,'old snapshots remain numeric');
+ assert.throws(()=>quote(25,{...unlimited,seatsIncludedUnlimited:'true'}));
+ assert.throws(()=>quote(25,{...unlimited,seatsIncludedUnlimited:null}));
+});
