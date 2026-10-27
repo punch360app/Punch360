@@ -12,8 +12,9 @@ export function missionProgress(items){
  // missions at the same rank. Leave the next stop unresolved until a manager
  // explicitly resolves the conflict; completed steps never compete with it.
  const ambiguous=pending.length>1&&Number(pending[0].sort_order)===Number(pending[1].sort_order);
- return {total:ordered.length,done,next:ambiguous?null:(pending[0]||null),
-  ambiguous,ambiguousRank:ambiguous?pending[0].sort_order:null,allDone:ordered.length>0&&done===ordered.length};
+ const result={total:ordered.length,done,next:ambiguous?null:(pending[0]||null),
+  allDone:ordered.length>0&&done===ordered.length};
+ return ambiguous?{...result,ambiguous:true,ambiguousRank:pending[0].sort_order}:result;
 }
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
 /** A private, bounded projection of today's already-authorized missions.
