@@ -629,7 +629,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
     s.uploadedPhoto={mission:id,version:x.version,photoId:photo};
    }
    const resp=await sb.rpc(s.photoRequired?'complete_essential_mission_v4':s.checklistRequired?'complete_essential_mission_v3':s.commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
-    p_company:s.company,p_id:id,p_version:x.version,p_request:request,...(s.commentRequired||s.checklistRequired?{p_comment:proof}:{}),
+    p_company:s.company,p_id:id,p_version:x.version,p_request:request,...(s.commentRequired||s.checklistRequired||s.photoRequired?{p_comment:proof}:{}),
     ...(s.checklistRequired||s.photoRequired?{p_checklist:s.checklistRequired?s.checklistItems:null}:{}),...(s.photoRequired?{p_photo:photo}:{})});
    if(resp.error)throw resp.error;s.pending.delete(id);s.completionDraft=null;s.completionChecks=null;s.uploadedPhoto=null;
    await load(s.company,s.user,s.worker,s.day);notify('Mission terminée; votre pointage ne change pas.');return true;
