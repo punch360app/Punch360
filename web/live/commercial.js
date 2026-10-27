@@ -3,8 +3,8 @@ export function renderCommercialDetails(plans,escape,money){
  const visible=plans.filter(p=>p.active&&p.public_visible);
  const rows=[
   ['Prix de base mensuel',p=>money(p.base_cents)],
-  ['Membres inclus',p=>String(p.included_seats)],
-  ['Membre supplémentaire / mois',p=>money(p.extra_seat_cents)],
+  ['Membres inclus',p=>p.included_seats_unlimited===true?'Illimité':String(p.included_seats)],
+  ['Membre supplémentaire / mois',p=>p.included_seats_unlimited===true?'Aucun supplément':money(p.extra_seat_cents)],
   ['Réduction annuelle',p=>p.annual_discount+' %'],
   ['Bornes comprises',p=>p.kiosk_limit===null?'Illimitées':String(p.kiosk_limit)],
   ['Établissements',p=>p.establishment_limit===null?'Plusieurs':String(p.establishment_limit)],
