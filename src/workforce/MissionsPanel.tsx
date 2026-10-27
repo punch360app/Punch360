@@ -34,7 +34,7 @@ const input=(caption:string,value:string,change:(v:string)=>void)=>(
  onChangeText={change} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:43,color:'#243B2A'}}/></View>
 );
 export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:Row[]}){
- const [enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[photoRequired,setPhotoRequired]=useState(false),[checklistRequired,setChecklistRequired]=useState(false),[checklistDraft,setChecklistDraft]=useState(''),[checklistSavedItems,setChecklistSavedItems]=useState<string[]>([]),[missions,setMissions]=useState<Row[]>([]),
+ const [enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[photoRequired,setPhotoRequired]=useState(false),[photoOptional,setPhotoOptional]=useState(false),[checklistRequired,setChecklistRequired]=useState(false),[checklistDraft,setChecklistDraft]=useState(''),[checklistSavedItems,setChecklistSavedItems]=useState<string[]>([]),[missions,setMissions]=useState<Row[]>([]),
   [sites,setSites]=useState<Row[]>([]),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  const [truncated,setTruncated]=useState(false);
  const [reviewWorker,setReviewWorker]=useState(''),[reviewStatus,setReviewStatus]=useState(''),[reviewClient,setReviewClient]=useState('');
@@ -58,7 +58,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   try{
    const conf=await rpc('essential_missions_configuration',{p_company:companyId,p_enabled:null});
    if(current!==counter.current)return;
-   setEnabled(!!conf.enabled);setCommentRequired(!!conf.comment_required);setPhotoRequired(!!conf.photo_required);
+   setEnabled(!!conf.enabled);setCommentRequired(!!conf.comment_required);setPhotoRequired(!!conf.photo_required);setPhotoOptional(!!conf.photo_optional);
    setChecklistRequired(!!conf.checklist_required);setChecklistSavedItems(Array.isArray(conf.checklist_items)?conf.checklist_items:[]);setChecklistDraft(Array.isArray(conf.checklist_items)?conf.checklist_items.join('\n'):'');
    if(conf.enabled){
     const [places,listing]=await Promise.all([
@@ -71,7 +71,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    }else{setSites([]);setMissions([]);setTruncated(false)}
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
- useEffect(()=>{setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setChecklistRequired(false);setChecklistDraft('');setChecklistSavedItems([]);setMissions([]);setSites([]);setEditing(null);
+ useEffect(()=>{setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setChecklistRequired(false);setChecklistDraft('');setChecklistSavedItems([]);setMissions([]);setSites([]);setEditing(null);
   setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setDecisionTarget(null);setDecisionAction('resume');setDecisionReason('');decisionRequests.current.clear();setPostponeTarget(null);setPostponeDay(missionDate());setPostponeOrder('1');setPostponeReason('');postponeRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
@@ -97,14 +97,13 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     await load();setMessage(required?'Commentaire obligatoire activé.':'Preuve obligatoire désactivée.');
    })}]);
  };
- const togglePhotoPolicy=()=>{
-   const required=!photoRequired;
-   Alert.alert('Preuve photo privée',
-    required?'Exiger une photo avant chaque fin de mission ?':'Ne plus exiger de photo ? Les anciennes preuves restent privées.',
-    [{text:'Annuler',style:'cancel'},{text:'Confirmer',onPress:()=>void work(async()=>{
-     await rpc('set_essential_mission_photo_policy',{p_company:companyId,p_required:required});
-     await load();setMessage(required?'Photo obligatoire activée.':'Photo obligatoire désactivée.');
-    })}]);
+ const setPhotoMode=(mode:'none'|'optional'|'required')=>{
+    const description=mode==='none'?'Désactiver la preuve photo future ?':mode==='required'?'Exiger une photo pour terminer chaque mission ?':'Permettre une photo privée facultative ?';
+    Alert.alert('Preuve photo privée',description,
+     [{text:'Annuler',style:'cancel'},{text:'Confirmer',onPress:()=>void work(async()=>{
+       await rpc('set_essential_mission_photo_mode',{p_company:companyId,p_mode:mode});
+       await load();setMessage('Politique de photo enregistrée.');
+     })}]);
   };
   const viewPhoto=(photo:string)=>void work(async()=>{
    const result=await supabase.functions.invoke('mission-photo',{body:{action:'view',company:companyId,photo}});
@@ -256,8 +255,10 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   {button(enabled?'Désactiver le module':'Activer le module',toggle,busy)}
   {label('Preuve de fin : '+(commentRequired?'commentaire obligatoire de 5 à 1000 caractères':'aucune preuve obligatoire'))}
   {button(commentRequired?'Ne plus exiger de commentaire':'Exiger un commentaire de fin',toggleProofPolicy,busy)}
-   {label('Photo privée de fin : '+(photoRequired?'obligatoire':'non exigée')+' · JPEG/PNG/WebP · 5 Mio')}
-   {button(photoRequired?'Ne plus exiger de photo':'Exiger une photo de fin',togglePhotoPolicy,busy)}
+   {label('Photo privée de fin : '+(photoRequired?'obligatoire':photoOptional?'facultative':'désactivée')+' · JPEG/PNG/WebP · 5 Mio')}
+   {!photoRequired?button('Exiger une photo',()=>setPhotoMode('required'),busy):null}
+   {!photoOptional?button('Autoriser une photo facultative',()=>setPhotoMode('optional'),busy):null}
+   {photoRequired||photoOptional?button('Désactiver la photo',()=>setPhotoMode('none'),busy):null}
   {label('Checklist de fin : '+(checklistRequired?'obligatoire':'non exigée'))}
   {label('Définissez jusqu’à huit étapes, une par ligne (3 à 120 caractères).')}
   <TextInput accessibilityLabel="Étapes de checklist de fin" multiline maxLength={1000}
@@ -380,7 +381,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
 }
 export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:string;workerId:string|null;navProvider:string|null}){
  const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[completionComment,setCompletionComment]=useState(''),
-  [checklistRequired,setChecklistRequired]=useState(false),[checklistItems,setChecklistItems]=useState<string[]>([]),[checklistChecked,setChecklistChecked]=useState<number[]>([]),[photoRequired,setPhotoRequired]=useState(false),[photoAsset,setPhotoAsset]=useState<DocumentPicker.DocumentPickerAsset|null>(null),[busy,setBusy]=useState(false),
+  [checklistRequired,setChecklistRequired]=useState(false),[checklistItems,setChecklistItems]=useState<string[]>([]),[checklistChecked,setChecklistChecked]=useState<number[]>([]),[photoRequired,setPhotoRequired]=useState(false),[photoOptional,setPhotoOptional]=useState(false),[photoAsset,setPhotoAsset]=useState<DocumentPicker.DocumentPickerAsset|null>(null),[busy,setBusy]=useState(false),
   [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
   const stagedPhoto=useRef<{id:string;version:number;photoId:string}|null>(null);
@@ -399,11 +400,11 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   try{
    const res=await rpc('list_essential_missions',{p_company:companyId,p_day:missionDate(),p_worker:workerId,p_include_drafts:false});
    if(gen!==current.current)return;
-   setEnabled(!!res.enabled);setCommentRequired(!!res.comment_required);setPhotoRequired(!!res.photo_required);setChecklistRequired(!!res.checklist_required);
+   setEnabled(!!res.enabled);setCommentRequired(!!res.comment_required);setPhotoRequired(!!res.photo_required);setPhotoOptional(!!res.photo_optional);setChecklistRequired(!!res.checklist_required);
    setChecklistItems(Array.isArray(res.checklist_items)?res.checklist_items:[]);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
-  }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setChecklistRequired(false);setChecklistItems([]);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
+  }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setChecklistRequired(false);setChecklistItems([]);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoAsset(null);stagedPhoto.current=null;setCompletionComment('');setChecklistRequired(false);setChecklistItems([]);setChecklistChecked([]);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setPhotoAsset(null);stagedPhoto.current=null;setCompletionComment('');setChecklistRequired(false);setChecklistItems([]);setChecklistChecked([]);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;subscription.remove()};
@@ -498,8 +499,9 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
       const network=await Network.getNetworkStateAsync();
       if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
       const previousPhoto=stagedPhoto.current;
-       let photo=previousPhoto?.id===id&&previousPhoto?.version===next.version?(previousPhoto?.photoId??null):null;
-       if(photoRequired&&!photo){
+       const photoAllowed=photoRequired||photoOptional;
+       let photo=photoAllowed&&previousPhoto?.id===id&&previousPhoto?.version===next.version?(previousPhoto?.photoId??null):null;
+       if(photoAllowed&&(photoRequired||!!photoAsset)&&!photo){
         if(!photoAsset)throw Error('Photo manquante');
         const body=new FormData();
         body.append('company',companyId);body.append('mission',id);body.append('version',String(next.version));
@@ -508,9 +510,9 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
         if(uploaded.error||!uploaded.data?.photo_id)throw Error('Téléversement non confirmé');
         photo=uploaded.data.photo_id;stagedPhoto.current={id,version:next.version,photoId:photo!};
        }
-       await rpc(photoRequired?'complete_essential_mission_v4':checklistRequired?'complete_essential_mission_v3':commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
+       await rpc(photo?'complete_essential_mission_v4':checklistRequired?'complete_essential_mission_v3':commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
        p_company:companyId,p_id:id,p_version:next.version,p_request:request,
-       ...(commentRequired||checklistRequired||photoRequired?{p_comment:proof}:{}),...(checklistRequired||photoRequired?{p_checklist:checklistRequired?checklistItems:null}:{}),...(photoRequired?{p_photo:photo}:{})});
+       ...(commentRequired||checklistRequired||photo?{p_comment:proof}:{}),...(checklistRequired||photo?{p_checklist:checklistRequired?checklistItems:null}:{}),...(photo?{p_photo:photo}:{})});
       requests.current.delete(id);setCompletionComment('');setChecklistChecked([]);setPhotoAsset(null);stagedPhoto.current=null;await refresh();setMessage('Mission terminée. Le pointage reste inchangé.');
      }catch{setMessage('Fin non confirmée : reconnectez-vous et réessayez (même demande).');}
      finally{setBusy(false)}
@@ -579,8 +581,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
     <TextInput accessibilityLabel="Commentaire privé de fin de mission" value={completionComment} onChangeText={setCompletionComment}
      multiline maxLength={1000} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:85,color:'#243B2A'}}/>
    </View>:null}
-   {photoRequired?<View style={{gap:4,padding:10,borderRadius:9,backgroundColor:'white'}}>
-     {label('Photo privée obligatoire · JPEG, PNG ou WebP · 5 Mio maximum, visible seulement par le responsable.')}
+   {(photoRequired||photoOptional)?<View style={{gap:4,padding:10,borderRadius:9,backgroundColor:'white'}}>
+     {label('Photo privée '+(photoRequired?'obligatoire':'facultative')+' · JPEG, PNG ou WebP · 5 Mio maximum, visible seulement par le responsable.')}
      {button(photoAsset?'Changer la photo':'Choisir une photo',pickPhoto,busy)}
      {photoAsset?label('Prête : '+photoAsset.name):stagedPhoto.current?.id===next.id?label('Photo téléversée, fin à confirmer.'):null}
     </View>:null}
