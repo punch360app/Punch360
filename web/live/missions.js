@@ -2,6 +2,7 @@ import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigatio
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 import {missionCancelArgs} from './mission-cancel.js';
+import {missionReassignArgs} from './mission-reassign.js';
 // A mission never mutates punches, shifts, payroll, mileage, invoices or GPS.
 export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');}
 /** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
@@ -80,12 +81,13 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},edit:null,cancelId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},edit:null,cancelId:null,reassignId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  const cancelRequests=new Map();
+ const reassignRequests=new Map();
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
-  if(s.company!==company){cancelRequests.clear();s.cancelId=null;}
+  if(s.company!==company){cancelRequests.clear();reassignRequests.clear();s.cancelId=null;s.reassignId=null;}
   const gen=++generation;Object.assign(s,{company,roster,enabled:false,missions:[],sites:[],error:''});
   if(!company)return;
   try{
@@ -100,7 +102,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,cancelId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,cancelId:null,reassignId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -141,6 +143,15 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
       ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée du salarié : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
     (x.status==='published'?button(s.cancelId===x.id?'Fermer l’annulation':'Annuler la mission publiée','cancel-open',x.id):'')+
     (s.cancelId===x.id?'<label class="ess-field">Motif de l’annulation (obligatoire, 5 à 200 caractères)<input id="mission-cancel-reason-'+e(x.id)+'" maxlength="200" placeholder="Ex. client indisponible"></label>'+button('Confirmer l’annulation','cancel-submit',x.id):'')+
+    (x.status==='published'&&!s.truncated?button(s.reassignId===x.id?'Fermer la réaffectation':'Réaffecter à un autre salarié','reassign-open',x.id):'')+
+    (s.reassignId===x.id?
+     '<div class="ess-panel"><p class="ess-fine">Réaffectation manuelle. Vérifiez vous-même les qualifications et disponibilités du salarié; aucune validation de poste automatisée dans ce parcours.</p>'+
+     '<label class="ess-field">Nouveau salarié<select id="mission-reassign-worker-'+e(x.id)+'">'+
+     '<option value="">Sélectionner un salarié actif</option>'+s.roster.filter(w=>w.status==='active'&&w.id!==x.worker_id).map(w=>
+      '<option value="'+e(w.id)+'">'+e(w.name)+'</option>').join('')+'</select></label>'+
+     '<label class="ess-field">Rang de tournée du nouveau salarié<input id="mission-reassign-order-'+e(x.id)+'" type="number" min="1" max="999" value="'+e(x.sort_order)+'"></label>'+
+     '<label class="ess-field">Motif obligatoire (5 à 200 caractères)<input id="mission-reassign-reason-'+e(x.id)+'" maxlength="200"></label>'+
+     button('Confirmer la réaffectation','reassign-submit',x.id)+'</div>':'')+
     (x.status==='published'&&!s.truncated&&publishedSwapTargets(x,s.missions).length?
      '<label class="ess-field">Échanger le rang avec<select id="mission-swap-'+e(x.id)+'">'+
      '<option value="">Choisir une mission publiée</option>'+
@@ -187,6 +198,27 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     await rpc('cancel_essential_published_mission',args);
     cancelRequests.delete(key);s.cancelId=null;
     await load(s.company,s.roster);notify('Mission annulée; avis interne envoyé si le salarié possède un compte actif.');
+   }else if(action==='reassign-open'){
+    if(s.truncated)throw Error('Liste tronquée : actualisez avant de réaffecter.');
+    const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='published');
+    if(!m)throw Error('Mission publiée introuvable. Actualisez.');
+    s.reassignId=s.reassignId===m.id?null:m.id;
+   }else if(action==='reassign-submit'){
+    if(s.truncated)throw Error('Liste tronquée : actualisez avant de réaffecter.');
+    const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='published');
+    if(!m||s.reassignId!==m.id)throw Error('Mission modifiée. Actualisez.');
+    const worker=doc.getElementById('mission-reassign-worker-'+m.id)?.value||'';
+    if(!s.roster.some(w=>w.id===worker&&w.status==='active'))throw Error('Sélectionnez un salarié actif.');
+    const order=doc.getElementById('mission-reassign-order-'+m.id)?.value||'';
+    const reason=doc.getElementById('mission-reassign-reason-'+m.id)?.value||'';
+    const key='reassign:'+m.id,request=reassignRequests.get(key)||doc.defaultView.crypto.randomUUID();
+    const args=missionReassignArgs(s.company,m,worker,order,reason,request);
+    if(!doc.defaultView.confirm('Réaffecter « '+m.title+' » à un autre salarié ? Vérifiez qualifications et disponibilités. Deux avis internes seront envoyés si les comptes sont actifs; aucune heure ni pointage ne change.'))return true;
+    reassignRequests.set(key,request);
+    await rpc('reassign_essential_published_mission',args);
+    reassignRequests.delete(key);s.reassignId=null;
+    await load(s.company,s.roster);
+    notify('Mission réaffectée. Les employés concernés ont été avisés si leurs comptes sont actifs.');
    }else if(action==='swap-order'){
     if(s.truncated)throw Error('Tournée tronquée : rechargez un lot complet avant de modifier l’ordre.');
     const source=s.missions.find(x=>x.id===el.dataset.id);
