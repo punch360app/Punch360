@@ -7,7 +7,14 @@ export function missionWarningEligible(previousEnabled,sameWorkspace){return !!p
 export function missionProgress(items){
  const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
  const done=ordered.filter(x=>x.status==='completed').length;
- return {total:ordered.length,done,next:ordered.find(x=>x.status==='published')||null,allDone:ordered.length>0&&done===ordered.length};
+ const pending=ordered.filter(x=>x.status==='published');
+ // A stable database id is NOT permission to invent an order for two published
+ // missions at the same rank. Leave the next stop unresolved until a manager
+ // explicitly resolves the conflict; completed steps never compete with it.
+ const ambiguous=pending.length>1&&Number(pending[0].sort_order)===Number(pending[1].sort_order);
+ const result={total:ordered.length,done,next:ambiguous?null:(pending[0]||null),
+  allDone:ordered.length>0&&done===ordered.length};
+ return ambiguous?{...result,ambiguous:true,ambiguousRank:pending[0].sort_order}:result;
 }
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
 /** A private, bounded projection of today's already-authorized missions.
@@ -194,6 +201,10 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       '</details>';
   };
   if(p.allDone)return '<section class="zen-company"><b>Toutes les missions sont terminées.</b><small>Votre session de travail reste indépendante.</small></section>'+renderTour();
+  if(p.ambiguous)return '<section class="zen-company" aria-label="Ordre des missions à confirmer">'+
+   '<p role="alert"><b>Prochaine mission indéterminée</b> : plusieurs interventions publiées ont le même rang ('+
+   e(p.ambiguousRank)+'). Demandez au responsable de confirmer la séquence. Aucun itinéraire n’est choisi automatiquement et aucune mission n’a été terminée.</p>'+
+   renderTour()+'</section>';
   const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
   return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+1)+' de '+p.total+'</small>'+
@@ -208,6 +219,8 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
  }
  async function finish(id){
   if(!s.company||!s.worker||!s.enabled||s.busy)throw Error('Mission non autorisée.');
+  const latest=missionProgress(s.items);
+  if(s.truncated||latest.ambiguous||latest.next?.id!==id)throw Error('Ordre des missions non confirmé ou modifié : rechargez et contactez votre responsable.');
   const x=s.items.find(m=>m.id===id&&m.status==='published');if(!x)throw Error('Mission modifiée : rechargez.');
   if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise. Aucune fin n’a été enregistrée.');
   if(!doc.defaultView.confirm('Terminer « '+x.title+' » sans pointer la sortie ?'))return false;
