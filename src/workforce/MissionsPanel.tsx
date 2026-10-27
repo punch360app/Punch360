@@ -5,6 +5,7 @@ import * as Network from 'expo-network';
 import {supabase} from '../lib/supabase';
 import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEligible,missionNavigationOptions,personalMissionTour,publishedSwapTargets,publishedSwapArgs} from '../../web/live/missions.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
+import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
 import {Platform} from 'react-native';
 type Row=Record<string,any>;
 async function rpc(name:string,args:Row):Promise<Row>{
@@ -128,7 +129,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      const report=missionDayReview(missions,{worker:reviewWorker,status:reviewStatus,client:reviewClient},truncated);
      return <>
       {label('À faire : '+report.counts.published+' · Terminées : '+report.counts.completed+
-       ' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
+       ' · À traiter : '+report.counts.impossible+' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
       {label('Filtrer par employé')}
       {options([{id:'',name:'Tous les employés'},...roster.filter(w=>w.status==='active')],reviewWorker,setReviewWorker,w=>w.id,w=>w.name)}
       {label('Filtrer par état')}
@@ -137,7 +138,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
       {label(report.shown+' mission(s) affichée(s) sur '+report.scopedTotal)}
       {report.visible.map(m=><View key={m.id} style={{padding:8,borderBottomWidth:1,borderColor:'#DCE8D6',gap:2}}>
        {label(m.sort_order+' · '+[m.first_name,m.last_name].filter(Boolean).join(' ')+' · '+m.client_name)}
-       {label(m.title+' · '+m.site_name+' · '+(MISSION_STATES.find(z=>z[0]===m.status)?.[1]||m.status))}
+       {label(m.title+' · '+m.site_name+' · '+(MISSION_STATES.find(z=>z[0]===m.status)?.[1]||m.status)+(m.status==='impossible'?' · '+missionIssueLabel(m.issue_reason):''))}
       </View>)}
       {report.truncated?label('Liste tronquée à 200 missions : export CSV refusé.'):button('Partager la liste affichée (CSV)',()=>{
        try{void Share.share({message:missionDayReviewCsv(report,day)}).catch(err=>setMessage(err.message));}
@@ -149,6 +150,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    {missions.map(m=><View key={m.id} style={{borderBottomWidth:1,borderColor:'#EFF2ED',paddingVertical:6,gap:3}}>
     {title(String(m.sort_order)+'. '+m.title)}
     {label([m.first_name,m.last_name].filter(Boolean).join(' ')+' · '+m.client_name+' · '+m.site_name+' · '+m.status)}
+    {m.status==='impossible'?<>{label('Motif : '+missionIssueLabel(m.issue_reason))}{m.issue_note?label('Précision privée du salarié : '+m.issue_note):null}</>:null}
     {m.status==='draft'?button('Modifier le brouillon',()=>{
      setEditing(m);setWorker(m.worker_id);setSite(m.site_id);setDay(m.mission_day);
      setOrder(String(m.sort_order));setMissionTitle(m.title);setInstructions('');
@@ -171,6 +173,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
   [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
  const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false),[tourOpen,setTourOpen]=useState(false),[tourRouteId,setTourRouteId]=useState<string|null>(null);
+ const [issueOpen,setIssueOpen]=useState(false),[issueReason,setIssueReason]=useState(''),[issueNote,setIssueNote]=useState('');
  async function refresh(){
   if(!workerId||!companyId)return;
   const gen=++current.current;
@@ -180,7 +183,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    setEnabled(!!res.enabled);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
   }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setItems([]);setEnabled(false);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;subscription.remove()};
@@ -189,7 +192,28 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const missionConflict='ambiguous' in progress&&progress.ambiguous===true;
  const missionConflictRank='ambiguousRank' in progress?progress.ambiguousRank:null;
  const tour=personalMissionTour(items,workerId);
- useEffect(()=>{setNavOpen(false)},[next?.id]);
+ useEffect(()=>{setNavOpen(false);setIssueOpen(false);setIssueReason('');setIssueNote('')},[next?.id]);
+ const reportIssue=()=>{
+  if(!next||busy||truncated||missionConflict)return;
+  if(!MISSION_ISSUE_REASONS.some(([key])=>key===issueReason)){setMessage('Choisissez un motif de signalement.');return;}
+  const id=next.id,requestKey='issue:'+id,request=requests.current.get(requestKey)||Crypto.randomUUID();
+  let args:Row;
+  try{args=missionIssueArgs(companyId,next,issueReason,issueNote,request)}
+  catch(e:any){setMessage(e.message||'Signalement invalide');return;}
+  Alert.alert('Signaler cette mission impossible ?',
+   'Le responsable recevra un avis interne. Aucun pointage, absence ni retard ne sera déduit.',
+   [{text:'Annuler',style:'cancel'},{text:'Signaler',onPress:()=>{void (async()=>{
+    requests.current.set(requestKey,request);setBusy(true);setMessage('');
+    try{
+     const network=await Network.getNetworkStateAsync();
+     if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
+     await rpc('report_essential_mission_issue',args);
+     requests.current.delete(requestKey);setIssueOpen(false);await refresh();
+     setMessage('Mission impossible signalée; votre pointage reste inchangé.');
+    }catch{setMessage('Signalement non confirmé : reconnectez-vous et réessayez (même demande).');}
+    finally{setBusy(false)}
+   })()}}]);
+ };
  const complete=()=>{
   if(!next||busy||truncated||missionConflict)return;
   Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
@@ -216,7 +240,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
-  {title(progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':'Prochaine mission · '+(progress.done+1)+' de '+progress.total)}
+  {title(progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
+  {!next&&progress.blocked&&!missionConflict?label('Aucune prochaine mission publiée. Les étapes signalées nécessitent un suivi; le pointage ne change pas.'):null}
   {missionConflict?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
    Plusieurs missions publiées portent le rang {String(missionConflictRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
   </Text>:null}
@@ -230,6 +255,15 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
       ()=>{void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))})}</View>)}
    </View>:null}
    {button('Terminer',complete,busy)}
+   {button(issueOpen?'Fermer le signalement':'Signaler une mission impossible',()=>setIssueOpen(v=>!v),busy)}
+   {issueOpen?<View style={{gap:6,padding:10,backgroundColor:'white',borderRadius:9}}>
+    {label('Choisissez un motif. Aucun pointage, retard ou absence ne sera déduit.')}
+    {MISSION_ISSUE_REASONS.map(([key,name])=><View key={key}>{button((issueReason===key?'✓ ':'')+name,()=>setIssueReason(key),busy)}</View>)}
+    {label('Précision privée (facultative, 300 caractères maximum)')}
+    <TextInput accessibilityLabel="Précision de mission impossible" value={issueNote} onChangeText={setIssueNote}
+     multiline maxLength={300} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:65,color:'#243B2A'}}/>
+    {button('Confirmer le signalement',reportIssue,busy)}
+   </View>:null}
    {label('Terminer une mission ne pointe jamais la sortie.')}
   </>:null}
   {tour.total>0?button(tourOpen?'Masquer ma tournée du jour':'Voir mes interventions du jour ('+tour.total+')',()=>setTourOpen(v=>!v)):null}
@@ -238,7 +272,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    {tour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Deux missions ont le même rang; confirmer l’ordre avec le responsable.</Text>:null}
    {tour.rows.map((stop:Row)=><View key={stop.id} style={{padding:9,backgroundColor:'white',borderWidth:1,borderColor:'#DCE8D6',borderRadius:8,gap:5}}>
     {title(stop.title+' · '+stop.client_name)}
-    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':'À faire'))}
+    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'À traiter':'À faire'))}
+    {stop.status==='impossible'?label('Motif : '+missionIssueLabel(stop.issue_reason)):null}
     {label(missionAddress(stop))}
     {stop.status==='published'&&missionNavigationOptions(stop,Platform.OS,navProvider).choices.length?
      button(tourRouteId===stop.id?'Masquer les itinéraires':'Itinéraire vers cette étape',

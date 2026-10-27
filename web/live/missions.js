@@ -200,7 +200,9 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
  const s={company:null,user:null,worker:null,day:missionDate(),items:[],enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null};
  let generation=0;
  async function load(company,user,worker,day=missionDate()){
-  const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,s.company===company&&s.user===user&&s.worker===worker);
+  const same=s.company===company&&s.user===user&&s.worker===worker;
+  const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
+  if(!same){s.pending.clear();s.issue=null;}
   const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
   try{
