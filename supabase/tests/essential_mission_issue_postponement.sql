@@ -147,8 +147,13 @@ begin
  if result->>'duplicate'<>'true' then raise exception 'Postponement replay wrote twice';end if;
  perform set_config('request.jwt.claim.sub',emp::text,true);
  data:=public.list_essential_missions(c,day,null,false);
- if jsonb_array_length(data->'items')<>3 or data->'items'->2->>'status'<>'postponed'
- or data->'items'->2->>'issue_decision'<>'postpone' then
+ if jsonb_array_length(data->'items')<>3 or not exists(
+  select 1 from jsonb_array_elements(data->'items') row
+  where row->>'id'=third_mission::text and row->>'status'='postponed'
+  and row->>'issue_decision'='postpone'
+  and row->>'mission_day'=day::text
+  and row->>'effective_day'=(day+1)::text
+ ) then
   raise exception 'Old day fails postponed view: %',data;end if;
  data:=public.list_essential_missions(c,day+1,null,false);
  if jsonb_array_length(data->'items')<>1 or data->'items'->0->>'status'<>'published'
