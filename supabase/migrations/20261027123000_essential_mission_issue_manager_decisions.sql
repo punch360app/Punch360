@@ -92,6 +92,60 @@ end $fn$;
 revoke all on function public.resolve_essential_mission_issue(uuid,uuid,integer,uuid,text,text) from public,anon;
 grant execute on function public.resolve_essential_mission_issue(uuid,uuid,integer,uuid,text,text) to authenticated;
 
+-- A NEW employee report after a resumed mission clears the prior visible decision.
+-- The old decision remains in private audit and idempotency history, not on the new issue.
+CREATE OR REPLACE FUNCTION public.report_essential_mission_issue(p_company uuid, p_mission uuid, p_version integer, p_request uuid, p_reason text, p_note text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v private.essential_missions;v_prev integer;v_worker uuid;
+begin
+ if not private.is_member(p_company) then
+  raise exception using errcode='42501',message='Compagnie de mission non autorisée';
+ end if;
+ if p_mission is null or p_request is null or p_version is null or p_version<=0 or
+  p_reason not in ('client_absent','wrong_address','access_blocked','return_needed','other') or
+  length(btrim(coalesce(p_note,'')))>300 or
+  not exists(select 1 from private.essential_mission_settings c
+   where c.company_id=p_company and c.enabled) then
+  raise exception using errcode='22023',message='Signalement de mission invalide';
+ end if;
+ select * into v from private.essential_missions
+  where company_id=p_company and id=p_mission for update;
+ if not found then raise exception using errcode='42501',message='Mission absente de cette compagnie';end if;
+ select id into v_worker from public.company_workers w
+  where w.company_id=p_company and w.id=v.worker_id and
+   w.auth_user_id=auth.uid() and w.status='active' and w.personal_access;
+ if v_worker is null then raise exception using errcode='42501',message='Seul le salarié affecté peut signaler cette mission';end if;
+ select result_version into v_prev from private.essential_mission_issue_requests
+  where company_id=p_company and mission_id=p_mission and request_id=p_request and reported_by=auth.uid();
+ if found then
+  return jsonb_build_object('id',v.id,'version',v_prev,'status','impossible','duplicate',true);
+ end if;
+ if v.status<>'published' or v.version<>p_version then
+  raise exception using errcode='22023',message='Mission déjà signalée, terminée ou modifiée; actualisez.';
+ end if;
+ update private.essential_missions set status='impossible',version=version+1,
+  issue_reason=p_reason,issue_note=nullif(btrim(coalesce(p_note,'')),''),issue_at=clock_timestamp(),
+  issue_by=auth.uid(),issue_decision=null,issue_decision_at=null,issue_decision_by=null,issue_decision_reason=null,updated_by=auth.uid(),updated_at=clock_timestamp()
+ where company_id=p_company and id=p_mission returning * into v;
+ insert into private.essential_mission_issue_requests(company_id,mission_id,request_id,reported_by,result_version)
+ values(p_company,p_mission,p_request,auth.uid(),v.version);
+ insert into public.workforce_audit(company_id,actor_id,action,entity_id,before_value,after_value,reason)
+ values(p_company,auth.uid(),'mission_issue_reported',v.id,
+  jsonb_build_object('status','published','version',p_version),
+  jsonb_build_object('status','impossible','version',v.version,'reason_code',p_reason),
+  'Mission signalée impossible; aucune absence ou sortie de travail inférée');
+ insert into public.app_notifications(company_id,recipient_id,kind,title,body)
+ select p_company,m.user_id,'mission_issue','Mission nécessitant un suivi',
+  'Un salarié a signalé une intervention à traiter dans le module Missions.'
+ from public.company_members m where m.company_id=p_company and m.status='active'
+  and m.role in ('boss','admin') and m.user_id<>auth.uid();
+ return jsonb_build_object('id',v.id,'version',v.version,'status','impossible','duplicate',false);
+end $function$;
+
 -- Keep the existing company/worker/draft permissions and 200-row limit.
 -- A canceled mission only appears to its assigned employee when it resulted
 -- from a manager decision; other canceled missions stay hidden as before.
