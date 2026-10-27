@@ -65,13 +65,9 @@ test('network error clears previous future-day result rather than silently retai
  assert.doesNotMatch(f.ui.render(),/Nettoyage demain/);
  await f.win.happyDOM.close();
 });
-test('late future responses cannot populate another company's employee screen',async()=>{
- const f=createFixture();await f.ui.load('company-a','user-a','worker-a');
- await f.ui.handleUpcoming('toggle');
- f.win.document.body.innerHTML=f.ui.render();
- let release;const initial=f.calls.length;
- const original=f.ui.state.upcoming;
- const deferred=Promise.withResolvers();
+test('late future responses cannot populate a different company employee screen',async()=>{
+ let release;
+ const deferred=new Promise(resolve=>{release=resolve});
  // Override RPC used by the controller to keep the upcoming request in flight.
  const win=new Window();
  const requests=[];
@@ -79,18 +75,17 @@ test('late future responses cannot populate another company's employee screen',a
   requests.push(args);
   if(args.p_company==='company-b')return {data:{enabled:true,truncated:false,items:[]}};
   if(requests.length===1)return {data:{enabled:true,truncated:false,items:[]}};
-  return deferred.promise;
+  return deferred;
  }};
  const ctrl=createPersonalMissionController({sb,document:win.document,escape:esc,redraw(){},notify(){}});
  await ctrl.load('company-a','user-a','worker-a');
  await ctrl.handleUpcoming('toggle');win.document.body.innerHTML=ctrl.render();
  const slow=ctrl.handleUpcoming('load');
  await ctrl.load('company-b','user-b','worker-b');
- deferred.resolve({data:{enabled:true,truncated:false,items:[stop]}});
+ release({data:{enabled:true,truncated:false,items:[stop]}});
  await slow;
  assert.equal(ctrl.state.company,'company-b');
  assert.equal(ctrl.state.upcoming.loadedDay,null);
  assert.doesNotMatch(ctrl.render(),/Clinique Mathieu|Nettoyage demain/);
  await win.happyDOM.close();
- await f.win.happyDOM.close();
 });
