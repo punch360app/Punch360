@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:09:59.548Z",
+  "generated_at": "2026-10-27T10:13:22.821Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1417,7 +1417,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        166
+        166,
+        173
       ],
       "note": "Travail rattaché à la PR #166. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1435,6 +1436,16 @@
     }
   },
   "activity": [
+    {
+      "number": 173,
+      "sha": "dcb799741ad7ddc0bdbca742b30aa3eacfca5193",
+      "ci": "success",
+      "ids": [
+        "GOV-005"
+      ],
+      "title": "Passation Punch — trois livraisons SACATALOG vérifiées et prochain parcours",
+      "merged_at": "2026-10-27T10:13:11Z"
+    },
     {
       "number": 172,
       "sha": "879593283111c9a7f79efdd473be3e07ad61bcc3",
@@ -1984,15 +1995,6 @@
       "ids": [],
       "title": "P0-B Expo — invalider un devis Stripe dès la modification du forfait ou des places",
       "merged_at": "2026-10-26T13:53:59Z"
-    },
-    {
-      "number": 119,
-      "sha": null,
-      "head_sha": "4312d6db91992a7642d777d606a923de136a5237",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B — Révoquer un ancien devis Stripe Boss dès qu’un choix change",
-      "merged_at": "2026-10-26T13:46:53Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
