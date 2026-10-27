@@ -8,6 +8,11 @@ on:
       - "docs/prompt-board/MASTER_PROMPT_20261025.md"
       - "scripts/sync-tracker-master.mjs"
   workflow_dispatch:
+  # GITHUB_TOKEN progress commits do not emit another push workflow.
+  # Publish only after the register writer has finished, using trusted main.
+  workflow_run:
+    workflows: ["PUNCH Work progress register"]
+    types: [completed]
 permissions:
   contents: read
   pages: write
@@ -17,6 +22,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -24,6 +34,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
+          persist-credentials: false
       - name: Generate tracker from current master
         run: node scripts/sync-tracker-master.mjs
       - name: Validate frontend JavaScript
