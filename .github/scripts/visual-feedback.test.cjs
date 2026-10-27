@@ -28,7 +28,7 @@ function workspace(t,actualColor,referenceColor,approve) {
     if(approve) fs.writeFileSync(path.join(dir,'visual-baselines','manifest.json'),JSON.stringify({
       screens:{[filename]:{
         approvedSha256:crypto.createHash('sha256').update(bytes).digest('hex'),
-        figmaNodeId:'14:14',screen:'logged-out',approvedBy:'owner',approvedAt:'2026-10-27'
+        approvedSource:'capture-reelle-validee',screen:'logged-out',approvedBy:'owner',approvedAt:'2026-10-27'
       }}
     }));
   }
@@ -38,13 +38,13 @@ function run(dir) {
   const r=spawnSync(process.execPath,[compare],{cwd:dir,encoding:'utf8'});
   return {status:r.status,report:JSON.parse(fs.readFileSync(path.join(dir,'visual-captures','report.json'),'utf8'))};
 }
-test('missing Figma approval never pretends comparison succeeded',t=>{
+test('missing visual approval never pretends comparison succeeded',t=>{
   const dir=workspace(t,30,30,false);
   const result=run(dir);
   assert.equal(result.status,0);
   assert.equal(result.report.approvedBaselines,0);
   assert.equal(result.report.feedback.state,'awaiting-approved-reference');
-  assert.equal(result.report.results[0].status,'awaiting-approved-Figma-baseline');
+  assert.equal(result.report.results[0].status,'awaiting-approved-baseline');
   assert.ok(fs.existsSync(path.join(dir,'visual-captures','review.html')));
 });
 test('matching explicitly approved screenshot passes',t=>{
@@ -69,7 +69,7 @@ test('tampered approved reference is rejected',t=>{
   assert.match(result.report.results[0].reason,/SHA-256/);
 });
 test('audits generate concrete recommendations, never claim correction ran',()=>{
-  const report={results:[{image:filename,status:'awaiting-approved-Figma-baseline'}],approvedBaselines:0,failures:0,screenshots:1};
+  const report={results:[{image:filename,status:'awaiting-approved-baseline'}],approvedBaselines:0,failures:0,screenshots:1};
   const feedback=buildFeedback(report,[{device:'S25',viewport:{width:412},layout:{overflowPx:24},tapTargets:{smallCount:2},pageErrors:[]}]);
   assert.equal(feedback.state,'awaiting-approved-reference');
   assert.ok(feedback.issues.some(x=>x.code==='horizontal-overflow'));
