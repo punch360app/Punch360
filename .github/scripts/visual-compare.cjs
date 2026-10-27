@@ -8,7 +8,15 @@ const {buildFeedback,renderHtml} = require('./visual-feedback.cjs');
 const output = 'visual-captures';
 const baselines = 'visual-baselines';
 fs.mkdirSync(output,{recursive:true});
-const images=fs.readdirSync(output).filter(name=>/^punch-(S25|iPad|PC)-logged-out\.png$/.test(name)).sort();
+const images=fs.readdirSync(output).filter(name=>
+  /^punch-(S25|iPad|PC)-(logged-out|(construction|essential)-(welcome|login|signup|reset))\.png$/.test(name)
+).sort();
+function screenInfo(name) {
+  const m=/^punch-(S25|iPad|PC)-(logged-out|(construction|essential)-(welcome|login|signup|reset))\.png$/.exec(name);
+  if (!m) throw new Error('Unexpected screenshot name '+name);
+  return {device:m[1],edition:m[2]==='logged-out'?'construction':m[3],
+    screen:m[2]==='logged-out'?'logged-out':m[4]};
+}
 const manifestPath=path.join(baselines,'manifest.json');
 let manifest={screens:{}};
 let manifestError=null;
@@ -24,6 +32,7 @@ if (fs.existsSync(manifestPath)) {
 const results=[];
 let failures=0;
 for (const name of images) {
+  const info=screenInfo(name);
   const actual=path.join(output,name);
   const expected=path.join(baselines,name);
   const approval=manifest.screens && manifest.screens[name];
@@ -39,7 +48,7 @@ for (const name of images) {
   // Require an approved hash, documented approved source and exact screen state.
   if (!/^[a-f0-9]{64}$/i.test(String(approval.approvedSha256||'')) ||
       !['capture-reelle-validee','design-valide'].includes(approval.approvedSource) ||
-      approval.screen!=='logged-out' || !approval.approvedBy || !approval.approvedAt) {
+      approval.screen!==info.screen || (info.screen!=='logged-out' && approval.edition!==info.edition) || !approval.approvedBy || !approval.approvedAt) {
     results.push({image:name,status:'failed',reason:'Incomplete approval metadata'});
     failures++;
     continue;
@@ -93,22 +102,25 @@ if (!images.length) {
   failures++;
 }
 const audits=[];
-for (const device of ['S25','iPad','PC']) {
-  const file=path.join(output,'audit-'+device+'.json');
-  if (!fs.existsSync(file)) continue;
+for (const name of fs.readdirSync(output).filter(name=>
+  /^audit-(S25|iPad|PC)-(construction|essential)-(welcome|login|signup|reset)\.json$/.test(name)
+).sort()) {
+  const file=path.join(output,name);
   try {
     const audit=JSON.parse(fs.readFileSync(file,'utf8'));
     audits.push(audit);
     if (Array.isArray(audit.pageErrors) && audit.pageErrors.length) failures++;
   } catch (error) {
-    results.push({status:'failed',reason:'Invalid audit '+device+': '+error.message});
+    results.push({status:'failed',reason:'Invalid audit '+name+': '+error.message});
     failures++;
   }
 }
 const report={
   generatedAt:new Date().toISOString(),
-  coverage:'Public logged-out Web only; no Supabase, Stripe, private services or authenticated screens',
+  coverage:'Public Web welcome, login, signup and reset only; two editions; no form submission, accounts, payments or authenticated screens',
   screenshots:images.length,
+  functionalJourneys:fs.existsSync(path.join(output,'functional-journeys.json'))
+    ? JSON.parse(fs.readFileSync(path.join(output,'functional-journeys.json'),'utf8')) : null,
   approvedBaselines:results.filter(result=>result.status==='passed'||(result.status==='failed' && result.approvedSource)).length,
   failures, results, audits
 };
