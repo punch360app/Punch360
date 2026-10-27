@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T02:35:52.842Z",
+  "generated_at": "2026-10-27T02:41:27.984Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1304,7 +1304,8 @@
         152,
         156,
         157,
-        168
+        168,
+        169
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1422,6 +1423,16 @@
     }
   },
   "activity": [
+    {
+      "number": 169,
+      "sha": "fa7e7b8c9894eca8615395ed01e5991e55db2f0f",
+      "ci": "success",
+      "ids": [
+        "MISSION-004"
+      ],
+      "title": "Missions — consulter les instructions de sa mission publiée (Web/Expo)",
+      "merged_at": "2026-10-27T02:41:19Z"
+    },
     {
       "number": 168,
       "sha": "b87670f9b384a55225e7ffdf24de1f67a98f013d",
@@ -1967,15 +1978,6 @@
       "ids": [],
       "title": "P0 Super Admin — corriger l'ancienne grille préremplie des offres négociées",
       "merged_at": "2026-10-26T12:59:35Z"
-    },
-    {
-      "number": 114,
-      "sha": null,
-      "head_sha": "32d73256b88015a78c62bbfdc1bbd99852ad8a95",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0-B — afficher les factures Stripe sans masquer une pagination",
-      "merged_at": "2026-10-26T12:54:38Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
