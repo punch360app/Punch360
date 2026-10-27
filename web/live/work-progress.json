@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T02:24:09.291Z",
+  "generated_at": "2026-10-27T02:35:52.842Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1303,7 +1303,8 @@
       "pr": [
         152,
         156,
-        157
+        157,
+        168
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1381,7 +1382,8 @@
         159,
         160,
         164,
-        165
+        165,
+        168
       ],
       "note": "Travail rattaché à la PR #157. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1420,6 +1422,17 @@
     }
   },
   "activity": [
+    {
+      "number": 168,
+      "sha": "b87670f9b384a55225e7ffdf24de1f67a98f013d",
+      "ci": "success",
+      "ids": [
+        "MISSION-004",
+        "MISSION-009"
+      ],
+      "title": "Missions — consulter les interventions des 14 prochains jours sans pointage",
+      "merged_at": "2026-10-27T02:35:39Z"
+    },
     {
       "number": 167,
       "sha": "9aa1c5364e6b95e8e7711f15471021870ff82e47",
@@ -1963,15 +1976,6 @@
       "ids": [],
       "title": "P0-B — afficher les factures Stripe sans masquer une pagination",
       "merged_at": "2026-10-26T12:54:38Z"
-    },
-    {
-      "number": 113,
-      "sha": null,
-      "head_sha": "34eec87cae5e0aaf943d981709ff6a683407dbed",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "P0 sécurité — limiter en flux les requêtes de facturation et webhooks Stripe",
-      "merged_at": "2026-10-26T12:47:51Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
