@@ -166,7 +166,7 @@ begin
  then return jsonb_build_object('enabled',false,'items','[]'::jsonb,'truncated',false);end if;
  select coalesce(jsonb_agg(to_jsonb(t) order by t.sort_order,t.id),'[]'::jsonb),count(*)
  into v_result,v_count from (
-  select m.id,m.company_id,m.worker_id,m.site_id,m.mission_day,m.sort_order,m.title,case when m.issue_postponed_from=p_day and m.mission_day<>p_day then 'postponed' else m.status end as status,m.version,
+  select m.id,m.company_id,m.worker_id,m.site_id,case when m.issue_postponed_from=p_day and m.mission_day<>p_day then p_day else m.mission_day end as mission_day,m.mission_day as effective_day,m.sort_order,m.title,case when m.issue_postponed_from=p_day and m.mission_day<>p_day then 'postponed' else m.status end as status,m.version,
    m.completed_at,m.issue_reason,m.issue_at,m.issue_decision,m.issue_decision_at,m.issue_decision_reason,m.issue_postponed_from,
    case when v_manager then m.issue_note else null end as issue_note,
    s.name as site_name,s.address_line,s.unit,s.city,s.region,s.postal_code,s.country,
