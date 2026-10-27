@@ -39,3 +39,30 @@ test('failed entitlement check cannot silently reopen management',async()=>{
  assert.equal(ui.state.effectiveBillingStatus,'restricted');
  await w.happyDOM.close();
 });
+
+test('SACATALOG-016 unlimited catalog switch is MFA gated and uses a versioned server update',async()=>{
+ const {w,ui,calls}=setup(async()=>({error:{message:'MFA required'}}));
+ ui.state.plans[0].included_seats_unlimited=true;
+ ui.state.seats=200;
+ w.document.body.innerHTML=ui.renderPricing();
+ assert.match(w.document.body.textContent,/Membres inclus : illimité/);
+ assert.match(w.document.body.textContent,/39,00/);
+ ui.state.platform=true;
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.equal(w.document.getElementById('ess-included-unlimited'),null,'MFA gate blocks editor');
+ ui.state.mfaRequired=false;
+ w.document.body.innerHTML=ui.renderPlatform();
+ const unlimited=w.document.getElementById('ess-included-unlimited');
+ assert.ok(unlimited);
+ assert.equal(unlimited.checked,true);
+ unlimited.checked=false;
+ w.document.getElementById('ess-reason').value='Modifier le forfait pour la prochaine version';
+ await ui.handle({dataset:{action:'ess:save-plan'}});
+ const call=calls.find(c=>c.name==='platform_save_essential_plan');
+ assert.ok(call);
+ assert.equal(call.args.p_expected_version,1);
+ assert.equal(call.args.p_values.included_seats_unlimited,false);
+ assert.equal(call.args.p_values.included_seats,5);
+ assert.equal(ui.state.plans[0].included_seats_unlimited,true,'failed server call cannot mutate catalog');
+ await w.happyDOM.close();
+});
