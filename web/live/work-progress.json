@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T23:49:38.574Z",
+  "generated_at": "2026-10-27T23:55:41.837Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 198,
+      "sha": "0a8d62d5305f8e1926742315683fcd85f93ad052",
+      "ci": "success",
+      "ids": [],
+      "title": "UX PUNCH : corriger les liens tactiles trop petits repérés par les 24 captures",
+      "merged_at": "2026-10-27T23:55:29Z"
+    },
+    {
       "number": 197,
       "sha": "e6bff73ce02782d1168a497b5d86116542de1103",
       "ci": "success",
@@ -2005,22 +2013,6 @@
       ],
       "title": "Essentiel — choisir Maps/Waze/Plans pour chaque arrêt de l’horaire",
       "merged_at": "2026-10-26T21:36:40Z"
-    },
-    {
-      "number": 144,
-      "sha": "e2c3e6c690db24f9ef4c67148dab8e20034b07e5",
-      "ci": "success",
-      "ids": [
-        "NAV-001",
-        "NAV-002",
-        "NAV-003",
-        "NAV-004",
-        "NAV-005",
-        "NAV-009",
-        "NAV-010"
-      ],
-      "title": "Essentiel — itinéraire vers client ou lieu habituel, choix Maps/Waze/Plans",
-      "merged_at": "2026-10-26T21:29:36Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
