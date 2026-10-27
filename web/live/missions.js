@@ -2,6 +2,7 @@ import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigatio
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
+import {missionPostponeArgs} from './mission-postpone.js';
 import {missionCancelArgs} from './mission-cancel.js';
 import {missionReassignArgs} from './mission-reassign.js';
 import {missionRescheduleArgs} from './mission-reschedule.js';
@@ -84,15 +85,16 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},postponeId:null,decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  const cancelRequests=new Map();
  const reassignRequests=new Map();
  const rescheduleRequests=new Map();
  const decisionRequests=new Map();
+ const postponeRequests=new Map();
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
-  if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
+  if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();s.postponeId=null;s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
   const gen=++generation;Object.assign(s,{company,roster,enabled:false,missions:[],sites:[],error:''});
   if(!company)return;
   try{
@@ -107,7 +109,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,sites:[],missions:[],error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -130,7 +132,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<p class="ess-fine">Statuts explicites; une mission non terminée n’est pas une absence ou un retard. Aucun temps de travail ni trajet n’est inféré.</p>'+
     '<p role="status">À faire : '+analysis.counts.published+
     ' · Terminées : '+analysis.counts.completed+' · À traiter : '+analysis.counts.impossible+' · Brouillons : '+analysis.counts.draft+
-    ' · Annulées : '+analysis.counts.cancelled+'</p>'+
+    ' · Reportées : '+analysis.counts.postponed+' · Annulées : '+analysis.counts.cancelled+'</p>'+
     select('Filtrer par salarié','review-worker',s.review.worker,[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
     select('Filtrer par état','review-status',s.review.status,MISSION_STATES)+
     field('Rechercher un client','review-client',s.review.client)+
@@ -147,6 +149,12 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
       ' · '+e(x.status)+'</small>'+(x.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(x.issue_reason))+'</small>'+(x.issue_note?'<p class="ess-fine">Note privée du salarié : '+e(x.issue_note)+'</p>':''):'')+'</div>'+(x.issue_decision_at?'<small>Décision : '+e(issueDecisionLabel(x.issue_decision))+' · '+e(x.issue_decision_reason||'')+'</small>':'')+
     (x.status==='impossible'&&!s.truncated?button(s.decisionId===x.id?'Fermer la décision':'Traiter le signalement','decision-open',x.id):'')+
+    (x.status==='impossible'&&!s.truncated?button(s.postponeId===x.id?'Fermer le report':'Reporter à une autre journée','postpone-open',x.id):'')+
+    (s.postponeId===x.id?'<div class="ess-panel"><p>Le même salarié et la même adresse client seront conservés; sélectionnez une nouvelle journée et un rang libre.</p>'+
+     '<label class="ess-field">Nouvelle journée<input type="date" id="mission-postpone-day-'+e(x.id)+'" value=""></label>'+
+     '<label class="ess-field">Rang (1 à 999)<input type="number" min="1" max="999" id="mission-postpone-order-'+e(x.id)+'" value="'+e(x.sort_order)+'"></label>'+
+     '<label class="ess-field">Motif communiqué au salarié<input maxlength="200" id="mission-postpone-reason-'+e(x.id)+'"></label>'+
+     button('Confirmer le report','postpone-submit',x.id)+'</div>':'')+
     (s.decisionId===x.id?'<div class="ess-panel"><p>Reprendre la mission publiée ou annuler après examen. Aucun pointage, heure ni paie ne changera.</p>'+
      '<label class="ess-field">Décision<select id="mission-decision-action-'+e(x.id)+'">'+ISSUE_DECISIONS.map(([v,t])=>'<option value="'+e(v)+'" '+(v===s.decisionAction?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>'+
      '<label class="ess-field">Motif communiqué à l’employé (5 à 200 caractères)<input maxlength="200" id="mission-decision-reason-'+e(x.id)+'"></label>'+
@@ -202,6 +210,28 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
+   }else if(action==='postpone-open'){
+    const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='impossible');
+    if(!m||s.truncated)throw Error('Signalement non disponible ou liste tronquée.');
+    s.postponeId=s.postponeId===m.id?null:m.id;
+   }else if(action==='postpone-submit'){
+    if(s.truncated)throw Error('Liste tronquée : actualisez avant le report.');
+    const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='impossible');
+    if(!m||s.postponeId!==m.id)throw Error('Signalement modifié : actualisez.');
+    const day=doc.getElementById('mission-postpone-day-'+m.id)?.value||'';
+    const order=doc.getElementById('mission-postpone-order-'+m.id)?.value||'';
+    const reason=doc.getElementById('mission-postpone-reason-'+m.id)?.value||'';
+    const key=['postpone',m.id,day,order,String(reason).trim()].join(':');
+    const request=postponeRequests.get(key)||doc.defaultView.crypto.randomUUID();
+    const args=missionPostponeArgs(s.company,m,day,order,reason,request);
+    if(!doc.defaultView.confirm('Reporter « '+m.title+' » au '+day+' ? Le salarié sera avisé, sans modifier son pointage ou ses heures.'))return true;
+    postponeRequests.set(key,request);
+    const company=s.company,gen=generation;
+    await rpc('postpone_essential_mission_issue',args);
+    if(company!==s.company||gen!==generation)return true;
+    postponeRequests.delete(key);s.postponeId=null;
+    await load(company,s.roster);
+    notify('Mission reportée au '+day+'. L’employé sera avisé si son compte est actif.');
    }else if(action==='decision-open'){
     const m=s.missions.find(x=>x.id===el.dataset.id&&x.status==='impossible');
     if(!m||s.truncated)throw Error('Signalement non disponible ou liste tronquée. Rechargez.');

@@ -7,6 +7,7 @@ import {missionAddress,missionArgs,missionDate,missionProgress,missionWarningEli
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from '../../web/live/mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from '../../web/live/mission-issues.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from '../../web/live/mission-issue-decision.js';
+import {missionPostponeArgs} from '../../web/live/mission-postpone.js';
 import {missionCancelArgs} from '../../web/live/mission-cancel.js';
 import {missionReassignArgs} from '../../web/live/mission-reassign.js';
 import {missionRescheduleArgs} from '../../web/live/mission-reschedule.js';
@@ -42,6 +43,8 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
  const cancelRequests=useRef<Map<string,string>>(new Map());
  const [decisionTarget,setDecisionTarget]=useState<Row|null>(null),[decisionAction,setDecisionAction]=useState('resume'),[decisionReason,setDecisionReason]=useState('');
  const decisionRequests=useRef<Map<string,string>>(new Map());
+ const [postponeTarget,setPostponeTarget]=useState<Row|null>(null),[postponeDay,setPostponeDay]=useState(missionDate()),[postponeOrder,setPostponeOrder]=useState('1'),[postponeReason,setPostponeReason]=useState('');
+ const postponeRequests=useRef<Map<string,string>>(new Map());
  const [reassignTarget,setReassignTarget]=useState<Row|null>(null),[reassignWorker,setReassignWorker]=useState(''),[reassignOrder,setReassignOrder]=useState('1'),[reassignReason,setReassignReason]=useState('');
  const reassignRequests=useRef<Map<string,string>>(new Map());
  const [rescheduleTarget,setRescheduleTarget]=useState<Row|null>(null),[rescheduleDay,setRescheduleDay]=useState(missionDate()),
@@ -66,7 +69,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
  useEffect(()=>{setEnabled(false);setMissions([]);setSites([]);setEditing(null);
-  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setDecisionTarget(null);setDecisionAction('resume');setDecisionReason('');decisionRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
+  setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setDecisionTarget(null);setDecisionAction('resume');setDecisionReason('');decisionRequests.current.clear();setPostponeTarget(null);setPostponeDay(missionDate());setPostponeOrder('1');setPostponeReason('');postponeRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
  async function work(callback:()=>Promise<void>){
@@ -96,6 +99,23 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     setEditing(null);setMissionTitle('');setInstructions('');setOrder(String(Number(order)+1));
     await load(day);setMessage('Brouillon enregistré.');
   });
+ };
+ const postponeIssue=()=>{
+  const m=postponeTarget;if(!m||busy||truncated)return;
+  const key=['postpone',m.id,postponeDay,postponeOrder,postponeReason.trim()].join(':');
+  const request=postponeRequests.current.get(key)||Crypto.randomUUID();
+  let args:Row;
+  try{args=missionPostponeArgs(companyId,m,postponeDay,postponeOrder,postponeReason,request)}
+  catch(e:any){setMessage(e.message||'Report invalide');return;}
+  Alert.alert('Reporter la mission ?', 'Le salarié sera avisé de la nouvelle journée. Aucun pointage ou heure ne change.',
+   [{text:'Retour',style:'cancel'},{text:'Reporter',onPress:()=>void work(async()=>{
+     postponeRequests.current.set(key,request);
+     await rpc('postpone_essential_mission_issue',args);
+     postponeRequests.current.delete(key);
+     setPostponeTarget(null);setPostponeReason('');
+     await load(day);
+     setMessage('Mission reportée au '+postponeDay+'. Avis interne au salarié si compte actif.');
+   })}]);
  };
  const resolveIssue=()=>{
   const m=decisionTarget;if(!m||busy||truncated)return;
@@ -216,7 +236,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      const report=missionDayReview(missions,{worker:reviewWorker,status:reviewStatus,client:reviewClient},truncated);
      return <>
       {label('À faire : '+report.counts.published+' · Terminées : '+report.counts.completed+
-       ' · À traiter : '+report.counts.impossible+' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
+       ' · À traiter : '+report.counts.impossible+' · Reportées : '+report.counts.postponed+' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
       {label('Filtrer par employé')}
       {options([{id:'',name:'Tous les employés'},...roster.filter(w=>w.status==='active')],reviewWorker,setReviewWorker,w=>w.id,w=>w.name)}
       {label('Filtrer par état')}
@@ -242,6 +262,16 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
     {m.status==='impossible'&&!truncated?button(decisionTarget?.id===m.id?'Fermer la décision':'Traiter le signalement',()=>{
      setDecisionTarget(v=>v?.id===m.id?null:m);setDecisionAction('resume');setDecisionReason('');
     },busy):null}
+    {m.status==='impossible'&&!truncated?button(postponeTarget?.id===m.id?'Fermer le report':'Reporter à une autre journée',()=>{
+     setPostponeTarget(v=>v?.id===m.id?null:m);setPostponeDay(missionDate());setPostponeOrder(String(m.sort_order));setPostponeReason('');
+    },busy):null}
+    {postponeTarget?.id===m.id?<View style={{gap:6,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
+     {label('Choisissez une journée après la date initiale et un rang libre. Même salarié, même site client.')}
+     {input('Nouvelle date AAAA-MM-JJ',postponeDay,setPostponeDay)}
+     {input('Rang de tournée 1 à 999',postponeOrder,setPostponeOrder)}
+     {input('Motif visible au salarié (5 à 200 caractères)',postponeReason,setPostponeReason)}
+     {button('Confirmer le report',postponeIssue,busy)}
+    </View>:null}
     {decisionTarget?.id===m.id?<View style={{gap:6,padding:10,backgroundColor:'#F4F7F2',borderRadius:9}}>
      {label('Décision explicite : reprendre ou annuler cette intervention. Aucun effet automatique sur le pointage ou les heures.')}
      {ISSUE_DECISIONS.map(([v,name])=><View key={v}>{button((decisionAction===v?'✓ ':'')+name,()=>setDecisionAction(v),busy)}</View>)}
