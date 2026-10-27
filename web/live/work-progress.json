@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T14:59:23.320Z",
+  "generated_at": "2026-10-27T15:08:19.772Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1481,6 +1481,14 @@
   },
   "activity": [
     {
+      "number": 188,
+      "sha": "fd6c58a49ca7848ffa4f282520ce3a29137cf5cb",
+      "ci": "success",
+      "ids": [],
+      "title": "Work — adopter le développement par lots locaux et commits groupés",
+      "merged_at": "2026-10-27T15:08:08Z"
+    },
+    {
       "number": 187,
       "sha": "7a40e99d9446e38435eac0eec41587f25007f9fd",
       "ci": "success",
@@ -2026,16 +2034,6 @@
       ],
       "title": "docs(master): planification clients et interventions multi-emplacements",
       "merged_at": "2026-10-26T19:12:38Z"
-    },
-    {
-      "number": 134,
-      "sha": "c5e4deb47f9fe152e34f2f96aa45737de56f469b",
-      "ci": "success",
-      "ids": [
-        "SHIFT-021"
-      ],
-      "title": "Essentiel Pro — salariés admissibles pour combler les besoins certifiés",
-      "merged_at": "2026-10-26T19:02:12Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
