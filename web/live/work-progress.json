@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T21:00:36.497Z",
+  "generated_at": "2026-10-27T22:12:45.452Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 196,
+      "sha": "947796d86a6de61c4be11649573ae39a0288ad2e",
+      "ci": "success",
+      "ids": [],
+      "title": "docs(ux): protocole UX/UI autonome et contrôle visuel sans dépendance externe",
+      "merged_at": "2026-10-27T22:12:30Z"
+    },
+    {
       "number": 195,
       "sha": "7303f085184dabaab8c431432bfa4c1ec281a0c7",
       "ci": "success",
@@ -2015,27 +2023,6 @@
       ],
       "title": "Essentiel — heures prévues par client et adresse, conflits dédupliqués",
       "merged_at": "2026-10-26T21:18:17Z"
-    },
-    {
-      "number": 142,
-      "sha": "88a67422cb5bc9ee8b2b614e09c7ae4b3c417f08",
-      "ci": "success",
-      "ids": [
-        "NAV-001",
-        "NAV-002",
-        "NAV-003",
-        "NAV-004",
-        "NAV-005",
-        "NAV-006",
-        "NAV-007",
-        "NAV-008",
-        "NAV-009",
-        "NAV-010",
-        "NAV-011",
-        "NAV-012"
-      ],
-      "title": "Prompt maître : itinéraires universels Google Maps, Waze et Plans pour tout salarié",
-      "merged_at": "2026-10-26T21:14:11Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
