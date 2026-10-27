@@ -20,7 +20,7 @@ const preview={data:{plan_version:1,due_cents:1900,monthly_cents:1900,annual_cen
 
 test('late proposal list cannot repopulate after logout or trigger approval read',async()=>{
  const pending=defer();
- const h=create(name=>name==='platform_company_price_list'?pending.promise:approval);
+ const h=create(name=>name==='platform_company_price_list_v2'?pending.promise:approval);
  const load=h.ui.handle({dataset:{action:'platform-price:load'}});
  h.ui.reset();
  pending.resolve(list(A));
@@ -28,12 +28,12 @@ test('late proposal list cannot repopulate after logout or trigger approval read
  assert.equal(h.ui.state.company,'');
  assert.equal(h.ui.state.list,null);
  assert.equal(h.ui.state.approval,null);
- assert.deepEqual(h.calls.map(c=>c.name),['platform_company_price_list']);
+ assert.deepEqual(h.calls.map(c=>c.name),['platform_company_price_list_v2']);
 });
 
 test('late approval result cannot overwrite newly selected company',async()=>{
  const pending=defer();
- const h=create((name,args)=>name==='platform_company_price_list'?list(args.p_company):pending.promise);
+ const h=create((name,args)=>name==='platform_company_price_list_v2'?list(args.p_company):pending.promise);
  const load=h.ui.handle({dataset:{action:'platform-price:load'}});
  // Allow first awaited list read to settle and approval RPC to start.
  await Promise.resolve();await Promise.resolve();
@@ -48,7 +48,7 @@ test('late approval result cannot overwrite newly selected company',async()=>{
 
 test('late preview response does not resurrect proposal after reset',async()=>{
  const pending=defer();
- const h=create(name=>name==='platform_company_price_list'?list(A):name==='platform_company_price_approval_status'?approval:pending.promise);
+ const h=create(name=>name==='platform_company_price_list_v2'?list(A):name==='platform_company_price_approval_status'?approval:pending.promise);
  await h.ui.handle({dataset:{action:'platform-price:load'}});
  const task=h.ui.handle({dataset:{action:'platform-price:preview'}});
  h.ui.reset();pending.resolve(preview);
@@ -59,7 +59,7 @@ test('late preview response does not resurrect proposal after reset',async()=>{
 
 test('late completed draft never loads another company or displays old approval notice',async()=>{
  const pending=defer();
- const h=create(name=>name==='platform_company_price_list'?list(A):name==='platform_company_price_approval_status'?approval:name==='platform_company_price_preview'?preview:pending.promise);
+ const h=create(name=>name==='platform_company_price_list_v2'?list(A):name==='platform_company_price_approval_status'?approval:name==='platform_company_price_preview_v2'?preview:pending.promise);
  await h.ui.handle({dataset:{action:'platform-price:load'}});
  await h.ui.handle({dataset:{action:'platform-price:preview'}});
  h.ui.input({id:'platform-price-confirmation',value:A});
@@ -71,12 +71,12 @@ test('late completed draft never loads another company or displays old approval 
  assert.equal(h.ui.state.company,B);
  assert.equal(h.ui.state.list,null);
  assert.equal(h.ui.state.notice,'');
- assert.equal(h.calls.filter(c=>c.name==='platform_company_price_list').length,1);
+ assert.equal(h.calls.filter(c=>c.name==='platform_company_price_list_v2').length,1);
 });
 
 test('late approval completion does not trigger follow-up status read after signout',async()=>{
  const pending=defer();
- const h=create(name=>name==='platform_company_price_list'?list(A):name==='platform_company_price_approval_status'?approval:pending.promise);
+ const h=create(name=>name==='platform_company_price_list_v2'?list(A):name==='platform_company_price_approval_status'?approval:pending.promise);
  await h.ui.handle({dataset:{action:'platform-price:load'}});
  h.ui.input({id:'platform-price-approveConfirmation',value:A});
  const task=h.ui.handle({dataset:{action:'platform-price:approve',id:'proposal-A'}});
@@ -97,7 +97,7 @@ test('sensitive database errors are never shown in the Super Admin interface',as
 });
 
 test('changes to company and reason discard loaded approvals and confirmation',async()=>{
- const h=create(name=>name==='platform_company_price_list'?list(A):approval);
+ const h=create(name=>name==='platform_company_price_list_v2'?list(A):approval);
  await h.ui.handle({dataset:{action:'platform-price:load'}});
  h.ui.input({id:'platform-price-approveConfirmation',value:A});
  h.ui.input({id:'platform-price-reason',value:'Autre motif détaillé'});

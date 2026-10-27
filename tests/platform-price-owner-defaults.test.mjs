@@ -48,9 +48,18 @@ test('server quote parameters use correct selected plan and cannot create a Stri
  const {ctrl,calls}=setup();
  ctrl.input({id:'platform-price-plan',value:'essential_plus'});
  await ctrl.handle({dataset:{action:'platform-price:load'}});
- const payload=calls.find(x=>x.name==='platform_company_price_list');
+ const payload=calls.find(x=>x.name==='platform_company_price_list_v2');
  assert.equal(payload.args.p_company,COMPANY);
  assert.equal(calls.some(x=>x.name.includes('stripe')||x.name.includes('billing')),false);
  assert.equal(ctrl.state.base,'3900');
  assert.equal(ctrl.state.included,'25');
+});
+
+test('negotiated inclusion defaults to numeric and resets when changing untouched tiers',()=>{
+ const {ctrl}=setup();
+ assert.equal(ctrl.state.includedUnlimited,false);
+ ctrl.input({id:'platform-price-includedUnlimited',checked:true});
+ assert.equal(ctrl.state.includedUnlimited,true);
+ ctrl.reset();
+ assert.equal(ctrl.state.includedUnlimited,false);
 });
