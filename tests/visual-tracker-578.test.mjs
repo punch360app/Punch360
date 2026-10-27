@@ -35,15 +35,12 @@ test('source is dated 26 October 2026; no invented completion or sensitive Drive
  assert.doesNotMatch(html,/(sk_live_|sk_test_|SUPABASE_SERVICE_ROLE_KEY\s*=)/);
 });
 
-test('links to verified PRs and open provider/device QA issues are visible',()=>{
- for(const n of [104,106,108,109,110,112,113,114,115]){
-  assert.ok(html.includes('https://github.com/punch360app/Punch360/pull/'+n),'missing PR '+n);
- }
- assert.ok(html.includes('AUTOPILOT_HANDOFF_20261026.md'));
- assert.match(html,/migration de confirmation 20261026110100 absente/);
- for(const n of [35,102]){
-  assert.ok(html.includes('https://github.com/punch360app/Punch360/issues/'+n));
- }
+test('latest evidence uses the current register and links to the authoritative continuation',()=>{
+ assert.ok(html.includes('id="latestEvidence"'));
+ assert.ok(html.includes('docs/PUNCH_WORK_CONTINUATION.md'));
+ assert.match(html,/Preuves issues du registre GitHub/);
+ assert.doesNotMatch(html,/AUTOPILOT_HANDOFF_20261026|migration de confirmation 20261026110100 absente/);
+ assert.match(html,/Une fusion ne confirme pas à elle seule une recette/);
 });
 
 test('standalone original HTML design keeps search, filters, local note controls and export',()=>{
