@@ -15,3 +15,12 @@ test('hidden and inactive plans never appear publicly and catalog names are esca
  const window=new Window();window.document.body.innerHTML=renderCommercialDetails([{...plan,title:'<img src=x onerror=alert(1)>'},{...plan,title:'Private',public_visible:false},{...plan,title:'Inactive',active:false}],escape,money);
  assert.equal(window.document.querySelectorAll('thead th').length,2);assert.equal(window.document.querySelector('img'),null);assert.ok(window.document.querySelector('thead').textContent.includes('<img'));assert.ok(!window.document.querySelector('table').textContent.includes('Private'));assert.ok(!window.document.querySelector('table').textContent.includes('Inactive'));assert.equal(window.document.querySelectorAll('summary').length,8);assert.equal(window.document.querySelector('[role="region"]').tabIndex,0);await window.happyDOM.close();
 });
+
+test('SACATALOG-016 unlimited is represented explicitly without a fake seat count',async()=>{
+ const window=new Window();
+ window.document.body.innerHTML=renderCommercialDetails([{...plan,included_seats:20,included_seats_unlimited:true,extra_seat_cents:200}],escape,money);
+ const rows=[...window.document.querySelectorAll('tbody tr')].map(r=>[...r.children].map(c=>c.textContent));
+ assert.equal(rows.find(r=>r[0]==='Membres inclus')[1],'Illimité');
+ assert.equal(rows.find(r=>r[0]==='Membre supplémentaire / mois')[1],'Aucun supplément');
+ await window.happyDOM.close();
+});
