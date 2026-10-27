@@ -1,0 +1,47 @@
+name: Punch 360 safe visual review
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/live/**'
+      - '.github/workflows/visual-review.yml'
+      - '.github/scripts/visual-*.cjs'
+      - 'visual-baselines/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: punch-visual-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  capture-and-compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install app dependencies without modifying product manifests
+        run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Install screenshot and PNG tools without saving a lockfile
+        run: npm install --no-save --no-package-lock playwright@1.56.0 pngjs@7.0.0
+      - run: npx playwright install --with-deps chromium
+      - name: Serve the real Punch Web interface locally
+        run: |
+          python3 -m http.server 8765 -d web/live > /tmp/punch-visual-server.log 2>&1 &
+      - name: Capture unauthenticated mobile, tablet and desktop UI without real backend calls
+        run: node .github/scripts/visual-capture.cjs
+      - name: Compare only owner-approved Figma baselines
+        if: always()
+        run: node .github/scripts/visual-compare.cjs
+      - name: Preserve screenshots, diffs and Work repair instructions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: punch-visual-captures
+          path: visual-captures/
+          retention-days: 14
+          if-no-files-found: warn
