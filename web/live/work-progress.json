@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T13:39:42.397Z",
+  "generated_at": "2026-10-27T13:42:52.520Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -75,7 +75,8 @@
         126,
         128,
         132,
-        182
+        182,
+        183
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -298,7 +299,8 @@
         124,
         126,
         128,
-        182
+        182,
+        183
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -315,7 +317,8 @@
         128,
         132,
         166,
-        182
+        182,
+        183
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1458,6 +1461,18 @@
   },
   "activity": [
     {
+      "number": 183,
+      "sha": "6e3e5aadb74415279df36f358892d9f5de9b007a",
+      "ci": "success",
+      "ids": [
+        "GOV-010",
+        "GOV-012",
+        "GOV-014"
+      ],
+      "title": "Suivi — remplacer le panneau figé à #115 par les preuves actuelles",
+      "merged_at": "2026-10-27T13:42:43Z"
+    },
+    {
       "number": 182,
       "sha": "7bda3fa237edb84021f9b46ceeb451e841ecd58b",
       "ci": "success",
@@ -2002,20 +2017,6 @@
       ],
       "title": "Essentiel Plus/Pro — semaine type récurrente et aperçu des conflits",
       "merged_at": "2026-10-26T18:02:03Z"
-    },
-    {
-      "number": 129,
-      "sha": "08c81698192fa83d34fef57e3c12f480657ae3b5",
-      "ci": "success",
-      "ids": [
-        "COVER-018",
-        "COVER-019",
-        "COVER-020",
-        "COVER-021",
-        "HR-018"
-      ],
-      "title": "P1 Essentiel Plus/Pro — Signaler une absence et confirmer sa prise en charge",
-      "merged_at": "2026-10-26T16:44:13Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
