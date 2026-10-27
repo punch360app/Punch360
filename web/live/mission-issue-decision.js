@@ -15,5 +15,5 @@ export function missionIssueDecisionArgs(company,mission,decision,reason,request
 export function resolvedMissionNotice(mission){
  if(!mission||!mission.issue_decision_at||!['resume','cancel','postpone'].includes(mission.issue_decision))return '';
  return issueDecisionLabel(mission.issue_decision)+
-  ' — '+String(mission.title||'Intervention')+(mission.issue_decision==='postpone'?' au '+String(mission.mission_day||'nouveau jour'):'')+' : '+String(mission.issue_decision_reason||'');
+  ' — '+String(mission.title||'Intervention')+(mission.issue_decision==='postpone'?' au '+String(mission.effective_day||mission.mission_day||'nouveau jour'):'')+' : '+String(mission.issue_decision_reason||'');
 }
