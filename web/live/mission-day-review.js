@@ -31,9 +31,9 @@ export function missionDayReviewCsv(report,day){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(day))||!Number.isFinite(Date.parse(day+'T12:00:00Z')))
   throw Error('Date de mission invalide.');
  const labels=Object.fromEntries(MISSION_STATES);
- const cols=['Date','Employé','Client','Lieu','Ville','Mission','Ordre','État','Motif de mission impossible','Fin confirmée (UTC)'];
+ const cols=['Date','Employé','Client','Lieu','Ville','Mission','Ordre','État','Motif de mission impossible','Nouvelle journée (si reportée)','Fin confirmée (UTC)'];
  const rows=report.visible.map(m=>[m.mission_day||day,[m.first_name,m.last_name].filter(Boolean).join(' '),
   m.client_name,m.site_name,m.city,m.title,m.sort_order,labels[m.status]||m.status,
-  m.status==='impossible'?missionIssueLabel(m.issue_reason):'',m.completed_at||'']);
+  m.status==='impossible'?missionIssueLabel(m.issue_reason):'',m.issue_decision==='postpone'?(m.effective_day||m.mission_day):'',m.completed_at||'']);
  return '\uFEFF'+[cols,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';
 }
