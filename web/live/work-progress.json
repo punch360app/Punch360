@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T20:39:18.097Z",
+  "generated_at": "2026-10-27T21:00:36.497Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 195,
+      "sha": "7303f085184dabaab8c431432bfa4c1ec281a0c7",
+      "ci": "success",
+      "ids": [],
+      "title": "CI visuelle PUNCH : recommandations Work automatiques, rapport HTML et approbation Figma verifiable",
+      "merged_at": "2026-10-27T21:00:26Z"
+    },
+    {
       "number": 194,
       "sha": "5db3e305681fdff1e1f0e4b083cccf02f703485e",
       "ci": "success",
@@ -2028,16 +2036,6 @@
       ],
       "title": "Prompt maître : itinéraires universels Google Maps, Waze et Plans pour tout salarié",
       "merged_at": "2026-10-26T21:14:11Z"
-    },
-    {
-      "number": 141,
-      "sha": "da08c78371b4a24ee2d9f1277c45a8d58ad609e6",
-      "ci": "success",
-      "ids": [
-        "MLOC-004"
-      ],
-      "title": "Essentiel — prochaine intervention personnelle sur Accueil Punch",
-      "merged_at": "2026-10-26T21:01:52Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
