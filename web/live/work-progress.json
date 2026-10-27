@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:52:10.641Z",
+  "generated_at": "2026-10-27T13:13:28.776Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1341,7 +1341,8 @@
         165,
         174,
         175,
-        176
+        176,
+        179
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1365,7 +1366,8 @@
         163,
         174,
         175,
-        176
+        176,
+        179
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1417,7 +1419,8 @@
         163,
         174,
         175,
-        176
+        176,
+        179
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1447,6 +1450,18 @@
     }
   },
   "activity": [
+    {
+      "number": 179,
+      "sha": "d8a86276a9fe61e7eea2d7aab7c9db6848f5fdc1",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-011",
+        "MISSION-013"
+      ],
+      "title": "Missions — preuves de fin configurables : aucune ou commentaire privé obligatoire",
+      "merged_at": "2026-10-27T13:13:19Z"
+    },
     {
       "number": 178,
       "sha": "4576254a6b1452d8b162b6f7bc00265115f1ce60",
@@ -1994,18 +2009,6 @@
       ],
       "title": "P0-C — Empêcher le retour d’un espace hors ligne après déconnexion native",
       "merged_at": "2026-10-26T16:09:12Z"
-    },
-    {
-      "number": 126,
-      "sha": "37f831dc089bb3d680c689c5a895324697c55b17",
-      "ci": "success",
-      "ids": [
-        "GOV-010",
-        "GOV-012",
-        "GOV-014"
-      ],
-      "title": "P0 Suivi HTML — réparer le JavaScript bloqué et protéger les prochains déploiements Pages",
-      "merged_at": "2026-10-26T15:55:04Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
