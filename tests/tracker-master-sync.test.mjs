@@ -26,3 +26,11 @@ test('checked boxes remain inventory, duplicates and empty input fail clearly',(
  assert.throws(()=>parseMaster(master+'\n- [ ] **SMS-001** — duplicate\n'),/DUPLICATE|INVALID/);
  assert.throws(()=>parseMaster(''),/EMPTY_MASTER/);
 });
+test('Pages republishes trusted main after the bot finishes recording progress',()=>{
+ const workflow=read('.github/workflows/deploy-web.yml');
+ assert.match(workflow,/workflow_run:\s*workflows: \["PUNCH Work progress register"\]\s*types: \[completed\]/);
+ assert.match(workflow,/workflow_run\.conclusion == 'success'/);
+ assert.match(workflow,/workflow_run\.head_repository\.full_name == github\.repository/);
+ assert.match(workflow,/ref: \$\{\{ github\.event_name == 'workflow_run' && 'main' \|\| github\.sha \}\}/);
+ assert.ok(workflow.indexOf('Generate tracker from current master')<workflow.indexOf('Upload website'));
+});
