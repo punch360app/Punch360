@@ -33,7 +33,7 @@ const input=(caption:string,value:string,change:(v:string)=>void)=>(
  onChangeText={change} style={{borderWidth:1,borderColor:'#CADAC8',borderRadius:9,padding:10,minHeight:43,color:'#243B2A'}}/></View>
 );
 export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:Row[]}){
- const [enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[checklistRequired,setChecklistRequired]=useState(false),[checklistDraft,setChecklistDraft]=useState(''),[missions,setMissions]=useState<Row[]>([]),
+ const [enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[checklistRequired,setChecklistRequired]=useState(false),[checklistDraft,setChecklistDraft]=useState(''),[checklistSavedItems,setChecklistSavedItems]=useState<string[]>([]),[missions,setMissions]=useState<Row[]>([]),
   [sites,setSites]=useState<Row[]>([]),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  const [truncated,setTruncated]=useState(false);
  const [reviewWorker,setReviewWorker]=useState(''),[reviewStatus,setReviewStatus]=useState(''),[reviewClient,setReviewClient]=useState('');
@@ -58,7 +58,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    const conf=await rpc('essential_missions_configuration',{p_company:companyId,p_enabled:null});
    if(current!==counter.current)return;
    setEnabled(!!conf.enabled);setCommentRequired(!!conf.comment_required);
-   setChecklistRequired(!!conf.checklist_required);setChecklistDraft(Array.isArray(conf.checklist_items)?conf.checklist_items.join('\n'):'');
+   setChecklistRequired(!!conf.checklist_required);setChecklistSavedItems(Array.isArray(conf.checklist_items)?conf.checklist_items:[]);setChecklistDraft(Array.isArray(conf.checklist_items)?conf.checklist_items.join('\n'):'');
    if(conf.enabled){
     const [places,listing]=await Promise.all([
      rpc('list_essential_client_sites',{p_company:companyId,p_search:'',p_after:null,p_limit:100}),
@@ -70,7 +70,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
    }else{setSites([]);setMissions([]);setTruncated(false)}
   }catch(e:any){if(current===counter.current)setMessage(e.message||'Missions indisponibles')}
  }
- useEffect(()=>{setEnabled(false);setCommentRequired(false);setChecklistRequired(false);setChecklistDraft('');setMissions([]);setSites([]);setEditing(null);
+ useEffect(()=>{setEnabled(false);setCommentRequired(false);setChecklistRequired(false);setChecklistDraft('');setChecklistSavedItems([]);setMissions([]);setSites([]);setEditing(null);
   setWorker('');setSite('');setSwapSource(null);setCancelTarget(null);setCancelReason('');cancelRequests.current.clear();setDecisionTarget(null);setDecisionAction('resume');setDecisionReason('');decisionRequests.current.clear();setPostponeTarget(null);setPostponeDay(missionDate());setPostponeOrder('1');setPostponeReason('');postponeRequests.current.clear();setReassignTarget(null);setReassignWorker('');setReassignOrder('1');setReassignReason('');reassignRequests.current.clear();setRescheduleTarget(null);setRescheduleDay(missionDate());setRescheduleSite('');setRescheduleOrder('1');setRescheduleReason('');rescheduleRequests.current.clear();setMessage('');setReviewWorker('');setReviewStatus('');setReviewClient('');setTruncated(false);
   void load();return()=>{counter.current++};
  },[companyId]);
@@ -98,7 +98,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
  };
  const saveChecklistPolicy=(required:boolean)=>{
   let items:string[]=[];
-  try{items=required?missionChecklistItems(checklistDraft):checklistDraft.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)}
+  try{items=required?missionChecklistItems(checklistDraft):checklistSavedItems}
   catch(e:any){setMessage(e.message||'Checklist invalide');return;}
   Alert.alert('Checklist de fin de mission',
    required?'Exiger la confirmation de toutes les étapes avant de terminer ?':'Ne plus exiger de checklist pour cette compagnie ?',
