@@ -16,6 +16,22 @@ export function missionProgress(items){
   allDone:ordered.length>0&&done===ordered.length};
  return ambiguous?{...result,ambiguous:true,ambiguousRank:pending[0].sort_order}:result;
 }
+/** Distinct published missions of the same worker/day only; never completed or drafts. */
+export function publishedSwapTargets(mission,items){
+ if(!mission||mission.status!=='published')return [];
+ return (Array.isArray(items)?items:[]).filter(x=>x&&x.id!==mission.id&&x.status==='published'&&
+  x.worker_id===mission.worker_id&&x.mission_day===mission.mission_day&&x.sort_order!==mission.sort_order)
+  .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
+}
+export function publishedSwapArgs(company,first,second){
+ if(!company||!first?.id||!second?.id||first.id===second.id||
+  first.status!=='published'||second.status!=='published'||first.worker_id!==second.worker_id||
+  first.mission_day!==second.mission_day||
+  !Number.isInteger(first.version)||first.version<1||!Number.isInteger(second.version)||second.version<1)
+   throw Error('Sélectionnez deux missions publiées du même salarié et du même jour.');
+ return {p_company:company,p_first:first.id,p_first_version:first.version,
+  p_second:second.id,p_second_version:second.version};
+}
 export function missionAddress(m){return [m?.address_line,m?.unit,m?.city,m?.region,m?.postal_code,m?.country].filter(Boolean).join(', ');}
 /** A private, bounded projection of today's already-authorized missions.
  * Never includes access notes, contacts, worker IDs or internal fields in the UI.
@@ -26,8 +42,8 @@ export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
  const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
   ['published','completed'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
   .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
- const ambiguity=eligible.some((m,i)=>i>0&&m.status==='published'&&eligible[i-1].status==='published'
-  &&m.sort_order===eligible[i-1].sort_order);
+ const pending=eligible.filter(m=>m.status==='published');
+ const ambiguity=pending.some((m,i)=>i>0&&m.sort_order===pending[i-1].sort_order);
  const rows=eligible.slice(0,limit).map(m=>({
   id:m.id,title:m.title||'Mission',client_name:m.client_name||'Client',
   site_name:m.site_name||'Lieu',status:m.status,sort_order:m.sort_order,
@@ -117,7 +133,14 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    body+='<h4>Interventions du '+e(s.day)+'</h4>'+
     s.missions.map(x=>'<article class="ess-person"><div><b>'+x.sort_order+'. '+e(x.title)+'</b><small>'+
       e([x.first_name,x.last_name].filter(Boolean).join(' '))+' · '+e(x.client_name)+' · '+e(x.site_name)+
-      ' · '+e(x.status)+'</small></div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+'</article>').join('');
+      ' · '+e(x.status)+'</small></div>'+(x.status==='draft'?button('Modifier le brouillon','edit',x.id):'')+
+    (x.status==='published'&&!s.truncated&&publishedSwapTargets(x,s.missions).length?
+     '<label class="ess-field">Échanger le rang avec<select id="mission-swap-'+e(x.id)+'">'+
+     '<option value="">Choisir une mission publiée</option>'+
+     publishedSwapTargets(x,s.missions).map(other=>'<option value="'+e(other.id)+'">'+
+       e(String(other.sort_order)+'. '+other.title)+'</option>').join('')+
+     '</select></label>'+button('Confirmer le nouvel ordre','swap-order',x.id):'')+
+    '</article>').join('');
    if(s.truncated)body+='<p role="alert">Plus de 200 interventions : liste tronquée.</p>';
    if(s.sites.length>=100)body+='<p>Adresses limitées à 100 par chargement; un carnet très volumineux exige un filtre avant attribution.</p>';
   }
@@ -141,6 +164,17 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
+   }else if(action==='swap-order'){
+    if(s.truncated)throw Error('Tournée tronquée : rechargez un lot complet avant de modifier l’ordre.');
+    const source=s.missions.find(x=>x.id===el.dataset.id);
+    const selected=doc.getElementById('mission-swap-'+el.dataset.id)?.value||'';
+    const target=publishedSwapTargets(source,s.missions).find(x=>x.id===selected);
+    const args=publishedSwapArgs(s.company,source,target);
+    if(!doc.defaultView.confirm('Échanger les missions « '+source.title+' » et « '+target.title+
+      ' » pour ce salarié ? L’employé recevra un avis; aucune heure ni pointage ne change.'))return true;
+    await rpc('swap_essential_published_missions',args);
+    await load(s.company,s.roster);
+    notify('Ordre publié mis à jour. Un avis interne a été envoyé au salarié concerné si son compte est actif.');
    }else if(action==='edit'){
     const item=s.missions.find(x=>x.id===el.dataset.id&&x.status==='draft');
     if(!item)throw Error('Brouillon non trouvé.');

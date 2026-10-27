@@ -1,10 +1,16 @@
 # PUNCH 360° — État courant unique
 
-## Lot actif — tournée personnelle du jour avec itinéraires par étape (MISSION-004/009 partiels)
+## Lot actif — échange sûr de l’ordre de deux missions publiées (MISSION-008/009, partiels)
 
-**Branche** `feat/essential-personal-mission-tour-list-20261026` ; tests TypeScript/Node/DOM sur `e271387ef75f4ec4769d64b0c282a0d9c846a5a2` **SUCCESS** ([CI #40422444589](https://github.com/punch360app/Punch360/actions/runs/40422444589)). Web/PWA et Expo : le salarié peut ouvrir **« Voir mes interventions de la journée »**, afficher jusqu'à 25 missions publiées ou terminées dans leur `sort_order`, voir les destinations et accéder à chaque fournisseur de navigation pour les étapes encore à faire. La liste ne contient que l'identité et le jour de ce salarié, n'inclut jamais brouillons ni missions d'autres salariés, ni missions de demain, ni notes privées, téléphone ou code d'accès. Avertissement si rang ambigu ou 25+ étapes; aucune auto-navigation, optimisation inventée, changement de pointage, temps, statut Mission, GPS Pro, SMS ou facturation. Réutilise `list_essential_missions` et `missionNavigationOptions`, sans nouveau SQL ni autorisation.
+Branche `feat/essential-published-mission-swap-20261026`. **Boss/Admin Essentiel** choisit dans le tableau des missions deux étapes encore **publiées**, du **même salarié et jour**, puis confirme leur échange. Le serveur modifie les deux rangs dans la **même transaction**, vérifie les deux versions et les droits de compagnie, sérialise les demandes d'échange, refuse les missions terminées/brouillons et envoie un seul avis interne ciblé si le compte salarié est actif. Aucun changement du lieu client, de salarié, de mission terminée, de quart, pointage, GPS ou paie. Web `web/live/missions.js` et Expo `src/workforce/MissionsPanel.tsx`, test Node/DOM `tests/mission-flow.test.mjs`. Une anomalie vérifiée du signalement des rangs identiques dans la tournée personnelle a aussi été corrigée.
 
-**Code et preuve :** `web/live/missions.js`, `src/workforce/MissionsPanel.tsx`, `tests/personal-mission-tour.test.mjs` (tri, confidentialité et limites, rendu navigateur simulé, aucun appel RPC à l'ouverture). **À suivre :** ouvrir PR avec `PUNCH-PROGRESS: MISSION-004, MISSION-009`, CI finale sur SHA de PR, fusion, GitHub Pages sur SHA de fusion et registre. Parcours authentifié et essais Android/iPhone physiques non attestés. MISSION-004/009 restent partiels (optimisation des routes, rendez-vous temporels, gestion de rangs complexes, preuves sur appareils, missions hors ligne).
+**Supabase exclusivement `mlabstdxxwjdpfaxiwmg` :** migration additive `20261027005724_essential_published_mission_order_swap` **appliquée**. Test SQL `supabase/tests/essential_published_mission_order_swap.sql` rejoué **après installation** en `BEGIN/ROLLBACK`, deux compagnies fictives, droits Boss/Employé/autre Boss, versions expirées, restauration de l’ordre, refus de mission terminée et aucune modification des quarts/punches; **SUCCESS**. RPC authenticated oui, anon refusé. TypeScript et tests Node/DOM CI [#40429491656](https://github.com/punch360app/Punch360/actions/runs/40429491656) **SUCCESS** sur le code avant mise à jour de passation.
+
+**À conclure :** ouvrir PR avec `PUNCH-PROGRESS: MISSION-008, MISSION-009`, vérifier CI sur SHA final, fusionner selon protections et suivre Pages au SHA exact. Ne pas annoncer « pleinement livré » sans essai Web authentifié et application installée sur appareils. **MISSION-008/009 restent partiels** : réaffectation en direct, reprogrammation et optimisation de tournée demeurent hors de ce lot.
+
+## Dernier lot fusionné — tournée personnelle du jour et clarification de l’ordre (MISSION-004/009 partiels)
+
+La [PR #157](https://github.com/punch360app/Punch360/pull/157) a introduit sur Web et Expo « Voir mes interventions de la journée » pour les étapes propres au salarié, sans navigation automatique ou changement de pointage; fusion sur `8b13bcb64c68bc4bd18ca27a6bc74feefe5234cf`. La [PR #159](https://github.com/punch360app/Punch360/pull/159) a corrigé le choix arbitraire de « prochaine mission » si deux missions publiées ont le même rang, fusion sur `7cd9e6e6bdd7312b1eb7b8ade040159e4cd47f6f`. Tests software verts; recette sur appareils physiques non attestée.
 
 ## Dernier lot fusionné et publié — choix Maps/Waze/Plans pour la prochaine mission (MISSION-004/NAV-003 partiels)
 
@@ -110,7 +116,7 @@ Branche `docs/master-execution-cleanup-20261026`. Nettoyage demandé par le prop
 
 ## Prochaine action exécutable
 
-Finaliser PR tournée du jour `feat/essential-personal-mission-tour-list-20261026`: CI obligatoire sur tête définitive, fusionner si verte, suivre Pages et registre. Ne pas marquer MISSION-004/009 terminées avant recette authentifiée et appareils physiques. Ensuite trouver un autre lot réalisable dans le maître sans réauditer Stripe #35, OAuth #102 sans changement fournisseur; préserver missions #152–154, navigation #146–148, #155–156, éditions, six Price IDs, Supabase unique et SMS/Twilio en dernier.
+Terminer la PR du lot `feat/essential-published-mission-swap-20261026` (migration déjà appliquée), suivre CI au SHA final, fusionner si verte, vérifier Pages et la synchronisation du suivi. Ensuite continuer les parcours métier non terminés (mission impossible/reportée, réaffectation explicitement contrôlée, preuves facultatives) sans inventer d’essais physiques ni attribuer des heures de paie. Les blocages P0 Stripe #35 et OAuth #102 ne sont à revisiter qu'avec élément nouveau. Préserver catalogues, six Price IDs et autres PR; SMS/Twilio en dernier.
 
 ## Coordination et protections
 

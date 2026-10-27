@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
-import {createMissionManager,createPersonalMissionController,missionArgs,missionDate,missionProgress} from '../web/live/missions.js';
+import {createMissionManager,createPersonalMissionController,missionArgs,missionDate,missionProgress,publishedSwapTargets,publishedSwapArgs,personalMissionTour} from '../web/live/missions.js';
 const esc=x=>String(x??'').replace(/[&<>"']/g,z=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[z]));
 function fixture(){
  const win=new Window();win.confirm=()=>true;
@@ -30,6 +30,17 @@ function fixture(){
    if(existing)Object.assign(existing,data);else list.push(data);
    if(args.p_publish)notifications.push(args.p_worker);
    return {data:{id:data.id,version:data.version,status:data.status}};
+  }
+  if(name==='swap_essential_published_missions'){
+   const first=list.find(x=>x.id===args.p_first),second=list.find(x=>x.id===args.p_second);
+   if(!first||!second||first.version!==args.p_first_version||second.version!==args.p_second_version)
+    return{error:{message:'Mission modifiée. Rechargez.'}};
+   if(first.status!=='published'||second.status!=='published'||first.worker_id!==second.worker_id||
+      first.mission_day!==second.mission_day)
+    return{error:{message:'Deux missions publiées du même salarié et jour requises'}};
+   const initial=first.sort_order;first.sort_order=second.sort_order;second.sort_order=initial;
+   first.version++;second.version++;notifications.push('swap:'+first.worker_id);
+   return{data:{first_id:first.id,second_id:second.id,first_version:first.version,second_version:second.version}};
   }
   if(name==='complete_essential_mission'){
    if(failFinish)return {error:{message:'Réseau indisponible'}};
@@ -105,4 +116,61 @@ test('personal controller hides other employee and disabled missions without lea
  await c.load('company','user','worker-a',day);
  assert.equal(c.state.enabled,false);assert.equal(c.render(),'');
  await fx.win.happyDOM.close();
+});
+
+test('Boss confirms atomic published order swap; worker sees newly ordered next stop',async()=>{
+ const fx=fixture();
+ fx.list.push(
+  {id:'first',version:2,worker_id:'worker-a',mission_day:day,title:'Matin',status:'published',sort_order:1,
+   site_name:'A',client_name:'Cliente A',address_line:'100 rue A',city:'Québec'},
+  {id:'second',version:1,worker_id:'worker-a',mission_day:day,title:'Après-midi',status:'published',sort_order:2,
+   site_name:'B',client_name:'Cliente B',address_line:'200 rue B',city:'Québec'},
+  {id:'completed',version:4,worker_id:'worker-a',mission_day:day,title:'Terminé',status:'completed',sort_order:3},
+  {id:'other',version:1,worker_id:'worker-b',mission_day:day,title:'Autre salarié',status:'published',sort_order:1},
+  {id:'draft',version:1,worker_id:'worker-a',mission_day:day,title:'Brouillon',status:'draft',sort_order:4});
+ await fx.sb.rpc('essential_missions_configuration',{p_company:'company',p_enabled:true});
+ const ctrl=createMissionManager({sb:fx.sb,document:fx.win.document,redraw(){},notify(){},escape:esc});
+ await ctrl.load('company',fx.roster);
+ const sources=publishedSwapTargets(fx.list[0],ctrl.state.missions);
+ assert.deepEqual(sources.map(x=>x.id),['second']);
+ assert.throws(()=>publishedSwapArgs('company',fx.list[0],fx.list[3]),/même salarié/);
+ fx.win.document.body.innerHTML=ctrl.render();
+ assert.match(fx.win.document.body.textContent,/Confirmer le nouvel ordre/);
+ fx.win.document.getElementById('mission-swap-first').value='second';
+ await ctrl.handle('swap-order',{dataset:{id:'first'}});
+ assert.equal(ctrl.state.error,'');
+ assert.deepEqual(fx.list.slice(0,2).map(x=>x.sort_order),[2,1]);
+ assert.deepEqual(fx.list.slice(0,2).map(x=>x.version),[3,2]);
+ assert.deepEqual(fx.notifications,['swap:worker-a']);
+ const p=missionProgress(fx.list.filter(x=>x.worker_id==='worker-a'));
+ assert.equal(p.next.id,'second');
+ assert.equal(fx.calls.filter(x=>x.name==='swap_essential_published_missions').length,1);
+ assert.equal(fx.calls.some(x=>/punch|scheduled_shift|payroll|gps/.test(x.name)),false);
+ await fx.win.happyDOM.close();
+});
+test('stale mission version rejects swap without silently changing published route',async()=>{
+ const fx=fixture();
+ fx.list.push(
+ {id:'a',version:1,worker_id:'worker-a',mission_day:day,title:'Nettoyage',status:'published',sort_order:1},
+ {id:'b',version:1,worker_id:'worker-a',mission_day:day,title:'Vérification',status:'published',sort_order:2});
+ await fx.sb.rpc('essential_missions_configuration',{p_company:'company',p_enabled:true});
+ const manager=createMissionManager({sb:fx.sb,document:fx.win.document,redraw(){},notify(){},escape:esc});
+ await manager.load('company',fx.roster);
+ fx.win.document.body.innerHTML=manager.render();
+ fx.win.document.getElementById('mission-swap-a').value='b';
+ fx.list[1].version=2; // concurrent manager changed the published mission
+ await manager.handle('swap-order',{dataset:{id:'a'}});
+ assert.match(manager.state.error,/Mission modifiée/);
+ assert.equal(fx.list[0].sort_order,1);assert.equal(fx.list[1].sort_order,2);
+ assert.equal(fx.notifications.length,0);
+ await fx.win.happyDOM.close();
+});
+test('tour marks duplicate published ranks ambiguous even with a completed rank in-between',()=>{
+ const sample=[
+  {id:'p1',worker_id:'w',mission_day:day,status:'published',sort_order:1},
+  {id:'done',worker_id:'w',mission_day:day,status:'completed',sort_order:1},
+  {id:'p2',worker_id:'w',mission_day:day,status:'published',sort_order:1}];
+ const actual=personalMissionTour(sample,'w',25,day);
+ assert.equal(actual.ambiguous,true);
+ assert.equal(missionProgress(sample).ambiguous,true);
 });
