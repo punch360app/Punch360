@@ -9,6 +9,12 @@
 
 **Dépôt :** https://github.com/punch360app/Punch360. **Supabase exclusif :** `mlabstdxxwjdpfaxiwmg`. Construction et Essentiel restent distincts. Ne jamais recommencer le projet à zéro.
 
+## Routine de travail par gros lots locaux — obligatoire (27 octobre 2026)
+
+Le propriétaire choisit **une construction locale par lots cohérents** : une copie Git avec terminal lorsque réellement disponible, développement conjoint Web/Expo/SQL/Edge/tests, validations ciblées pendant le codage, puis **un push groupé et une PR par parcours métier**. Ne pas effectuer un push par fichier ou par micro-correction, ne pas perdre du temps à relancer une inspection générale. Lire et appliquer le [protocole détaillé](LOCAL_BATCH_WORKFLOW.md) avant de choisir le lot. Le contrôle final sur le SHA PR, les protections serveur et l'attestation des déploiements restent obligatoires.
+
+Si le terminal ou le clonage local ne sont pas disponibles, **ne pas affirmer les avoir utilisés** : en mode connecteur GitHub, préparer les fichiers d'un même parcours et les enregistrer en **un arbre Git / un commit atomique**, puis PR et CI. Expliciter les limites des tests locaux; préférer un vrai environnement de développement local pour les lots suivants.
+
 ## Mode accéléré — exécution prioritaire (26 octobre 2026)
 
 **Objectif : des parcours utilisables, pas une accumulation de micro-PR et de rapports.** Viser de manière indicative environ **80 % d'effort d'implémentation / 20 % de validation et coordination**, sans jamais diminuer les contrôles obligatoires.

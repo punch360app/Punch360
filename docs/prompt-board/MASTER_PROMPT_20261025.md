@@ -51,6 +51,12 @@ En l’absence d’un défaut critique ouvert et réalisable, suivre les jalons 
 
 Un prérequis réellement bloqué empêche uniquement la livraison qui en dépend. Documenter la cause et avancer sur le prochain parcours indépendant, y compris d’un jalon suivant. Ne pas déclarer le jalon bloqué terminé et ne pas affaiblir une protection pour le contourner.
 
+## Méthode par lots locaux — décision du 27 octobre 2026
+
+**Exécution prioritaire : développer et tester localement des parcours complets, puis faire un push groupé et une seule PR par parcours.** Appliquer le [protocole opérationnel des lots locaux](LOCAL_BATCH_WORKFLOW.md) avec un vrai espace Git/terminal lorsqu'il est disponible; inspecter les branches/PR pertinentes une seule fois avant le lot, réutiliser la copie locale et les modules existants, coder ensemble Web/Expo/backend/SQL/RLS/tests, faire des contrôles ciblés au fil du développement, et éviter les micro-pushs et attentes GitHub pour chaque fichier. Le lot peut être substantiel mais doit rester cohérent et récupérable.
+
+**Aucun compromis sur la sécurité :** CI obligatoire sur le SHA final de PR, isolation des compagnies, rôles/RLS, heures/paie, idempotence, contrats, migrations, publications et preuves de recette restent applicables. Ne jamais fusionner une version non contrôlée. Si le clone ou la compilation locale sont impossibles dans l'environnement courant, le signaler et **regrouper les écritures GitHub dans un commit/arbre multi-fichiers** plutôt que de prétendre avoir testé localement. Les opérations locales n'autorisent aucune mutation non approuvée de Stripe ni d'un autre projet Supabase.
+
 ## Mode accéléré — cadence officielle, sans perte de qualité (26 octobre 2026)
 
 Le développement doit privilégier les **parcours complets livrables**. Le détail opérationnel de ce mode est dans `WORK_START.md`; ses règles de cadence remplacent toute instruction historique d'audit ou de passation répétitive. Les 691 exigences, priorités métier et protections de sécurité restent intégralement conservées.
