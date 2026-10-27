@@ -12,15 +12,16 @@ export function missionDate(d=new Date()){return [d.getFullYear(),String(d.getMo
 /** A failed refresh shows a warning only for a mission module this same account has previously seen active. */
 export function missionWarningEligible(previousEnabled,sameWorkspace){return !!previousEnabled&&!!sameWorkspace;}
 export function missionProgress(items){
- const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','completed','impossible'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
+ const ordered=(Array.isArray(items)?items:[]).filter(x=>['published','in_progress','completed','impossible'].includes(x.status)).sort((a,b)=>a.sort_order-b.sort_order||String(a.id).localeCompare(String(b.id)));
  const done=ordered.filter(x=>x.status==='completed').length;
  const blocked=ordered.filter(x=>x.status==='impossible').length;
+ const started=ordered.filter(x=>x.status==='in_progress');
  const pending=ordered.filter(x=>x.status==='published');
  // A stable database id is NOT permission to invent an order for two published
  // missions at the same rank. Leave the next stop unresolved until a manager
  // explicitly resolves the conflict; completed steps never compete with it.
- const ambiguous=pending.length>1&&Number(pending[0].sort_order)===Number(pending[1].sort_order);
- const result={total:ordered.length,done,blocked,next:ambiguous?null:(pending[0]||null),
+ const ambiguous=!started.length&&pending.length>1&&Number(pending[0].sort_order)===Number(pending[1].sort_order);
+ const result={total:ordered.length,done,blocked,next:ambiguous?null:(started[0]||pending[0]||null),
   allDone:ordered.length>0&&done===ordered.length};
  return ambiguous?{...result,ambiguous:true,ambiguousRank:pending[0].sort_order}:result;
 }
@@ -48,9 +49,9 @@ export function personalMissionTour(items,workerId,limit=25,day=missionDate()){
  if(!workerId)return {rows:[],total:0,hasMore:false,ambiguous:false};
  if(!Number.isInteger(limit)||limit<1||limit>50)throw Error('Limite de tournée invalide');
  const eligible=(Array.isArray(items)?items:[]).filter(m=>m&&m.worker_id===workerId&&
-  ['published','completed','impossible'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
+  ['published','in_progress','completed','impossible'].includes(m.status)&&m.id&&(!m.mission_day||m.mission_day===day))
   .sort((a,b)=>Number(a.sort_order)-Number(b.sort_order)||String(a.id).localeCompare(String(b.id)));
- const pending=eligible.filter(m=>m.status==='published');
+ const pending=eligible.filter(m=>['published','in_progress'].includes(m.status));
  const ambiguity=pending.some((m,i)=>i>0&&m.sort_order===pending[i-1].sort_order);
  const rows=eligible.slice(0,limit).map(m=>({
   id:m.id,title:m.title||'Mission',client_name:m.client_name||'Client',
@@ -131,7 +132,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     '<h4>Suivi des missions — '+e(s.day)+'</h4>'+
     '<p class="ess-fine">Statuts explicites; une mission non terminée n’est pas une absence ou un retard. Aucun temps de travail ni trajet n’est inféré.</p>'+
     '<p role="status">À faire : '+analysis.counts.published+
-    ' · Terminées : '+analysis.counts.completed+' · À traiter : '+analysis.counts.impossible+' · Brouillons : '+analysis.counts.draft+
+    ' · En cours : '+analysis.counts.in_progress+' · Terminées : '+analysis.counts.completed+' · À traiter : '+analysis.counts.impossible+' · Brouillons : '+analysis.counts.draft+
     ' · Reportées : '+analysis.counts.postponed+' · Annulées : '+analysis.counts.cancelled+'</p>'+
     select('Filtrer par salarié','review-worker',s.review.worker,[['','Tous les salariés'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
     select('Filtrer par état','review-status',s.review.status,MISSION_STATES)+
@@ -392,7 +393,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
         tour.rows.map(stop=>{
           const route=missionNavigationOptions(stop,platform,pref);
           return '<article class="ess-person"><b>'+e(stop.sort_order+'. '+stop.title)+'</b><small>'+
-           e(stop.client_name)+' · '+e(stop.site_name)+' · '+e(stop.status==='published'?'À faire':stop.status==='completed'?'Terminée':'À traiter')+
+           e(stop.client_name)+' · '+e(stop.site_name)+' · '+e(stop.status==='published'?'À faire':stop.status==='in_progress'?'En cours':stop.status==='completed'?'Terminée':'À traiter')+
            '</small><small>'+e(missionAddress(stop))+'</small>'+
            (stop.status==='published'?route.choices.map(choice=>'<a href="'+e(choice.url)+'" target="_blank" rel="noopener noreferrer">'+e(choice.label)+' · cette intervention ↗</a>').join(''):'')+
            '</article>';
@@ -410,10 +411,10 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       tour.rows.map(stop=>{
        const options=missionNavigationOptions(stop,platform,pref).choices;
        return '<article class="ess-person"><b>'+e(stop.title)+'</b><small>'+
-        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'À traiter':'À faire')+
+        e(stop.client_name)+' · '+e(stop.site_name)+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'À traiter':stop.status==='in_progress'?'En cours':'À faire')+
         '</small><small>'+e(missionAddress(stop))+'</small>'+ 
         (stop.status==='impossible'?'<small>Motif : '+e(missionIssueLabel(stop.issue_reason))+'</small>':'')+
-        (stop.status==='published'?options.map(route=>'<a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+
+        (['published','in_progress'].includes(stop.status)?options.map(route=>'<a href="'+e(route.url)+'" target="_blank" rel="noopener noreferrer">'+
         e(route.label)+' · cette étape ↗</a>').join(''):'')+'</article>';
       }).join('')+
       (tour.hasMore?'<p>Seules les 25 premières étapes sont affichées; demander une tournée segmentée au responsable.</p>':'')+
@@ -427,7 +428,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    renderTour()+'</section>'+renderUpcoming();
   const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
-  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>Prochaine mission · '+(p.done+p.blocked+1)+' de '+p.total+'</small>'+
+  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>'+(x.status==='in_progress'?'Mission en cours':'Prochaine mission')+' · '+(p.done+p.blocked+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
    (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
    (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
@@ -442,6 +443,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       s.details.error?'<p role="alert">'+e(s.details.error)+'</p>':
       '<p>'+e(s.details.instructions||'Aucune instruction supplémentaire publiée.')+'</p>')+
      '<p class="ess-fine">Informations consultées sur demande. Ne modifie pas le pointage et ne démarre aucun GPS.</p></section>':'')+
+   (x.status==='published'?'<button type="button" class="ess-btn" data-action="mission:start" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Commencer cette mission</button>':'')+
    '<button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Terminer</button>'+ 
    '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler une mission impossible</button>'+
    (s.issue?.id===x.id?'<div class="ess-panel"><p>Le responsable sera informé. Aucun retard, absence ou pointage ne sera déduit.</p>'+
@@ -479,7 +481,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    detailsGeneration++;s.details=null;redraw();return true;
   }
   const next=missionProgress(s.items).next;
-  if(action!=='open'||!next||next.id!==id||next.status!=='published'||missionProgress(s.items).ambiguous)
+  if(action!=='open'||!next||next.id!==id||!['published','in_progress'].includes(next.status)||missionProgress(s.items).ambiguous)
    throw Error('Mission publiée absente ou modifiée : actualisez.');
   const gen=++detailsGeneration,company=s.company,user=s.user,worker=s.worker,version=next.version;
   s.details={id,version,loading:true,error:'',instructions:''};redraw();
@@ -500,7 +502,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   if(!s.company||!s.worker||!s.enabled||s.busy||s.truncated)throw Error('Mission non autorisée ou tournée incomplète.');
   const progress=missionProgress(s.items);
   if(progress.ambiguous||progress.next?.id!==id)throw Error('Ordre modifié : actualisez avant de signaler.');
-  const mission=s.items.find(x=>x.id===id&&x.status==='published');
+  const mission=s.items.find(x=>x.id===id&&['published','in_progress'].includes(x.status));
   if(!mission)throw Error('Mission modifiée : actualisez.');
   if(action==='issue-open'){s.issue={id,reason:'',note:''};redraw();return true;}
   if(action==='issue-close'){s.issue=null;redraw();return true;}
@@ -525,11 +527,32 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{ s.error='Signalement non confirmé : vérifiez la connexion et réessayez la même demande.';return false; }
   finally{s.busy=false;redraw();}
  }
+ async function start(id){
+  if(!s.company||!s.worker||!s.enabled||s.busy||s.truncated)
+   throw Error('Début de mission non autorisé.');
+  const state=missionProgress(s.items);
+  if(state.ambiguous||state.next?.id!==id||state.next.status!=='published')
+   throw Error('Ordre publié ambigu ou mission modifiée : actualisez.');
+  if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise. Mission non commencée.');
+  if(!doc.defaultView.confirm('Commencer cette mission sans démarrer votre pointage ?'))return false;
+  const m=state.next,key='start:'+id,request=s.pending.get(key)||doc.defaultView.crypto.randomUUID();
+  s.pending.set(key,request);s.busy=true;s.error='';
+  try{
+   const response=await sb.rpc('start_essential_mission',{p_company:s.company,p_mission:m.id,
+    p_version:m.version,p_request:request});
+   if(response.error)throw response.error;
+   s.pending.delete(key);
+   await load(s.company,s.user,s.worker,s.day);
+   notify('Mission en cours. Votre pointage et vos heures sont inchangés.');
+   return true;
+  }catch{s.error='Début non confirmé : vérifiez la connexion et réessayez la même demande.';return false;}
+  finally{s.busy=false;redraw();}
+ }
  async function finish(id){
   if(!s.company||!s.worker||!s.enabled||s.busy)throw Error('Mission non autorisée.');
   const latest=missionProgress(s.items);
   if(s.truncated||latest.ambiguous||latest.next?.id!==id)throw Error('Ordre des missions non confirmé ou modifié : rechargez et contactez votre responsable.');
-  const x=s.items.find(m=>m.id===id&&m.status==='published');if(!x)throw Error('Mission modifiée : rechargez.');
+  const x=s.items.find(m=>m.id===id&&['published','in_progress'].includes(m.status));if(!x)throw Error('Mission modifiée : rechargez.');
   if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise. Aucune fin n’a été enregistrée.');
   if(!doc.defaultView.confirm('Terminer « '+x.title+' » sans pointer la sortie ?'))return false;
   const request=s.pending.get(id)||doc.defaultView.crypto.randomUUID();
@@ -541,5 +564,5 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{s.error='Fin non confirmée : réessayez la même demande après vérification.';return false;}
   finally{s.busy=false;redraw();}
  }
- return {state:s,load,render,finish,handleIssue,handleUpcoming,handleDetails,reset};
+ return {state:s,load,render,start,finish,handleIssue,handleUpcoming,handleDetails,reset};
 }

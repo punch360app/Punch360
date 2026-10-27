@@ -236,7 +236,7 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
      const report=missionDayReview(missions,{worker:reviewWorker,status:reviewStatus,client:reviewClient},truncated);
      return <>
       {label('À faire : '+report.counts.published+' · Terminées : '+report.counts.completed+
-       ' · À traiter : '+report.counts.impossible+' · Reportées : '+report.counts.postponed+' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
+       ' · En cours : '+report.counts.in_progress+' · À traiter : '+report.counts.impossible+' · Reportées : '+report.counts.postponed+' · Brouillons : '+report.counts.draft+' · Annulées : '+report.counts.cancelled)}
       {label('Filtrer par employé')}
       {options([{id:'',name:'Tous les employés'},...roster.filter(w=>w.status==='active')],reviewWorker,setReviewWorker,w=>w.id,w=>w.name)}
       {label('Filtrer par état')}
@@ -396,6 +396,23 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
     finally{setBusy(false)}
    })()}}]);
  };
+ const startMission=()=>{
+  if(!next||next.status!=='published'||busy||truncated||missionConflict)return;
+  const id=next.id,key='start:'+id,request=requests.current.get(key)||Crypto.randomUUID();
+  Alert.alert('Commencer cette mission ?',
+   'Démarrer la mission ne démarre pas votre pointage, vos heures ou un suivi GPS.',
+   [{text:'Annuler',style:'cancel'},{text:'Commencer',onPress:()=>{void (async()=>{
+    requests.current.set(key,request);setBusy(true);setMessage('');
+    try{
+     const network=await Network.getNetworkStateAsync();
+     if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
+     await rpc('start_essential_mission',{p_company:companyId,p_mission:id,p_version:next.version,p_request:request});
+     requests.current.delete(key);await refresh();
+     setMessage('Mission en cours. Le pointage reste indépendant.');
+    }catch{setMessage('Début non confirmé : reconnectez-vous et réessayez la même demande.');}
+    finally{setBusy(false)}
+   })()}}]);
+ };
  const complete=()=>{
   if(!next||busy||truncated||missionConflict)return;
   Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
@@ -441,7 +458,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
   {items.filter((m:Row)=>m.issue_decision_at).map((m:Row)=><View key={'decision-'+m.id} style={{padding:8,backgroundColor:'#E8F2E8',borderRadius:8}}>{label('Décision du responsable : '+resolvedMissionNotice(m))}</View>)}
-  {title(!progress.total?'Aucune mission pour aujourd’hui':progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
+  {title(!progress.total?'Aucune mission pour aujourd’hui':progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':next?.status==='in_progress'?'Mission en cours · '+(progress.done+progress.blocked+1)+' de '+progress.total:'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
   {!next&&progress.blocked&&!missionConflict?label('Aucune prochaine mission publiée. Les étapes signalées nécessitent un suivi; le pointage ne change pas.'):null}
   {missionConflict?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>
    Plusieurs missions publiées portent le rang {String(missionConflictRank)}. Demandez au responsable de confirmer la prochaine étape. Aucun trajet n’est sélectionné ni aucune mission terminée automatiquement.
@@ -463,6 +480,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      <Text style={{color:'#243B2A'}}>{detailInstructions||'Aucune instruction supplémentaire publiée.'}</Text>}
     {label('Aucun pointage ni GPS déclenché.')}
    </View>:null}
+   {next.status==='published'?button('Commencer cette mission',startMission,busy):label('En cours — mission démarrée volontairement, pointage inchangé.')}
    {button('Terminer',complete,busy)}
    {button(issueOpen?'Fermer le signalement':'Signaler une mission impossible',()=>setIssueOpen(v=>!v),busy)}
    {issueOpen?<View style={{gap:6,padding:10,backgroundColor:'white',borderRadius:9}}>
@@ -481,13 +499,13 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    {tour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Deux missions ont le même rang; confirmer l’ordre avec le responsable.</Text>:null}
    {tour.rows.map((stop:Row)=><View key={stop.id} style={{padding:9,backgroundColor:'white',borderWidth:1,borderColor:'#DCE8D6',borderRadius:8,gap:5}}>
     {title(stop.title+' · '+stop.client_name)}
-    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'À traiter':'À faire'))}
+    {label(stop.site_name+' · '+(stop.status==='completed'?'Terminée':stop.status==='impossible'?'À traiter':stop.status==='in_progress'?'En cours':'À faire'))}
     {stop.status==='impossible'?label('Motif : '+missionIssueLabel(stop.issue_reason)):null}
     {label(missionAddress(stop))}
-    {stop.status==='published'&&missionNavigationOptions(stop,Platform.OS,navProvider).choices.length?
+    {['published','in_progress'].includes(stop.status)&&missionNavigationOptions(stop,Platform.OS,navProvider).choices.length?
      button(tourRouteId===stop.id?'Masquer les itinéraires':'Itinéraire vers cette étape',
       ()=>setTourRouteId(v=>v===stop.id?null:stop.id)):null}
-    {tourRouteId===stop.id&&stop.status==='published'?
+    {tourRouteId===stop.id&&['published','in_progress'].includes(stop.status)?
      missionNavigationOptions(stop,Platform.OS,navProvider).choices.map(route=><View key={route.id}>
       {button(route.label+' · cette étape',()=>{void Linking.openURL(route.url).catch(e=>setMessage(e.message||'Application indisponible'))})}
      </View>):null}

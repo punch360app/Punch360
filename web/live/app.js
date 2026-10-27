@@ -400,6 +400,10 @@ if(['mission:issue-open','mission:issue-close','mission:issue-submit'].includes(
   if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
   await personalMissions.handleIssue(a.slice('mission:'.length),id);draw();return;
 }
+if(a==='mission:start'){
+ if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
+ await personalMissions.start(id);draw();return;
+}
 if(a==='mission:finish'){
   if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
   await personalMissions.finish(id);draw();return;
