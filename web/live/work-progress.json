@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T15:08:19.772Z",
+  "generated_at": "2026-10-27T15:24:39.923Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1356,7 +1356,8 @@
         176,
         179,
         180,
-        186
+        186,
+        189
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1438,7 +1439,8 @@
         176,
         179,
         180,
-        186
+        186,
+        189
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1477,9 +1479,31 @@
         185
       ],
       "note": "Travail rattaché à la PR #184. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "SEC-014": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        189
+      ],
+      "note": "Travail rattaché à la PR #189. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 189,
+      "sha": "e6a7ed992a0b793c6a9afb6875d5b2b3cdb2ed9e",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-013",
+        "SEC-014"
+      ],
+      "title": "Missions — supprimer GPS et métadonnées privées des photos avant stockage",
+      "merged_at": "2026-10-27T15:24:29Z"
+    },
     {
       "number": 188,
       "sha": "fd6c58a49ca7848ffa4f282520ce3a29137cf5cb",
@@ -2017,23 +2041,6 @@
       ],
       "title": "Essentiel Plus/Pro — rappels de disponibilité internes et sans doublon",
       "merged_at": "2026-10-26T19:19:40Z"
-    },
-    {
-      "number": 135,
-      "sha": "2b1b1fe52946ed57c03fa3b554582b0348f6f90e",
-      "ci": "success",
-      "ids": [
-        "MLOC-001",
-        "MLOC-002",
-        "MLOC-003",
-        "MLOC-004",
-        "MLOC-005",
-        "MLOC-006",
-        "MLOC-007",
-        "MLOC-008"
-      ],
-      "title": "docs(master): planification clients et interventions multi-emplacements",
-      "merged_at": "2026-10-26T19:12:38Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
