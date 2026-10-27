@@ -172,32 +172,6 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
   {title('Missions et tournées — manuel')}
   {label('Chaque mission reste séparée du pointage, des heures, des trajets et de la paie.')}
   {button(enabled?'Désactiver le module':'Activer le module',toggle,busy)}
-  <View style={{gap:6,padding:9,backgroundColor:'white',borderRadius:9}}>
-   {button(upcomingOpen?'Masquer mes interventions à venir':'Consulter mes prochaines interventions',()=>{
-    upcomingGeneration.current++;setUpcomingOpen(v=>!v);setUpcomingItems([]);setUpcomingLoadedDay(null);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);
-   })}
-   {upcomingOpen?<View style={{gap:6}}>
-    {label('Consultez les 14 prochains jours, uniquement vos missions publiées pour la compagnie actuelle. Aucun pointage ni trajet automatique.')}
-    {input('Date future AAAA-MM-JJ',upcomingDay,setUpcomingDay)}
-    {button('Afficher cette journée',loadUpcoming,upcomingBusy)}
-    {upcomingBusy?label('Chargement des interventions...'):null}
-    {!!upcomingError?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>{upcomingError}</Text>:null}
-    {upcomingTruncated?label('Plus de 200 missions : tournée future incomplète. Contactez votre responsable.'):null}
-    {futureTour&&!upcomingTruncated&&!upcomingBusy?<>
-     {label('Interventions du '+upcomingLoadedDay+' · '+futureTour.total+' mission(s)'+(futureTour.hasMore?' (25 premières affichées)':''))}
-     {futureTour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Plusieurs missions portent le même rang. Confirmez l’ordre avec votre responsable.</Text>:null}
-     {futureTour.rows.map((stop:Row)=><View key={stop.id} style={{gap:4,padding:8,borderRadius:8,backgroundColor:'#F7FAF5'}}>
-      {title(stop.sort_order+'. '+stop.title)}
-      {label(stop.client_name+' · '+stop.site_name+' · '+(stop.status==='published'?'À faire':stop.status==='completed'?'Terminée':'À traiter'))}
-      {label(missionAddress(stop))}
-      {stop.status==='published'?missionNavigationOptions(stop,Platform.OS,navProvider).choices.map(route=>
-       <View key={route.id}>{button(route.label+' · cette intervention',()=>{
-        void Linking.openURL(route.url).catch(err=>setUpcomingError(err.message||'Navigation indisponible'));
-       })}</View>):null}
-     </View>)}
-    </>:null}
-   </View>:null}
-  </View>
   {!!message?<Text accessibilityLiveRegion="polite" style={{color:'#B04C37'}}>{message}</Text>:null}
   {enabled?<>
    {input('Date AAAA-MM-JJ',day,setDay)}
@@ -427,6 +401,32 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    </View>)}
    {tour.hasMore?label('Seules les 25 premières missions sont affichées; contactez le responsable pour une tournée segmentée.'):null}
   </View>:null}
+  <View style={{gap:6,padding:9,backgroundColor:'white',borderRadius:9}}>
+   {button(upcomingOpen?'Masquer mes interventions à venir':'Consulter mes prochaines interventions',()=>{
+    upcomingGeneration.current++;setUpcomingOpen(v=>!v);setUpcomingItems([]);setUpcomingLoadedDay(null);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);
+   })}
+   {upcomingOpen?<View style={{gap:6}}>
+    {label('Consultez les 14 prochains jours, uniquement vos missions publiées pour la compagnie actuelle. Aucun pointage ni trajet automatique.')}
+    {input('Date future AAAA-MM-JJ',upcomingDay,setUpcomingDay)}
+    {button('Afficher cette journée',loadUpcoming,upcomingBusy)}
+    {upcomingBusy?label('Chargement des interventions...'):null}
+    {!!upcomingError?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>{upcomingError}</Text>:null}
+    {upcomingTruncated?label('Plus de 200 missions : tournée future incomplète. Contactez votre responsable.'):null}
+    {futureTour&&!upcomingTruncated&&!upcomingBusy?<>
+     {label('Interventions du '+upcomingLoadedDay+' · '+futureTour.total+' mission(s)'+(futureTour.hasMore?' (25 premières affichées)':''))}
+     {futureTour.ambiguous?<Text accessibilityRole="alert" style={{color:'#B04C37'}}>Plusieurs missions portent le même rang. Confirmez l’ordre avec votre responsable.</Text>:null}
+     {futureTour.rows.map((stop:Row)=><View key={stop.id} style={{gap:4,padding:8,borderRadius:8,backgroundColor:'#F7FAF5'}}>
+      {title(stop.sort_order+'. '+stop.title)}
+      {label(stop.client_name+' · '+stop.site_name+' · '+(stop.status==='published'?'À faire':stop.status==='completed'?'Terminée':'À traiter'))}
+      {label(missionAddress(stop))}
+      {stop.status==='published'?missionNavigationOptions(stop,Platform.OS,navProvider).choices.map(route=>
+       <View key={route.id}>{button(route.label+' · cette intervention',()=>{
+        void Linking.openURL(route.url).catch(err=>setUpcomingError(err.message||'Navigation indisponible'));
+       })}</View>):null}
+     </View>)}
+    </>:null}
+   </View>:null}
+  </View>
   {!!message?<Text accessibilityLiveRegion="polite" style={{color:'#B04C37'}}>{message}</Text>:null}
   {truncated?label('Plus de 200 missions : demandez une tournée segmentée au responsable.'):null}
  </View>;
