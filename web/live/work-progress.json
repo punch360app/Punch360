@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T01:52:13.029Z",
+  "generated_at": "2026-10-27T01:55:46.055Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -311,7 +311,8 @@
         124,
         126,
         128,
-        132
+        132,
+        166
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1405,9 +1406,30 @@
         163
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "GOV-005": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        166
+      ],
+      "note": "Travail rattaché à la PR #166. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 166,
+      "sha": "136449c7204d7274a3eb5f0990c3354804af5534",
+      "ci": "success",
+      "ids": [
+        "GOV-005",
+        "GOV-012"
+      ],
+      "title": "Punch 360° — exécution accélérée, moins d'audits et parcours complets",
+      "merged_at": "2026-10-27T01:55:32Z"
+    },
     {
       "number": 165,
       "sha": "8ab1a96e80f86cee88b30e3449f35eb6c788544b",
@@ -1948,15 +1970,6 @@
       "ids": [],
       "title": "P0-B Stripe — valider l'état réel avant résiliation ou reprise",
       "merged_at": "2026-10-26T12:41:36Z"
-    },
-    {
-      "number": 111,
-      "sha": null,
-      "head_sha": "2850cc63bcc70aa07c43f705b3d061303d463289",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Publier le centre de suivi HTML PUNCH 360° (578 exigences / 29 lots)",
-      "merged_at": "2026-10-26T12:27:45Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
