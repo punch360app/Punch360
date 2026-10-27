@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T10:26:28.867Z",
+  "generated_at": "2026-10-27T10:37:23.172Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1339,7 +1339,8 @@
         163,
         164,
         165,
-        174
+        174,
+        175
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1361,7 +1362,8 @@
       "pr": [
         153,
         163,
-        174
+        174,
+        175
       ],
       "note": "Travail rattaché à la PR #153. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1399,7 +1401,8 @@
         160,
         164,
         165,
-        167
+        167,
+        175
       ],
       "note": "Travail rattaché à la PR #160. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1410,7 +1413,8 @@
       "external_required": true,
       "pr": [
         163,
-        174
+        174,
+        175
       ],
       "note": "Travail rattaché à la PR #163. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1439,6 +1443,19 @@
     }
   },
   "activity": [
+    {
+      "number": 175,
+      "sha": "23def3d8faf98b5dc5bdd5dae1ee3d31dca6fd5b",
+      "ci": "success",
+      "ids": [
+        "MISSION-007",
+        "MISSION-008",
+        "MISSION-011",
+        "MISSION-013"
+      ],
+      "title": "Missions — reporter une mission impossible et montrer la nouvelle journée",
+      "merged_at": "2026-10-27T10:37:13Z"
+    },
     {
       "number": 174,
       "sha": "a0e40f51860ae9c11db1c5aeb7b1438b8c0b66f2",
@@ -1992,15 +2009,6 @@
       ],
       "title": "Suivi PUNCH — vrai avancement Work depuis GitHub, avec rétroactivité et mise à jour automatique",
       "merged_at": "2026-10-26T14:20:07Z"
-    },
-    {
-      "number": 121,
-      "sha": null,
-      "head_sha": "be3f74c682dad616915eba605860d6fd28d7b59d",
-      "ci": "not_verified_in_manifest",
-      "ids": [],
-      "title": "Suivi HTML PUNCH — afficher en tête le nombre et % d'exigences marquées terminées",
-      "merged_at": "2026-10-26T14:00:06Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
