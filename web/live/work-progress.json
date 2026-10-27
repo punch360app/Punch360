@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T13:42:52.520Z",
+  "generated_at": "2026-10-27T14:00:50.384Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -76,7 +76,8 @@
         128,
         132,
         182,
-        183
+        183,
+        184
       ],
       "note": "Registre quatre états défini, granularité ID à compléter par Work."
     },
@@ -318,7 +319,8 @@
         132,
         166,
         182,
-        183
+        183,
+        184
       ],
       "note": "Travail rattaché à la PR #122. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1015,7 +1017,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        132
+        132,
+        184
       ],
       "note": "Travail rattaché à la PR #132. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1457,9 +1460,32 @@
         172
       ],
       "note": "Travail rattaché à la PR #170. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "GOV-004": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        184
+      ],
+      "note": "Travail rattaché à la PR #184. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 184,
+      "sha": "1c62972138118595ba27d496449bfdbcdc114fa7",
+      "ci": "success",
+      "ids": [
+        "GOV-004",
+        "GOV-012",
+        "GOV-014",
+        "GOV-016"
+      ],
+      "title": "Exécution — finir les parcours et éviter les boucles de préparation",
+      "merged_at": "2026-10-27T14:00:40Z"
+    },
     {
       "number": 183,
       "sha": "6e3e5aadb74415279df36f358892d9f5de9b007a",
@@ -2005,18 +2031,6 @@
       ],
       "title": "Clarifier le maître et spécifier les membres inclus illimités",
       "merged_at": "2026-10-26T18:17:25Z"
-    },
-    {
-      "number": 130,
-      "sha": "7057c365a1de704bfc8e2af6cbb3b78fa7ad0326",
-      "ci": "success",
-      "ids": [
-        "SHIFT-016",
-        "SHIFT-017",
-        "SHIFT-018"
-      ],
-      "title": "Essentiel Plus/Pro — semaine type récurrente et aperçu des conflits",
-      "merged_at": "2026-10-26T18:02:03Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
