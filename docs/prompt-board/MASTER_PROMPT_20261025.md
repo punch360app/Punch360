@@ -73,6 +73,33 @@ Le développement doit privilégier les **parcours complets livrables**. Le dét
 
 Ces règles renforcent le mode accéléré et priment sur les formulations générales de reprise documentaire. Elles ne suppriment aucune exigence ni aucun contrôle de sécurité, et ne rendent pas réalisable une recette nécessitant un appareil ou un accès fournisseur absent.
 
+## Validation ciblée et réutilisation des preuves — règle pour tous les lots
+
+**Avant de coder**, définir en quelques lignes dans la PR ou la passation existante : résultat utilisable par rôle, IDs et manques concernés, critères de sortie, dépendances et validations retenues. Pas de document supplémentaire obligatoire. Cette sélection prépare les tests; elle ne permet pas d'omettre une exigence du parcours.
+
+### Choisir les contrôles d'après les effets du changement
+
+Appliquer toutes les lignes concernées, y compris pour les composants partagés et leurs consommateurs. En cas d'impact incertain, élargir les contrôles concernés plutôt que supposer qu'ils sont inutiles.
+
+| Changement ou effet | Validation pertinente à effectuer |
+|---|---|
+| Documentation seulement | Cohérence des instructions, liens, conservation des IDs/exigences; génération et validation du suivi si le maître ou ses données changent. |
+| Interface Web/Expo | Parcours utilisateur et erreurs touchés; affichage aux formats concernés, accessibilité et régression des composants partagés modifiés. Ajouter les contrôles serveur si une action, une donnée ou une autorisation change. |
+| RPC, SQL, rôles, Auth, cache ou Storage | Cas autorisés/refusés, isolation de deux compagnies et rôles concernés, accès direct et anciens clients; données privées, révocation, concurrence/rejeu selon le flux. Vérifier migrations déjà appliquées avant toute application. |
+| Pointage, horaires, heures ou paie | Intégrité des heures et règles de calcul concernées, transitions, idempotence/concurrence, verrouillages et dates/fuseaux/DST lorsque touchés; permissions et isolation. |
+| Facturation, Stripe ou catalogue | Montants, versions et snapshots contractuels concernés, droits, idempotence, compatibilité clients/Edge et événements fournisseur autoritaires; recette sandbox adaptée sans opération réelle non autorisée. |
+| Dépendances, configuration, synchronisation ou déploiement | Compatibilité et régressions des consommateurs affectés, erreurs/reprise et sécurité pertinentes; vérifier la version effectivement publiée sur chaque cible modifiée. Une modification de test exige aussi de vérifier qu'il détecte toujours le défaut visé. |
+
+**Pendant le codage**, lancer les contrôles ciblés utiles après un groupe cohérent de modifications. Ne pas lancer systématiquement une suite complète après chaque fichier, bouton ou commit. **Avant fusion**, attendre tous les contrôles obligatoires du dépôt sur le SHA final, ainsi que les recettes spécifiques applicables du maître. Aucune modification de workflow, suppression de test, réduction de couverture obligatoire ou protection contournée au nom de cette matrice. Une suite finale verte ne doit pas être relancée sans changement, échec intermittent à investiguer ou risque nouveau.
+
+### Quand une preuve peut être réutilisée
+
+Une preuve existante est réutilisable seulement si sa source est retrouvable (PR/SHA, test ou exécution), sa portée et son environnement sont connus, et qu'aucun changement depuis cette preuve n'affecte le comportement couvert, ses dépendances, permissions, schéma, configuration ou conditions de recette. Comparer les différences pertinentes; ne pas refaire un audit global pour établir cette correspondance. Référencer la preuve et sa portée dans le support existant, sans copier un long rapport.
+
+Un changement pertinent invalide les parties affectées de la preuve : refaire leurs contrôles et conserver les parties indépendantes encore valides. Une preuve absente, ambiguë ou issue d'un environnement différent reste non attestée pour la cible concernée. La réutilisation n'exempte jamais de la CI obligatoire sur le SHA final et ne transforme pas une ancienne recette en essai de la nouvelle build. Après publication, vérifier la version réellement servie et le comportement touché; conserver séparément Web, SQL, Edge, build et appareil/fournisseur.
+
+**Blocage externe :** enregistrer l'accès, le service ou l'appareil indispensable, le contrôle restant et l'action minimale pour le débloquer. Livrer et vérifier les parties indépendantes réalisables; garder les critères bloqués ouverts. Ne pas réauditer le même blocage sans nouvel accès, changement ou résultat.
+
 ## Méthode d’exécution et de livraison
 
 - Définir **un lot principal suffisamment large pour un parcours complet utilisable** : IDs concernés, comportement manquant prouvé, résultat utilisateur attendu, critères de validation et dépendances. Au plus un lot indépendant pendant une attente CI/fournisseur; ne pas modifier les mêmes fichiers en parallèle sans coordination.
