@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T12:40:30.682Z",
+  "generated_at": "2026-10-28T13:03:08.496Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1522,6 +1522,14 @@
   },
   "activity": [
     {
+      "number": 213,
+      "sha": "f4137300a7c7a5a307153471f246c730c531ed07",
+      "ci": "success",
+      "ids": [],
+      "title": "Nouvel Accueil Super Admin et retrait de l’onglet « 3 Super Admins »",
+      "merged_at": "2026-10-28T13:02:59Z"
+    },
+    {
       "number": 212,
       "sha": "26538d9f0dbd2d69984d1897b6e839cfe511c6fd",
       "ci": "success",
@@ -2022,14 +2030,6 @@
       ],
       "title": "Missions — signaler une intervention impossible (Web et Expo)",
       "merged_at": "2026-10-27T01:31:09Z"
-    },
-    {
-      "number": 162,
-      "sha": "a25920950bfb9d4c0fda29efee92f092a72aaf90",
-      "ci": "success",
-      "ids": [],
-      "title": "Passation — refléter #160 fusionnée et éviter la duplication NAV-007",
-      "merged_at": "2026-10-27T01:07:05Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
