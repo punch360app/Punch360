@@ -18,7 +18,7 @@ function setup({auth=true,duplicate=false,permissions=true}={}){
   if(name==='essential_missions_configuration')return{data:{enabled:permissions}};
   if(name==='list_essential_client_sites')return{data:{items:sites,has_more:false}};
   if(name==='list_essential_missions')return{data:{enabled:permissions,truncated:false,
-   items:[...created,...(duplicate?[{id:'existing',mission_day:today,worker_id:'worker-A',
+   items:[...created.filter(row=>row.mission_day===args.p_day),...(duplicate&&args.p_day===today?[{id:'existing',mission_day:today,worker_id:'worker-A',
     site_id:'site-A',sort_order:1,status:'published',title:'Nettoyage'}]:[])]}};
   if(name==='save_essential_mission'){
    const row={id:'new-'+created.length,mission_day:args.p_day,worker_id:args.p_worker,
