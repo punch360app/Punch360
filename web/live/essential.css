@@ -86,3 +86,97 @@
  .ess-home-link{min-height:77px}
  .ess-home-events li{flex-wrap:wrap}
 }
+
+
+/* Public first impression: focused hero + three prices, with an expandable,
+   scrollable comparison on demand. Never applies to Super Admin screens. */
+.essential-public .onboarding .phone{width:100%;max-width:none;height:100dvh;min-height:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;background:#fbfcfa}
+.essential-public .onboard-header{padding:9px clamp(14px,3vw,48px);min-height:50px}
+.essential-public .onboard-brand{font-size:17px}
+.essential-public .onboard-main{flex:1;min-height:0;overflow:auto;padding:8px clamp(12px,3vw,48px)}
+.essential-public .authwrap.auth-step-welcome{display:flex;flex-direction:column;justify-content:center;gap:10px;max-width:1150px;margin:0 auto;width:100%;height:auto;min-height:0}
+.essential-public .auth-step-welcome>.welcome-intro{grid-column:auto;grid-row:auto;margin:0;padding:0;text-align:center}
+.essential-public .welcome-intro h1{font-size:clamp(23px,3.5vw,42px);line-height:1.15;margin:4px auto 7px;max-width:900px}
+.essential-public .welcome-intro p{font-size:clamp(11px,1.2vw,14px);max-width:650px;margin:0 auto}
+.essential-public .welcome-eyebrow{font-size:10px;color:#59745d}
+.essential-public .public-edition-tabs{display:flex;justify-content:center;gap:7px}
+.essential-public .public-edition-tabs button{font:inherit;font-size:12px;font-weight:700;min-height:37px;padding:7px 22px;border:1px solid #dbe5d8;border-radius:99px;background:#fff;color:#45634c;cursor:pointer}
+.essential-public .public-edition-tabs button[aria-pressed=true]{background:#42654b;color:#fff}
+.essential-public .public-edition-tabs button:focus-visible{outline:3px solid #779574;outline-offset:2px}
+.essential-public .auth-step-welcome>.ess-pricing{display:flex;flex-direction:column;gap:8px;grid-row:auto;grid-column:auto;margin:0}
+.essential-public .ess-pricing-head h2{font-size:clamp(13px,1.7vw,19px);letter-spacing:0;text-transform:none;margin:0}
+.essential-public .ess-pricing-head{justify-content:space-between;gap:8px}
+.essential-public .ess-pricing>.ess-field{max-width:none;display:flex;flex-direction:row;align-items:center;gap:10px;margin:0;font-size:11px}
+.essential-public .ess-pricing>.ess-field input{width:72px;min-height:34px;padding:5px 8px;font-size:13px}
+.essential-public .ess-switch{padding:2px}
+.essential-public .ess-switch .ess-btn{min-height:34px;padding:6px 10px;font-size:11px}
+.essential-public .ess-price-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin:0;gap:12px}
+.essential-public .ess-price{min-width:0;padding:15px;gap:8px;border-radius:15px;box-shadow:0 3px 15px #19332211}
+.essential-public .ess-price h3{font-size:clamp(15px,1.8vw,20px);margin:7px 0 2px}
+.essential-public .ess-price-amount{font-size:clamp(24px,2.8vw,35px)}
+.essential-public .ess-price-amount small{font-size:11px}
+.essential-public .ess-price>hr,.essential-public .ess-price>ul,.essential-public .ess-price>p:not(:first-of-type){display:none}
+.essential-public .ess-price>p:first-of-type{font-size:12px;line-height:1.4;margin:0;color:#536953}
+.essential-public .ess-price .ess-btn{min-height:40px;margin-top:auto;padding:9px 12px;font-size:12px}
+.essential-public .ess-price>.ess-badge{top:5px;right:8px;font-size:9px}
+.essential-public .ess-pricing>.ess-fine{font-size:10px;line-height:1.4;text-align:center;margin:0}
+.essential-public .ess-market-details{align-self:center;position:relative;z-index:5;color:#395b40;font-size:12px}
+.essential-public .ess-market-details>summary{cursor:pointer;list-style:none;min-height:42px;border:1px solid #dce5d8;border-radius:10px;padding:12px 18px;background:#fff;font-weight:700}
+.essential-public .ess-market-details>summary::-webkit-details-marker{display:none}
+.essential-public .ess-market-details>summary:focus-visible{outline:3px solid #779574;outline-offset:2px}
+.essential-public .ess-market-details[open]::before{content:"";position:fixed;inset:0;background:#102518c9;z-index:101}
+.essential-public .ess-market-details[open]>summary{position:fixed;top:2dvh;right:3vw;z-index:103;background:#f1f7ec}
+.essential-public .ess-market-panel{position:fixed;z-index:102;top:9dvh;bottom:5dvh;left:max(2vw,calc((100vw - 920px)/2));right:max(2vw,calc((100vw - 920px)/2));padding:22px;border-radius:15px;background:#fbfcf9;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 15px 40px #0005}
+.essential-public .ess-market-panel .ess-commercial{margin:22px 0}
+.essential-public .ess-market-panel .ess-commercial h2{font-size:18px}
+.essential-public .ess-market-close{font-size:12px;color:#6a806a}
+@media(max-width:680px){
+ .essential-public .onboard-header{padding:8px 12px;min-height:46px}
+ .essential-public .onboard-main{padding:7px 12px}
+ .essential-public .authwrap.auth-step-welcome{gap:7px;justify-content:flex-start}
+ .essential-public .welcome-intro h1{font-size:clamp(22px,5vw,28px);margin:2px auto}
+ .essential-public .welcome-intro p{font-size:11px}
+ .essential-public .public-edition-tabs button{padding:5px 16px;min-height:34px}
+ .essential-public .ess-pricing-head h2{font-size:13px}
+ .essential-public .ess-switch .ess-btn{min-height:31px;font-size:10px;padding:5px}
+ .essential-public .ess-price-grid{grid-template-columns:1fr;gap:6px}
+ .essential-public .ess-price{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:9px 12px;gap:2px 10px;min-height:97px}
+ .essential-public .ess-price h3{grid-column:1;grid-row:1;font-size:14px;margin:0}
+ .essential-public .ess-price .ess-price-amount{grid-column:2;grid-row:1/3;font-size:24px;white-space:nowrap;justify-self:end}
+ .essential-public .ess-price>p:first-of-type{grid-column:1;grid-row:2;font-size:10px}
+ .essential-public .ess-price>.ess-btn{grid-column:1/-1;grid-row:3;min-height:31px;font-size:11px;padding:5px}
+ .essential-public .ess-price>.ess-badge{font-size:8px;top:1px}
+ .essential-public .ess-market-details>summary{font-size:11px;min-height:34px;padding:8px}
+ .essential-public .ess-pricing>.ess-fine{font-size:9px}
+ .essential-public .ess-market-panel{padding:12px}
+}
+@media(max-height:640px){
+ .essential-public .onboard-main{overflow-y:auto}
+ .essential-public .welcome-intro p{display:none}
+ .essential-public .authwrap.auth-step-welcome{gap:4px}
+ .essential-public .ess-price{padding:7px}
+}
+
+
+/* Edition selector is visible in BOTH editions. Keep ≥44px touch targets on
+   Android/iOS regardless of CSS theme, including the Construction landing. */
+.onboarding .public-edition-tabs{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap}
+.onboarding .public-edition-tabs button{min-height:44px;min-width:105px;padding:9px 16px;border:1px solid #dbe5d8;border-radius:99px;background:#fff;color:#42654b;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.onboarding .public-edition-tabs button[aria-pressed=true]{background:#42654b;color:#fff}
+.onboarding .public-edition-tabs button:focus-visible{outline:3px solid #779574;outline-offset:3px}
+.essential-public .public-edition-tabs button{min-height:44px}
+@media(max-width:680px){.essential-public .public-edition-tabs button{min-height:44px;padding:8px 14px}}
+
+
+/* Accessible controls: public price cadence, member count, detail toggle,
+   and choose CTA retain the same minimum 44px tap area on S25. */
+.essential-public .ess-switch .ess-btn,
+.essential-public .ess-pricing>.ess-field input,
+.essential-public .ess-price .ess-btn,
+.essential-public .ess-market-details>summary{min-height:44px}
+@media(max-width:680px){
+ .essential-public .ess-switch .ess-btn,
+ .essential-public .ess-pricing>.ess-field input,
+ .essential-public .ess-price .ess-btn,
+ .essential-public .ess-market-details>summary{min-height:44px}
+}
