@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T06:01:19.314Z",
+  "generated_at": "2026-10-28T06:07:54.371Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1360,7 +1360,8 @@
         189,
         191,
         202,
-        203
+        203,
+        204
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1399,7 +1400,8 @@
       "pr": [
         154,
         202,
-        203
+        203,
+        204
       ],
       "note": "Travail rattaché à la PR #154. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1499,6 +1501,17 @@
     }
   },
   "activity": [
+    {
+      "number": 204,
+      "sha": "15ac63f22a43915c659ad558426ad45c394bc552",
+      "ci": "success",
+      "ids": [
+        "MISSION-010",
+        "MISSION-013"
+      ],
+      "title": "MISSION-010 — Réconcilier une fin acceptée dont l'accusé serveur s'est perdu",
+      "merged_at": "2026-10-28T06:07:45Z"
+    },
     {
       "number": 203,
       "sha": "311f6fd8937460773f01872fa21f1e91ae22bd0b",
@@ -2007,16 +2020,6 @@
       ],
       "title": "Essentiel — missions manuelles : brouillon, publication et Terminer sans sortie",
       "merged_at": "2026-10-26T22:19:27Z"
-    },
-    {
-      "number": 151,
-      "sha": "277e9999ea733981e96bcef3ca89bb0b4c94bf1b",
-      "ci": "success",
-      "ids": [
-        "NAV-007"
-      ],
-      "title": "Essentiel — prévenir volontairement d’un retard ou d’un problème d’accès",
-      "merged_at": "2026-10-26T22:10:06Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
