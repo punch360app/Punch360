@@ -75,3 +75,17 @@ test('changed proof policy or Auth identity blocks replay but retains request',a
  assert.equal(controller.state.queued.length,1);
  await win.happyDOM.close();
 });
+
+test('after reload without network, pending opaque count remains visible without stale client data',async()=>{
+ const fx=setup();const {controller,win}=fx;
+ await controller.load('company-A','user-A','worker-A');fx.offline();
+ assert.equal(await controller.finish('mission-A'),true);
+ const second=createPersonalMissionController({sb:{...fx.controller.state.sb,rpc:async()=>({error:{message:'offline'}})},
+  document:win.document,escape,redraw(){},notify(){}});
+ await second.load('company-A','user-A','worker-A');
+ assert.equal(second.state.items.length,0);
+ assert.equal(second.state.queued.length,1);
+ assert.match(second.render(),/toujours en attente/);
+ assert.doesNotMatch(second.render(),/Installation|Client fictif|123 rue de test/);
+ await win.happyDOM.close();
+});

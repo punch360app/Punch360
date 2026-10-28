@@ -403,7 +403,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
     (_,i)=>doc.defaultView.sessionStorage.key(i))
  };
  const queueIdentity=()=>({company:s.company,user:s.user,worker:s.worker});
- async function readQueue(){return listOfflineMissionCompletions({storage:queueStorage,identity:queueIdentity()});}
+ async function readQueue(identity=queueIdentity()){return listOfflineMissionCompletions({storage:queueStorage,identity});}
  async function load(company,user,worker,day=missionDate()){
   const same=s.company===company&&s.user===user&&s.worker===worker;
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
@@ -417,13 +417,20 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    if(gen!==generation)return;
    s.items=response.data?.items||[];s.commentRequired=!!response.data?.comment_required;s.photoRequired=!!response.data?.photo_required;s.photoOptional=!!response.data?.photo_optional;s.checklistRequired=!!response.data?.checklist_required;
    s.checklistItems=Array.isArray(response.data?.checklist_items)?response.data.checklist_items:[]; s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;s.loadedOnline=true;
-   try{s.queued=await readQueue();s.queueMessage='';}
-   catch(e){s.queued=[];s.queueMessage='File locale inaccessible : '+String(e?.message||e);}
-  }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
+   try{const queued=await readQueue({company,user,worker});if(gen!==generation)return;s.queued=queued;s.queueMessage='';}
+   catch(e){if(gen!==generation)return;s.queued=[];s.queueMessage='File locale inaccessible : '+String(e?.message||e);}
+  }catch{
+   if(gen!==generation)return;
+   s.error='Missions indisponibles : connexion requise.';
+   // Only opaque, context-scoped pending IDs are shown; no stale client/route data.
+   try{const queued=await readQueue({company,user,worker});if(gen!==generation)return;s.queued=queued;}
+   catch(e){if(gen!==generation)return;s.queued=[];s.queueMessage='File locale inaccessible : '+String(e?.message||e);}
+  }
  }
  function reset(){generation++;upcomingGeneration++;detailsGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,loadedOnline:false,queued:[],queueMessage:'',error:'',issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker)return '';
+  if(!s.enabled&&s.queued.length)return '<section class="zen-company" role="status"><b>'+s.queued.length+' fin(s) locale(s) toujours en attente.</b><p>Connexion requise pour revalider votre session. Aucune mission n’est confirmée et aucune information client n’est mise en cache.</p><button type="button" class="ess-btn" data-action="mission:sync">Vérifier et synchroniser</button></section>';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
   if(!s.enabled)return s.queued.length?'<section class="zen-company" role="status"><b>'+s.queued.length+' fin(s) locale(s) non synchronisée(s).</b><button type="button" class="ess-btn" data-action="mission:sync">Vérifier et synchroniser</button></section>':'';
   if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
