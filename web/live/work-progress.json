@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T12:37:44.614Z",
+  "generated_at": "2026-10-28T12:40:30.682Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1522,6 +1522,14 @@
   },
   "activity": [
     {
+      "number": 212,
+      "sha": "26538d9f0dbd2d69984d1897b6e839cfe511c6fd",
+      "ci": "success",
+      "ids": [],
+      "title": "Corriger les boutons de gestion des 3 Super Admins dans PUNCH Web",
+      "merged_at": "2026-10-28T12:40:21Z"
+    },
+    {
       "number": 211,
       "sha": "14760ceaafb53fdbd5c54ad5287d30bab959335b",
       "ci": "success",
@@ -2022,17 +2030,6 @@
       "ids": [],
       "title": "Passation — refléter #160 fusionnée et éviter la duplication NAV-007",
       "merged_at": "2026-10-27T01:07:05Z"
-    },
-    {
-      "number": 160,
-      "sha": "e4262dc0a282b2460370ac4761159e4ce88c089a",
-      "ci": "success",
-      "ids": [
-        "MISSION-008",
-        "MISSION-009"
-      ],
-      "title": "Missions — réordonner deux étapes déjà publiées sans toucher aux heures",
-      "merged_at": "2026-10-27T01:01:34Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
