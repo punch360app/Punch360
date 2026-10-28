@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T10:12:26.545Z",
+  "generated_at": "2026-10-28T10:28:09.085Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1022,7 +1022,8 @@
       "pr": [
         132,
         184,
-        185
+        185,
+        210
       ],
       "note": "Travail rattaché à la PR #132. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1491,7 +1492,8 @@
       "external_required": true,
       "pr": [
         184,
-        185
+        185,
+        210
       ],
       "note": "Travail rattaché à la PR #184. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1519,6 +1521,17 @@
     }
   },
   "activity": [
+    {
+      "number": 210,
+      "sha": "717161fdfa4c9aa88816cdbfb597b1e74ad978eb",
+      "ci": "success",
+      "ids": [
+        "GOV-004",
+        "GOV-016"
+      ],
+      "title": "docs: accélérer l’exécution du prompt maître sans réduire les contrôles",
+      "merged_at": "2026-10-28T10:27:56Z"
+    },
     {
       "number": 209,
       "sha": "891f711a961d216c654353cac6b006781677dc54",
@@ -2022,17 +2035,6 @@
       ],
       "title": "Missions — ne plus choisir arbitrairement la prochaine étape si deux rangs sont identiques",
       "merged_at": "2026-10-27T00:17:22Z"
-    },
-    {
-      "number": 157,
-      "sha": "8b13bcb64c68bc4bd18ca27a6bc74feefe5234cf",
-      "ci": "success",
-      "ids": [
-        "MISSION-004",
-        "MISSION-009"
-      ],
-      "title": "Essentiel — tournée personnelle du jour et itinéraire par mission",
-      "merged_at": "2026-10-26T23:55:54Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
