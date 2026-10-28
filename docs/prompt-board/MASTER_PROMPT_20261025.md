@@ -85,6 +85,9 @@ Ces règles renforcent le mode accéléré et priment sur les formulations gén�
 
 ## Validation ciblée et réutilisation des preuves — règle pour tous les lots
 
+**Optimisation QA du 28 octobre 2026 :** la chaîne GitHub distingue automatiquement PR de pure logique explicitement autorisée (classification stricte testée, sans capture Chromium inutile) et toute modification d'interface, CSS, HTML, accès, droits, dépendance partagée ou inconnue (24 vrais écrans). Un diff introuvable force les 24 captures. La CI TypeScript, les tests métier et de sécurité ne sont jamais exemptés. Sur main, revue complète, preuves Figma non approuvées et handoff Work restent obligatoires. Installer le navigateur seul avec cache au lieu de réinstaller Expo dans le job visuel. La fusion exige chaque contrôle requis vert sur le SHA final, puis une vérification de déploiement. Cette règle optimise la préparation QA, jamais les garde-fous Auth/RLS/pointage/paie/paiement.
+
+
 **Avant de coder**, définir en quelques lignes dans la PR ou la passation existante : résultat utilisable par rôle, IDs et manques concernés, critères de sortie, dépendances et validations retenues. Pas de document supplémentaire obligatoire. Cette sélection prépare les tests; elle ne permet pas d'omettre une exigence du parcours.
 
 ### Choisir les contrôles d'après les effets du changement
