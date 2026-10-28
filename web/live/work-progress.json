@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T06:23:51.626Z",
+  "generated_at": "2026-10-28T06:34:50.237Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1364,7 +1364,8 @@
         203,
         204,
         205,
-        206
+        206,
+        207
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1503,9 +1504,30 @@
         191
       ],
       "note": "Travail rattaché à la PR #189. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "MISSION-012": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        207
+      ],
+      "note": "Travail rattaché à la PR #207. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 207,
+      "sha": "4571cdf3ea46e5a076ea3b30f2c444cc5fc0ea74",
+      "ci": "success",
+      "ids": [
+        "MISSION-012",
+        "MISSION-013"
+      ],
+      "title": "MISSION-012 — Importer jusqu’à 50 missions CSV avec prévisualisation et brouillons contrôlés",
+      "merged_at": "2026-10-28T06:34:40Z"
+    },
     {
       "number": 206,
       "sha": "42caa996ef102db86c811acd1cf6f4d66129c004",
@@ -2011,16 +2033,6 @@
       ],
       "title": "Essentiel — corriger l’adresse d’un établissement sans créer de succursale",
       "merged_at": "2026-10-26T23:39:02Z"
-    },
-    {
-      "number": 154,
-      "sha": "adeee017b74e6f62913d2e654da75556d8060d15",
-      "ci": "success",
-      "ids": [
-        "MISSION-010"
-      ],
-      "title": "Missions — afficher un échec de connexion au lieu de masquer les missions",
-      "merged_at": "2026-10-26T22:32:00Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
