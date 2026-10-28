@@ -1,4 +1,5 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
+import {reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from './mission-completion-request.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
@@ -619,9 +620,14 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
     !['image/jpeg','image/png','image/webp'].includes(candidate.type)))throw Error('Photo invalide : JPEG, PNG ou WebP, maximum 5 Mio.');
   if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise. Aucune fin n’a été enregistrée.');
   if(!doc.defaultView.confirm('Terminer « '+x.title+' » sans pointer la sortie ?'))return false;
-  const request=s.pending.get(id)||doc.defaultView.crypto.randomUUID();
-  s.pending.set(id,request);s.busy=true;
+  s.busy=true;
   try{
+   const durable=await reserveMissionCompletionRequest({
+    storage:doc.defaultView.sessionStorage,
+    identity:{company:s.company,user:s.user,worker:s.worker,mission:id,version:x.version},
+    uuid:()=>doc.defaultView.crypto.randomUUID()
+   });
+   const request=durable.id;
    let photo=cached?.photoId||null;
    if((s.photoRequired||s.photoOptional)&&candidate&&!photo){
     const body=new doc.defaultView.FormData();
@@ -635,7 +641,9 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    const resp=await sb.rpc(photo?'complete_essential_mission_v4':s.checklistRequired?'complete_essential_mission_v3':s.commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
     p_company:s.company,p_id:id,p_version:x.version,p_request:request,...(s.commentRequired||s.checklistRequired||photo?{p_comment:proof}:{}),
     ...(s.checklistRequired||photo?{p_checklist:s.checklistRequired?s.checklistItems:null}:{}),...(photo?{p_photo:photo}:{})});
-   if(resp.error)throw resp.error;s.pending.delete(id);s.completionDraft=null;s.completionChecks=null;s.uploadedPhoto=null;
+   if(resp.error)throw resp.error;
+   await acknowledgeMissionCompletionRequest(doc.defaultView.sessionStorage,durable);
+   s.pending.delete(id);s.completionDraft=null;s.completionChecks=null;s.uploadedPhoto=null;
    await load(s.company,s.user,s.worker,s.day);notify('Mission terminée; votre pointage ne change pas.');return true;
   }catch(err){s.error='Fin non confirmée : '+(String(err?.message||'').includes('Commentaire')?'commentaire requis; actualisez les missions.':'vérifiez la connexion et réessayez la même demande.');return false;}
   finally{s.busy=false;redraw();}

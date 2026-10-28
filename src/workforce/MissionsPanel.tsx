@@ -1,6 +1,8 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-native';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from '../../web/live/mission-completion-request.js';
 import * as Network from 'expo-network';
 import * as DocumentPicker from 'expo-document-picker';
 import {supabase} from '../lib/supabase';
@@ -493,11 +495,18 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    Alert.alert('Terminer la mission ?', 'Cette action ne termine pas votre journée ni votre pointage.',
    [{text:'Annuler',style:'cancel'},{text:'Terminer',onPress:()=>{void (async()=>{
      setBusy(true);setMessage('');
-     const id=next.id,request=requests.current.get(id)||Crypto.randomUUID();
-     requests.current.set(id,request);
+     const id=next.id;
      try{
       const network=await Network.getNetworkStateAsync();
       if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
+      const verified=await supabase.auth.getUser();
+      if(verified.error||!verified.data.user?.id)throw Error('Session à revalider en ligne.');
+      const durable=await reserveMissionCompletionRequest({
+       storage:AsyncStorage,
+       identity:{company:companyId,user:verified.data.user.id,worker:workerId,mission:id,version:next.version},
+       uuid:()=>Crypto.randomUUID()
+      });
+      const request=durable.id;
       const previousPhoto=stagedPhoto.current;
        const photoAllowed=photoRequired||photoOptional;
        let photo=photoAllowed&&previousPhoto?.id===id&&previousPhoto?.version===next.version?(previousPhoto?.photoId??null):null;
@@ -513,6 +522,7 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
        await rpc(photo?'complete_essential_mission_v4':checklistRequired?'complete_essential_mission_v3':commentRequired?'complete_essential_mission_v2':'complete_essential_mission',{
        p_company:companyId,p_id:id,p_version:next.version,p_request:request,
        ...(commentRequired||checklistRequired||photo?{p_comment:proof}:{}),...(checklistRequired||photo?{p_checklist:checklistRequired?checklistItems:null}:{}),...(photo?{p_photo:photo}:{})});
+      await acknowledgeMissionCompletionRequest(AsyncStorage,durable);
       requests.current.delete(id);setCompletionComment('');setChecklistChecked([]);setPhotoAsset(null);stagedPhoto.current=null;await refresh();setMessage('Mission terminée. Le pointage reste inchangé.');
      }catch{setMessage('Fin non confirmée : reconnectez-vous et réessayez (même demande).');}
      finally{setBusy(false)}
