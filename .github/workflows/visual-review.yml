@@ -26,27 +26,64 @@ jobs:
   capture-and-compare:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      NODE_PATH: /tmp/punch-visual-deps/node_modules
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - name: Classify changed paths; unknown or production changes always require 24 captures
+        id: visual-scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          mode=full
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" &&
+                "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            if git fetch --no-tags --depth=1 origin "$BASE_SHA" &&
+               git diff --name-only "$BASE_SHA" HEAD > /tmp/punch-visual-changes; then
+              mode=$(node .github/scripts/visual-impact.cjs /tmp/punch-visual-changes)
+            else
+              echo "Cannot verify PR diff; running full browser coverage."
+            fi
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "Visual review mode: $mode"
+      - name: Check risk classification fail-closed contract
+        run: node --test .github/scripts/visual-impact.test.cjs
+      - name: Explain fast path; no screenshot or Figma approval is inferred
+        if: steps.visual-scope.outputs.mode == 'fast'
+        run: |
+          echo '### Visual scope — no browser setup necessary' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Only explicitly allowlisted pure business helpers and unit tests changed; application TypeScript + all unit tests run separately in the mandatory PUNCH TypeScript workflow.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No visual verification or Figma design approval claimed. Full 24-screen review remains mandatory on main and for every UI/CSS/unknown diff.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Install only visual tooling (no Expo npm ci, no product manifest changes)
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: |
+          mkdir -p /tmp/punch-visual-deps
+          npm install --prefix /tmp/punch-visual-deps --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.0 pngjs@7.0.0
+      - name: Cache Chromium headless shell across PRs and main
+        if: steps.visual-scope.outputs.mode == 'full'
+        uses: actions/cache@v4
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install app dependencies without modifying product manifests
-        run: npm ci --prefer-offline --no-audit --no-fund
-      - name: Install screenshot and PNG tools without saving a lockfile
-        run: npm install --no-save --no-package-lock playwright@1.56.0 pngjs@7.0.0
+          path: ~/.cache/ms-playwright
+          key: punch-chromium-headless-1.56.0-${{ runner.os }}-${{ runner.arch }}
       - name: Verify comparison, approvals and recommendations
+        if: steps.visual-scope.outputs.mode == 'full'
         run: node --test .github/scripts/visual-feedback.test.cjs
       - name: Verify deduplicated Work issue handoff contract
+        if: steps.visual-scope.outputs.mode == 'full'
         run: node --test .github/scripts/visual-issue.test.cjs
       - name: Verify Figma evidence pack from authentic browser images
+        if: steps.visual-scope.outputs.mode == 'full'
         run: node --test .github/scripts/visual-figma-pack.test.cjs
-      - run: npx playwright install --with-deps chromium
+      - name: Ensure only Chromium headless shell and required system libraries
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node /tmp/punch-visual-deps/node_modules/playwright/cli.js install --with-deps --only-shell chromium
       - name: Serve the real Punch Web interface locally
+        if: steps.visual-scope.outputs.mode == 'full'
         run: |
           python3 -m http.server 8765 -d web/live > /tmp/punch-visual-server.log 2>&1 &
           for i in $(seq 1 20); do
@@ -56,24 +93,28 @@ jobs:
           cat /tmp/punch-visual-server.log
           exit 1
       - name: Exercise and capture public onboarding journeys on phone, tablet and PC
+        if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-capture.cjs
       - name: Verify all 24 distinct public screen states were visited
+        if: steps.visual-scope.outputs.mode == 'full'
         run: |
           node -e "const fs=require('fs');const p='visual-captures/functional-journeys.json';const x=JSON.parse(fs.readFileSync(p,'utf8'));if(x.visits!==24||new Set(x.results.map(r=>r.image)).size!==24){console.error('Incomplete public journey coverage',x.visits);process.exit(1)};for(const r of x.results){if(!fs.statSync('visual-captures/'+r.image).size)process.exit(1)}"
       - name: Create three Figma-ready contact sheets with source hashes (never approve)
+        if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-figma-pack.cjs
       - name: Validate Figma handoff files are present
+        if: steps.visual-scope.outputs.mode == 'full'
         run: |
           node -e "const fs=require('fs');const p='visual-captures/';for(const n of ['figma-contact-S25.png','figma-contact-iPad.png','figma-contact-PC.png','figma-handoff.json','FIGMA_HANDOFF.md']){if(!fs.existsSync(p+n)||!fs.statSync(p+n).size)throw Error('Missing Figma evidence: '+n)}"
       - name: Compare owner-approved screenshot baselines and create Work recommendations
-        if: always()
+        if: ${{ always() && steps.visual-scope.outputs.mode == 'full' }}
         run: node .github/scripts/visual-compare.cjs
       - name: Verify deliverable files in the visual report
-        if: always()
+        if: ${{ always() && steps.visual-scope.outputs.mode == 'full' }}
         run: |
           node -e "const fs=require('fs');for(const n of ['review.html','report.json','WORK_VISUAL_FIX.md']){const p='visual-captures/'+n;if(!fs.existsSync(p)||!fs.statSync(p).size)throw Error('Missing artifact file: '+p)}"
       - name: Preserve screenshots, diffs, HTML and Work repair instructions
-        if: always()
+        if: ${{ always() && steps.visual-scope.outputs.mode == 'full' }}
         uses: actions/upload-artifact@v4
         with:
           name: punch-visual-captures

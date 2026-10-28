@@ -11,6 +11,18 @@
 
 **Dépôt :** https://github.com/punch360app/Punch360. **Supabase exclusif :** `mlabstdxxwjdpfaxiwmg`. Construction et Essentiel restent distincts. Ne jamais recommencer le projet à zéro.
 
+## Pipeline QA proportionné aux changements — optimisation du 28 octobre 2026
+
+**Le contrôle de sécurité n'est pas négociable.** Le workflow `PUNCH TypeScript` conserve sur le SHA final les tests TypeScript, dépendances Expo, `npm test` (dont protections Auth, RLS et missions) et syntaxe Web. Aucune exception ni auto-fusion en cas d'échec.
+
+Le workflow `Punch 360 safe visual review` garde **son nom, sa présence sur les PR Web et ses 24 vraies captures** pour tout changement UI/HTML/CSS, import d'interface, script visuel, baseline, dépendance inconnue ou diff impossible à lire. Sur `main`, la revue complète reste obligatoire à chaque déclenchement, ainsi qu'à la vérification quotidienne et manuelle; elle génère le pack Figma et la passation unique Work, jamais une approbation Figma fictive.
+
+Une PR ne touchant **exclusivement** que des modules de logique métier expressément autorisés dans `.github/scripts/visual-impact.cjs` (avec ses tests/documentation) reçoit un contrôle rapide de périmètre **sans installation de navigateur**. C'est une exemption VISUELLE limitée, pas une exemption de tests métier, sécurité ou UI lorsque l'interface est touchée. Toute incertitude oblige le parcours complet. Ne jamais ajouter un fichier à la liste de confiance par simple motif de vitesse sans preuve que ses changements sont non visuels; ne jamais sauter la CI obligatoire.
+
+Sur tous les parcours complets, installer seulement `playwright` et `pngjs` dans un préfixe temporaire; **ne pas réinstaller l'application Expo** dans le job visuel. Réutiliser le cache du navigateur headless shell. Tous les tests et les 24 vrais écrans restent identiques; seule la préparation inutile est supprimée. Comparer la durée réelle des runs avant/après, et revenir en arrière si la fiabilité baisse.
+
+La fusion demeure conditionnée à **tous les workflows requis au SHA final**. Le déploiement concerné doit réussir ensuite; Web, Supabase, Expo et appareils restent attestés séparément. Aucun appel de sécurité, accès client, pointage, salaire ou paiement n'est accéléré en contournant une autorisation.
+
 ## Routine de travail par gros lots locaux — obligatoire (27 octobre 2026)
 
 Le propriétaire choisit **une construction locale par lots cohérents** : une copie Git avec terminal lorsque réellement disponible, développement conjoint Web/Expo/SQL/Edge/tests, validations ciblées pendant le codage, puis **un push groupé et une PR par parcours métier**. Ne pas effectuer un push par fichier ou par micro-correction, ne pas perdre du temps à relancer une inspection générale. Lire et appliquer le [protocole détaillé](LOCAL_BATCH_WORKFLOW.md) avant de choisir le lot. Le contrôle final sur le SHA PR, les protections serveur et l'attestation des déploiements restent obligatoires.

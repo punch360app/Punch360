@@ -15,6 +15,10 @@
 3. Garder les commits locaux lisibles; préférer **un push groupé** lorsque le parcours est cohérent, plutôt qu'un push/une PR à chaque micro-correction. Ne pas grossir artificiellement un lot avec des fonctionnalités sans rapport : un lot n'est jamais « gros » au détriment de la possibilité de le vérifier, corriger ou rétablir.
 4. Si une API externe est nécessaire (Supabase, Stripe, appareil, Auth, SMTP), isoler ses effets et valider les autorisations. **Supabase autorisé exclusivement : `mlabstdxxwjdpfaxiwmg`**. Migrations additives, dépendances et ordre d'activation vérifiés; pas d'écriture destructive ni modification de prix, contrat ou paiement réel sans validation explicite.
 
+## Exécution QA sans attente inutile (28 octobre 2026)
+
+Ne pas demander au responsable UX/UI de refaire systématiquement les 24 captures pour un module non visuel. Le chemin rapide des PR est limité par liste blanche explicite et testé, et **ne supprime jamais les validations de sécurité ou les tests métier**. Si `web/live/app.js`, `missions.js`, CSS, HTML, auth, mise en page, une dépendance partagée ou tout fichier inconnu change, exécuter la suite visuelle complète. Le SHA final fait foi. Le job visuel complet utilise des dépendances légères et un cache Chromium; le job TypeScript demeure indépendant et inchangé. Sur `main` et en revue planifiée, conserver les 24 captures et la passation Work, sans prétendre couvrir les écrans authentifiés.
+
 ## Publication et sécurité inchangées
 
 1. Pousser **une branche et une PR par parcours**, prête à relire; lister seulement les IDs réellement touchés au format `PUNCH-PROGRESS: ...`.
