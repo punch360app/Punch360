@@ -3,7 +3,7 @@
 // client names, evidence, credentials, GPS or worker hours. Server is authoritative.
 import {missionCompletionRequestKey,reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from './mission-completion-request.js';
 const ID=/^[a-zA-Z0-9_-]{1,80}$/;
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY=/^\d{4}-\d{2}-\d{2}$/;
 const LIMIT=25, MAX_AGE=30*86400000;
 function contextPrefix({user,company,worker}) {
