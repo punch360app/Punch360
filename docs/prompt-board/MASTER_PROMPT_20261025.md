@@ -59,6 +59,8 @@ En l’absence d’un défaut critique ouvert et réalisable, suivre les jalons 
 
 Un prérequis réellement bloqué empêche uniquement la livraison qui en dépend. Documenter la cause et avancer sur le prochain parcours indépendant, y compris d’un jalon suivant. Ne pas déclarer le jalon bloqué terminé et ne pas affaiblir une protection pour le contourner.
 
+**MISSION-012 — extension CSV multi-journées du 28 octobre 2026 :** permettre l'import de jusqu'à 50 missions pour les 15 dates allant d'aujourd'hui à J+14, avec aperçu et conflits par date, source de chaque liste réauthentifiée depuis les RPC de la compagnie, revalidation avant toutes les écritures et avant chaque ligne, idempotence serveur et refus de répéter une requête réseau incertaine. Toutes les missions importées restent en brouillon. Ne jamais transformer ce sous-lot en support XLSX ou en horaires/paie/pointages; Excel natif, lots plus longs et édition d'occurrences sont des exigences MISSION-012 encore ouvertes.
+
 ## Exécution courante — routine unique
 
 Appliquer [WORK_START.md](WORK_START.md) : une lecture ciblée, un parcours complet, des validations proportionnées, une PR cohérente, la CI finale, la publication vérifiée et une passation courte. Le [protocole local](LOCAL_BATCH_WORKFLOW.md) précise seulement les opérations Git; le [protocole UX/UI](UX_UI_AUTONOME_WORKFLOW.md) précise la recette des écrans touchés. Les consulter quand le lot les nécessite, sans refaire trois démarrages.
