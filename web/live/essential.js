@@ -56,7 +56,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const billing=createBillingController({sb,redraw,escape:e,document:doc});
  let identityRevision=0;
  const planning=createPlanningController({sb,redraw,notify,escape:e,document:doc});
- const s={plans:[],workers:[],dashboard:null,platform:false,platformOpen:true,tab:'plans',selected:'essential_plus',cadence:'monthly',seats:5,error:'',loading:false,saving:false,snapshot:null,factor:null,qr:null,mfaRequired:true,company:null,worker:null,effectiveBillingStatus:null};
+ const s={plans:[],workers:[],dashboard:null,platform:false,platformOpen:true,tab:'home',selected:'essential_plus',cadence:'monthly',seats:5,error:'',loading:false,saving:false,snapshot:null,factor:null,qr:null,mfaRequired:true,company:null,worker:null,effectiveBillingStatus:null};
  const platformTests=createPlatformTestsController({sb,state:s,redraw,escape:e,document:doc});
  const money=c=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(c/100);
  const btn=(text,action,extra='')=>`<button type="button" class="ess-btn" data-action="ess:${action}" ${extra}>${text}</button>`;
@@ -66,7 +66,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const get=id=>doc.getElementById(id), val=id=>get(id)?.value.trim()??'';
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
- async function load(user,account){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;
+ async function load(user,account){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
    if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(!s.mfaRequired){const snapshot=await rpc('platform_snapshot');if(!current())return;s.snapshot=snapshot;const accounts=await rpc('platform_test_accounts');if(!current())return;s.testAccounts=accounts;}}
    if(account?.companies?.product_edition==='essential'){
@@ -89,8 +89,71 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const monthly=p.base_cents+(p.included_seats_unlimited===true?0:Math.max(0,s.seats-p.included_seats))*p.extra_seat_cents,annual=Math.round(monthly*12*(100-p.annual_discount)/100),yearly=s.cadence==='yearly';
  return `<article class="ess-price ${p.recommended?'recommended':''}">${p.recommended?'<span class="ess-badge">Recommandé</span>':''}<h3>${e(p.title)}</h3><div class="ess-price-amount">${money(yearly?annual:monthly)}<small> / ${yearly?'an':'mois'}</small></div><p>${p.included_seats_unlimited===true?'Membres inclus : illimité · aucun supplément par membre':p.included_seats+' membres inclus · +'+money(p.extra_seat_cents)+' / membre / mois'}</p><hr><p>${p.kiosk_limit===null?'Bornes illimitées':p.kiosk_limit+' borne(s)'} · ${p.establishment_limit===null?'Plusieurs établissements':p.establishment_limit+' établissement(s)'}</p><ul><li>Pointage et heures</li><li>Compte personnel facultatif</li><li>Invitations SMS et courriel</li><li>20 designs prévus au catalogue</li></ul><p>${yearly?'Équivalent '+money(annual/12)+'/mois · économie '+money(monthly*12-annual):'Annuel : '+money(annual)+' en un versement'}</p>${btn('Choisir ce forfait','choose',`data-id="${e(p.id)}"`)}</article>`;
  }).join('')}</div>${!visible.length?'<p role="status">'+e(s.error||'Chargement des tarifs…')+'</p>':''}<p class="ess-fine">Dollars canadiens, avant taxes. Les sièges additionnels profitent du même rabais annuel. Aucun paiement confirmé à cette étape.</p>${s.checkout?`<div class="ess-notice" role="status">Forfait choisi : ${e(s.checkout)}. Le paiement Stripe n’est pas encore activé. Aucun abonnement facturé.</div>`:''}</section>${renderCommercialDetails(s.plans,e,money)}`;}
- const nav=[['plans','Forfaits et tarifs'],['companies','Entreprises'],['users','Utilisateurs'],['admins','3 Super Admins'],['specialPrices','Tarifs particuliers'],['billing','Abonnements Stripe'],['tests','Comptes test'],['archives','Archives et récupération'],['finance','Rapports financiers'],['promotions','Codes promotionnels'],['support','Support clients'],['audit','Sécurité et audit']];
- function renderPlatform(){return `<div class="ess-platform"><aside><h1>PUNCH</h1><small>SUPER ADMIN</small><nav>${nav.map(([id,title])=>btn(title,'tab',`data-id="${id}" aria-pressed="${s.tab===id}"`)).join('')}</nav>${btn('Actualiser','refresh')}${btn('Se déconnecter','logout')}</aside><main id="main"><header><h2>${e(nav.find(x=>x[0]===s.tab)?.[1]||'Forfaits et tarifs')}</h2><span class="ess-badge">Modifications auditées</span></header>${s.error?`<div class="ess-notice" role="alert">${e(s.error)}</div>`:''}${s.mfaRequired?renderMfa():s.tab==='plans'?renderPlanEditor():s.tab==='companies'?renderCompanies():s.tab==='users'?platformUsers.render():s.tab==='admins'?platformAdmins.render():s.tab==='specialPrices'?platformPriceProposals.render():s.tab==='tests'?renderTests():s.tab==='billing'?renderPlatformBilling():s.tab==='archives'?archives.render():s.tab==='support'?support.render():s.tab==='promotions'?promotions.render():s.tab==='finance'?finance.render():renderAudit()}</main></div>`;}
+ const nav=[['home','Accueil'],['plans','Forfaits et tarifs'],['companies','Entreprises'],['users','Utilisateurs'],['specialPrices','Tarifs particuliers'],['billing','Abonnements Stripe'],['tests','Comptes test'],['archives','Archives et récupération'],['finance','Rapports financiers'],['promotions','Codes promotionnels'],['support','Support clients'],['audit','Sécurité et audit']];
+
+ // Overview uses existing server-authorized platform_snapshot; no new broad reads.
+ // Missing/invalid figures are not guessed and never displayed as zero.
+ function renderPlatformHome(){
+  const snapshot=s.snapshot||{};
+  const count=v=>Number.isSafeInteger(v)&&v>=0?new Intl.NumberFormat('fr-CA').format(v):'—';
+  const metrics=[
+   ['Entreprises clientes',snapshot.companies,'companies','Voir les entreprises'],
+   ['Utilisateurs inscrits',snapshot.users,'users','Voir les utilisateurs'],
+   ['Membres actifs',snapshot.active_members,'companies','Voir les membres'],
+   ['Entreprises de test',snapshot.test_companies,'tests','Ouvrir les tests']
+  ];
+  const shortcuts=[
+   ['companies','Entreprises','Consulter les sociétés et leurs dossiers'],
+   ['users','Utilisateurs','Trouver et vérifier un compte'],
+   ['billing','Abonnements Stripe','Contrats, factures et abonnements'],
+   ['tests','Comptes test','Tester les parcours sans clients réels'],
+   ['plans','Forfaits et tarifs','Consulter les tarifs configurés'],
+   ['support','Support clients','Suivre les demandes de soutien']
+  ];
+  const rawAudit=Array.isArray(snapshot.audit)?snapshot.audit:[];
+  const activity=rawAudit.slice(0,4);
+  const labels={
+   platform_admin_added:'Accès administrateur accordé',
+   platform_admin_removed:'Accès administrateur retiré',
+   platform_admin_added_via_sql:'Accès administrateur ajouté dans Supabase',
+   plan_updated:'Forfait modifié',
+   test_company_created:'Entreprise de test créée',
+   test_user_created:'Compte de test créé',
+   test_user_status:'Statut de compte de test modifié'
+  };
+  const events=activity.map(item=>{
+   const date=new Date(item.created_at);
+   const when=Number.isFinite(date.getTime())?date.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'}):'Date indisponible';
+   return '<li><span>'+e(labels[item.action]||'Activité administrative')+'</span><time>'+e(when)+'</time></li>';
+  }).join('');
+  return '<div class="ess-platform-home">'+
+   '<section class="ess-home-intro"><div><span class="ess-home-eyebrow">PUNCH 360° · Espace de gestion</span>'+
+   '<h3>Votre plateforme, en un coup d’œil</h3>'+
+   '<p>Consultez les indicateurs réels et accédez rapidement aux principales fonctions de PUNCH.</p></div>'+
+   btn('Actualiser les données','refresh')+'</section>'+
+   '<section aria-label="Indicateurs de la plateforme"><h3 class="ess-home-heading">Vue d’ensemble</h3>'+
+   '<div class="ess-home-metrics">'+metrics.map(([label,value,id,more])=>
+    '<button type="button" class="ess-home-stat" data-action="ess:tab" data-id="'+id+'">'+
+    '<small>'+e(label)+'</small><strong>'+e(count(value))+'</strong><span>'+e(more)+' <span aria-hidden="true">›</span></span></button>'
+   ).join('')+'</div></section>'+
+   '<div class="ess-home-columns"><section aria-label="Accès rapides"><h3 class="ess-home-heading">Accès rapides</h3>'+
+   '<div class="ess-home-links">'+shortcuts.map(([id,label,description])=>
+    '<button type="button" class="ess-home-link" data-action="ess:tab" data-id="'+id+'"><span>'+
+    '<strong>'+e(label)+'</strong><small>'+e(description)+'</small></span><span class="ess-home-arrow" aria-hidden="true">›</span></button>'
+   ).join('')+'</div></section>'+
+   '<section aria-label="Répartition et activité"><h3 class="ess-home-heading">Aperçu de l’activité</h3>'+
+   '<div class="ess-panel ess-home-summary"><h4>Répartition des clients</h4>'+
+   '<div><span>Essentiel</span><strong>'+e(count(snapshot.essential))+'</strong></div>'+
+   '<div><span>Construction</span><strong>'+e(count(snapshot.construction))+'</strong></div>'+
+   '<p>Entreprises réelles, sans environnements de test.</p></div>'+
+   '<div class="ess-panel ess-home-summary"><h4>Activité administrative récente</h4>'+
+   (events?'<ul class="ess-home-events">'+events+'</ul>':
+    '<p>Aucune activité disponible pour le moment.</p>')+
+   '</div></section></div>'+
+   '<p class="ess-home-footnote">Données fournies par la plateforme après vérification de votre accès. Un tiret signifie qu’une donnée n’est pas disponible.</p>'+
+   '</div>';
+ }
+ function renderPlatform(){return `<div class="ess-platform"><aside><h1>PUNCH</h1><small>SUPER ADMIN</small><nav aria-label="Navigation Super Admin">${nav.map(([id,title])=>btn(title,'tab',`data-id="${id}" aria-pressed="${s.tab===id}"`)).join('')}</nav>${btn('Actualiser','refresh')}${btn('Se déconnecter','logout')}</aside><main id="main"><header><h2>${e(nav.find(x=>x[0]===s.tab)?.[1]||'Accueil')}</h2><span class="ess-badge">Espace sécurisé</span></header>${s.error?`<div class="ess-notice" role="alert">${e(s.error)}</div>`:''}${s.mfaRequired?renderMfa():s.tab==='home'?renderPlatformHome():s.tab==='plans'?renderPlanEditor():s.tab==='companies'?renderCompanies():s.tab==='users'?platformUsers.render():s.tab==='specialPrices'?platformPriceProposals.render():s.tab==='tests'?renderTests():s.tab==='billing'?renderPlatformBilling():s.tab==='archives'?archives.render():s.tab==='support'?support.render():s.tab==='promotions'?promotions.render():s.tab==='finance'?finance.render():renderAudit()}</main></div>`;}
  function renderPlatformBilling(){return subscriptions.render(s.plans)}
  function renderMfa(){return `<section class="ess-panel"><h3>Sécuriser la console</h3><p>Les opérations sensibles exigent votre application d’authentification.</p>${s.qr?`<img class="ess-qr" src="${e(s.qr)}" alt="Code QR à ajouter à votre application d’authentification">`:''}${btn('Configurer ou utiliser mon authentificateur','enroll')}${field('Code à six chiffres','ess-mfa-code','','text','inputmode="numeric" autocomplete="one-time-code" maxlength="6"')}${btn('Vérifier','verify')}</section>`;}
  function renderPlanEditor(){const p=s.plans.find(x=>x.id===s.selected);return `<div class="ess-price-grid">${s.plans.map(p=>`<button class="ess-price" data-action="ess:select" data-id="${e(p.id)}" aria-pressed="${s.selected===p.id}"><h3>${e(p.title)}</h3><strong class="ess-price-amount">${money(p.base_cents)}</strong><p>${p.included_seats_unlimited===true?'Membres inclus : illimité · supplément 0 $':p.included_seats+' membres inclus · +'+money(p.extra_seat_cents)}</p><small>${p.kiosk_limit===null?'Bornes illimitées':p.kiosk_limit+' borne(s)'} · version ${p.version}</small></button>`).join('')}</div>${p?`<section class="ess-panel"><h3>Paramètres du forfait sélectionné</h3><div class="ess-form-grid">${field('Nom du forfait','ess-title',p.title)}${field('Prix mensuel ($ CA)','ess-base',(p.base_cents/100).toFixed(2),'number','min="0" step="0.01"')}${field('Membres inclus en mode numérique','ess-included',p.included_seats,'number','min="1" max="100000"')}${field('Membre additionnel ($ CA)','ess-extra',(p.extra_seat_cents/100).toFixed(2),'number','min="0" step="0.01"')}${field('Réduction annuelle (%)','ess-discount',p.annual_discount,'number','min="0" max="100"')}${field('Bornes (vide = illimité)','ess-kiosk',p.kiosk_limit??'','number','min="1"')}${field('Établissements (vide = illimité)','ess-sites',p.establishment_limit??'','number','min="1"')}${field('Sursis (jours)','ess-grace',p.grace_days,'number','min="0" max="365"')}${field('Ordre de présentation','ess-sort',p.sort_order,'number')}${field('Description','ess-description',p.description)}</div><div class="ess-checks">${check('Actif','ess-active',p.active)}${check('Visible publiquement','ess-visible',p.public_visible)}${check('Recommandé','ess-recommended',p.recommended)}${check('Membres inclus illimités (aucun supplément)','ess-included-unlimited',p.included_seats_unlimited===true)}</div><p class="ess-fine">En mode illimité, le nombre numérique reste mémorisé mais aucun membre supplémentaire n’est facturé. Nouvelle version du catalogue uniquement : aucun ancien contrat n’est réécrit.</p><h3>Modules commerciaux</h3><div class="ess-checks">${['advanced_schedules','shift_swaps','availability','departments','supervisors','announcements','messages','minimum_coverage','hr_documents','certifications','advanced_reports','time_banks','labor_costs','payroll_integrations','multiple_establishments'].map(f=>check(({advanced_schedules:'Horaires avancés',shift_swaps:'Échanges de quarts',availability:'Disponibilités',departments:'Départements',supervisors:'Superviseurs',announcements:'Annonces',messages:'Messagerie',minimum_coverage:'Couverture minimale',hr_documents:'Documents RH',certifications:'Certifications',advanced_reports:'Rapports avancés',time_banks:'Banques d’heures',labor_costs:'Coûts',payroll_integrations:'Intégrations paie',multiple_establishments:'Multiétablissement'})[f],'ess-feature-'+f,p.features.includes(f))).join('')}</div><p class="ess-fine">Les fonctions de sécurité et de conservation restent obligatoires. Le catalogue décrit les droits commerciaux; leur activation ne remplace pas leur développement.</p>${field('Motif de modification','ess-reason','','text','minlength="3" maxlength="1000"')}<p>Cette nouvelle version s’applique au catalogue public. Les contrats existants sont conservés.</p>${btn(s.saving?'Enregistrement…':'Enregistrer une nouvelle version','save-plan',s.saving?'disabled':'')}</section>`:'<p>Chargement…</p>'}`;}
@@ -110,7 +173,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  if(action==='monthly'||action==='yearly')s.cadence=action;
  else if(action==='choose'){s.checkout=s.plans.find(p=>p.id===el.dataset.id)?.title;notify('Forfait choisi. Paiement Stripe encore à configurer.');onChoose(s.plans.find(p=>p.id===el.dataset.id));}
  else if(action==='select')s.selected=el.dataset.id;
- else if(action==='tab'){platformTests.hideCredentials();s.tab=el.dataset.id;if(s.tab==='companies')await directory.load();if(s.tab==='admins')await platformAdmins.load();if(s.tab==='archives')archives.reset(null,true);if(s.tab==='support')await support.load(null,true);if(s.tab==='audit')await audit.load();if(s.tab==='promotions')await promotions.load(s.platformUser);if(s.tab==='finance')await finance.load();}
+ else if(action==='tab'){platformTests.hideCredentials();s.tab=el.dataset.id;if(s.tab==='companies')await directory.load();if(s.tab==='archives')archives.reset(null,true);if(s.tab==='support')await support.load(null,true);if(s.tab==='audit')await audit.load();if(s.tab==='promotions')await promotions.load(s.platformUser);if(s.tab==='finance')await finance.load();}
  else if(action==='logout'){subscriptions.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();archives.reset();finance.reset();promotions.reset();support.reset();audit.reset();platformTests.reset();await sb.auth.signOut();s.platform=false;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;}
  else if(action==='refresh'){await plans();if(s.platform&&!s.mfaRequired)s.snapshot=await rpc('platform_snapshot');}
  else if(action==='billing-refresh'){await subscriptions.search(null,true);}
@@ -144,6 +207,6 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
- function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaRequired=true;}
+ function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaRequired=true;s.tab='home';}
  return {state:s,subscriptions,qualifiedCoverage,laborBudgets,platformUsers,platformAdmins,platformPriceProposals,directory,invitationEmail,notificationPreferences,supervision,breakPolicies,offlineReview,missingDays,archives,finance,promotions,audit,support,platformTests,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
 }
