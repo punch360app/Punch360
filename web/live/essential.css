@@ -28,3 +28,61 @@
 .ess-test-actions{display:flex;flex-wrap:wrap;gap:8px;max-width:440px}.ess-test-credentials{border:2px solid #779574}.ess-test-credentials input{font-family:monospace;overflow:auto}@media(max-width:650px){.ess-test-actions{max-width:100%;width:100%}.ess-test-actions .ess-btn{flex:1;min-height:48px}.ess-person:has(.ess-test-actions){flex-wrap:wrap}}
 
 .ess-field textarea{width:100%;box-sizing:border-box;min-height:120px;padding:12px;border:1px solid #dce3d6;border-radius:9px;background:#fafcf7;color:#2f4935;font:inherit;resize:vertical}.ess-field textarea:focus-visible{outline:2px solid #779574;outline-offset:2px}
+
+
+/* Super Admin landing dashboard — compact, legible and keyboard accessible. */
+.ess-platform-home{max-width:1420px;margin:22px auto 0;min-width:0}
+.ess-home-intro{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:26px 28px;border-radius:18px;background:linear-gradient(115deg,#ebf3e9 0%,#f5f8f2 100%);border:1px solid #d8e5d4;margin-bottom:30px}
+.ess-home-intro>div{min-width:0;max-width:680px}
+.ess-home-eyebrow{font-size:12px;font-weight:750;color:#4e7051;letter-spacing:.08em;text-transform:uppercase}
+.ess-platform .ess-home-intro h3{margin:10px 0 8px;font-size:clamp(23px,2.3vw,32px);line-height:1.22;color:#253f30}
+.ess-home-intro p{margin:0;max-width:610px;color:#526955;line-height:1.6;font-size:14px}
+.ess-home-intro>.ess-btn{flex-shrink:0}
+.ess-platform .ess-home-heading{font-size:19px;margin:0 0 16px;color:#2f4935}
+.ess-home-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:30px}
+.ess-home-stat{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:9px;min-width:0;min-height:162px;padding:19px;border:1px solid #e1e8db;border-radius:15px;background:#fff;color:#2f4935;font:inherit;cursor:pointer;box-shadow:0 2px 10px #173b2110}
+.ess-home-stat small{font-size:13px;color:#60765f;font-weight:600}
+.ess-home-stat strong{font-size:clamp(26px,2.7vw,38px);line-height:1.1;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.ess-home-stat>span{font-size:12px;color:#4e7051;font-weight:650;margin-top:auto}
+.ess-home-stat:hover,.ess-home-link:hover{border-color:#9eb79d;background:#f6faf3}
+.ess-home-stat:focus-visible,.ess-home-link:focus-visible{outline:3px solid #779574;outline-offset:3px}
+.ess-home-columns{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,1fr);gap:24px}
+.ess-home-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ess-home-link{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;min-height:96px;border:1px solid #e1e8db;border-radius:13px;padding:17px 18px;text-align:left;background:#fff;color:#2f4935;font:inherit;cursor:pointer}
+.ess-home-link strong,.ess-home-link small{display:block}
+.ess-home-link strong{font-size:14px;margin-bottom:7px}
+.ess-home-link small{font-size:12px;line-height:1.45;color:#677b67}
+.ess-home-arrow{font-size:28px;color:#4e7051;line-height:1}
+.ess-platform .ess-home-summary{margin-bottom:12px}
+.ess-home-summary h4{font-size:15px;margin:0 0 15px}
+.ess-home-summary>div{display:flex;align-items:center;justify-content:space-between;padding:9px 0;gap:10px;border-bottom:1px solid #edf1e9}
+.ess-home-summary>div strong{font-size:20px;font-variant-numeric:tabular-nums}
+.ess-home-summary p,.ess-home-footnote{font-size:12px;color:#72816e;line-height:1.55}
+.ess-home-events{list-style:none;margin:0;padding:0}
+.ess-home-events li{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid #edf1e9;padding:10px 0;font-size:12px}
+.ess-home-events li:last-child{border:0}
+.ess-home-events time{white-space:nowrap;color:#73816e}
+.ess-home-footnote{margin-top:18px}
+@media(max-width:1200px){
+ .ess-home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ess-home-columns{grid-template-columns:1fr}
+}
+@media(max-width:1050px){
+ .ess-platform{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+ .ess-platform>aside{padding:16px 20px;gap:6px;min-width:0}
+ .ess-platform nav{flex-direction:row;overflow-x:auto;overflow-y:hidden;flex:none;gap:6px;margin:10px 0;max-width:100%;scrollbar-width:thin}
+ .ess-platform nav .ess-btn{flex:0 0 auto;white-space:nowrap;padding:11px 14px}
+ .ess-platform>aside>.ess-btn{align-self:flex-start}
+ .ess-platform main{padding:20px;min-width:0;overflow-x:auto}
+ .ess-platform-home{margin-top:14px}
+}
+@media(max-width:680px){
+ .ess-platform main{padding:14px}
+ .ess-home-intro{padding:20px;flex-direction:column;align-items:stretch;gap:16px}
+ .ess-home-intro>.ess-btn{align-self:flex-start}
+ .ess-home-metrics{gap:10px}
+ .ess-home-stat{padding:14px;min-height:138px}
+ .ess-home-links{grid-template-columns:1fr}
+ .ess-home-link{min-height:77px}
+ .ess-home-events li{flex-wrap:wrap}
+}

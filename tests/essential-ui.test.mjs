@@ -6,9 +6,9 @@ const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const plan={id:'essential_plus',title:'Essentiel Plus',base_cents:3900,included_seats:5,extra_seat_cents:400,annual_discount:15,kiosk_limit:3,establishment_limit:1,features:['punch','hours','csv','offline','personal_account','themes','advanced_schedules'],active:true,public_visible:true,sort_order:2,version:1,grace_days:30,description:'',recommended:true};
 function setup(rpc=async()=>({data:true})){const w=new Window();let calls=[];const sb={rpc:async(name,args)=>{calls.push({name,args});return rpc(name,args);}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});ui.state.plans=[{...plan}];return {w,ui,calls};}
 test('live pricing uses the configured discount on base and additional people',async()=>{const {w,ui}=setup();ui.state.seats=6;ui.state.cadence='yearly';w.document.body.innerHTML=ui.renderPricing();assert.match(w.document.body.textContent,/438,60/);assert.match(w.document.body.textContent,/77,40/);ui.state.plans[0].annual_discount=20;w.document.body.innerHTML=ui.renderPricing();assert.match(w.document.body.textContent,/Annuel −20 %/);assert.match(w.document.body.textContent,/412,80/);assert.equal(w.document.querySelectorAll('[aria-selected=true]').length,0);await w.happyDOM.close();});
-test('platform renders the MFA gate before privileged editors',async()=>{const {w,ui}=setup();ui.state.platform=true;w.document.body.innerHTML=ui.renderPlatform();assert.ok(w.document.getElementById('ess-mfa-code'));assert.equal(w.document.getElementById('ess-base'),null);ui.state.mfaRequired=false;w.document.body.innerHTML=ui.renderPlatform();assert.equal(w.document.getElementById('ess-base').value,'39.00');assert.equal(w.document.getElementById('ess-mfa-code'),null);await w.happyDOM.close();});
+test('platform renders the MFA gate before privileged editors',async()=>{const {w,ui}=setup();ui.state.platform=true;w.document.body.innerHTML=ui.renderPlatform();assert.ok(w.document.getElementById('ess-mfa-code'));assert.equal(w.document.getElementById('ess-base'),null);ui.state.mfaRequired=false;ui.state.tab='plans';w.document.body.innerHTML=ui.renderPlatform();assert.equal(w.document.getElementById('ess-base').value,'39.00');assert.equal(w.document.getElementById('ess-mfa-code'),null);await w.happyDOM.close();});
 test('worker creation calls the checked RPC, permits no email and never creates an Auth identity',async()=>{const worker={id:'worker',first_name:'Alex',last_name:'',employee_number:'AB-0248',auth_user_id:null};const {w,ui,calls}=setup(async()=>({data:worker}));ui.state.company='tenant';w.document.body.innerHTML=ui.renderWorkers();w.document.getElementById('ess-first').value='Alex';w.document.getElementById('ess-number').value='AB-0248';await ui.handle({dataset:{action:'ess:create-worker'}});assert.equal(calls.length,1);assert.equal(calls[0].name,'create_essential_worker');assert.equal(calls[0].args.p_email,null);assert.equal(calls[0].args.p_phone,null);assert.equal(calls[0].args.p_company,'tenant');assert.equal(ui.state.workers[0].id,'worker');await w.happyDOM.close();});
-test('price edits send expected version and a reason, and surface server denial',async()=>{const {w,ui,calls}=setup(async()=>({error:{message:'MFA required'}}));ui.state.mfaRequired=false;w.document.body.innerHTML=ui.renderPlatform();w.document.getElementById('ess-base').value='45.50';w.document.getElementById('ess-reason').value='Nouveaux clients seulement';await ui.handle({dataset:{action:'ess:save-plan'}});assert.equal(calls[0].name,'platform_save_essential_plan');assert.equal(calls[0].args.p_expected_version,1);assert.equal(calls[0].args.p_values.base_cents,4550);assert.match(ui.state.error,/MFA required/);assert.equal(ui.state.plans[0].base_cents,3900);await w.happyDOM.close();});
+test('price edits send expected version and a reason, and surface server denial',async()=>{const {w,ui,calls}=setup(async()=>({error:{message:'MFA required'}}));ui.state.mfaRequired=false;ui.state.tab='plans';w.document.body.innerHTML=ui.renderPlatform();w.document.getElementById('ess-base').value='45.50';w.document.getElementById('ess-reason').value='Nouveaux clients seulement';await ui.handle({dataset:{action:'ess:save-plan'}});assert.equal(calls[0].name,'platform_save_essential_plan');assert.equal(calls[0].args.p_expected_version,1);assert.equal(calls[0].args.p_values.base_cents,4550);assert.match(ui.state.error,/MFA required/);assert.equal(ui.state.plans[0].base_cents,3900);await w.happyDOM.close();});
 test('personnel names are escaped and private platform state is cleared at signout',async()=>{const {w,ui}=setup();ui.state.workers=[{id:'x',first_name:'<script>alert(1)</script>',last_name:'',employee_number:'AB',status:'active',auth_user_id:null}];w.document.body.innerHTML=ui.renderWorkers();assert.equal(w.document.querySelector('script'),null);ui.state.platform=true;ui.state.snapshot={companies_list:[{name:'private'}]};ui.reset();assert.equal(ui.state.platform,false);assert.equal(ui.state.snapshot,null);assert.equal(ui.state.workers.length,0);await w.happyDOM.close();});
 test('choosing a public plan calls signup navigation without claiming payment',async()=>{const w=new Window();let chosen;const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,onChoose:p=>{chosen=p}});ui.state.plans=[plan];await ui.handle({dataset:{action:'ess:choose',id:'essential_plus'}});assert.equal(chosen.id,'essential_plus');assert.equal(ui.state.checkout,'Essentiel Plus');assert.equal(ui.state.paymentConfirmed,undefined);await w.happyDOM.close();});
 test('late personnel responses cannot repopulate private state after signout',async()=>{const w=new Window();let release;const pending=new Promise(resolve=>{release=resolve});const sb={rpc:async()=>({data:false}),from(table){const q={select(){return q},eq(){return q},order(){return table==='company_workers'?pending:Promise.resolve({data:[plan]})}};return q;}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});const loading=ui.load({id:'old-user'},{company_id:'tenant',role:'employee',companies:{product_edition:'essential'}});await new Promise(r=>setTimeout(r,0));ui.reset();release({data:[{id:'private-worker',auth_user_id:'old-user',first_name:'Private'}]});await loading;assert.equal(ui.state.worker,null);assert.deepEqual(ui.state.workers,[]);assert.equal(ui.state.platform,false);await w.happyDOM.close();});
@@ -51,6 +51,7 @@ test('SACATALOG-016 unlimited catalog switch is MFA gated and uses a versioned s
  w.document.body.innerHTML=ui.renderPlatform();
  assert.equal(w.document.getElementById('ess-included-unlimited'),null,'MFA gate blocks editor');
  ui.state.mfaRequired=false;
+ ui.state.tab='plans';
  w.document.body.innerHTML=ui.renderPlatform();
  const unlimited=w.document.getElementById('ess-included-unlimited');
  assert.ok(unlimited);
@@ -65,4 +66,57 @@ test('SACATALOG-016 unlimited catalog switch is MFA gated and uses a versioned s
  assert.equal(call.args.p_values.included_seats,5);
  assert.equal(ui.state.plans[0].included_seats_unlimited,true,'failed server call cannot mutate catalog');
  await w.happyDOM.close();
+});
+
+
+test('Super Admin opens on a real overview instead of plan editor',async()=>{
+ const {w,ui}=setup();
+ assert.equal(ui.state.tab,'home');
+ ui.state.platform=true;ui.state.mfaRequired=false;
+ ui.state.snapshot={companies:12,users:78,active_members:45,test_companies:3,essential:8,construction:4,
+  audit:[{action:'test_company_created',created_at:'2026-10-28T11:00:00Z'}]};
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.equal(w.document.querySelector('main h2')?.textContent,'Accueil');
+ assert.equal(w.document.querySelectorAll('.ess-home-stat').length,4);
+ assert.match(w.document.querySelector('.ess-platform-home')?.textContent||'',/78/);
+ assert.match(w.document.querySelector('.ess-platform-home')?.textContent||'',/45/);
+ assert.match(w.document.querySelector('.ess-platform-home')?.textContent||'',/8/);
+ assert.equal(w.document.querySelector('[data-action="ess:tab"][data-id="admins"]'),null);
+ assert.equal(w.document.getElementById('ess-base'),null);
+ assert.equal(w.document.querySelectorAll('.ess-home-link').length,6);
+ await w.happyDOM.close();
+});
+test('Home shortcuts open existing sections, and never offer the former admin tab',async()=>{
+ const {w,ui}=setup();ui.state.mfaRequired=false;
+ w.document.body.innerHTML=ui.renderPlatform();
+ const target=w.document.querySelector('.ess-home-link[data-id="plans"]');
+ assert.ok(target);
+ await ui.handle({dataset:{action:target.dataset.action,id:target.dataset.id}});
+ assert.equal(ui.state.tab,'plans');
+ assert.ok(ui.renderPlatform().includes('Paramètres du forfait sélectionné'));
+ const menu=w.document.createElement('div');menu.innerHTML=ui.renderPlatform();
+ assert.equal(menu.querySelector('nav [data-id="admins"]'),null);
+ ui.reset();assert.equal(ui.state.tab,'home');
+ await w.happyDOM.close();
+});
+test('Home is MFA-gated, no guessed numbers and no untrusted audit injection',async()=>{
+ const {w,ui}=setup();
+ ui.state.platform=true;
+ ui.state.snapshot={audit:[{action:'<img src=x onerror=alert(1)>',created_at:'invalid'}]};
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.ok(w.document.getElementById('ess-mfa-code'));
+ assert.equal(w.document.querySelector('.ess-platform-home'),null);
+ ui.state.mfaRequired=false;
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.match(w.document.body.textContent,/donnée n’est pas disponible/);
+ assert.equal(w.document.querySelector('img'),null);
+ assert.match(w.document.body.textContent,/Activité administrative/);
+ assert.match(w.document.body.textContent,/Date indisponible/);
+ await w.happyDOM.close();
+});
+test('Super Admin mobile stylesheet collapses the sidebar on tablet and desktop-view phones',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const css=readFileSync(new URL('../web/live/essential.css',import.meta.url),'utf8');
+ assert.match(css,/@media\(max-width:1050px\)\s*\{[\s\S]*?\.ess-platform\{grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(css,/\.ess-platform nav\{flex-direction:row;overflow-x:auto/);
 });
