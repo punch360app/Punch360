@@ -54,10 +54,6 @@ export function parseMissionDraftCsv(source){
  }
  return rows;
 }
-function mapAlias(list,alias){
- const matches=list.filter(x=>alias(x)!==''&&norm(alias(x))===norm(alias.input));
- return matches.length===1?matches[0]:null;
-}
 const keyOrder=x=>[x.day,x.workerId,x.order].join('|');
 const keyTitle=x=>[x.day,x.workerId,x.siteId,norm(x.title)].join('|');
 export function validateMissionDraftRows(rows,{roster,sites,existing,day,sitesComplete=true}={}){
