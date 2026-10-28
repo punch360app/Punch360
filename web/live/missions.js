@@ -5,6 +5,7 @@ import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './missio
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
 import {missionPostponeArgs} from './mission-postpone.js';
 import {missionChecklistItems,missionChecklistConfirmed} from './mission-checklist.js';
+import {missionOfflineEligible,queueOfflineMissionCompletion,listOfflineMissionCompletions,syncOfflineMissionCompletions} from './mission-offline-queue.js';
 import {missionCancelArgs} from './mission-cancel.js';
 import {missionReassignArgs} from './mission-reassign.js';
 import {missionRescheduleArgs} from './mission-reschedule.js';
@@ -392,12 +393,21 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  return {state:s,load,render,handle,reset};
 }
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
- const s={company:null,user:null,worker:null,day:missionDate(),items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,error:'',truncated:false,busy:false,pending:new Map(),issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
+ const s={company:null,user:null,worker:null,day:missionDate(),items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,loadedOnline:false,queued:[],queueMessage:'',error:'',truncated:false,busy:false,pending:new Map(),issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
  let generation=0,upcomingGeneration=0,detailsGeneration=0;
+ const queueStorage={
+  getItem:key=>doc.defaultView.sessionStorage.getItem(key),
+  setItem:(key,value)=>doc.defaultView.sessionStorage.setItem(key,value),
+  removeItem:key=>doc.defaultView.sessionStorage.removeItem(key),
+  getAllKeys:()=>Array.from({length:doc.defaultView.sessionStorage.length},
+    (_,i)=>doc.defaultView.sessionStorage.key(i))
+ };
+ const queueIdentity=()=>({company:s.company,user:s.user,worker:s.worker});
+ async function readQueue(){return listOfflineMissionCompletions({storage:queueStorage,identity:queueIdentity()});}
  async function load(company,user,worker,day=missionDate()){
   const same=s.company===company&&s.user===user&&s.worker===worker;
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
-  if(!same){s.pending.clear();s.uploadedPhoto=null;s.issue=null;s.completionDraft=null;s.completionChecks=null;s.upcoming.open=false;s.upcoming.day=nextMissionDay();}
+  if(!same){s.pending.clear();s.uploadedPhoto=null;s.issue=null;s.completionDraft=null;s.completionChecks=null;s.queued=[];s.loadedOnline=false;s.queueMessage='';s.upcoming.open=false;s.upcoming.day=nextMissionDay();}
   upcomingGeneration++;detailsGeneration++;s.details=null;Object.assign(s.upcoming,{loadedDay:null,items:[],truncated:false,error:'',busy:false});
   const gen=++generation;Object.assign(s,{company,user,worker,day,items:[],enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],previouslyEnabled:previous,error:''});
   if(!company||!worker)return;
@@ -406,14 +416,16 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    if(response.error)throw response.error;
    if(gen!==generation)return;
    s.items=response.data?.items||[];s.commentRequired=!!response.data?.comment_required;s.photoRequired=!!response.data?.photo_required;s.photoOptional=!!response.data?.photo_optional;s.checklistRequired=!!response.data?.checklist_required;
-   s.checklistItems=Array.isArray(response.data?.checklist_items)?response.data.checklist_items:[];s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;
+   s.checklistItems=Array.isArray(response.data?.checklist_items)?response.data.checklist_items:[]; s.enabled=!!response.data?.enabled;s.previouslyEnabled=s.enabled;s.truncated=!!response.data?.truncated;s.loadedOnline=true;
+   try{s.queued=await readQueue();s.queueMessage='';}
+   catch(e){s.queued=[];s.queueMessage='File locale inaccessible : '+String(e?.message||e);}
   }catch{if(gen===generation)s.error='Missions indisponibles : connexion requise.';}
  }
- function reset(){generation++;upcomingGeneration++;detailsGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,error:'',issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
+ function reset(){generation++;upcomingGeneration++;detailsGeneration++;Object.assign(s,{company:null,user:null,worker:null,items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,loadedOnline:false,queued:[],queueMessage:'',error:'',issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}});s.pending.clear();}
  function render(){
   if(!s.company||!s.worker)return '';
   if(!s.enabled&&s.error&&s.previouslyEnabled)return '<section class="zen-company" role="status"><b>Missions momentanément indisponibles</b><small>Connexion requise pour actualiser vos missions. Aucune fin de mission n’a été enregistrée et aucun pointage n’a été modifié.</small></section>';
-  if(!s.enabled)return '';
+  if(!s.enabled)return s.queued.length?'<section class="zen-company" role="status"><b>'+s.queued.length+' fin(s) locale(s) non synchronisée(s).</b><button type="button" class="ess-btn" data-action="mission:sync">Vérifier et synchroniser</button></section>':'';
   if(s.truncated)return '<section class="zen-company"><p role="alert">Tournée incomplète; contactez le responsable.</p></section>';
   const p=missionProgress(s.items);
   const platform=navigationPlatform('web',doc.defaultView?.navigator?.userAgent||'');
@@ -449,7 +461,11 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
     }
     return html+'</section>';
   };
-  const showUpcoming=html=>html+renderUpcoming();
+  const queueNotice=()=> (s.queued.length?
+    '<p role="status">'+s.queued.length+' fin(s) en attente : le serveur n’a PAS confirmé la fin.</p>'+
+    '<button type="button" class="ess-btn" data-action="mission:sync" '+(s.busy?'disabled':'')+'>Vérifier et synchroniser les fins en attente</button>':'')+
+    (s.queueMessage?'<p role="alert">'+e(s.queueMessage)+'</p>':'');
+  const showUpcoming=html=>html+queueNotice()+renderUpcoming();
   if(!p.total)return showUpcoming('<section class="zen-company"><b>Aucune mission pour aujourd’hui.</b></section>');
   const renderTour=()=>{
     const tour=personalMissionTour(s.items,s.worker);
@@ -476,7 +492,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    renderTour()+'</section>'+renderUpcoming();
   const x=p.next,addr=missionAddress(x);
   const routes=missionNavigationOptions(x,platform,pref);
-  return '<section class="zen-company" aria-label="Prochaine mission"><div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>'+(x.status==='in_progress'?'Mission en cours':'Prochaine mission')+' · '+(p.done+p.blocked+1)+' de '+p.total+'</small>'+
+  return '<section class="zen-company" aria-label="Prochaine mission">'+queueNotice()+'<div>'+(s.error?'<p role="alert">'+e(s.error)+'</p>':'')+'<small>'+(x.status==='in_progress'?'Mission en cours':'Prochaine mission')+' · '+(p.done+p.blocked+1)+' de '+p.total+'</small>'+
    '<strong>'+e(x.title)+' · '+e(x.client_name)+' · '+e(x.site_name)+'</strong><small>'+e(addr)+'</small>'+
    (routes.preferred?'<a href="'+e(routes.preferred.url)+'" target="_blank" rel="noopener noreferrer">Itinéraire avec '+e(routes.preferred.label)+' ↗</a>':'')+
    (routes.choices.length?'<details '+(!routes.preferred?'open':'')+'><summary>'+(routes.preferred?'Changer d’application d’itinéraire':'Choisir l’application d’itinéraire')+'</summary>'+
@@ -497,7 +513,9 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
       (s.completionChecks?.id===x.id&&s.completionChecks.checked.includes(i)?'checked':'')+'> '+e(item)+'</label>').join('')+'</div>':'')+
    (s.commentRequired?'<label class="ess-field">Commentaire de fin obligatoire (5 à 1000 caractères)<textarea id="mission-completion-comment-'+e(x.id)+'" maxlength="1000" rows="4">'+e(s.completionDraft?.id===x.id?s.completionDraft.text:'')+'</textarea></label><p class="ess-fine">Commentaire privé, visible uniquement par les responsables autorisés de cette compagnie.</p>':'')+
    ((s.photoRequired||s.photoOptional)?'<label class="ess-field">Photo privée '+(s.photoRequired?'obligatoire':'facultative')+' (JPEG, PNG ou WebP, maximum 5 Mio)<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" id="mission-photo-file-'+e(x.id)+'"></label>'+(s.uploadedPhoto?.mission===x.id&&s.uploadedPhoto?.version===x.version?'<p role="status">Photo déjà téléversée, en attente de la fin.</p>':''):'')+
-    '<button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>'+(s.checklistRequired?'Terminer avec checklist':s.commentRequired?'Terminer avec commentaire':'Terminer')+'</button>'+ 
+    (s.queued.some(q=>q.mission===x.id&&q.version===x.version)?
+      '<p role="status">Fin de cette mission en attente de confirmation serveur.</p>':
+      '<button type="button" class="ess-btn" data-action="mission:finish" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>'+(s.checklistRequired?'Terminer avec checklist':s.commentRequired?'Terminer avec commentaire':'Terminer')+'</button>')+ 
    '<button type="button" class="ess-btn" data-action="mission:issue-open" data-id="'+e(x.id)+'" '+(s.busy?'disabled':'')+'>Signaler une mission impossible</button>'+
    (s.issue?.id===x.id?'<div class="ess-panel"><p>Le responsable sera informé. Aucun retard, absence ou pointage ne sera déduit.</p>'+
     '<label>Motif<select id="mission-issue-reason"><option value="">Choisir un motif</option>'+MISSION_ISSUE_REASONS.map(([k,v])=>'<option value="'+e(k)+'" '+(s.issue.reason===k?'selected':'')+'>'+e(v)+'</option>').join('')+'</select></label>'+
@@ -601,6 +619,60 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch{s.error='Début non confirmé : vérifiez la connexion et réessayez la même demande.';return false;}
   finally{s.busy=false;redraw();}
  }
+ async function syncQueued(){
+  if(!s.company||!s.worker||!s.user||s.busy)throw Error('Synchronisation non autorisée.');
+  if(doc.defaultView.navigator.onLine===false)throw Error('Connexion requise pour synchroniser les fins en attente.');
+  const company=s.company,user=s.user,worker=s.worker,gen=generation,day=s.day;
+  const requireContext=()=>{
+   if(gen!==generation||s.company!==company||s.user!==user||s.worker!==worker)
+    throw Error('Contexte de travail modifié : aucune synchronisation.');
+  };
+  s.busy=true;s.error='';
+  try{
+   const result=await syncOfflineMissionCompletions({
+    storage:queueStorage,identity:{company,user,worker},
+    verifyUser:async()=>{
+     requireContext();
+     const verified=await sb.auth.getUser();
+     requireContext();
+     if(verified.error)throw verified.error;
+     return verified.data?.user?.id;
+    },
+    fetchDay:async pendingDay=>{
+     requireContext();
+     const res=await sb.rpc('list_essential_missions',
+      {p_company:company,p_day:pendingDay,p_worker:worker,p_include_drafts:false});
+     requireContext();
+     if(res.error)throw res.error;
+     return res.data;
+    },
+    nextMissionId:rows=>{
+     const progress=missionProgress(rows);
+     return progress.ambiguous?null:progress.next?.id;
+    },
+    send:async entry=>{
+     requireContext();
+     const res=await sb.rpc('complete_essential_mission',
+      {p_company:company,p_id:entry.mission,p_version:entry.version,p_request:entry.request});
+     requireContext();
+     if(res.error)throw res.error;
+     return res.data;
+    }
+   });
+   requireContext();
+   s.queued=await readQueue();
+   s.queueMessage=result.conflicts.length?
+    result.conflicts.length+' demande(s) nécessitent une vérification manuelle (mission ou règles modifiées).':'';
+   if(result.networkError)s.queueMessage+=' '+result.networkError;
+   s.busy=false;
+   await load(company,user,worker,day);
+   if(result.sent)notify(result.sent+' fin(s) confirmée(s) par le serveur. Aucun pointage modifié.');
+   if(result.conflicts.length||result.networkError)s.queueMessage=
+    (result.conflicts.length+' demande(s) encore en attente. '+(result.networkError||'Vérification manuelle requise.')).trim();
+   return !result.networkError;
+  }catch(err){s.error='Synchronisation non confirmée : '+String(err?.message||err);return false;}
+  finally{s.busy=false;redraw();}
+ }
  async function finish(id){
   if(!s.company||!s.worker||!s.enabled||s.busy)throw Error('Mission non autorisée.');
   const latest=missionProgress(s.items);
@@ -618,7 +690,23 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   if(s.photoRequired&&!candidate&&!cached)throw Error('Choisissez une photo de fin de mission.');
   if(candidate&&(candidate.size<16||candidate.size>5*1024*1024||
     !['image/jpeg','image/png','image/webp'].includes(candidate.type)))throw Error('Photo invalide : JPEG, PNG ou WebP, maximum 5 Mio.');
-  if(!doc.defaultView.navigator.onLine)throw Error('Connexion requise. Aucune fin n’a été enregistrée.');
+  if(doc.defaultView.navigator.onLine===false){
+   if(!missionOfflineEligible({verified:s.loadedOnline,enabled:s.enabled,truncated:s.truncated,
+       ambiguous:latest.ambiguous,commentRequired:s.commentRequired,checklistRequired:s.checklistRequired,
+       photoRequired:s.photoRequired,photoSelected:!!candidate||!!cached,mission:x}))
+    throw Error('Cette mission exige des preuves ou une validation en ligne. Aucune fin mise en attente.');
+   if(!doc.defaultView.confirm('Mettre cette fin en attente hors ligne ? Elle ne sera officielle qu’après synchronisation et nouvelle vérification des droits.'))return false;
+   s.busy=true;
+   try{
+    await queueOfflineMissionCompletion({storage:queueStorage,
+     identity:{...queueIdentity(),mission:id,version:x.version},day:s.day,
+     uuid:()=>doc.defaultView.crypto.randomUUID()});
+    s.queued=await readQueue();
+    notify('Fin enregistrée en attente de synchronisation. Aucun pointage modifié.');return true;
+   }catch(err){s.error='Mise en attente impossible : '+String(err?.message||err);return false;}
+   finally{s.busy=false;redraw();}
+  }
+  if(s.queued.some(q=>q.mission===id&&q.version===x.version))return syncQueued();
   if(!doc.defaultView.confirm('Terminer « '+x.title+' » sans pointer la sortie ?'))return false;
   s.busy=true;
   try{
@@ -648,5 +736,5 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   }catch(err){s.error='Fin non confirmée : '+(String(err?.message||'').includes('Commentaire')?'commentaire requis; actualisez les missions.':'vérifiez la connexion et réessayez la même demande.');return false;}
   finally{s.busy=false;redraw();}
  }
- return {state:s,load,render,start,finish,handleIssue,handleUpcoming,handleDetails,reset};
+ return {state:s,load,render,start,finish,syncQueued,handleIssue,handleUpcoming,handleDetails,reset};
 }

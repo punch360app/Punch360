@@ -408,6 +408,10 @@ if(a==='mission:finish'){
   if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
   await personalMissions.finish(id);draw();return;
 }
+if(a==='mission:sync'){
+  if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
+  await personalMissions.syncQueued();draw();return;
+}
 if(a==='activateWorker'){const r=await sb.rpc('accept_worker_invitation',{p_token:sessionStorage.getItem('punch-worker-invite')});if(r.error)throw r.error;sessionStorage.removeItem('punch-worker-invite');await initialize();return;}
 if(a.startsWith('subdir:')){await essentialUI.subscriptions.handle(el);return;}
 if(a.startsWith('boss-handoff:')){await bossHandoff.handle(el);return;}
