@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T23:55:41.837Z",
+  "generated_at": "2026-10-28T00:02:36.917Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 199,
+      "sha": "b6eb74abe408f593193e3d5f9dc65e05a7598448",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH CI visuelle : transférer automatiquement les recommandations dans une issue Work unique",
+      "merged_at": "2026-10-28T00:02:23Z"
+    },
+    {
       "number": 198,
       "sha": "0a8d62d5305f8e1926742315683fcd85f93ad052",
       "ci": "success",
@@ -2003,16 +2011,6 @@
       ],
       "title": "Essentiel — consignes d’accès d’un client uniquement sur demande",
       "merged_at": "2026-10-26T21:41:55Z"
-    },
-    {
-      "number": 146,
-      "sha": "b309e4fc6b019870966c1732c27a3573cbe13c0c",
-      "ci": "success",
-      "ids": [
-        "NAV-006"
-      ],
-      "title": "Essentiel — choisir Maps/Waze/Plans pour chaque arrêt de l’horaire",
-      "merged_at": "2026-10-26T21:36:40Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
