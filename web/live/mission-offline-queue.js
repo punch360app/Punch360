@@ -33,8 +33,8 @@ export async function queueOfflineMissionCompletion({storage,identity,day,uuid,n
  if(!storage||typeof storage.getItem!=='function'||typeof storage.setItem!=='function')
   throw Error('Stockage local indisponible.');
  // Count only queued actions; ordinary completed online idempotency UUIDs are not queued.
- const existing=await listOfflineMissionCompletions({storage,identity,now});
- if(existing.length>=LIMIT&&!existing.some(x=>x.mission===identity.mission&&x.version===identity.version))
+ const queuedEntries=await listOfflineMissionCompletions({storage,identity,now});
+ if(queuedEntries.length>=LIMIT&&!queuedEntries.some(x=>x.mission===identity.mission&&x.version===identity.version))
   throw Error('Limite de 25 fins en attente atteinte. Synchronisez avant de continuer.');
  const req=await reserveMissionCompletionRequest({storage,identity,uuid,now});
  const time=now(),raw=await storage.getItem(req.key);
