@@ -100,3 +100,45 @@ test('another completion or a false duplicate ACK cannot silently purge the queu
  assert.equal(result.sent,0);assert.equal(result.pending,1);
  assert.match(result.networkError,/Accusé serveur invalide/);
 });
+
+test('35 ordinary online idempotency records do not exhaust 25 offline queue slots',async()=>{
+ const storage=store();
+ for(let i=0;i<35;i++){
+  const key='punch-mission-completion-request-v1:user-A:company-A:worker-A:online-'+i+':1';
+  storage.m.set(key,JSON.stringify({id:uuid,createdAt:1000000}));
+ }
+ assert.equal((await listOfflineMissionCompletions({storage,identity:A,now:()=>1000000})).length,0);
+ await queueOfflineMissionCompletion(args(storage));
+ assert.equal((await listOfflineMissionCompletions({storage,identity:A,now:()=>1000000})).length,1);
+});
+test('26th queued action is refused without creating a phantom pending event',async()=>{
+ const storage=store();
+ for(let i=0;i<25;i++)
+  await queueOfflineMissionCompletion(args(storage,{...A,mission:'m-'+i,version:1}));
+ assert.equal((await listOfflineMissionCompletions({storage,identity:A,now:()=>1000000})).length,25);
+ await assert.rejects(queueOfflineMissionCompletion(args(storage,{...A,mission:'m-26',version:1})),/Limite de 25/);
+ assert.equal(storage.m.has('punch-mission-completion-request-v1:user-A:company-A:worker-A:m-26:1'),false);
+});
+test('replay revalidates live Auth after fetch and refuses a switched account',async()=>{
+ const storage=store();await queueOfflineMissionCompletion(args(storage));
+ let count=0;
+ const {spy,run}=sync(storage,{verifyUser:async()=>++count===1?A.user:'another-user'});
+ const result=await run();
+ assert.equal(spy.sends.length,0);
+ assert.equal(result.pending,1);
+ assert.match(result.networkError,/Session modifiée/);
+});
+test('simultaneous sync attempts cannot send the same pending event twice',async()=>{
+ const storage=store();await queueOfflineMissionCompletion(args(storage));
+ let notifyStarted,release;
+ const started=new Promise(resolve=>notifyStarted=resolve);
+ const blocked=new Promise(resolve=>release=resolve);
+ const {spy,run}=sync(storage,{send:async entry=>{
+  spy.sends.push(entry);notifyStarted();await blocked;return{status:'completed'};
+ }});
+ const first=run();await started;
+ await assert.rejects(run(),/déjà en cours/);
+ release();
+ const result=await first;
+ assert.equal(result.sent,1);assert.equal(spy.sends.length,1);assert.equal(result.pending,0);
+});

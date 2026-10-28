@@ -416,7 +416,25 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    if(verifiedUserId.current){
     try{setQueued(await readQueue());}catch(e:any){setMessage('File de missions à vérifier : '+(e.message||'stockage inaccessible'));setQueued([]);}
    }else setQueued([]);
-  }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setChecklistRequired(false);setChecklistItems([]);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
+  }catch(e:any){if(gen===current.current){
+   const warning=missionWarningEligible(hadEnabled.current,true);
+   setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);
+   setChecklistRequired(false);setChecklistItems([]);setItems([]);setConnectionWarning(warning);
+   setMessage('Missions non disponibles en ligne. Aucune fin n’a été enregistrée.');
+   // Local Auth is NOT proof of current server permissions: show only an opaque
+   // pending-action count, never stale mission titles, addresses or offline controls.
+   try{
+    const cached=await supabase.auth.getSession();
+    if(gen!==current.current)return;
+    const cachedUser=cached.error?null:cached.data?.session?.user?.id;
+    if(cachedUser){
+     const pending=await listOfflineMissionCompletions({
+      storage:AsyncStorage,identity:{user:cachedUser,company:companyId,worker:workerId}});
+     if(gen!==current.current)return;
+     setQueued(pending);
+    }else setQueued([]);
+   }catch(err:any){if(gen===current.current){setQueued([]);setMessage('File locale à vérifier après reconnexion : '+(err.message||'accès indisponible'));}}
+  }}
  }
  useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;verifiedUserId.current=null;setQueued([]);setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setPhotoAsset(null);stagedPhoto.current=null;setCompletionComment('');setChecklistRequired(false);setChecklistItems([]);setChecklistChecked([]);setMessage('');requests.current.clear();
   if(workerId)void refresh();
@@ -629,7 +647,8 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  if(!enabled&&queued.length)return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:8}}>
   {title('Fins de mission en attente')}
   {label(queued.length+' demande(s) enregistrée(s) sur cet appareil. Aucune fin serveur confirmée.')}
-  {button('Vérifier et synchroniser',syncQueued,busy)}
+  {label('Reconnectez-vous pour revérifier les droits. Aucun envoi hors ligne.')}
+  {button('Vérifier et synchroniser',syncQueued,busy||!verifiedUserId.current)}
   {!!message?label(message):null}
  </View>;
  if(connectionWarning&&!enabled)return <View accessibilityRole="alert" style={{padding:12,borderRadius:11,backgroundColor:'#F7FAF5',borderWidth:1,borderColor:'#DCE8D6',gap:6}}>
