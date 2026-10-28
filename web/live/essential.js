@@ -170,12 +170,13 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  function renderPlatform(){return `<div class="ess-platform"><aside><h1>PUNCH</h1><small>SUPER ADMIN</small><nav aria-label="Navigation Super Admin">${nav.map(([id,title])=>btn(title,'tab',`data-id="${id}" aria-pressed="${s.tab===id}"`)).join('')}</nav>${btn('Actualiser','refresh')}${btn('Se déconnecter','logout')}</aside><main id="main"><header><h2>${e(nav.find(x=>x[0]===s.tab)?.[1]||'Accueil')}</h2><span class="ess-badge">Espace sécurisé</span></header>${s.error?`<div class="ess-notice" role="alert">${e(s.error)}</div>`:''}${s.mfaRequired?renderMfa():s.tab==='home'?renderPlatformHome():s.tab==='plans'?renderPlanEditor():s.tab==='companies'?renderCompanies():s.tab==='users'?platformUsers.render():s.tab==='specialPrices'?platformPriceProposals.render():s.tab==='tests'?renderTests():s.tab==='billing'?renderPlatformBilling():s.tab==='archives'?archives.render():s.tab==='support'?support.render():s.tab==='promotions'?promotions.render():s.tab==='finance'?finance.render():renderAudit()}</main></div>`;}
  function renderPlatformBilling(){return subscriptions.render(s.plans)}
  function renderMfa(){
-  const existing=s.mfaMode==='verify',enrolling=s.mfaMode==='enroll';
+  const existing=s.mfaMode==='verify',enrolling=s.mfaMode==='enroll',pending=s.mfaMode==='pending';
   const description=existing?
     'Un authentificateur est déjà activé sur ce compte. Ouvrez celui qui affiche le code PUNCH et saisissez son code à six chiffres.':
+    pending?'Configuration déjà commencée. Entrez simplement le code affiché dans Authenticator : ne recréez pas votre QR.':
     enrolling?'Ajoutez maintenant PUNCH dans Google Authenticator, Microsoft Authenticator ou une application compatible.':
     'Pour accéder au Super Admin, configurez votre authentificateur ou utilisez celui déjà activé sur ce compte.';
-  const actionLabel=enrolling?'Recommencer la configuration':existing?'Utiliser mon authentificateur':'Configurer ou utiliser mon authentificateur';
+  const actionLabel=enrolling||pending?'Reprendre la configuration':existing?'Utiliser mon authentificateur':'Configurer ou utiliser mon authentificateur';
   return '<section class="ess-panel ess-platform-mfa"><h3>Sécuriser la console</h3>'+
    '<p>'+e(description)+'</p>'+
    (s.mfaNotice?'<p class="ess-notice" role="status">'+e(s.mfaNotice)+'</p>':'')+
@@ -186,7 +187,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
      '</label><p class="ess-fine">Dans Authenticator : ajouter un compte → saisir une clé de configuration. Choisissez le type basé sur le temps. Ne partagez jamais cette clé.</p>':'')+
    btn(actionLabel,'enroll',s.saving?'disabled':'')+
    (existing&&!enrolling?'<p class="ess-fine">Si vous n’avez plus accès à cet authentificateur déjà validé, contactez le support pour une récupération sécurisée. PUNCH ne le désactive pas automatiquement.</p>':'')+
-   ((enrolling||existing||s.factor)?'<div class="ess-mfa-verify"><p><strong>2.</strong> Entrez le code à six chiffres affiché par votre application.</p>'+
+   ((enrolling||pending||existing||s.factor)?'<div class="ess-mfa-verify"><p><strong>2.</strong> Entrez le code à six chiffres affiché par votre application.</p>'+
     field('Code à six chiffres','ess-mfa-code','','text','inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}"')+
     btn('Vérifier et ouvrir le Super Admin','verify',s.saving?'disabled':'')+'</div>':'')+
    '</section>';
