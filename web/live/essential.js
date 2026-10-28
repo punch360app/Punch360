@@ -56,7 +56,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const billing=createBillingController({sb,redraw,escape:e,document:doc});
  let identityRevision=0;
  const planning=createPlanningController({sb,redraw,notify,escape:e,document:doc});
- const s={plans:[],workers:[],dashboard:null,platform:false,platformOpen:true,tab:'home',selected:'essential_plus',cadence:'monthly',seats:5,error:'',loading:false,saving:false,snapshot:null,factor:null,qr:null,mfaRequired:true,company:null,worker:null,effectiveBillingStatus:null};
+ const s={plans:[],workers:[],dashboard:null,platform:false,platformOpen:true,tab:'home',selected:'essential_plus',cadence:'monthly',seats:5,error:'',loading:false,saving:false,snapshot:null,factor:null,qr:null,mfaSecret:null,mfaMode:'unknown',mfaNotice:'',mfaRequired:true,company:null,worker:null,effectiveBillingStatus:null};
  const platformTests=createPlatformTestsController({sb,state:s,redraw,escape:e,document:doc});
  const money=c=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(c/100);
  const btn=(text,action,extra='')=>`<button type="button" class="ess-btn" data-action="ess:${action}" ${extra}>${text}</button>`;
@@ -66,7 +66,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const get=id=>doc.getElementById(id), val=id=>get(id)?.value.trim()??'';
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
- async function load(user,account){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';
+ async function load(user,account){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
    if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(!s.mfaRequired){const snapshot=await rpc('platform_snapshot');if(!current())return;s.snapshot=snapshot;const accounts=await rpc('platform_test_accounts');if(!current())return;s.testAccounts=accounts;}}
    if(account?.companies?.product_edition==='essential'){
@@ -155,7 +155,28 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }
  function renderPlatform(){return `<div class="ess-platform"><aside><h1>PUNCH</h1><small>SUPER ADMIN</small><nav aria-label="Navigation Super Admin">${nav.map(([id,title])=>btn(title,'tab',`data-id="${id}" aria-pressed="${s.tab===id}"`)).join('')}</nav>${btn('Actualiser','refresh')}${btn('Se déconnecter','logout')}</aside><main id="main"><header><h2>${e(nav.find(x=>x[0]===s.tab)?.[1]||'Accueil')}</h2><span class="ess-badge">Espace sécurisé</span></header>${s.error?`<div class="ess-notice" role="alert">${e(s.error)}</div>`:''}${s.mfaRequired?renderMfa():s.tab==='home'?renderPlatformHome():s.tab==='plans'?renderPlanEditor():s.tab==='companies'?renderCompanies():s.tab==='users'?platformUsers.render():s.tab==='specialPrices'?platformPriceProposals.render():s.tab==='tests'?renderTests():s.tab==='billing'?renderPlatformBilling():s.tab==='archives'?archives.render():s.tab==='support'?support.render():s.tab==='promotions'?promotions.render():s.tab==='finance'?finance.render():renderAudit()}</main></div>`;}
  function renderPlatformBilling(){return subscriptions.render(s.plans)}
- function renderMfa(){return `<section class="ess-panel"><h3>Sécuriser la console</h3><p>Les opérations sensibles exigent votre application d’authentification.</p>${s.qr?`<img class="ess-qr" src="${e(s.qr)}" alt="Code QR à ajouter à votre application d’authentification">`:''}${btn('Configurer ou utiliser mon authentificateur','enroll')}${field('Code à six chiffres','ess-mfa-code','','text','inputmode="numeric" autocomplete="one-time-code" maxlength="6"')}${btn('Vérifier','verify')}</section>`;}
+ function renderMfa(){
+  const existing=s.mfaMode==='verify',enrolling=s.mfaMode==='enroll';
+  const description=existing?
+    'Un authentificateur est déjà activé sur ce compte. Ouvrez celui qui affiche le code PUNCH et saisissez son code à six chiffres.':
+    enrolling?'Ajoutez maintenant PUNCH dans Google Authenticator, Microsoft Authenticator ou une application compatible.':
+    'Pour accéder au Super Admin, configurez votre authentificateur ou utilisez celui déjà activé sur ce compte.';
+  const actionLabel=enrolling?'Recommencer la configuration':existing?'Utiliser mon authentificateur':'Configurer ou utiliser mon authentificateur';
+  return '<section class="ess-panel ess-platform-mfa"><h3>Sécuriser la console</h3>'+
+   '<p>'+e(description)+'</p>'+
+   (s.mfaNotice?'<p class="ess-notice" role="status">'+e(s.mfaNotice)+'</p>':'')+
+   (s.qr?'<p><strong>1.</strong> Scannez le QR avec votre application Authenticator. Si vous êtes sur le même téléphone, utilisez la clé ci-dessous.</p>'+
+     '<img class="ess-qr" src="'+e(s.qr)+'" alt="Code QR pour ajouter PUNCH dans l’application Authenticator">':'')+
+   (enrolling&&s.mfaSecret?'<label class="ess-field"><strong>Clé de configuration manuelle</strong>'+
+     '<input id="ess-mfa-secret" value="'+e(s.mfaSecret)+'" type="text" readonly aria-label="Clé secrète à recopier dans votre authentificateur" autocomplete="off" spellcheck="false">'+
+     '</label><p class="ess-fine">Dans Authenticator : ajouter un compte → saisir une clé de configuration. Choisissez le type basé sur le temps. Ne partagez jamais cette clé.</p>':'')+
+   btn(actionLabel,'enroll',s.saving?'disabled':'')+
+   (existing&&!enrolling?'<p class="ess-fine">Si vous n’avez plus accès à cet authentificateur déjà validé, contactez le support pour une récupération sécurisée. PUNCH ne le désactive pas automatiquement.</p>':'')+
+   ((enrolling||existing||s.factor)?'<div class="ess-mfa-verify"><p><strong>2.</strong> Entrez le code à six chiffres affiché par votre application.</p>'+
+    field('Code à six chiffres','ess-mfa-code','','text','inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}"')+
+    btn('Vérifier et ouvrir le Super Admin','verify',s.saving?'disabled':'')+'</div>':'')+
+   '</section>';
+ }
  function renderPlanEditor(){const p=s.plans.find(x=>x.id===s.selected);return `<div class="ess-price-grid">${s.plans.map(p=>`<button class="ess-price" data-action="ess:select" data-id="${e(p.id)}" aria-pressed="${s.selected===p.id}"><h3>${e(p.title)}</h3><strong class="ess-price-amount">${money(p.base_cents)}</strong><p>${p.included_seats_unlimited===true?'Membres inclus : illimité · supplément 0 $':p.included_seats+' membres inclus · +'+money(p.extra_seat_cents)}</p><small>${p.kiosk_limit===null?'Bornes illimitées':p.kiosk_limit+' borne(s)'} · version ${p.version}</small></button>`).join('')}</div>${p?`<section class="ess-panel"><h3>Paramètres du forfait sélectionné</h3><div class="ess-form-grid">${field('Nom du forfait','ess-title',p.title)}${field('Prix mensuel ($ CA)','ess-base',(p.base_cents/100).toFixed(2),'number','min="0" step="0.01"')}${field('Membres inclus en mode numérique','ess-included',p.included_seats,'number','min="1" max="100000"')}${field('Membre additionnel ($ CA)','ess-extra',(p.extra_seat_cents/100).toFixed(2),'number','min="0" step="0.01"')}${field('Réduction annuelle (%)','ess-discount',p.annual_discount,'number','min="0" max="100"')}${field('Bornes (vide = illimité)','ess-kiosk',p.kiosk_limit??'','number','min="1"')}${field('Établissements (vide = illimité)','ess-sites',p.establishment_limit??'','number','min="1"')}${field('Sursis (jours)','ess-grace',p.grace_days,'number','min="0" max="365"')}${field('Ordre de présentation','ess-sort',p.sort_order,'number')}${field('Description','ess-description',p.description)}</div><div class="ess-checks">${check('Actif','ess-active',p.active)}${check('Visible publiquement','ess-visible',p.public_visible)}${check('Recommandé','ess-recommended',p.recommended)}${check('Membres inclus illimités (aucun supplément)','ess-included-unlimited',p.included_seats_unlimited===true)}</div><p class="ess-fine">En mode illimité, le nombre numérique reste mémorisé mais aucun membre supplémentaire n’est facturé. Nouvelle version du catalogue uniquement : aucun ancien contrat n’est réécrit.</p><h3>Modules commerciaux</h3><div class="ess-checks">${['advanced_schedules','shift_swaps','availability','departments','supervisors','announcements','messages','minimum_coverage','hr_documents','certifications','advanced_reports','time_banks','labor_costs','payroll_integrations','multiple_establishments'].map(f=>check(({advanced_schedules:'Horaires avancés',shift_swaps:'Échanges de quarts',availability:'Disponibilités',departments:'Départements',supervisors:'Superviseurs',announcements:'Annonces',messages:'Messagerie',minimum_coverage:'Couverture minimale',hr_documents:'Documents RH',certifications:'Certifications',advanced_reports:'Rapports avancés',time_banks:'Banques d’heures',labor_costs:'Coûts',payroll_integrations:'Intégrations paie',multiple_establishments:'Multiétablissement'})[f],'ess-feature-'+f,p.features.includes(f))).join('')}</div><p class="ess-fine">Les fonctions de sécurité et de conservation restent obligatoires. Le catalogue décrit les droits commerciaux; leur activation ne remplace pas leur développement.</p>${field('Motif de modification','ess-reason','','text','minlength="3" maxlength="1000"')}<p>Cette nouvelle version s’applique au catalogue public. Les contrats existants sont conservés.</p>${btn(s.saving?'Enregistrement…':'Enregistrer une nouvelle version','save-plan',s.saving?'disabled':'')}</section>`:'<p>Chargement…</p>'}`;}
  function renderCompanies(){return `<div class="ess-metrics"><div class="ess-panel"><small>Entreprises réelles</small><strong>${s.snapshot?.companies??'—'}</strong></div><div class="ess-panel"><small>Membres actifs</small><strong>${s.snapshot?.active_members??'—'}</strong></div></div>${directory.render()}`;}
  function renderTests(){return platformTests.render();}
@@ -197,16 +218,55 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  else if(action==='channels'){const mode=val('ess-mode-'+el.dataset.id);await rpc('set_essential_worker_channels',{p_worker:el.dataset.id,p_mobile:mode!=='kiosk',p_kiosk:mode!=='mobile',p_personal:true,p_reason:'Mode de pointage modifié par le Boss'});const w=s.workers.find(x=>x.id===el.dataset.id);if(w){w.can_mobile_punch=mode!=='kiosk';w.can_kiosk_punch=mode!=='mobile';}}
  else if(action==='invite-worker'){await inviteWorker(el.dataset.id);}
  else if(action==='enroll'){
-  const f=await sb.auth.mfa.listFactors();if(f.error)throw f.error;const existing=f.data.totp.find(x=>x.status==='verified');
-  if(existing){s.factor=existing.id;s.qr=null;notify('Entrez le code de votre authentificateur.');}
-  else {if(s.factor&&!s.qr)s.factor=null;if(!s.factor){const r=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Console PUNCH'});if(r.error)throw r.error;s.factor=r.data.id;s.qr=r.data.totp.qr_code;}}
+  // listFactors().totp contains only verified factors; .all includes abandoned
+  // unverified enrollments. Never discard a verified factor without AAL2 recovery.
+  const f=await sb.auth.mfa.listFactors();if(f.error)throw f.error;
+  const factors=Array.isArray(f.data?.all)?f.data.all:Array.isArray(f.data?.totp)?f.data.totp:[];
+  const existing=factors.find(x=>x.factor_type==='totp'&&x.status==='verified')||
+   (f.data?.totp||[]).find(x=>x.status==='verified');
+  if(existing){
+   s.factor=existing.id;s.qr=null;s.mfaSecret=null;s.mfaMode='verify';
+   s.mfaNotice='Authentificateur déjà actif. Entrez le code généré par votre application.';
+  }else{
+   const abandoned=factors.filter(x=>x.factor_type==='totp'&&x.status==='unverified'&&
+    x.friendly_name==='Console PUNCH');
+   // Only remove factors created by the current user's unfinished PUNCH setup.
+   // Removing a verified factor here would bypass legitimate account recovery.
+   for(const factor of abandoned){
+    const removed=await sb.auth.mfa.unenroll({factorId:factor.id});
+    if(removed.error)throw removed.error;
+   }
+   s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';
+   const created=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Console PUNCH'});
+   if(created.error)throw created.error;
+   if(!created.data?.id||!created.data?.totp?.qr_code||!created.data?.totp?.secret)
+    throw Error('Configuration incomplète. Réessayez pour générer un nouveau QR.');
+   s.factor=created.data.id;s.qr=created.data.totp.qr_code;
+   s.mfaSecret=created.data.totp.secret;s.mfaMode='enroll';
+   s.mfaNotice='Nouveau QR créé. Ajoutez-le dans votre application Authenticator, puis entrez son code.';
+  }
  }else if(action==='verify'){
-  if(!s.factor)throw Error('Configurez votre authentificateur.');const code=val('ess-mfa-code');if(!/^\d{6}$/.test(code))throw Error('Code de six chiffres requis.');
-  const r=await sb.auth.mfa.challengeAndVerify({factorId:s.factor,code});if(r.error)throw r.error;s.qr=null;s.factor=null;s.mfaRequired=false;s.snapshot=await rpc('platform_snapshot');s.testAccounts=await rpc('platform_test_accounts');
+  const code=val('ess-mfa-code');
+  if(!/^\d{6}$/.test(code))throw Error('Code de six chiffres requis.');
+  if(!s.factor){
+   const f=await sb.auth.mfa.listFactors();if(f.error)throw f.error;
+   const existing=(f.data?.totp||[]).find(x=>x.status==='verified');
+   if(existing){s.factor=existing.id;s.mfaMode='verify';}
+   else throw Error('Cliquez sur « Configurer ou utiliser mon authentificateur » pour obtenir votre QR.');
+  }
+  const r=await sb.auth.mfa.challengeAndVerify({factorId:s.factor,code});if(r.error)throw r.error;
+  const level=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(level.error||level.data?.currentLevel!=='aal2')
+   throw Error('Vérification terminée, mais session à deux facteurs non confirmée. Reconnectez-vous.');
+  // The server enforces AAL2, active sessions and platform ownership independently.
+  const snapshot=await rpc('platform_snapshot');
+  const accounts=await rpc('platform_test_accounts');
+  s.snapshot=snapshot;s.testAccounts=accounts;s.qr=null;s.mfaSecret=null;
+  s.factor=null;s.mfaNotice='';s.mfaMode='unknown';s.mfaRequired=false;
  }
  }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
- function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaRequired=true;s.tab='home';}
+ function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';}
  return {state:s,subscriptions,qualifiedCoverage,laborBudgets,platformUsers,platformAdmins,platformPriceProposals,directory,invitationEmail,notificationPreferences,supervision,breakPolicies,offlineReview,missingDays,archives,finance,promotions,audit,support,platformTests,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
 }
