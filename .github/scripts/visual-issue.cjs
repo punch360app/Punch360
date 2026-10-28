@@ -17,7 +17,7 @@ function buildIssue(report,context) {
     finding:safe(x.finding),nextStep:safe(x.nextStep)
   }));
   const data={
-    state:report.feedback.state,shots:report.screenshots,
+    handoffVersion:2,state:report.feedback.state,shots:report.screenshots,
     approved:report.approvedBaselines,failures:report.failures,findings
   };
   const hash=crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
@@ -46,6 +46,9 @@ function buildIssue(report,context) {
     '- [Run GitHub Actions]('+url+')',
     '- [Liste des executions](https://github.com/'+context.repo+'/actions/workflows/visual-review.yml)',
     '- Artefact punch-visual-captures : review.html, report.json, WORK_VISUAL_FIX.md, functional-journeys.json.',
+    '- Planches Figma a IMPORTER (non approuvees) : figma-contact-S25.png, figma-contact-iPad.png, figma-contact-PC.png.',
+    '- Preuves et empreintes par capture dans figma-handoff.json; guide FIGMA_HANDOFF.md.',
+    '- [Planche de reference Figma](https://www.figma.com/design/m3y6yfu7LL84Dp9ntGOXYZ) (conceptuelle; ne remplace pas les ecrans publics testes).',
     '- Comparer le SHA du run avec le SHA actuel avant toute correction.',
     '',
     '## Protections',
