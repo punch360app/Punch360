@@ -251,12 +251,35 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }else if(action==='review-apply'){
     s.review={worker:doc.getElementById('mission-review-worker')?.value||'',status:doc.getElementById('mission-review-status')?.value||'',client:doc.getElementById('mission-review-client')?.value||''};
    }else if(action==='review-csv'){
-    const analysis=missionDayReview(s.missions,s.review,s.truncated);
-    const content=missionDayReviewCsv(analysis,s.day);
+    if(!s.company||!s.enabled)throw Error('Export désactivé pour cette entreprise.');
+    const company=s.company,day=s.day,gen=generation,filter={...s.review};
+    const stillCurrent=()=>{
+     if(gen!==generation||s.company!==company||s.day!==day)
+      throw Error('Contexte modifié pendant la vérification : export annulé.');
+    };
+    // Cached dashboards must NEVER authorize sensitive downloads on their own.
+    if(!sb.auth?.getUser)throw Error('Vérification de session indisponible : export refusé.');
+    const verified=await sb.auth.getUser();
+    stillCurrent();
+    if(verified.error||!verified.data?.user?.id)
+     throw Error('Session non confirmée. Reconnectez-vous avant l’export.');
+    const fresh=await rpc('list_essential_missions',
+     {p_company:company,p_day:day,p_worker:null,p_include_drafts:true});
+    stillCurrent();
+    if(fresh?.enabled!==true||fresh?.truncated||!Array.isArray(fresh?.items))
+     throw Error('Liste non autorisée ou incomplète : export refusé.');
+    if(fresh.items.some(row=>row&&(row.company_id&&row.company_id!==company||
+      row.mission_day&&row.mission_day!==day)))
+     throw Error('Résultat hors entreprise ou hors journée : export refusé.');
+    const analysis=missionDayReview(fresh.items,filter,false);
+    const content=missionDayReviewCsv(analysis,day);
     const win=doc.defaultView,url=win.URL.createObjectURL(new win.Blob([content],{type:'text/csv;charset=utf-8'}));
-    try{const link=doc.createElement('a');link.href=url;link.download='punch-missions-'+s.day+'.csv';doc.body.appendChild(link);link.click();link.remove();}
-    finally{win.URL.revokeObjectURL(url);}
-    notify('CSV des missions affichées exporté, sans notes privées ni heures de paie.');
+    try{
+     stillCurrent();
+     const link=doc.createElement('a');link.href=url;link.download='punch-missions-'+day+'.csv';
+     doc.body.appendChild(link);link.click();link.remove();
+    }finally{win.URL.revokeObjectURL(url);}
+    notify('CSV de la journée revérifiée sur le serveur, sans notes privées ni heures de paie.');
    }else if(action==='refresh'){
     s.day=doc.getElementById('mission-day')?.value||s.day;await load(s.company,s.roster);
    }else if(action==='postpone-open'){
