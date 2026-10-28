@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T06:42:02.974Z",
+  "generated_at": "2026-10-28T10:12:26.545Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1520,6 +1520,14 @@
   },
   "activity": [
     {
+      "number": 209,
+      "sha": "891f711a961d216c654353cac6b006781677dc54",
+      "ci": "success",
+      "ids": [],
+      "title": "Accélérer les validations PUNCH sans retirer la sécurité ni les 24 captures UI",
+      "merged_at": "2026-10-28T10:12:15Z"
+    },
+    {
       "number": 208,
       "sha": "d52f84c7e76b2680910bacbfd252655961b584a9",
       "ci": "success",
@@ -2025,17 +2033,6 @@
       ],
       "title": "Essentiel — tournée personnelle du jour et itinéraire par mission",
       "merged_at": "2026-10-26T23:55:54Z"
-    },
-    {
-      "number": 156,
-      "sha": "5ba9a829c8da1ebf123880e4cb3aedd4d496282b",
-      "ci": "success",
-      "ids": [
-        "MISSION-004",
-        "NAV-003"
-      ],
-      "title": "Essentiel — choisir Maps, Waze ou Plans Apple depuis la prochaine mission",
-      "merged_at": "2026-10-26T23:46:02Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
