@@ -73,3 +73,106 @@ test('real manager Web controller renders count filters and applies employee/sta
   'filtering an authorized snapshot adds no server or GPS request');
  await window.happyDOM.close();
 });
+
+test('CSV download is refused after Auth revocation, before any private file is generated',async()=>{
+ const win=new Window(),calls=[];
+ const sb={
+  auth:{async getUser(){return{error:{message:'revoked'},data:{user:null}}}},
+  async rpc(name,args){calls.push({name,args});
+   if(name==='essential_missions_configuration')return{data:{enabled:true}};
+   if(name==='list_essential_client_sites')return{data:{items:[]}};
+   if(name==='list_essential_missions')return{data:{enabled:true,items:missions,truncated:false}};
+   throw Error('Unexpected '+name);
+  }
+ };
+ const ctrl=createMissionManager({sb,document:win.document,escape:x=>String(x),redraw(){},notify(){}});
+ await ctrl.load('company-A',[]);
+ await ctrl.handle('review-csv',{dataset:{}});
+ assert.match(ctrl.state.error,/Session non confirmée/);
+ assert.equal(calls.filter(x=>x.name==='list_essential_missions').length,1,
+  'stale dashboard must never trigger a second export read after auth revocation');
+ await win.happyDOM.close();
+});
+test('CSV download performs a fresh scoped RPC and refuses truncated or cross-company results',async()=>{
+ for(const variant of ['truncated','cross-company','changed-day']){
+  const win=new Window(),calls=[];
+  const sb={auth:{async getUser(){return{data:{user:{id:'user-A'}},error:null}}},
+   async rpc(name,args){calls.push({name,args});
+    if(name==='essential_missions_configuration')return{data:{enabled:true}};
+    if(name==='list_essential_client_sites')return{data:{items:[]}};
+    if(name==='list_essential_missions'){
+     const isExport=calls.filter(x=>x.name==='list_essential_missions').length>1;
+     if(!isExport)return{data:{enabled:true,truncated:false,items:missions}};
+     if(variant==='truncated')return{data:{enabled:true,truncated:true,items:missions}};
+     if(variant==='cross-company')return{data:{enabled:true,truncated:false,
+       items:[{...missions[0],company_id:'company-B'}]}};
+     return{data:{enabled:true,truncated:false,
+       items:[{...missions[0],mission_day:'2027-01-01'}]}};
+    }
+    throw Error('Unexpected '+name);
+   }};
+  const ctrl=createMissionManager({sb,document:win.document,escape:x=>String(x),redraw(){},notify(){}});
+  await ctrl.load('company-A',[]);
+  await ctrl.handle('review-csv',{dataset:{}});
+  assert.match(ctrl.state.error,/refusé/);
+  assert.equal(calls.filter(x=>x.name==='list_essential_missions').length,2);
+  const req=calls.filter(x=>x.name==='list_essential_missions').at(-1).args;
+  assert.equal(req.p_company,'company-A');assert.equal(req.p_worker,null);
+  assert.equal(req.p_include_drafts,true);
+  await win.happyDOM.close();
+ }
+});
+test('CSV never exports an old company after context changes during server request',async()=>{
+ const win=new Window(),calls=[];
+ let changeContext=null,requestedExport=false;
+ const sb={auth:{async getUser(){return{data:{user:{id:'user-A'}},error:null}}},
+  async rpc(name,args){calls.push({name,args});
+   if(name==='essential_missions_configuration')return{data:{enabled:true}};
+   if(name==='list_essential_client_sites')return{data:{items:[]}};
+   if(name==='list_essential_missions'){
+    if(!requestedExport)return{data:{enabled:true,truncated:false,items:missions}};
+    requestedExport=false;
+    await changeContext();
+    return{data:{enabled:true,truncated:false,items:missions}};
+   }
+   throw Error('Unexpected '+name);
+  }};
+ const ctrl=createMissionManager({sb,document:win.document,escape:x=>String(x),redraw(){},notify(){}});
+ await ctrl.load('company-A',[]);
+ changeContext=()=>ctrl.load('company-B',[]);
+ requestedExport=true;
+ await ctrl.handle('review-csv',{dataset:{}});
+ assert.equal(ctrl.state.company,'company-B');
+ assert.doesNotMatch(ctrl.state.error||'',/exporté/);
+ await win.happyDOM.close();
+});
+
+test('authorized CSV export uses fresh server rows, never a stale cached title',async()=>{
+ const win=new Window(),calls=[],notices=[],exports=[];
+ Object.defineProperty(win.URL,'createObjectURL',{configurable:true,value:blob=>{
+  exports.push(blob);return'blob:mission-export';
+ }});
+ Object.defineProperty(win.URL,'revokeObjectURL',{configurable:true,value:()=>{}});
+ const original=[{...missions[0],title:'Ancienne mission'}];
+ const updated=[{...missions[0],title:'Mission actualisée',mission_day:'2026-11-03'}];
+ const sb={auth:{async getUser(){return{data:{user:{id:'boss-A'}},error:null}}},
+  async rpc(name,args){calls.push({name,args});
+   if(name==='essential_missions_configuration')return{data:{enabled:true}};
+   if(name==='list_essential_client_sites')return{data:{items:[]}};
+   if(name==='list_essential_missions')
+    return{data:{enabled:true,truncated:false,items:
+      calls.filter(c=>c.name==='list_essential_missions').length===1?original:updated}};
+   throw Error('Unexpected '+name);
+  }};
+ const ctrl=createMissionManager({sb,document:win.document,escape:x=>String(x),redraw(){},notify:x=>notices.push(x)});
+ ctrl.state.day='2026-11-03';
+ await ctrl.load('company-A',[]);
+ await ctrl.handle('review-csv',{dataset:{}});
+ assert.equal(exports.length,1);
+ const csv=await exports[0].text();
+ assert.match(csv,/Mission actualisée/);
+ assert.doesNotMatch(csv,/Ancienne mission|Code 1234/);
+ assert.match(notices.join(' '),/revérifiée/);
+ assert.equal(calls.filter(c=>c.name==='list_essential_missions').length,2);
+ await win.happyDOM.close();
+});
