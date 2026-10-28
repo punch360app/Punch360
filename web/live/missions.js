@@ -1,6 +1,7 @@
 import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigationPreference,navigationProviders} from './navigation-choices.js';
 import {reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from './mission-completion-request.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
+import {parseMissionDraftCsv,validateMissionDraftRows,importMissionDraftRows,MISSION_IMPORT_HEADER} from './mission-batch-import.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
 import {missionPostponeArgs} from './mission-postpone.js';
@@ -89,7 +90,7 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},postponeId:null,decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},sitesComplete:false,importPreview:null,importMessage:'',postponeId:null,decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  const cancelRequests=new Map();
  const reassignRequests=new Map();
@@ -99,7 +100,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
   if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();s.postponeId=null;s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
-  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],error:''});
+  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],sitesComplete:false,importPreview:null,importMessage:'',error:''});
   if(!company)return;
   try{
    const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
@@ -109,12 +110,12 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     const [sites,missions]=await Promise.all([
      rpc('list_essential_client_sites',{p_company:company,p_search:'',p_after:null,p_limit:100}),
      rpc('list_essential_missions',{p_company:company,p_day:s.day,p_worker:null,p_include_drafts:true})]);
-    if(gen!==generation)return;s.sites=(sites.items||[]).filter(x=>x.active);
+    if(gen!==generation)return;s.sites=(sites.items||[]).filter(x=>x.active);s.sitesComplete=!sites.has_more&&(sites.items||[]).length<100;
     s.missions=missions.items||[];s.truncated=!!missions.truncated;
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],sitesComplete:false,importPreview:null,importMessage:'',error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -140,7 +141,23 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     select('Salarié','worker',f.worker,[['','Sélectionner'],...s.roster.filter(w=>w.status==='active').map(w=>[w.id,w.name])])+
     select('Adresse client','site',f.site,[['','Sélectionner'],...s.sites.map(x=>[x.id,x.client_name+' · '+x.name+' · '+x.city])])+
     field('Ordre du jour','order',f.order,'number')+field('Titre','title',f.title)+field('Instructions internes','instructions',f.instructions)+
-    '</div>'+button('Enregistrer brouillon','draft')+button('Approuver et publier','publish');
+    '</div>'+button('Enregistrer brouillon','draft')+button('Approuver et publier','publish')+
+    '<section class="ess-panel" aria-label="Import CSV de missions"><h4>Importer plusieurs missions CSV</h4>'+
+    '<p class="ess-fine">Crée uniquement des brouillons, jamais des missions publiées. Prévisualisation obligatoire : maximum 50 lignes pour la journée '+e(s.day)+'. Aucun pointage ou horaire modifié.</p>'+
+    '<p>Colonnes dans cet ordre : <code>'+e(MISSION_IMPORT_HEADER)+'</code>. Pour le salarié et le lieu, utilisez les identifiants actifs ou les noms uniques du carnet (client · lieu · ville).</p>'+
+    '<label class="ess-field">Fichier CSV (64 Kio maximum)<input id="mission-import-file" type="file" accept=".csv,text/csv"></label>'+
+    button('Vérifier le fichier et prévisualiser','import-preview')+
+    (s.importMessage?'<p role="status">'+e(s.importMessage)+'</p>':'')+
+    (s.importPreview?'<p role="status">'+s.importPreview.validated.total+' lignes · '+
+      s.importPreview.validated.errors.length+' erreur(s). '+(s.importPreview.validated.valid?'Aucune mission publiée; confirmez les brouillons.':'Corrigez toutes les erreurs avant l’import.')+'</p>'+
+      (s.importPreview.validated.errors.length?'<ul>'+s.importPreview.validated.errors.map(x=>
+        '<li>Ligne '+e(x.line)+' : '+e(x.detail)+'</li>').join('')+'</ul>':'')+
+      '<details><summary>Voir les lignes proposées</summary><div style="overflow-x:auto"><table><thead><tr><th>Ligne</th><th>Salarié</th><th>Lieu</th><th>Ordre</th><th>Mission</th></tr></thead><tbody>'+
+      s.importPreview.validated.rows.map(row=>'<tr><td>'+e(row.line)+'</td><td>'+e(row.employee)+'</td><td>'+
+       e(row.site)+'</td><td>'+e(row.order)+'</td><td>'+e(row.title)+'</td></tr>').join('')+
+      '</tbody></table></div></details>'+
+      (s.importPreview.validated.valid?button('Créer '+s.importPreview.validated.total+' brouillon(s) après confirmation','import-confirm'):''):'')+
+    '</section>';
    const analysis=missionDayReview(s.missions,s.review,s.truncated);
    body+='<section class="ess-panel" aria-label="Suivi quotidien des missions">'+
     '<h4>Suivi des missions — '+e(s.day)+'</h4>'+
@@ -248,6 +265,77 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     await rpc('set_essential_mission_checklist_policy',{p_company:company,p_required:required,p_items:items});
     if(s.company!==company||gen!==generation)return true;
     await load(company,s.roster);notify(required?'Checklist obligatoire enregistrée.':'Checklist obligatoire désactivée.');
+   }else if(action==='import-preview'){
+    if(s.truncated||!s.sitesComplete)throw Error('Carnet ou journée incomplet(e) : import refusé.');
+    const file=doc.getElementById('mission-import-file')?.files?.[0];
+    if(!file||file.size>65536||file.size===0)throw Error('Choisissez un CSV de 1 à 64 Kio.');
+    const company=s.company,day=s.day,gen=generation;
+    const source=await file.text();
+    if(gen!==generation||s.company!==company||s.day!==day)
+     throw Error('Entreprise ou journée modifiée : prévisualisation annulée.');
+    const rows=parseMissionDraftCsv(source);
+    const validated=validateMissionDraftRows(rows,
+     {roster:s.roster,sites:s.sites,existing:s.missions,day,sitesComplete:s.sitesComplete});
+    s.importPreview={rows,validated,company,day,gen};
+    s.importMessage=validated.valid?
+     'Prévisualisation prête : '+validated.total+' brouillon(s) à confirmer. Aucune écriture serveur.':
+     'Corrigez les '+validated.errors.length+' erreur(s) puis choisissez à nouveau votre fichier.';
+   }else if(action==='import-confirm'){
+    const preview=s.importPreview;
+    if(!preview?.validated?.valid||preview.company!==s.company||preview.day!==s.day||
+       preview.gen!==generation||!s.enabled||s.truncated||!s.sitesComplete)
+     throw Error('Prévisualisation obsolète : vérifiez à nouveau le CSV.');
+    const company=s.company,day=s.day,gen=generation,roster=s.roster;
+    if(!doc.defaultView.confirm('Créer '+preview.validated.total+
+      ' brouillon(s) pour '+day+' ? Aucune publication automatique. Si le réseau coupe, rafraîchir et prévisualiser à nouveau pour détecter les doublons.'))
+     return true;
+    const assertCurrent=()=>{
+     if(s.company!==company||s.day!==day||generation!==gen)
+      throw Error('Contexte de travail modifié : import interrompu.');
+    };
+    try{
+     if(!sb.auth?.getUser)throw Error('Session Auth à revérifier.');
+     const verified=await sb.auth.getUser();assertCurrent();
+     if(verified.error||!verified.data?.user?.id)throw Error('Session expirée : reconnectez-vous.');
+     // Re-read the authorized lists immediately before any write.
+     const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
+     assertCurrent();
+     if(cfg?.enabled!==true)throw Error('Module désactivé ou permissions révoquées.');
+     const [freshSites,freshMissions]=await Promise.all([
+      rpc('list_essential_client_sites',{p_company:company,p_search:'',p_after:null,p_limit:100}),
+      rpc('list_essential_missions',{p_company:company,p_day:day,p_worker:null,p_include_drafts:true})
+     ]);
+     assertCurrent();
+     if(freshSites?.has_more||(freshSites?.items||[]).length>=100||
+        freshMissions?.enabled!==true||freshMissions?.truncated||
+        !Array.isArray(freshSites?.items)||!Array.isArray(freshMissions?.items))
+      throw Error('Liste serveur incomplète ou non autorisée : import refusé.');
+     const current=validateMissionDraftRows(preview.rows,{roster,sites:freshSites.items,
+      existing:freshMissions.items,day,sitesComplete:true});
+     if(!current.valid)throw Error('Mission ou ordre modifié depuis la prévisualisation : import annulé.');
+     const result=await importMissionDraftRows(current.rows,{
+      beforeEach:async()=>{
+       assertCurrent();
+       const auth=await sb.auth.getUser();assertCurrent();
+       if(auth.error||auth.data?.user?.id!==verified.data.user.id)
+        throw Error('Session modifiée : import interrompu.');
+      },
+      save:async row=>{
+       assertCurrent();
+       const value=await rpc('save_essential_mission',
+        missionArgs(company,{worker:row.workerId,site:row.siteId,day:row.day,
+         order:row.order,title:row.title,instructions:row.instructions},null,false));
+       assertCurrent();return value;
+      }
+     });
+     s.importPreview=null;s.importMessage='';
+     await load(company,roster);
+     notify(result.completed+' brouillon(s) créés et confirmés par le serveur. Vérifiez-les avant publication.');
+    }catch(error){
+     s.importPreview=null;
+     throw Error('Import non confirmé ou partiel; aucun essai automatique. '+
+      String(error?.message||error));
+    }
    }else if(action==='review-apply'){
     s.review={worker:doc.getElementById('mission-review-worker')?.value||'',status:doc.getElementById('mission-review-status')?.value||'',client:doc.getElementById('mission-review-client')?.value||''};
    }else if(action==='review-csv'){
