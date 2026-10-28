@@ -1,5 +1,9 @@
 # PUNCH 360° — État courant unique
 
+## Lot actuel — MISSION-012 CSV sur plusieurs journées (en validation)
+
+Ajout sur Web d'un import de 1 à 50 brouillons CSV pour des dates comprises entre aujourd'hui et J+14, avec contrôle des doublons par date, multi-compagnies et refus de listes serveur incomplètes. Prévisualisation avant écriture; nouvelle vérification des journées et de l'identité avant confirmation et chaque enregistrement. Ne jamais déclarer livré avant les contrôles CI sur le SHA final, fusion, Pages. XLSX natif, heures/durées, publication et édition d'occurrences restent hors de ce lot.
+
 ## Demande Super Admin du 28 octobre 2026 — plafond 3 comptes (EN COURS)
 
 Décision utilisateur : **3 Super Admins au total**. Le SQL existant `private.platform_owner` comporte un `singleton` avec un seul propriétaire confirmé, et la plupart des RPC/RLS lisent directement cette table. Ne **jamais** créer trois rôles en `company_members` ou `app_metadata` pour contourner le serveur. Mettre à niveau la table côté backend en conservant l'actuel propriétaire principal, maximum deux comptes secondaires, tous habilités aux fonctions plateforme, MFA AAL2/session vivante; seul le principal donne ou retire l'accès. Gérer l'ajout/retrait audité depuis la console, avec comptes Auth et emails confirmés. **Aucun des deux bénéficiaires n'a encore été désigné ou promu**, et aucune mise à jour de production ne doit être présumée tant que la migration n'est pas appliquée et validée. Voir `supabase/migrations/20261028124000_platform_three_super_admins.sql`, `web/live/platform-admins.js` et les tests dédiés. La recette exige SQL en transaction annulée, tests Web et 3 vraies sessions (dont MFA) avant de déclarer achevé.

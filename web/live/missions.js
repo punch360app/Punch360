@@ -2,6 +2,7 @@ import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigatio
 import {reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from './mission-completion-request.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {parseMissionDraftCsv,validateMissionDraftRows,importMissionDraftRows,MISSION_IMPORT_HEADER} from './mission-batch-import.js';
+import {missionImportDays,validateMissionDraftBatch} from './mission-multiday-import.js';
 import {recurringMissionDrafts,recurringMissionConflict} from './mission-recurrence.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
@@ -144,17 +145,17 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     field('Ordre du jour','order',f.order,'number')+field('Titre','title',f.title)+field('Instructions internes','instructions',f.instructions)+
     '</div>'+button('Enregistrer brouillon','draft')+button('Approuver et publier','publish')+
     '<section class="ess-panel" aria-label="Import CSV de missions"><h4>Importer plusieurs missions CSV</h4>'+
-    '<p class="ess-fine">Crée uniquement des brouillons, jamais des missions publiées. Prévisualisation obligatoire : maximum 50 lignes pour la journée '+e(s.day)+'. Aucun pointage ou horaire modifié.</p>'+
+    '<p class="ess-fine">Crée uniquement des brouillons : jusqu’à 50 missions réparties entre aujourd’hui et les 14 prochains jours. Dates, salariés, sites et ordres vérifiés par journée; aucune publication, aucun pointage ou horaire modifié.</p>'+
     '<p>Colonnes dans cet ordre : <code>'+e(MISSION_IMPORT_HEADER)+'</code>. Pour le salarié et le lieu, utilisez les identifiants actifs ou les noms uniques du carnet (client · lieu · ville).</p>'+
     '<label class="ess-field">Fichier CSV (64 Kio maximum)<input id="mission-import-file" type="file" accept=".csv,text/csv"></label>'+
     button('Vérifier le fichier et prévisualiser','import-preview')+
     (s.importMessage?'<p role="status">'+e(s.importMessage)+'</p>':'')+
-    (s.importPreview?'<p role="status">'+s.importPreview.validated.total+' lignes · '+
+    (s.importPreview?'<p role="status">'+s.importPreview.validated.total+' lignes sur '+s.importPreview.days.length+' date(s) · '+
       s.importPreview.validated.errors.length+' erreur(s). '+(s.importPreview.validated.valid?'Aucune mission publiée; confirmez les brouillons.':'Corrigez toutes les erreurs avant l’import.')+'</p>'+
       (s.importPreview.validated.errors.length?'<ul>'+s.importPreview.validated.errors.map(x=>
         '<li>Ligne '+e(x.line)+' : '+e(x.detail)+'</li>').join('')+'</ul>':'')+
-      '<details><summary>Voir les lignes proposées</summary><div style="overflow-x:auto"><table><thead><tr><th>Ligne</th><th>Salarié</th><th>Lieu</th><th>Ordre</th><th>Mission</th></tr></thead><tbody>'+
-      s.importPreview.validated.rows.map(row=>'<tr><td>'+e(row.line)+'</td><td>'+e(row.employee)+'</td><td>'+
+      '<details><summary>Voir les lignes proposées</summary><div style="overflow-x:auto"><table><thead><tr><th>Ligne</th><th>Date</th><th>Salarié</th><th>Lieu</th><th>Ordre</th><th>Mission</th></tr></thead><tbody>'+
+      s.importPreview.validated.rows.map(row=>'<tr><td>'+e(row.line)+'</td><td>'+e(row.day)+'</td><td>'+e(row.employee)+'</td><td>'+
        e(row.site)+'</td><td>'+e(row.order)+'</td><td>'+e(row.title)+'</td></tr>').join('')+
       '</tbody></table></div></details>'+
       (s.importPreview.validated.valid?button('Créer '+s.importPreview.validated.total+' brouillon(s) après confirmation','import-confirm'):''):'')+
@@ -282,15 +283,24 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     const file=doc.getElementById('mission-import-file')?.files?.[0];
     if(!file||file.size>65536||file.size===0)throw Error('Choisissez un CSV de 1 à 64 Kio.');
     const company=s.company,day=s.day,gen=generation;
-    const source=await file.text();
-    if(gen!==generation||s.company!==company||s.day!==day)
-     throw Error('Entreprise ou journée modifiée : prévisualisation annulée.');
-    const rows=parseMissionDraftCsv(source);
-    const validated=validateMissionDraftRows(rows,
-     {roster:s.roster,sites:s.sites,existing:s.missions,day,sitesComplete:s.sitesComplete});
-    s.importPreview={rows,validated,company,day,gen};
+    const assertCurrent=()=>{if(gen!==generation||s.company!==company||s.day!==day)
+     throw Error('Entreprise ou journée modifiée : prévisualisation annulée.');};
+    const source=await file.text();assertCurrent();
+    const rows=parseMissionDraftCsv(source),days=missionImportDays(rows,missionDate());
+    // The user sees only authoritative, server-filtered snapshots of each date.
+    const byDay=Object.create(null);
+    for(const date of days){
+     byDay[date]=await rpc('list_essential_missions',
+      {p_company:company,p_day:date,p_worker:null,p_include_drafts:true});
+     assertCurrent();
+     if(byDay[date]?.items?.some(x=>x.company_id&&x.company_id!==company))
+      throw Error('Liste d’une autre entreprise : import refusé.');
+    }
+    const validated=validateMissionDraftBatch(rows,
+     {roster:s.roster,sites:s.sites,byDay,today:missionDate(),sitesComplete:s.sitesComplete});
+    s.importPreview={rows,validated,days,company,day,gen};
     s.importMessage=validated.valid?
-     'Prévisualisation prête : '+validated.total+' brouillon(s) à confirmer. Aucune écriture serveur.':
+     'Prévisualisation prête : '+validated.total+' brouillon(s), '+days.length+' date(s). Aucune écriture serveur.':
      'Corrigez les '+validated.errors.length+' erreur(s) puis choisissez à nouveau votre fichier.';
    }else if(action==='import-confirm'){
     const preview=s.importPreview;
@@ -299,38 +309,54 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
      throw Error('Prévisualisation obsolète : vérifiez à nouveau le CSV.');
     const company=s.company,day=s.day,gen=generation,roster=s.roster;
     if(!doc.defaultView.confirm('Créer '+preview.validated.total+
-      ' brouillon(s) pour '+day+' ? Aucune publication automatique. Si le réseau coupe, rafraîchir et prévisualiser à nouveau pour détecter les doublons.'))
+      ' brouillon(s) sur '+preview.days.length+' date(s) ? Aucune publication. Si le réseau coupe, actualisez et vérifiez les doublons.'))
      return true;
     const assertCurrent=()=>{
      if(s.company!==company||s.day!==day||generation!==gen)
       throw Error('Contexte de travail modifié : import interrompu.');
     };
     try{
+     // A preview crossing midnight or 14-day horizon must be rebuilt.
+     const days=missionImportDays(preview.rows,missionDate());
+     if(days.join('|')!==preview.days.join('|'))
+      throw Error('Journées du fichier modifiées : nouvelle prévisualisation requise.');
      if(!sb.auth?.getUser)throw Error('Session Auth à revérifier.');
      const verified=await sb.auth.getUser();assertCurrent();
      if(verified.error||!verified.data?.user?.id)throw Error('Session expirée : reconnectez-vous.');
-     // Re-read the authorized lists immediately before any write.
      const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
      assertCurrent();
      if(cfg?.enabled!==true)throw Error('Module désactivé ou permissions révoquées.');
-     const [freshSites,freshMissions]=await Promise.all([
-      rpc('list_essential_client_sites',{p_company:company,p_search:'',p_after:null,p_limit:100}),
-      rpc('list_essential_missions',{p_company:company,p_day:day,p_worker:null,p_include_drafts:true})
-     ]);
-     assertCurrent();
+     const freshSites=await rpc('list_essential_client_sites',
+      {p_company:company,p_search:'',p_after:null,p_limit:100});assertCurrent();
      if(freshSites?.has_more||(freshSites?.items||[]).length>=100||
-        freshMissions?.enabled!==true||freshMissions?.truncated||
-        !Array.isArray(freshSites?.items)||!Array.isArray(freshMissions?.items))
-      throw Error('Liste serveur incomplète ou non autorisée : import refusé.');
-     const current=validateMissionDraftRows(preview.rows,{roster,sites:freshSites.items,
-      existing:freshMissions.items,day,sitesComplete:true});
+        !Array.isArray(freshSites?.items))
+      throw Error('Carnet client incomplet : import refusé.');
+     const byDay=Object.create(null);
+     for(const date of days){
+      byDay[date]=await rpc('list_essential_missions',
+       {p_company:company,p_day:date,p_worker:null,p_include_drafts:true});
+      assertCurrent();
+      if(byDay[date]?.items?.some(x=>x.company_id&&x.company_id!==company))
+       throw Error('Missions d’une autre entreprise : import refusé.');
+     }
+     const current=validateMissionDraftBatch(preview.rows,{roster,sites:freshSites.items,
+      byDay,today:missionDate(),sitesComplete:true});
      if(!current.valid)throw Error('Mission ou ordre modifié depuis la prévisualisation : import annulé.');
      const result=await importMissionDraftRows(current.rows,{
-      beforeEach:async()=>{
+      beforeEach:async row=>{
        assertCurrent();
        const auth=await sb.auth.getUser();assertCurrent();
        if(auth.error||auth.data?.user?.id!==verified.data.user.id)
         throw Error('Session modifiée : import interrompu.');
+       // Re-read exactly the target date immediately before each write.
+       const latest=await rpc('list_essential_missions',
+        {p_company:company,p_day:row.day,p_worker:null,p_include_drafts:true});
+       assertCurrent();
+       const check=validateMissionDraftBatch([preview.rows.find(x=>x.line===row.line)],
+        {roster,sites:freshSites.items,byDay:{[row.day]:latest},
+         today:missionDate(),sitesComplete:true});
+       if(!check.valid||latest.items.some(x=>x.company_id&&x.company_id!==company))
+        throw Error('Conflit concurrent sur '+row.day+' : aucun nouvel enregistrement.');
       },
       save:async row=>{
        assertCurrent();
@@ -342,7 +368,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
      });
      s.importPreview=null;s.importMessage='';
      await load(company,roster);
-     notify(result.completed+' brouillon(s) créés et confirmés par le serveur. Vérifiez-les avant publication.');
+     notify(result.completed+' brouillon(s) créés et confirmés par le serveur sur '+days.length+' date(s).');
     }catch(error){
      s.importPreview=null;
      throw Error('Import non confirmé ou partiel; aucun essai automatique. '+
