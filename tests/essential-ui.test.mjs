@@ -280,3 +280,29 @@ test('another user cannot inherit the previously open MFA setup',async()=>{
  assert.equal(ui.state.mfaMode,'pending');
  await w.happyDOM.close();
 });
+
+
+test('compact public pricing preserves live prices and keeps full comparison hidden by default',async()=>{
+ const {w,ui}=setup();
+ ui.state.plans=[
+ {...plan,id:'essential',title:'Essentiel',base_cents:1900,recommended:false},
+ plan,
+ {...plan,id:'essential_pro',title:'Essentiel Pro',base_cents:6900,recommended:false}
+ ];
+ w.document.body.innerHTML=ui.renderPricing();
+ assert.equal(w.document.querySelectorAll('.ess-price').length,3);
+ assert.ok(w.document.querySelector('.ess-market-details:not([open])'));
+ assert.ok(w.document.querySelector('.ess-market-panel .ess-comparison'));
+ assert.ok(w.document.querySelector('.ess-market-panel .ess-faq'));
+ assert.equal(w.document.querySelectorAll('[data-action="ess:choose"]').length,3);
+ assert.match(w.document.body.textContent,/19,00/);
+ assert.match(w.document.body.textContent,/69,00/);
+ await w.happyDOM.close();
+});
+test('public landing uses responsive compact three-card desktop and mobile layouts',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const c=readFileSync(new URL('../web/live/essential.css',import.meta.url),'utf8');
+ assert.match(c,/\.essential-public \.ess-price-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+ assert.match(c,/@media\(max-width:680px\)[\s\S]*?\.essential-public \.ess-price-grid\{grid-template-columns:1fr/);
+ assert.match(c,/\.essential-public \.ess-market-details\[open\]::before/);
+});
