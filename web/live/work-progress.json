@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T13:03:08.496Z",
+  "generated_at": "2026-10-28T13:14:49.484Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1522,6 +1522,14 @@
   },
   "activity": [
     {
+      "number": 214,
+      "sha": "c9f99f47d3ffe386608cbdd90608fd02a54e34d6",
+      "ci": "success",
+      "ids": [],
+      "title": "Corriger authentificateur Super Admin déjà existant sans QR validé",
+      "merged_at": "2026-10-28T13:14:38Z"
+    },
+    {
       "number": 213,
       "sha": "f4137300a7c7a5a307153471f246c730c531ed07",
       "ci": "success",
@@ -2018,18 +2026,6 @@
       ],
       "title": "Missions — annulation explicite et sécurisée d'une étape publiée (Web/Expo)",
       "merged_at": "2026-10-27T01:42:03Z"
-    },
-    {
-      "number": 163,
-      "sha": "d8abbe437d36d2f3a3575daed157e11247d8fade",
-      "ci": "success",
-      "ids": [
-        "MISSION-007",
-        "MISSION-011",
-        "MISSION-013"
-      ],
-      "title": "Missions — signaler une intervention impossible (Web et Expo)",
-      "merged_at": "2026-10-27T01:31:09Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
