@@ -284,6 +284,7 @@ test('another user cannot inherit the previously open MFA setup',async()=>{
 
 test('compact public pricing preserves live prices and keeps full comparison hidden by default',async()=>{
  const {w,ui}=setup();
+ try{
  ui.state.plans=[
  {...plan,id:'essential',title:'Essentiel',base_cents:1900,recommended:false},
  plan,
@@ -297,7 +298,7 @@ test('compact public pricing preserves live prices and keeps full comparison hid
  assert.equal(w.document.querySelectorAll('[data-action="ess:choose"]').length,3);
  assert.match(w.document.body.textContent,/19,00/);
  assert.match(w.document.body.textContent,/69,00/);
- await w.happyDOM.close();
+ }finally{await w.happyDOM.close();}
 });
 test('public landing uses responsive compact three-card desktop and mobile layouts',async()=>{
  const {readFileSync}=await import('node:fs');
