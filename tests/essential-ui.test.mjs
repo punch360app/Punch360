@@ -120,3 +120,107 @@ test('Super Admin mobile stylesheet collapses the sidebar on tablet and desktop-
  assert.match(css,/@media\(max-width:1050px\)\s*\{[\s\S]*?\.ess-platform\{grid-template-columns:minmax\(0,1fr\)/);
  assert.match(css,/\.ess-platform nav\{flex-direction:row;overflow-x:auto/);
 });
+
+
+function setupMfa({factors=[],verificationError=null,level='aal2'}={}){
+ const w=new Window(),calls=[];
+ let liveLevel=level;
+ const sb={
+  rpc:async(name)=>({data:name==='platform_access'?true:name==='platform_snapshot'?{companies:1}:
+   name==='platform_test_accounts'?[]:true}),
+  auth:{mfa:{
+   listFactors:async()=>{calls.push('list');return {data:{all:[...factors],
+     totp:factors.filter(x=>x.status==='verified'&&x.factor_type==='totp')}};},
+   unenroll:async({factorId})=>{
+    calls.push('unenroll:'+factorId);
+    const target=factors.find(f=>f.id===factorId);
+    if(!target||target.status!=='unverified')return{error:{message:'Interdiction de retirer un facteur validé'}};
+    factors=factors.filter(f=>f.id!==factorId);return{data:{}};
+   },
+   enroll:async({factorType,friendlyName})=>{
+    calls.push('enroll:'+friendlyName);
+    if(factors.some(x=>x.friendly_name===friendlyName))return{error:{message:'duplicate friendly name'}};
+    assert.equal(factorType,'totp');
+    factors.push({id:'new',factor_type:'totp',status:'unverified',friendly_name:friendlyName});
+    return{data:{id:'new',totp:{qr_code:'data:image/svg+xml;base64,QVI=',secret:'ABCDE12345'}}};
+   },
+   challengeAndVerify:async({factorId,code})=>{
+    calls.push('verify:'+factorId);
+    assert.equal(code,'123456');
+    if(verificationError)return{error:{message:verificationError}};
+    liveLevel='aal2';return{data:{}};
+   },
+   getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:liveLevel}})
+  }}
+ };
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ ui.state.platform=true;ui.state.mfaRequired=true;
+ return{w,ui,calls};
+}
+test('unfinished TOTP Console PUNCH is re-enrolled, new QR and manual key displayed',async()=>{
+ const old={id:'unfinished',factor_type:'totp',status:'unverified',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[old]});
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.deepEqual(calls,['list','unenroll:unfinished','enroll:Console PUNCH']);
+ assert.equal(ui.state.factor,'new');
+ assert.equal(ui.state.mfaMode,'enroll');
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.equal(w.document.getElementById('ess-mfa-secret')?.value,'ABCDE12345');
+ assert.equal(w.document.querySelector('.ess-qr')?.getAttribute('src'),'data:image/svg+xml;base64,QVI=');
+ assert.ok(w.document.getElementById('ess-mfa-code'));
+ w.document.getElementById('ess-mfa-code').value='123456';
+ await ui.handle({dataset:{action:'ess:verify'}});
+ assert.equal(ui.state.mfaRequired,false);
+ assert.equal(ui.state.mfaSecret,null);
+ assert.equal(ui.state.snapshot.companies,1);
+ await w.happyDOM.close();
+});
+test('verified factor is reused; no unenroll or new enrolment',async()=>{
+ const v={id:'verified',status:'verified',factor_type:'totp',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[v]});
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.deepEqual(calls,['list']);
+ assert.equal(ui.state.factor,'verified');
+ assert.equal(ui.state.mfaMode,'verify');
+ assert.doesNotMatch(ui.renderPlatform(),/ess-mfa-secret/);
+ assert.match(ui.renderPlatform(),/déjà activé/);
+ await w.happyDOM.close();
+});
+test('unfinished unrelated factor is not removed or overwritten',async()=>{
+ const v={id:'other',status:'unverified',factor_type:'totp',friendly_name:'Personal factor'};
+ const {w,ui,calls}=setupMfa({factors:[v]});
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.deepEqual(calls,['list','enroll:Console PUNCH']);
+ await w.happyDOM.close();
+});
+test('wrong code never unlocks; root MFA remains mandatory on failures',async()=>{
+ const v={id:'verified',status:'verified',factor_type:'totp',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[v],verificationError:'Code invalide'});
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ w.document.body.innerHTML=ui.renderPlatform();
+ w.document.getElementById('ess-mfa-code').value='123456';
+ await ui.handle({dataset:{action:'ess:verify'}});
+ assert.ok(calls.includes('verify:verified'));
+ assert.equal(ui.state.mfaRequired,true);
+ assert.equal(ui.state.snapshot,null);
+ assert.match(ui.state.error,/Code invalide/);
+ await w.happyDOM.close();
+});
+test('logout clears QR and the secret, no leakage into next account session',async()=>{
+ const {w,ui}=setupMfa({factors:[]});
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.equal(ui.state.mfaSecret,'ABCDE12345');
+ ui.reset();
+ assert.equal(ui.state.mfaSecret,null);
+ assert.equal(ui.state.qr,null);
+ assert.equal(ui.state.factor,null);
+ assert.equal(ui.state.mfaMode,'unknown');
+ await w.happyDOM.close();
+});
+test('MFA setup does not display verification code entry before QR is prepared',async()=>{
+ const {w,ui}=setupMfa({factors:[]});
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.equal(w.document.getElementById('ess-mfa-code'),null);
+ assert.ok(w.document.querySelector('[data-action="ess:enroll"]'));
+ await w.happyDOM.close();
+});
