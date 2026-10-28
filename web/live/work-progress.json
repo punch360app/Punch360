@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T06:07:54.371Z",
+  "generated_at": "2026-10-28T06:17:31.874Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1361,7 +1361,8 @@
         191,
         202,
         203,
-        204
+        204,
+        205
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1401,7 +1402,8 @@
         154,
         202,
         203,
-        204
+        204,
+        205
       ],
       "note": "Travail rattaché à la PR #154. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1501,6 +1503,17 @@
     }
   },
   "activity": [
+    {
+      "number": 205,
+      "sha": "5f7faa1ca8e5997ea792f7dbadd77c8ef3d72c89",
+      "ci": "success",
+      "ids": [
+        "MISSION-010",
+        "MISSION-013"
+      ],
+      "title": "MISSION-010 — Reprise visible des fins hors ligne après redémarrage, file bornée et Auth revérifiée",
+      "merged_at": "2026-10-28T06:17:21Z"
+    },
     {
       "number": 204,
       "sha": "15ac63f22a43915c659ad558426ad45c394bc552",
@@ -2003,23 +2016,6 @@
       ],
       "title": "Essentiel — tableau du jour Missions : statuts, filtres et CSV sans données privées",
       "merged_at": "2026-10-26T22:26:10Z"
-    },
-    {
-      "number": 152,
-      "sha": "6d1fc33e2de3cd02e374cc74e172c639c1eed535",
-      "ci": "success",
-      "ids": [
-        "MISSION-001",
-        "MISSION-002",
-        "MISSION-003",
-        "MISSION-004",
-        "MISSION-005",
-        "MISSION-006",
-        "MISSION-013",
-        "MISSION-014"
-      ],
-      "title": "Essentiel — missions manuelles : brouillon, publication et Terminer sans sortie",
-      "merged_at": "2026-10-26T22:19:27Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
