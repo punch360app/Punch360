@@ -306,3 +306,10 @@ test('public landing uses responsive compact three-card desktop and mobile layou
  assert.match(c,/@media\(max-width:680px\)[\s\S]*?\.essential-public \.ess-price-grid\{grid-template-columns:1fr/);
  assert.match(c,/\.essential-public \.ess-market-details\[open\]::before/);
 });
+
+test('edition selector retains 44px touch size in Construction and Essentiel',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const c=readFileSync(new URL('../web/live/essential.css',import.meta.url),'utf8');
+ assert.match(c,/\.onboarding \.public-edition-tabs button\{min-height:44px/);
+ assert.match(c,/@media\(max-width:680px\)\{\.essential-public \.public-edition-tabs button\{min-height:44px/);
+});

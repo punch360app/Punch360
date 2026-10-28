@@ -156,3 +156,13 @@
  .essential-public .authwrap.auth-step-welcome{gap:4px}
  .essential-public .ess-price{padding:7px}
 }
+
+
+/* Edition selector is visible in BOTH editions. Keep ≥44px touch targets on
+   Android/iOS regardless of CSS theme, including the Construction landing. */
+.onboarding .public-edition-tabs{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap}
+.onboarding .public-edition-tabs button{min-height:44px;min-width:105px;padding:9px 16px;border:1px solid #dbe5d8;border-radius:99px;background:#fff;color:#42654b;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.onboarding .public-edition-tabs button[aria-pressed=true]{background:#42654b;color:#fff}
+.onboarding .public-edition-tabs button:focus-visible{outline:3px solid #779574;outline-offset:3px}
+.essential-public .public-edition-tabs button{min-height:44px}
+@media(max-width:680px){.essential-public .public-edition-tabs button{min-height:44px;padding:8px 14px}}
