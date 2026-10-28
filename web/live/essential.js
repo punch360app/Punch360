@@ -66,9 +66,23 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const get=id=>doc.getElementById(id), val=id=>get(id)?.value.trim()??'';
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
- async function load(user,account){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
+ async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
-   if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(!s.mfaRequired){const snapshot=await rpc('platform_snapshot');if(!current())return;s.snapshot=snapshot;const accounts=await rpc('platform_test_accounts');if(!current())return;s.testAccounts=accounts;}}
+   if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(s.mfaRequired){
+    const listed=await sb.auth.mfa.listFactors();if(listed.error)throw listed.error;if(!current())return;
+    const all=listed.data?.all||[],verified=all.find(f=>f.factor_type==='totp'&&f.status==='verified')||
+      (listed.data?.totp||[]).find(f=>f.status==='verified');
+    const pending=all.find(f=>f.factor_type==='totp'&&f.status==='unverified'&&f.friendly_name==='Console PUNCH');
+    const found=verified||pending;
+    if(found){
+     s.factor=found.id;
+     const same=!verified&&previous.user===user.id&&previous.factor===found.id&&previous.mode==='enroll'&&previous.qr&&previous.key;
+     s.mfaMode=verified?'verify':same?'enroll':'pending';
+     if(same){s.qr=previous.qr;s.mfaSecret=previous.key;}
+     s.mfaNotice=verified?'Authentificateur déjà actif. Entrez son code.':
+      'Configuration en cours. Revenez de votre application Authenticator et entrez le code sans créer de nouveau QR.';
+    }
+   }if(!s.mfaRequired){const snapshot=await rpc('platform_snapshot');if(!current())return;s.snapshot=snapshot;const accounts=await rpc('platform_test_accounts');if(!current())return;s.testAccounts=accounts;}}
    if(account?.companies?.product_edition==='essential'){
     if(['boss','admin'].includes(account.role)){
      // Server-computed status includes Super Admin holds, unlike companies.billing_status.
