@@ -100,3 +100,12 @@ test('untrusted email escaped in render and malformed membership responses fail 
  assert.equal(await s.ctrl.load(),false);
  assert.deepEqual(s.ctrl.state.items,[]);
 });
+
+test('main Web event dispatcher routes new platform-admin actions to their controller',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(source,/if\(a\.startsWith\('platform-admin:'\)\)\{await essentialUI\.platformAdmins\.handle\(el\);return;\}/);
+ const idx=source.indexOf("if(a.startsWith('platform-admin:'))");
+ const general=source.indexOf("if(a.startsWith('ess:'))");
+ assert.ok(idx>0&&general>idx,'Platform buttons must dispatch before generic Essentiel routing');
+});
