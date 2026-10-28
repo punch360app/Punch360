@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T13:32:10.635Z",
+  "generated_at": "2026-10-28T15:09:30.281Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1522,6 +1522,14 @@
   },
   "activity": [
     {
+      "number": 216,
+      "sha": "892a48ca318082f6d489819de2260b51979d48e7",
+      "ci": "success",
+      "ids": [],
+      "title": "MISSION-012 — import CSV de missions sur plusieurs dates, vérifié et sans publication",
+      "merged_at": "2026-10-28T15:09:19Z"
+    },
+    {
       "number": 215,
       "sha": "88071b90e6173909b747d60cf51b35d7f4db50a6",
       "ci": "success",
@@ -2010,18 +2018,6 @@
       ],
       "title": "Punch 360° — exécution accélérée, moins d'audits et parcours complets",
       "merged_at": "2026-10-27T01:55:32Z"
-    },
-    {
-      "number": 165,
-      "sha": "8ab1a96e80f86cee88b30e3449f35eb6c788544b",
-      "ci": "success",
-      "ids": [
-        "MISSION-008",
-        "MISSION-009",
-        "MISSION-013"
-      ],
-      "title": "Missions — réaffecter une étape publiée à un autre salarié (Web/Expo)",
-      "merged_at": "2026-10-27T01:52:04Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
