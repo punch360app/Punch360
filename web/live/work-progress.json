@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T06:34:50.237Z",
+  "generated_at": "2026-10-28T06:42:02.974Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1365,7 +1365,8 @@
         204,
         205,
         206,
-        207
+        207,
+        208
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1511,12 +1512,24 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        207
+        207,
+        208
       ],
       "note": "Travail rattaché à la PR #207. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 208,
+      "sha": "d52f84c7e76b2680910bacbfd252655961b584a9",
+      "ci": "success",
+      "ids": [
+        "MISSION-012",
+        "MISSION-013"
+      ],
+      "title": "MISSION-012 — Récurrence hebdomadaire et bimensuelle en brouillons, avec prévisualisation et contrôle anti-doublon",
+      "merged_at": "2026-10-28T06:41:52Z"
+    },
     {
       "number": 207,
       "sha": "4571cdf3ea46e5a076ea3b30f2c444cc5fc0ea74",
@@ -2023,16 +2036,6 @@
       ],
       "title": "Essentiel — choisir Maps, Waze ou Plans Apple depuis la prochaine mission",
       "merged_at": "2026-10-26T23:46:02Z"
-    },
-    {
-      "number": 155,
-      "sha": "195d9317226d932fd25ed039947aeee40e83e2c3",
-      "ci": "success",
-      "ids": [
-        "NAV-002"
-      ],
-      "title": "Essentiel — corriger l’adresse d’un établissement sans créer de succursale",
-      "merged_at": "2026-10-26T23:39:02Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
