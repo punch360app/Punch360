@@ -1,75 +1,24 @@
-# PUNCH 360° — Départ unique de ChatGPT Work
+# PUNCH 360° — Routine courte de ChatGPT Work
 
-## Reprendre l’état réel
+**28 octobre 2026.** Entrée opérationnelle unique : le [maître](MASTER_PROMPT_20261025.md) conserve décisions, priorités et exigences; [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md) conserve l'état. Cette routine remplace les répétitions de cadence, sans changer les protections ni les recettes.
 
-**Direction UX/UI autonome :** appliquer le [protocole Work UX/UI](UX_UI_AUTONOME_WORKFLOW.md) sur les écrans et parcours touchés; utiliser les captures réelles, respecter la charte approuvée et les droits, corriger les retouches simples directement, soumettre les refontes majeures à validation. Aucun outil graphique tiers n'est un prérequis ni un motif pour bloquer les lots.
+## Reprendre une fois, puis coder
 
-1. Lire le [prompt maître](MASTER_PROMPT_20261025.md) : décisions actuelles, ordre global, exigences et critères du module choisi.
-2. Lire **l’état courant unique** dans [PUNCH_WORK_CONTINUATION.md](../PUNCH_WORK_CONTINUATION.md). Les autres passations et anciens rapports sont historiques, pas des ordres de reprise.
-3. **Une fois au début de chaque reprise**, récupérer le dernier `main` et examiner uniquement les PR, branches, modifications locales et workflows **actifs ou pertinents au lot retenu**. Vérifier les fichiers concernés avant d'écrire. Ensuite suivre seulement les nouveaux changements, sans refaire l'audit global à chaque commit, test, PR ou déploiement. Préserver le travail concurrent.
-4. Choisir un parcours complet réalisable selon l’ordre global du maître. Corriger d’abord un défaut critique confirmé; un fournisseur bloqué ne bloque pas les lots indépendants. Sans élément nouveau, ne pas répéter l’audit Stripe, PDF ou Auth déjà conclu.
+1. Synchroniser `main`, préserver les modifications et travaux concurrents. Lire les `AGENTS.md` applicables, la dernière passation utile, les décisions actuelles, l'ordre global et les IDs du parcours. Examiner une fois les PR/branches qui le chevauchent. Ensuite lire les différences pertinentes; pas tout le catalogue, Drive ou les historiques à chaque action. Consulter Supabase seulement pour un changement SQL/droits ou un défaut DB précis.
+2. Choisir un parcours principal réalisable, P0 confirmé d'abord puis jalon courant. Fixer brièvement résultat par rôle, IDs, critères de sortie et dépendances dans le support existant. Reprendre un lot compatible engagé avant d'ouvrir un travail concurrent.
+3. Un seul exécutant par défaut, avec regards architecture, développement, UX/utilisateur, sécurité et QA selon l'impact. Aucune chaîne de six agents, rapports ou approbations. Délégation seulement si demandée ou prévue par les instructions applicables; contrôles techniques obligatoires.
+4. Réunir code, états/erreurs, droits et tests du parcours dans une branche. Terminal/Git local si disponible; sinon arbre/commit Git multi-fichiers via le connecteur, sans inventer de tests locaux. Le [protocole local](LOCAL_BATCH_WORKFLOW.md) précise les opérations au besoin. Pas de micro-PR par bouton.
 
-**Dépôt :** https://github.com/punch360app/Punch360. **Supabase exclusif :** `mlabstdxxwjdpfaxiwmg`. Construction et Essentiel restent distincts. Ne jamais recommencer le projet à zéro.
+## Vérifier et terminer
 
-## Pipeline QA proportionné aux changements — optimisation du 28 octobre 2026
+5. Tests ciblés après un groupe de modifications liées, puis appliquer la [matrice de validation](MASTER_PROMPT_20261025.md#validation-ciblée-et-réutilisation-des-preuves--règle-pour-tous-les-lots), dépendances partagées incluses. Documentation seule : cohérence, liens, exigences et génération du suivi. Une preuve traçable n'est réutilisable que si comportement, dépendances, droits, configuration et environnement restent valides; refaire la partie affectée.
+6. Une revue UX groupée par lot visuel selon le [protocole UX/UI](UX_UI_AUTONOME_WORKFLOW.md), avec vrais écrans et verdict `UX OK`, `À CORRIGER` ou `NON VÉRIFIÉ`. Aucun nouveau Figma obligatoire pour chaque retouche. Corriger les écarts aux critères; les idées facultatives hors critères vont dans la suite, sans retarder une livraison conforme.
+7. Un push groupé, une PR, puis suivre tous les checks requis jusqu'au résultat final sur le SHA attendu. Corriger les causes d'échec, aucun test affaibli. Pas de relance manuelle identique sans changement pertinent, échec ou doute précis. Pendant l'attente, au plus un lot indépendant sans collision ni changement du SHA en validation. Après deux tentatives identiques infructueuses, réexaminer la cause.
+8. Fusion autorisée, publication concernée suivie et parcours/version réellement servis vérifiés. Distinguer Pages, SQL appliqué, Edge active, source Expo, build installée et appareil/fournisseur. Un blocage explicite ne bloque que ses dépendants; ne pas le réauditer sans information nouvelle. Clore uniquement les critères prouvés.
+9. Une note brève par livraison significative : utilisable / manque / preuves / blocage / prochaine action. Pas de boucle documentation → CI → documentation. Continuer pendant la session sans attendre « Continue »; une CI en cours n'est pas une fin de tâche. Aucune poursuite après session n'est présumée.
 
-**Le contrôle de sécurité n'est pas négociable.** Le workflow `PUNCH TypeScript` conserve sur le SHA final les tests TypeScript, dépendances Expo, `npm test` (dont protections Auth, RLS et missions) et syntaxe Web. Aucune exception ni auto-fusion en cas d'échec.
+## Contrôles et invariants conservés
 
-Le workflow `Punch 360 safe visual review` garde **son nom, sa présence sur les PR Web et ses 24 vraies captures** pour tout changement UI/HTML/CSS, import d'interface, script visuel, baseline, dépendance inconnue ou diff impossible à lire. Sur `main`, la revue complète reste obligatoire à chaque déclenchement, ainsi qu'à la vérification quotidienne et manuelle; elle génère le pack Figma et la passation unique Work, jamais une approbation Figma fictive.
-
-Une PR ne touchant **exclusivement** que des modules de logique métier expressément autorisés dans `.github/scripts/visual-impact.cjs` (avec ses tests/documentation) reçoit un contrôle rapide de périmètre **sans installation de navigateur**. C'est une exemption VISUELLE limitée, pas une exemption de tests métier, sécurité ou UI lorsque l'interface est touchée. Toute incertitude oblige le parcours complet. Ne jamais ajouter un fichier à la liste de confiance par simple motif de vitesse sans preuve que ses changements sont non visuels; ne jamais sauter la CI obligatoire.
-
-Sur tous les parcours complets, installer seulement `playwright` et `pngjs` dans un préfixe temporaire; **ne pas réinstaller l'application Expo** dans le job visuel. Réutiliser le cache du navigateur headless shell. Tous les tests et les 24 vrais écrans restent identiques; seule la préparation inutile est supprimée. Comparer la durée réelle des runs avant/après, et revenir en arrière si la fiabilité baisse.
-
-La fusion demeure conditionnée à **tous les workflows requis au SHA final**. Le déploiement concerné doit réussir ensuite; Web, Supabase, Expo et appareils restent attestés séparément. Aucun appel de sécurité, accès client, pointage, salaire ou paiement n'est accéléré en contournant une autorisation.
-
-## Routine de travail par gros lots locaux — obligatoire (27 octobre 2026)
-
-Le propriétaire choisit **une construction locale par lots cohérents** : une copie Git avec terminal lorsque réellement disponible, développement conjoint Web/Expo/SQL/Edge/tests, validations ciblées pendant le codage, puis **un push groupé et une PR par parcours métier**. Ne pas effectuer un push par fichier ou par micro-correction, ne pas perdre du temps à relancer une inspection générale. Lire et appliquer le [protocole détaillé](LOCAL_BATCH_WORKFLOW.md) avant de choisir le lot. Le contrôle final sur le SHA PR, les protections serveur et l'attestation des déploiements restent obligatoires.
-
-Si le terminal ou le clonage local ne sont pas disponibles, **ne pas affirmer les avoir utilisés** : en mode connecteur GitHub, préparer les fichiers d'un même parcours et les enregistrer en **un arbre Git / un commit atomique**, puis PR et CI. Expliciter les limites des tests locaux; préférer un vrai environnement de développement local pour les lots suivants.
-
-## Mode accéléré — exécution prioritaire (26 octobre 2026)
-
-**Objectif : des parcours utilisables, pas une accumulation de micro-PR et de rapports.** Viser de manière indicative environ **80 % d'effort d'implémentation / 20 % de validation et coordination**, sans jamais diminuer les contrôles obligatoires.
-
-1. **Inspection initiale unique et ciblée.** Lire les décisions/IDs pertinents du maître, la dernière passation et l'état actuel de `main`. Examiner les PR ouvertes et branches qui chevauchent le lot. Inspecter la base Supabase uniquement si un changement SQL, permission ou défaut DB le justifie. Ne pas relire à chaque reprise toutes les anciennes PR, 691 exigences, migrations, logs, documents Drive ou historiques.
-2. **Regrouper les travaux en un vrai parcours.** Livrer ensemble UI Web/Expo pertinentes, serveur/RPC/SQL si nécessaires, rôles, gestion des erreurs et tests, dans **une seule PR cohérente par parcours**. Pas de micro-PR pour chaque filtre, bouton, message ou compte rendu lorsqu'ils appartiennent au même résultat métier. Exceptions : défaut critique P0, risque indépendant ou blocage réel.
-3. **Validation proportionnée.** Appliquer la section [Validation ciblée et réutilisation des preuves](MASTER_PROMPT_20261025.md#validation-ciblée-et-réutilisation-des-preuves--règle-pour-tous-les-lots) du maître à tous les lots : résultat et critères de sortie courts, contrôles selon les effets réels (y compris dépendances partagées), tests ciblés pendant le codage et CI obligatoire sur le **SHA final**. Réutiliser uniquement une preuve traçable dont le comportement, les dépendances, droits et conditions restent valides; refaire les contrôles affectés et vérifier chaque cible publiée. Aucun workflow ou test obligatoire affaibli. Un blocage fournisseur/appareil reste explicite et ne bloque que ses dépendants.
-4. **Finir et publier.** PR prête (éviter un brouillon sans raison), CI finale, fusion permise, déploiement pertinent, vérification de la version publiée. Distinguer source Web, migration SQL réellement appliquée, Edge déployée, Expo compilée et appareil testé. Durant une attente, préparer au plus un lot indépendant sans collision, pas un audit complet supplémentaire.
-5. **Suivi léger.** Inscrire les IDs réellement touchés dans `PUNCH-PROGRESS`; laisser le workflow automatiser le registre. Mettre à jour la passation **brièvement à la livraison significative ou à la fin réelle de session** (résultat, PR/SHA, preuve, blocage, prochaine action). Pas de long rapport pour chaque micro-correction.
-6. **Ne pas re-diagnostiquer ce qui est déjà confirmé.** Aucun nouvel audit Stripe, Auth, PDF, tarification ou anciennes migrations sans changement pertinent ou défaut reproductible. Si un fournisseur bloque, préciser l'étape exacte et avancer sur le prochain parcours indépendant.
-7. **Sécurité non négociable.** Préserver isolation des compagnies, RLS, permissions, intégrité des heures/paies, idempotence des paiements et pointages, secrets, vérifications de contrats et validation spécifique des actes financiers/destructifs. Ne jamais appeler « livré » une simulation ou une simple fusion.
-
-Ces règles optimisent la cadence, **sans supprimer ni renuméroter les exigences du maître**. Si un ancien texte exige des inspections ou comptes rendus répétitifs, appliquer le mode accéléré; si un contrôle de sécurité ou CI est requis, l'exécuter entièrement.
-
-## Clôture prioritaire des parcours (27 octobre 2026)
-
-Appliquer les **Règles de clôture des parcours** du maître : achever le parcours réalisable avant d'en étendre un autre, regrouper ses variantes liées et rattacher les preuves réelles de publication dans le même lot. Aucun lot autonome de documentation, audit général ou suivi sans demande propriétaire ou défaut confirmé. Le bilan dit ce qui est utilisable, ce qui manque et la prochaine action; les ratios de preuves ne sont jamais un pourcentage global du projet. Ne pas terminer volontairement la session à une attente CI, un commit ou une PR; suivre le résultat et enchaîner dans la durée réelle disponible. Les contrôles de sécurité et CI finale restent obligatoires.
-
-## Livrer et enchaîner
-
-Un lot principal couvrant un parcours métier utilisable avec IDs, résultat utilisateur et critères de recette; au plus un lot indépendant pendant une attente. Regrouper les corrections liées. Développer, tester selon le risque, pousser une branche et une PR, suivre la CI obligatoire jusqu’au résultat final sur le bon SHA, corriger les échecs, fusionner selon les règles applicables, suivre le déploiement concerné et vérifier la version publiée. Actualiser la passation après un lot significatif et enchaîner sans demander « continue ».
-
-Vérifier séparément Web Pages, SQL appliqué, Edge active, source Expo, build installée et recette appareil/fournisseur. Aucun statut livré par simple fusion ou simulation. Les tests pertinents accompagnent chaque lot; ne pas répéter une suite déjà verte sur du code inchangé sans raison nouvelle.
-
-Si Stripe est bloqué : enregistrer l’étape exacte (migration validée, compatibilité serveur/clients, accès sandbox ou recette), puis avancer ailleurs. Aucun paiement réel, modification dangereuse de contrat, suppression irréversible de données réelles, restauration destructive ni désactivation de sécurité sans validation spécifique. Secrets et prompts Drive privés restent hors du dépôt public. SMS/Twilio en dernier.
-
-## Catalogue actuel et logo
-
-Décision propriétaire du 26 octobre 2026 : **19/39/69 $ CAD par mois; 20/25/50 membres inclus; +2 $ par membre additionnel; annuel −15 %; bornes 1/3/illimitées**. Le propriétaire a modifié Stripe volontairement. Préserver les six Price IDs, le catalogue actif et les snapshots contractuels. La table du maître est la référence documentaire; ne pas rétablir une ancienne grille depuis le seed ou un historique. Logo officiel **« Heure validée »**; utiliser les fichiers approuvés, sans inventer un remplacement.
-
-Demande additionnelle `SACATALOG-016` : prévoir dans le Super Admin un nombre de membres inclus numérique configurable ou **illimité**; le mode illimité facture le prix de base avec zéro supplément par membre. Cette demande ne change pas automatiquement le catalogue actuel et reste à développer/valider.
-
-## Suivi automatique obligatoire
-
-- Inventaire : IDs stables du maître, sans doublons. Les nouvelles demandes distinctes utilisent le format `- [ ] **CODE-001** — Description` sous `## P2 — Titre (CODE, 1 points)`; une clarification complète l’ID existant.
-- Dans chaque PR, indiquer uniquement les IDs réellement touchés : `PUNCH-PROGRESS: STRIPE-012, GOV-014`.
-- Le workflow post-fusion met à jour `web/live/work-progress.json` avec PR et CI attestées. Il ne déduit jamais `deployed: true` d’une fusion.
-- `node scripts/sync-tracker-master.mjs` synchronise inventaire, lots, total et instantané de `web/live/suivi.html` à partir du maître; exécuté par `npm test` et Pages. Ne pas maintenir de total fixe dans le HTML, les scripts ou les tests.
-- Les trois compteurs sont **travail documenté / développement avec tests / livré et validé**. Les notes locales du propriétaire restent personnelles et ne les alimentent pas.
-- Conserver séparément **développé / testé / déployé / intervention externe**. N’augmenter un statut qu’avec preuve pertinente. Vérifier après publication nouveaux IDs, total, ratios et conservation des preuves.
-
-Drive `promt` et [INDEX.md](INDEX.md) servent à repérer les demandes nouvelles/modifiées quand l’accès existe. Ne pas relire systématiquement tous les documents privés déjà rapprochés sans changement. En l’absence d’accès, nommer ce blocage et avancer sur les exigences GitHub connues; ne pas inventer le contenu manquant.
-
-La passation courante donne la prochaine action exacte. À une limite réelle d’exécution, sauvegarder le travail cohérent et les workflows à revérifier; ne pas annoncer une poursuite en arrière-plan.
+- `PUNCH TypeScript` garde TypeScript, Expo, `npm test` et syntaxe Web. `Punch 360 safe visual review` garde 24 captures pour UI/HTML/CSS, Auth/droits, import visuel, dépendance partagée, fichier inconnu ou diff illisible. Chemin rapide seulement pour la logique déjà autorisée par `.github/scripts/visual-impact.cjs`; revue complète sur `main` et aux déclenchements planifiés/manuels, pack Figma et passation maintenus. Préparation légère et cache, sans réinstaller Expo. Aucun workflow modifié ici.
+- Dépôt `punch360app/Punch360`; Supabase exclusif `mlabstdxxwjdpfaxiwmg`; Essentiel/Construction distincts. Catalogue et six Price IDs, snapshots, `SACATALOG-016`, logo « Heure validée », moteur de temps et isolation restent régis par les décisions du maître. Aucune nouvelle autorisation de paiement réel, opération destructive, migration risquée ou modification d'une zone protégée. SMS/Twilio en dernier; secrets et Drive privés préservés.
+- PR : `PUNCH-PROGRESS: ...`, IDs touchés seulement. Workflow de registre et `node scripts/sync-tracker-master.mjs` conservent inventaire, total calculé et preuves; aucun statut applicatif gagné par documentation. Ratios documenté / développé avec tests / livré et validé distincts, jamais pourcentage global du projet.
