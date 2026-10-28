@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T00:24:06.847Z",
+  "generated_at": "2026-10-28T05:44:19.262Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1358,7 +1358,8 @@
         180,
         186,
         189,
-        191
+        191,
+        202
       ],
       "note": "Travail rattaché à la PR #152. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1395,7 +1396,8 @@
       "deployed": false,
       "external_required": true,
       "pr": [
-        154
+        154,
+        202
       ],
       "note": "Travail rattaché à la PR #154. Vérifier la portée, le déploiement et les recettes avant validation complète."
     },
@@ -1495,6 +1497,17 @@
     }
   },
   "activity": [
+    {
+      "number": 202,
+      "sha": "24a2af79723e2e13efc5ee40e028462ff6520adf",
+      "ci": "success",
+      "ids": [
+        "MISSION-010",
+        "MISSION-013"
+      ],
+      "title": "Missions — reprise anti-doublon de fin de mission après fermeture Web/Expo",
+      "merged_at": "2026-10-28T05:44:09Z"
+    },
     {
       "number": 201,
       "sha": "a062a2a65788f823bd18f52ba353a14b1ba5b1b1",
@@ -1999,16 +2012,6 @@
       "ids": [],
       "title": "Prompt maître : missions et répartition intelligente des tournées",
       "merged_at": "2026-10-26T21:52:34Z"
-    },
-    {
-      "number": 148,
-      "sha": "d5edea2e954d3f225f412852aa6e7cf86d8860c7",
-      "ci": "success",
-      "ids": [
-        "NAV-004"
-      ],
-      "title": "Essentiel — choisir et effacer sa navigation dans Plus → Réglages",
-      "merged_at": "2026-10-26T21:45:42Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
