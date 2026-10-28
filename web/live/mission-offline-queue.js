@@ -17,11 +17,13 @@ export function missionOfflineEligible({commentRequired=false,checklistRequired=
 }
 function parseQueue(raw,time) {
  let x;try{x=JSON.parse(raw)}catch{throw Error('File de mission illisible : aucune synchronisation possible.');}
- if(!x||!UUID.test(String(x.id||''))||!Number.isSafeInteger(x.createdAt)||
-    !Number.isSafeInteger(x.queuedAt)||!DAY.test(String(x.day||''))||
-    x.createdAt>time+300000||x.queuedAt>time+300000||
-    time-x.createdAt>MAX_AGE||time-x.queuedAt>MAX_AGE)
-  throw Error('Demande en attente invalide ou expirée : vérification manuelle nécessaire.');
+ const invalid=!x?'format':!UUID.test(String(x.id||''))?'identifiant':
+  !Number.isSafeInteger(x.createdAt)?'horodatage initial':
+  !Number.isSafeInteger(x.queuedAt)?'horodatage en attente':
+  !DAY.test(String(x.day||''))?'jour':
+  x.createdAt>time+300000||x.queuedAt>time+300000?'horloge en avance':
+  time-x.createdAt>MAX_AGE||time-x.queuedAt>MAX_AGE?'expirée':null;
+ if(invalid)throw Error('Demande en attente invalide ou expirée ('+invalid+') : vérification manuelle nécessaire.');
  const keys=Object.keys(x).sort().join(',');
  if(keys!=='createdAt,day,id,queuedAt')throw Error('Format de demande en attente non autorisé.');
  return x;
