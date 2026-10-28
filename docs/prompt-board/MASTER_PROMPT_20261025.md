@@ -2,6 +2,8 @@
 
 **Réorganisation du 26 octobre 2026.** Une seule liste fonctionnelle, avec des IDs stables et un total généré automatiquement. Toutes les exigences antérieures sont conservées. Les annexes précisent les critères des mêmes IDs; elles ne créent pas une autre file de travail.
 
+> **Exécution optimisée — 28 octobre 2026 :** commencer par [WORK_START.md](WORK_START.md), puis consulter les décisions, les IDs et les annexes utiles au lot choisi. Ce maître reste le catalogue intégral des exigences; sa longueur n'impose pas de tout relire à chaque reprise. La routine courte gouverne la cadence, sans remplacer les décisions produit, critères d'acceptation, protections ni recettes spécifiques. Un seul exécutant par défaut, sans chaîne obligatoire d'agents ou d'approbations par casquette.
+
 ## Autorité des documents et reprise
 
 1. Les décisions explicites les plus récentes du propriétaire priment sur les références historiques. Ne pas rétablir une ancienne configuration depuis la mémoire, un seed ou un rapport.
@@ -51,37 +53,13 @@ En l’absence d’un défaut critique ouvert et réalisable, suivre les jalons 
 
 Un prérequis réellement bloqué empêche uniquement la livraison qui en dépend. Documenter la cause et avancer sur le prochain parcours indépendant, y compris d’un jalon suivant. Ne pas déclarer le jalon bloqué terminé et ne pas affaiblir une protection pour le contourner.
 
-## Gouvernance UX/UI autonome — sans outil de design obligatoire
+## Exécution courante — routine unique
 
-Pour chaque lot comportant un nouvel écran, un changement visuel ou un parcours utilisateur, appliquer le [protocole UX/UI autonome Work](UX_UI_AUTONOME_WORKFLOW.md) : regard du designer, utilisateur final par rôle, accessibilité, critique proactive, captures réelles avant/après et tests ciblés. Corriger directement les retouches mineures; obtenir l'accord du propriétaire avant une refonte majeure ou un changement de comportement. Le code exécuté, les droits, les forfaits et les décisions métier priment toujours sur les images conceptuelles. **Aucun outil graphique, abonnement, crédit IA ou maquette tierce ne doit bloquer le développement.**
+Appliquer [WORK_START.md](WORK_START.md) : une lecture ciblée, un parcours complet, des validations proportionnées, une PR cohérente, la CI finale, la publication vérifiée et une passation courte. Le [protocole local](LOCAL_BATCH_WORKFLOW.md) précise seulement les opérations Git; le [protocole UX/UI](UX_UI_AUTONOME_WORKFLOW.md) précise la recette des écrans touchés. Les consulter quand le lot les nécessite, sans refaire trois démarrages.
 
-## Méthode par lots locaux — décision du 27 octobre 2026
+Achever le résultat et ses variantes liées avant d'étendre le périmètre. Définir les critères de sortie avant de coder; corriger les écarts à ces critères, garder les idées facultatives dans la suite. Aucune documentation, inspection générale ou maquette supplémentaire ne devient un lot autonome sans demande ou défaut qui empêche le travail. Les preuves de publication appartiennent au même lot; les sous-critères manquants restent ouverts.
 
-**Exécution prioritaire : développer et tester localement des parcours complets, puis faire un push groupé et une seule PR par parcours.** Appliquer le [protocole opérationnel des lots locaux](LOCAL_BATCH_WORKFLOW.md) avec un vrai espace Git/terminal lorsqu'il est disponible; inspecter les branches/PR pertinentes une seule fois avant le lot, réutiliser la copie locale et les modules existants, coder ensemble Web/Expo/backend/SQL/RLS/tests, faire des contrôles ciblés au fil du développement, et éviter les micro-pushs et attentes GitHub pour chaque fichier. Le lot peut être substantiel mais doit rester cohérent et récupérable.
-
-**Aucun compromis sur la sécurité :** CI obligatoire sur le SHA final de PR, isolation des compagnies, rôles/RLS, heures/paie, idempotence, contrats, migrations, publications et preuves de recette restent applicables. Ne jamais fusionner une version non contrôlée. Si le clone ou la compilation locale sont impossibles dans l'environnement courant, le signaler et **regrouper les écritures GitHub dans un commit/arbre multi-fichiers** plutôt que de prétendre avoir testé localement. Les opérations locales n'autorisent aucune mutation non approuvée de Stripe ni d'un autre projet Supabase.
-
-## Mode accéléré — cadence officielle, sans perte de qualité (26 octobre 2026)
-
-Le développement doit privilégier les **parcours complets livrables**. Le détail opérationnel de ce mode est dans `WORK_START.md`; ses règles de cadence remplacent toute instruction historique d'audit ou de passation répétitive. Les 691 exigences, priorités métier et protections de sécurité restent intégralement conservées.
-
-- **Un audit initial ciblé** de `main`, des travaux actifs pertinents, des fichiers du lot et du SQL concerné. Après cela, consulter les différences récentes seulement; ne pas scanner systématiquement tout GitHub, Drive, Supabase ou les anciennes passations.
-- **Une PR cohérente par parcours métier** : regrouper UI, backend, permissions, notifications/erreurs et tests. Les micro-PR purement documentaires ou par bouton/filtre ne doivent pas interrompre un parcours, sauf risque indépendant, P0 ou nécessité réelle.
-- **Tests selon le risque** : ciblés en cours de codage, contrôles obligatoires sur le SHA final de PR avant fusion, SQL/RLS/multi-entreprises si le schéma ou les droits changent. Ne pas refaire une suite verte sur code inchangé ni contourner les protections pour aller plus vite.
-- **Enchaînement concret** : fusion autorisée, déploiement pertinent suivi et publié, preuve brève puis prochain parcours. Préparer au plus un lot indépendant pendant une CI/fournisseur en attente, sans repartir dans des audits globaux.
-- **Suivi automatisé et synthétique** : identifiants `PUNCH-PROGRESS`, registre par workflow, passation courte uniquement à la fin d'une livraison significative ou d'une session; ne pas réécrire les longs historiques.
-- **Cible indicative : 80 % d'implémentation et 20 % de vérification/coordination.** Aucun quota ne justifie une CI rouge, une migration non vérifiée, une protection affaiblie ni un résultat fournisseur inventé. Toute dépendance externe bloquée est consignée précisément puis contournée par un autre lot indépendant.
-
-## Règles de clôture des parcours — correction de cadence du 27 octobre 2026
-
-- **Achever avant d'étendre.** Choisir le premier parcours réalisable du jalon courant; énoncer ce que Boss et Employé pourront réellement faire et les critères restant à satisfaire. Réutiliser l'existant puis traiter ensemble les manques réalisables. Ne pas ouvrir un nouveau sous-parcours après chaque petite amélioration du même flux.
-- **Regrouper les variantes liées.** Par exemple, pour les preuves de fin de mission, commentaire, checklist et photo privée appartiennent au même parcours lorsqu'ils sont réalisables ensemble. Une séparation exige une dépendance externe, un risque indépendant ou un défaut critique précis; la facilité de faire une petite PR ne suffit pas.
-- **Éviter les boucles de préparation.** Une lecture ciblée puis implémentation. Aucun nouveau rapport, audit général, nettoyage documentaire ou changement du suivi comme lot autonome sans demande du propriétaire ou défaut confirmé qui empêche le travail. Une CI en cours n'impose pas de terminer la session.
-- **Clôturer les preuves dans le lot.** Après publication, rattacher aux IDs touchés les preuves réellement obtenues : code/CI, Web publié, migration appliquée, Edge active, build et recette appareil/fournisseur séparément. Ne pas laisser une publication attestée décrite comme inconnue; ne pas transformer une publication Web en validation de toute l'exigence. Conserver les sous-critères manquants explicitement.
-- **Rendre compte du résultat utilisateur.** Pour une livraison significative : « utilisable maintenant / manque encore / blocage exact / prochaine action ». Les ratios du registre mesurent une couverture de preuves; ne jamais les présenter comme le pourcentage de code ou de projet terminé. Ne pas inventer un pourcentage alternatif.
-- **Enchaîner jusqu'à une limite réelle.** Après CI finale verte, fusion autorisée et publication vérifiée, poursuivre le prochain manque réalisable du parcours, puis le prochain parcours. Ne pas s'arrêter volontairement à un commit, une PR, une attente de test ou un compte rendu. En cas d'arrêt réel, laisser une passation courte et exacte, sans promettre de travail en arrière-plan.
-
-Ces règles renforcent le mode accéléré et priment sur les formulations générales de reprise documentaire. Elles ne suppriment aucune exigence ni aucun contrôle de sécurité, et ne rendent pas réalisable une recette nécessitant un appareil ou un accès fournisseur absent.
+Cette consolidation remplace les anciennes répétitions de cadence. Elle conserve tous les IDs et l'ordre global, les protections Auth/RLS/compagnies, heures/paie, contrats, migrations, vérifications fournisseur/appareil et le contrôle final GitHub. L'objectif reste le parcours réellement utilisable, jamais un quota de temps ni le nombre de commits.
 
 ## Validation ciblée et réutilisation des preuves — règle pour tous les lots
 
