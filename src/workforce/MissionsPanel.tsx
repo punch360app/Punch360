@@ -3,6 +3,7 @@ import {Alert,AppState,Linking,Pressable,Share,Text,TextInput,View} from 'react-
 import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from '../../web/live/mission-completion-request.js';
+import {missionOfflineEligible,queueOfflineMissionCompletion,listOfflineMissionCompletions,syncOfflineMissionCompletions} from '../../web/live/mission-offline-queue.js';
 import * as Network from 'expo-network';
 import * as DocumentPicker from 'expo-document-picker';
 import {supabase} from '../lib/supabase';
@@ -384,8 +385,12 @@ export function MissionManagerPanel({companyId,roster}:{companyId:string;roster:
 export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:string;workerId:string|null;navProvider:string|null}){
  const [items,setItems]=useState<Row[]>([]),[enabled,setEnabled]=useState(false),[commentRequired,setCommentRequired]=useState(false),[completionComment,setCompletionComment]=useState(''),
   [checklistRequired,setChecklistRequired]=useState(false),[checklistItems,setChecklistItems]=useState<string[]>([]),[checklistChecked,setChecklistChecked]=useState<number[]>([]),[photoRequired,setPhotoRequired]=useState(false),[photoOptional,setPhotoOptional]=useState(false),[photoAsset,setPhotoAsset]=useState<DocumentPicker.DocumentPickerAsset|null>(null),[busy,setBusy]=useState(false),
-  [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false);
+  [message,setMessage]=useState(''),[truncated,setTruncated]=useState(false),
+  [queued,setQueued]=useState<{mission:string;version:number}[]>([]);
  const requests=useRef<Map<string,string>>(new Map()),current=useRef(0);
+ const verifiedUserId=useRef<string|null>(null);
+ const queueIdentity=()=>({user:verifiedUserId.current||'',company:companyId,worker:workerId||''});
+ const readQueue=()=>listOfflineMissionCompletions({storage:AsyncStorage,identity:queueIdentity()});
   const stagedPhoto=useRef<{id:string;version:number;photoId:string}|null>(null);
  const hadEnabled=useRef(false),[connectionWarning,setConnectionWarning]=useState(false),[navOpen,setNavOpen]=useState(false),[tourOpen,setTourOpen]=useState(false),[tourRouteId,setTourRouteId]=useState<string|null>(null);
  const [issueOpen,setIssueOpen]=useState(false),[issueReason,setIssueReason]=useState(''),[issueNote,setIssueNote]=useState('');
@@ -404,9 +409,16 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
    if(gen!==current.current)return;
    setEnabled(!!res.enabled);setCommentRequired(!!res.comment_required);setPhotoRequired(!!res.photo_required);setPhotoOptional(!!res.photo_optional);setChecklistRequired(!!res.checklist_required);
    setChecklistItems(Array.isArray(res.checklist_items)?res.checklist_items:[]);hadEnabled.current=!!res.enabled;setConnectionWarning(false);setItems(res.items||[]);setTruncated(!!res.truncated);setMessage('');
+   // Only an online Auth-verifiable identity can authorize staging a future offline action.
+   const verified=await supabase.auth.getUser();
+   if(gen!==current.current)return;
+   verifiedUserId.current=verified.error?null:(verified.data.user?.id||null);
+   if(verifiedUserId.current){
+    try{setQueued(await readQueue());}catch(e:any){setMessage('File de missions à vérifier : '+(e.message||'stockage inaccessible'));setQueued([]);}
+   }else setQueued([]);
   }catch(e:any){if(gen===current.current){const warning=missionWarningEligible(hadEnabled.current,true);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setChecklistRequired(false);setChecklistItems([]);setItems([]);setConnectionWarning(warning);setMessage(warning?'Missions non disponibles en ligne. Aucune fin n’a été enregistrée.':'');}}
  }
- useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;setConnectionWarning(false);setNavOpen(false);setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setPhotoAsset(null);stagedPhoto.current=null;setCompletionComment('');setChecklistRequired(false);setChecklistItems([]);setChecklistChecked([]);setMessage('');requests.current.clear();
+ useEffect(()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;setDetailOpen(false);setDetailBusy(false);setDetailInstructions('');setDetailError('');setUpcomingOpen(false);setUpcomingDay(nextMissionDay());setUpcomingLoadedDay(null);setUpcomingItems([]);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(false);hadEnabled.current=false;verifiedUserId.current=null;setQueued([]);setConnectionWarning(false);setNavOpen(false;setTourOpen(false);setTourRouteId(null);setIssueOpen(false);setIssueReason('');setIssueNote('');setItems([]);setEnabled(false);setCommentRequired(false);setPhotoRequired(false);setPhotoOptional(false);setPhotoAsset(null);stagedPhoto.current=null;setCompletionComment('');setChecklistRequired(false);setChecklistItems([]);setChecklistChecked([]);setMessage('');requests.current.clear();
   if(workerId)void refresh();
   const subscription=AppState.addEventListener('change',state=>{if(state==='active'&&workerId)void refresh()});
   return()=>{current.current++;upcomingGeneration.current++;detailGeneration.current++;subscription.remove()};
@@ -498,7 +510,21 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      const id=next.id;
      try{
       const network=await Network.getNetworkStateAsync();
-      if(network.isConnected===false||network.isInternetReachable===false)throw Error('Connexion requise.');
+      const offline=network.isConnected===false||network.isInternetReachable===false;
+      if(offline){
+       if(!missionOfflineEligible({verified:!!verifiedUserId.current&&hadEnabled.current,
+         enabled,truncated,ambiguous:missionConflict,commentRequired,checklistRequired,
+         photoRequired,photoSelected:!!photoAsset||!!stagedPhoto.current,mission:next}))
+        throw Error('Preuves ou session en ligne requises : aucune fin mise en attente.');
+       await queueOfflineMissionCompletion({storage:AsyncStorage,
+        identity:{...queueIdentity(),mission:id,version:next.version},
+        day:next.mission_day||missionDate(),uuid:()=>Crypto.randomUUID()});
+       setQueued(await readQueue());
+       setMessage('En attente de synchronisation — le serveur n’a pas confirmé la fin.');
+       return;
+      }
+      if(queued.some(q=>q.mission===id&&q.version===next.version))
+       throw Error('Fin déjà en attente : utilisez le bouton Vérifier et synchroniser.');
       const verified=await supabase.auth.getUser();
       if(verified.error||!verified.data.user?.id)throw Error('Session à revalider en ligne.');
       const durable=await reserveMissionCompletionRequest({
@@ -528,6 +554,58 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      finally{setBusy(false)}
     })()}}]);
  };
+ const syncQueued=()=>{void (async()=>{
+  if(!workerId||!companyId||busy)return;
+  setBusy(true);setMessage('');
+  const company=companyId,worker=workerId,user=verifiedUserId.current,gen=current.current;
+  const ensureContext=()=>{
+   if(gen!==current.current||companyId!==company||workerId!==worker)
+    throw Error('Espace de travail modifié : aucune fin envoyée.');
+  };
+  try{
+   const network=await Network.getNetworkStateAsync();
+   if(network.isConnected===false||network.isInternetReachable===false)
+    throw Error('Connexion requise pour vérifier les fins en attente.');
+   if(!user)throw Error('Identité en ligne non vérifiée.');
+   const result=await syncOfflineMissionCompletions({
+    storage:AsyncStorage,identity:{company,worker,user},
+    verifyUser:async()=>{
+     ensureContext();
+     const verified=await supabase.auth.getUser();
+     ensureContext();
+     if(verified.error)throw verified.error;
+     return verified.data.user?.id;
+    },
+    fetchDay:async day=>{
+     ensureContext();
+     const data=await rpc('list_essential_missions',
+      {p_company:company,p_day:day,p_worker:worker,p_include_drafts:false});
+     ensureContext();
+     return data;
+    },
+    nextMissionId:rows=>{
+     const progress=missionProgress(rows);
+     return progress.ambiguous?null:progress.next?.id;
+    },
+    send:async entry=>{
+     ensureContext();
+     const data=await rpc('complete_essential_mission',
+      {p_company:company,p_id:entry.mission,p_version:entry.version,p_request:entry.request});
+     ensureContext();
+     return data;
+    }
+   });
+   ensureContext();
+   setQueued(await readQueue());
+   await refresh();
+   if(companyId!==company||workerId!==worker)return;
+   setMessage(result.sent+' fin(s) confirmée(s). '+result.pending+' en attente.'+
+    (result.conflicts.length?' Mission modifiée : vérification manuelle requise.':'')+
+    (result.networkError?' '+result.networkError:'')+
+    ' Aucun pointage modifié.');
+  }catch(e:any){setMessage('Synchronisation non confirmée : '+(e.message||'connexion inaccessible'));}
+  finally{setBusy(false);}
+ })()};
  const loadUpcoming=()=>{
   if(!workerId||!companyId||!enabled||upcomingBusy)return;
   setUpcomingItems([]);setUpcomingLoadedDay(null);setUpcomingTruncated(false);setUpcomingError('');setUpcomingBusy(true);
@@ -548,6 +626,12 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  };
  const futureTour=upcomingLoadedDay?personalMissionTour(upcomingItems,workerId,25,upcomingLoadedDay):null;
  if(!workerId)return null;
+ if(!enabled&&queued.length)return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:8}}>
+  {title('Fins de mission en attente')}
+  {label(queued.length+' demande(s) enregistrée(s) sur cet appareil. Aucune fin serveur confirmée.')}
+  {button('Vérifier et synchroniser',syncQueued,busy)}
+  {!!message?label(message):null}
+ </View>;
  if(connectionWarning&&!enabled)return <View accessibilityRole="alert" style={{padding:12,borderRadius:11,backgroundColor:'#F7FAF5',borderWidth:1,borderColor:'#DCE8D6',gap:6}}>
   {title('Missions momentanément indisponibles')}
   {label('Connexion requise pour actualiser vos missions. Aucune fin ni sortie de pointage n’a été enregistrée.')}
@@ -556,6 +640,11 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
  const address=missionAddress(next);
  const routes=missionNavigationOptions(next,Platform.OS,navProvider);
  return <View style={{padding:12,borderWidth:1,borderColor:'#DCE8D6',borderRadius:12,gap:7,backgroundColor:'#F7FAF5'}}>
+  {queued.length?<View style={{padding:9,borderRadius:8,backgroundColor:'#FBEEDB',gap:5}}>
+   {label(queued.length+' fin(s) de mission en attente. Pas encore confirmées par le serveur.')}
+   {button('Vérifier et synchroniser',syncQueued,busy)}
+  </View>:null}
+  {connectionWarning?label('Missions affichées depuis la dernière consultation en ligne : données à actualiser.'):null}
   {items.filter((m:Row)=>m.issue_decision_at).map((m:Row)=><View key={'decision-'+m.id} style={{padding:8,backgroundColor:'#E8F2E8',borderRadius:8}}>{label('Décision du responsable : '+resolvedMissionNotice(m))}</View>)}
   {title(!progress.total?'Aucune mission pour aujourd’hui':progress.allDone?'Toutes les missions sont terminées':missionConflict?'Ordre des missions à confirmer':!next&&progress.blocked?'Missions signalées au responsable':next?.status==='in_progress'?'Mission en cours · '+(progress.done+progress.blocked+1)+' de '+progress.total:'Prochaine mission · '+(progress.done+progress.blocked+1)+' de '+progress.total)}
   {!next&&progress.blocked&&!missionConflict?label('Aucune prochaine mission publiée. Les étapes signalées nécessitent un suivi; le pointage ne change pas.'):null}
@@ -596,7 +685,9 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      {button(photoAsset?'Changer la photo':'Choisir une photo',pickPhoto,busy)}
      {photoAsset?label('Prête : '+photoAsset.name):stagedPhoto.current?.id===next.id?label('Photo téléversée, fin à confirmer.'):null}
     </View>:null}
-    {button(photoRequired?'Terminer avec photo':checklistRequired?'Terminer avec checklist':commentRequired?'Terminer avec commentaire':'Terminer',complete,busy)}
+    {queued.some(q=>q.mission===next.id&&q.version===next.version)?
+      label('Fin de cette mission en attente de synchronisation.'):
+      button(photoRequired?'Terminer avec photo':checklistRequired?'Terminer avec checklist':commentRequired?'Terminer avec commentaire':'Terminer',complete,busy)}
    {button(issueOpen?'Fermer le signalement':'Signaler une mission impossible',()=>setIssueOpen(v=>!v),busy)}
    {issueOpen?<View style={{gap:6,padding:10,backgroundColor:'white',borderRadius:9}}>
     {label('Choisissez un motif. Aucun pointage, retard ou absence ne sera déduit.')}
