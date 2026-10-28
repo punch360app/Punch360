@@ -576,18 +576,18 @@ export function PersonalMissionCard({companyId,workerId,navProvider}:{companyId:
      if(verified.error)throw verified.error;
      return verified.data.user?.id;
     },
-    fetchDay:async day=>{
+    fetchDay:async (day:string)=>{
      ensureContext();
      const data=await rpc('list_essential_missions',
       {p_company:company,p_day:day,p_worker:worker,p_include_drafts:false});
      ensureContext();
      return data;
     },
-    nextMissionId:rows=>{
+    nextMissionId:(rows:Row[])=>{
      const progress=missionProgress(rows);
-     return progress.ambiguous?null:progress.next?.id;
+     return ('ambiguous' in progress&&progress.ambiguous)?null:progress.next?.id;
     },
-    send:async entry=>{
+    send:async (entry:{mission:string;version:number;request:string;day:string})=>{
      ensureContext();
      const data=await rpc('complete_essential_mission',
       {p_company:company,p_id:entry.mission,p_version:entry.version,p_request:entry.request});
