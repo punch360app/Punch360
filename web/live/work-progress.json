@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T00:02:36.917Z",
+  "generated_at": "2026-10-28T00:24:06.847Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1496,6 +1496,14 @@
   },
   "activity": [
     {
+      "number": 201,
+      "sha": "a062a2a65788f823bd18f52ba353a14b1ba5b1b1",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH 360 : 3 planches Figma préparées automatiquement à partir des 24 captures",
+      "merged_at": "2026-10-28T00:23:56Z"
+    },
+    {
       "number": 199,
       "sha": "b6eb74abe408f593193e3d5f9dc65e05a7598448",
       "ci": "success",
@@ -2001,16 +2009,6 @@
       ],
       "title": "Essentiel — choisir et effacer sa navigation dans Plus → Réglages",
       "merged_at": "2026-10-26T21:45:42Z"
-    },
-    {
-      "number": 147,
-      "sha": "a40297bd29cb7722dd3a81e257cc7021ae132138",
-      "ci": "success",
-      "ids": [
-        "NAV-008"
-      ],
-      "title": "Essentiel — consignes d’accès d’un client uniquement sur demande",
-      "merged_at": "2026-10-26T21:41:55Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
