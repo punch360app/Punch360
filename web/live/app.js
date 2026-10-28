@@ -417,6 +417,7 @@ if(a.startsWith('subdir:')){await essentialUI.subscriptions.handle(el);return;}
 if(a.startsWith('boss-handoff:')){await bossHandoff.handle(el);return;}
  if(a.startsWith('qualified:')){await essentialUI.qualifiedCoverage.handle(el);return;}
 if(a.startsWith('budget:')){await essentialUI.laborBudgets.handle(el);return;}
+if(a.startsWith('platform-admin:')){await essentialUI.platformAdmins.handle(el);return;}
 if(a.startsWith('platform-user:')){await essentialUI.platformUsers.handle(el);return;}
  if(a.startsWith('platform-price:')){await essentialUI.platformPriceProposals.handle(el);return;}
 if(a.startsWith('directory:')){await essentialUI.directory.handle(el);return;}
