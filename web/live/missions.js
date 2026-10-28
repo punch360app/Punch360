@@ -2,6 +2,7 @@ import {navigationUrl,navigationPlatform,navigationPreferenceKey,chooseNavigatio
 import {reserveMissionCompletionRequest,acknowledgeMissionCompletionRequest} from './mission-completion-request.js';
 import {missionDayReview,missionDayReviewCsv,MISSION_STATES} from './mission-day-review.js';
 import {parseMissionDraftCsv,validateMissionDraftRows,importMissionDraftRows,MISSION_IMPORT_HEADER} from './mission-batch-import.js';
+import {recurringMissionDrafts,recurringMissionConflict} from './mission-recurrence.js';
 import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './mission-issues.js';
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
 import {missionPostponeArgs} from './mission-postpone.js';
@@ -90,7 +91,7 @@ export function missionArgs(company,form,existing=null,publish=false){
 }
 export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',day:missionDate(),roster:[],sites:[],missions:[],error:'',truncated:false,busy:false,
-  review:{status:'',worker:'',client:''},sitesComplete:false,importPreview:null,importMessage:'',postponeId:null,decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
+  review:{status:'',worker:'',client:''},sitesComplete:false,importPreview:null,importMessage:'',recurrencePreview:null,postponeId:null,decisionId:null,decisionAction:'resume',edit:null,cancelId:null,reassignId:null,rescheduleId:null,form:{day:missionDate(),worker:'',site:'',order:'1',title:'',instructions:''}};
  let generation=0;
  const cancelRequests=new Map();
  const reassignRequests=new Map();
@@ -100,7 +101,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
   if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();s.postponeId=null;s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
-  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],sitesComplete:false,importPreview:null,importMessage:'',error:''});
+  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],sitesComplete:false,importPreview:null,importMessage:'',recurrencePreview:null,error:''});
   if(!company)return;
   try{
    const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
@@ -115,7 +116,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],sitesComplete:false,importPreview:null,importMessage:'',error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],sitesComplete:false,importPreview:null,importMessage:'',recurrencePreview:null,error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
@@ -157,6 +158,17 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
        e(row.site)+'</td><td>'+e(row.order)+'</td><td>'+e(row.title)+'</td></tr>').join('')+
       '</tbody></table></div></details>'+
       (s.importPreview.validated.valid?button('Créer '+s.importPreview.validated.total+' brouillon(s) après confirmation','import-confirm'):''):'')+
+    '</section>'+
+    '<section class="ess-panel" aria-label="Récurrence des missions"><h4>Répéter cette mission</h4>'+
+    '<p class="ess-fine">Utilisez les champs salarié, lieu, date, ordre, titre et instructions ci-dessus. Crée 2 à 12 brouillons, chaque semaine ou aux deux semaines, sur 180 jours maximum. Les dates sont vérifiées une par une; aucune publication automatique.</p>'+
+    '<label class="ess-field">Fréquence<select id="mission-recurrence-weeks"><option value="1">Chaque semaine</option><option value="2">Aux deux semaines</option></select></label>'+
+    '<label class="ess-field">Nombre d’occurrences<input id="mission-recurrence-count" type="number" min="2" max="12" value="4"></label>'+
+    button('Prévisualiser les dates','recurrence-preview')+
+    (s.recurrencePreview?'<p role="status">'+s.recurrencePreview.rows.length+
+      ' brouillon(s) proposés pour le même salarié et le même lieu. Aucun envoi effectué.</p>'+
+      '<ol>'+s.recurrencePreview.rows.map(row=>'<li>'+e(row.day)+' · '+e(row.title)+
+      ' (rang '+e(row.order)+')</li>').join('')+'</ol>'+
+      button('Créer ces brouillons après vérification','recurrence-confirm'):'')+
     '</section>';
    const analysis=missionDayReview(s.missions,s.review,s.truncated);
    body+='<section class="ess-panel" aria-label="Suivi quotidien des missions">'+
@@ -334,6 +346,80 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
     }catch(error){
      s.importPreview=null;
      throw Error('Import non confirmé ou partiel; aucun essai automatique. '+
+      String(error?.message||error));
+    }
+   }else if(action==='recurrence-preview'){
+    if(s.truncated||!s.sitesComplete)throw Error('Carnet ou journée incomplets : récurrence refusée.');
+    const val=k=>doc.getElementById('mission-'+k)?.value||'';
+    const worker=val('worker'),site=val('site');
+    if(!s.roster.some(w=>w.id===worker&&w.status==='active')||
+       !s.sites.some(x=>x.id===site&&x.active))
+     throw Error('Sélectionnez un salarié et une adresse active de cette compagnie.');
+    const form={worker,site,day:val('day'),order:val('order'),title:val('title'),
+     instructions:val('instructions')};
+    missionArgs(s.company,form,null,false);
+    const rows=recurringMissionDrafts({...form,workerId:worker,siteId:site,
+     intervalWeeks:doc.getElementById('mission-recurrence-weeks')?.value||'',
+     count:doc.getElementById('mission-recurrence-count')?.value||''},{today:missionDate()});
+    s.recurrencePreview={rows,company:s.company,gen:generation};
+   }else if(action==='recurrence-confirm'){
+    const preview=s.recurrencePreview,company=s.company,gen=generation,roster=s.roster;
+    if(!preview||preview.company!==company||preview.gen!==gen||!s.enabled||!s.sitesComplete)
+     throw Error('Prévisualisation expirée. Vérifiez les dates à nouveau.');
+    if(!doc.defaultView.confirm('Créer '+preview.rows.length+
+      ' brouillon(s) aux dates proposées ? Les employés ne seront pas avisés avant publication.'))return true;
+    const assertCurrent=()=>{
+     if(s.company!==company||generation!==gen)
+      throw Error('Entreprise ou écran modifié : création interrompue.');
+    };
+    try{
+     if(!sb.auth?.getUser)throw Error('Session Auth à vérifier.');
+     const actor=await sb.auth.getUser();assertCurrent();
+     if(actor.error||!actor.data?.user?.id)throw Error('Session expirée.');
+     const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
+     assertCurrent();
+     if(cfg?.enabled!==true)throw Error('Missions désactivées ou accès révoqué.');
+     const sites=await rpc('list_essential_client_sites',
+      {p_company:company,p_search:'',p_after:null,p_limit:100});
+     assertCurrent();
+     if(sites?.has_more||!Array.isArray(sites?.items)||sites.items.length>=100)
+      throw Error('Carnet client incomplet : récurrence refusée.');
+     const verifyRow=async row=>{
+      assertCurrent();
+      const auth=await sb.auth.getUser();assertCurrent();
+      if(auth.error||auth.data?.user?.id!==actor.data.user.id)
+       throw Error('Identité modifiée : création interrompue.');
+      if(!roster.some(w=>w.id===row.workerId&&w.status==='active')||
+         !sites.items.some(site=>site.id===row.siteId&&site.active))
+       throw Error('Salarié ou lieu devenu indisponible.');
+      const latest=await rpc('list_essential_missions',
+       {p_company:company,p_day:row.day,p_worker:null,p_include_drafts:true});
+      assertCurrent();
+      if(latest?.enabled!==true||latest?.truncated||!Array.isArray(latest?.items)||
+         latest.items.some(x=>x&&(x.company_id&&x.company_id!==company||
+          x.mission_day&&x.mission_day!==row.day)))
+       throw Error('Journée incomplète ou non autorisée : création refusée.');
+      const conflict=recurringMissionConflict(row,latest.items);
+      if(conflict)throw Error(row.day+' : '+conflict);
+     };
+     // Preflight ALL dates before the first write; re-check each immediately before save.
+     for(const row of preview.rows)await verifyRow(row);
+     const result=await importMissionDraftRows(preview.rows,{
+      beforeEach:verifyRow,
+      save:async row=>{
+       assertCurrent();
+       const saved=await rpc('save_essential_mission',
+        missionArgs(company,{worker:row.workerId,site:row.siteId,day:row.day,
+         order:row.order,title:row.title,instructions:row.instructions},null,false));
+       assertCurrent();return saved;
+      }
+     });
+     s.recurrencePreview=null;
+     await load(company,roster);
+     notify(result.completed+' brouillon(s) de récurrence créés. Vérifiez chaque date avant publication.');
+    }catch(error){
+     s.recurrencePreview=null;
+     throw Error('Récurrence interrompue; ne relancez pas sans actualiser les dates. '+
       String(error?.message||error));
     }
    }else if(action==='review-apply'){
