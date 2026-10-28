@@ -101,7 +101,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
  async function rpc(name,args){const response=await sb.rpc(name,args);if(response.error)throw response.error;return response.data;}
  async function load(company,roster=[]){
   if(s.company!==company){cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();s.postponeId=null;s.decisionId=null;s.cancelId=null;s.reassignId=null;s.rescheduleId=null;}
-  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],sitesComplete:false,importPreview:null,importMessage:'',error:''});
+  const gen=++generation;Object.assign(s,{company,roster,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',missions:[],sites:[],sitesComplete:false,importPreview:null,importMessage:'',recurrencePreview:null,error:''});
   if(!company)return;
   try{
    const cfg=await rpc('essential_missions_configuration',{p_company:company,p_enabled:null});
@@ -116,7 +116,7 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
    }
   }catch(err){if(gen===generation)s.error=err.message;}
  }
- function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],sitesComplete:false,importPreview:null,importMessage:'',error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
+ function reset(){generation++;cancelRequests.clear();reassignRequests.clear();rescheduleRequests.clear();decisionRequests.clear();postponeRequests.clear();Object.assign(s,{company:null,enabled:false,commentRequired:false,photoRequired:false,photoOptional:false,checklistRequired:false,checklistItems:[],checklistDraft:'',sites:[],missions:[],sitesComplete:false,importPreview:null,importMessage:'',recurrencePreview:null,error:'',edit:null,postponeId:null,decisionId:null,decisionAction:'resume',cancelId:null,reassignId:null,rescheduleId:null});}
  function field(label,id,value,type='text'){return '<label class="ess-field">'+e(label)+'<input type="'+type+'" id="mission-'+id+'" value="'+e(value||'')+'"></label>';}
  function select(label,id,selected,options){return '<label class="ess-field">'+e(label)+'<select id="mission-'+id+'">'+options.map(([v,t])=>'<option value="'+e(v)+'" '+(v===selected?'selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';}
  function button(text,act,id=''){return '<button type="button" class="ess-btn" data-action="ess:plan-mission-'+act+'" '+(id?'data-id="'+e(id)+'" ':'')+(s.busy?'disabled':'')+'>'+e(text)+'</button>';}
