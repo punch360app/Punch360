@@ -146,3 +146,33 @@ test('CSV never exports an old company after context changes during server reque
  assert.doesNotMatch(ctrl.state.error||'',/exporté/);
  await win.happyDOM.close();
 });
+
+test('authorized CSV export uses fresh server rows, never a stale cached title',async()=>{
+ const win=new Window(),calls=[],notices=[],exports=[];
+ Object.defineProperty(win.URL,'createObjectURL',{configurable:true,value:blob=>{
+  exports.push(blob);return'blob:mission-export';
+ }});
+ Object.defineProperty(win.URL,'revokeObjectURL',{configurable:true,value:()=>{}});
+ const original=[{...missions[0],title:'Ancienne mission'}];
+ const updated=[{...missions[0],title:'Mission actualisée',mission_day:'2026-11-03'}];
+ const sb={auth:{async getUser(){return{data:{user:{id:'boss-A'}},error:null}}},
+  async rpc(name,args){calls.push({name,args});
+   if(name==='essential_missions_configuration')return{data:{enabled:true}};
+   if(name==='list_essential_client_sites')return{data:{items:[]}};
+   if(name==='list_essential_missions')
+    return{data:{enabled:true,truncated:false,items:
+      calls.filter(c=>c.name==='list_essential_missions').length===1?original:updated}};
+   throw Error('Unexpected '+name);
+  }};
+ const ctrl=createMissionManager({sb,document:win.document,escape:x=>String(x),redraw(){},notify:x=>notices.push(x)});
+ ctrl.state.day='2026-11-03';
+ await ctrl.load('company-A',[]);
+ await ctrl.handle('review-csv',{dataset:{}});
+ assert.equal(exports.length,1);
+ const csv=await exports[0].text();
+ assert.match(csv,/Mission actualisée/);
+ assert.doesNotMatch(csv,/Ancienne mission|Code 1234/);
+ assert.match(notices.join(' '),/revérifiée/);
+ assert.equal(calls.filter(c=>c.name==='list_essential_missions').length,2);
+ await win.happyDOM.close();
+});
