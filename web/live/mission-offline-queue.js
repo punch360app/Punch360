@@ -85,15 +85,23 @@ export async function syncOfflineMissionCompletions({storage,identity,verifyUser
    const latest=await fetchDay(entry.day);
    const items=Array.isArray(latest?.items)?latest.items:[];
    const row=items.find(x=>x.id===entry.mission);
-   if(!latest?.enabled||latest.truncated||latest.comment_required||latest.checklist_required||
-      latest.photo_required||!row||row.worker_id!==identity.worker||
-      row.version!==entry.version||!['published','in_progress'].includes(row.status)||
-      nextMissionId(items)!==entry.mission){
+   const assigned=latest?.enabled&&!latest.truncated&&row&&row.worker_id===identity.worker;
+   // A lost server acknowledgement may leave the SAME request queued even
+   // though the official mission is already completed. Only the original
+   // server RPC may attest duplicate:true; never infer it from the UI state.
+   const duplicateCandidate=assigned&&row.status==='completed'&&
+      row.version===entry.version+1;
+   const regularCandidate=assigned&&!latest.comment_required&&!latest.checklist_required&&
+      !latest.photo_required&&row.version===entry.version&&
+      ['published','in_progress'].includes(row.status)&&
+      nextMissionId(items)===entry.mission;
+   if(!regularCandidate&&!duplicateCandidate){
     conflicts.push({mission:entry.mission,reason:'Version, attribution, ordre, preuve ou autorisation modifié(e)'});
     continue;
    }
    const data=await send({mission:entry.mission,version:entry.version,request:entry.id,day:entry.day});
-   if(data?.status!=='completed')throw Error('Accusé serveur invalide');
+   if(data?.status!=='completed'||(duplicateCandidate&&data.duplicate!==true))
+    throw Error('Accusé serveur invalide : fin non confirmée');
    await acknowledgeMissionCompletionRequest(storage,{key:entry.key,id:entry.id},now);
    sent++;
   }catch(error){

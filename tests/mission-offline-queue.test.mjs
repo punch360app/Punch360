@@ -78,3 +78,25 @@ test('corrupt and expired records block replay, never overwrite them',async()=>{
  storage.m.set(key,JSON.stringify({...data,queuedAt:1,createdAt:1}));
  await assert.rejects(listOfflineMissionCompletions({storage,identity:A,now:()=>50*86400000}),/expirée/);
 });
+
+test('lost ACK resolves ONLY if server confirms the exact same idempotency request',async()=>{
+ const storage=store();await queueOfflineMissionCompletion(args(storage));
+ const latest={...fetchData(),items:[{id:'mission-1',worker_id:'worker-A',
+  status:'completed',version:4,sort_order:1}],photo_required:true};
+ const accepted=sync(storage,{fetchDay:async()=>latest,
+  nextMissionId:()=>null,send:async rec=>{
+   assert.equal(rec.request,uuid);assert.equal(rec.version,3);
+   return {status:'completed',duplicate:true};
+  }});
+ const confirmed=await accepted.run();
+ assert.equal(confirmed.sent,1);assert.equal(confirmed.pending,0);
+});
+test('another completion or a false duplicate ACK cannot silently purge the queue',async()=>{
+ const storage=store();await queueOfflineMissionCompletion(args(storage));
+ const latest={...fetchData(),items:[{id:'mission-1',worker_id:'worker-A',
+  status:'completed',version:4,sort_order:1}]};
+ const attempt=sync(storage,{fetchDay:async()=>latest,send:async()=>({status:'completed',duplicate:false})});
+ const result=await attempt.run();
+ assert.equal(result.sent,0);assert.equal(result.pending,1);
+ assert.match(result.networkError,/Accusé serveur invalide/);
+});
