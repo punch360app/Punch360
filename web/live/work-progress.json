@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T15:09:30.281Z",
+  "generated_at": "2026-10-28T22:58:27.287Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1522,6 +1522,14 @@
   },
   "activity": [
     {
+      "number": 218,
+      "sha": "483b7ba8fa0a051aa39ad701284f1b909b66cbd9",
+      "ci": "success",
+      "ids": [],
+      "title": "Clarifier les lots PUNCH, la revue ponctuelle et la livraison",
+      "merged_at": "2026-10-28T22:58:18Z"
+    },
+    {
       "number": 216,
       "sha": "892a48ca318082f6d489819de2260b51979d48e7",
       "ci": "success",
@@ -2007,17 +2015,6 @@
       ],
       "title": "Missions — reprogrammer une mission publiée (date, adresse et rang) Web/Expo",
       "merged_at": "2026-10-27T02:23:59Z"
-    },
-    {
-      "number": 166,
-      "sha": "136449c7204d7274a3eb5f0990c3354804af5534",
-      "ci": "success",
-      "ids": [
-        "GOV-005",
-        "GOV-012"
-      ],
-      "title": "Punch 360° — exécution accélérée, moins d'audits et parcours complets",
-      "merged_at": "2026-10-27T01:55:32Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
