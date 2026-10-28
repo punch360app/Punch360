@@ -242,6 +242,11 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   if(existing){
    s.factor=existing.id;s.qr=null;s.mfaSecret=null;s.mfaMode='verify';
    s.mfaNotice='Authentificateur déjà actif. Entrez le code généré par votre application.';
+  }else if(factors.some(x=>x.status==='unverified'&&x.friendly_name==='Console PUNCH')){
+   const active=factors.find(x=>x.status==='unverified'&&x.friendly_name==='Console PUNCH');
+   if(s.factor!==active.id){s.qr=null;s.mfaSecret=null;}
+   s.factor=active.id;s.mfaMode=s.qr?'enroll':'pending';
+   s.mfaNotice='Reprenez avec le code déjà présent dans Authenticator.';
   }else{
    const abandoned=factors.filter(x=>x.factor_type==='totp'&&x.status==='unverified'&&
     x.friendly_name==='Console PUNCH');
