@@ -35,15 +35,14 @@ export function parseMissionDraftCsv(source){
  if(typeof source!=='string'||!source.trim())throw Error('Choisissez un CSV non vide.');
  if(new TextEncoder().encode(source).length>MAX_BYTES)throw Error('CSV trop volumineux : maximum 64 Kio.');
  const text=source.replace(/^\uFEFF/,'');
- // Header names are ASCII; accept comma or semicolon but never guess columns.
- let records;
- for(const separator of [';',',']){
-  const attempt=parseRecords(text,separator);
-  if(attempt.length&&attempt[0].map(norm).join('|')===HEADER.join('|')){
-   records=attempt;break;
-  }
- }
- if(!records)throw Error('En-têtes CSV requis : employe;lieu;date;ordre;titre;instructions.');
+ // Decide the delimiter from the exact header *before* parsing quoted data.
+ // Trying the wrong delimiter can otherwise reject valid quoted commas/semicolons.
+ const header=norm(text.split(/\r?\n/,1)[0]);
+ const separator=header===HEADER.join(';')?';':header===HEADER.join(',')?',':null;
+ if(!separator)throw Error('En-têtes CSV requis : employe;lieu;date;ordre;titre;instructions.');
+ const records=parseRecords(text,separator);
+ if(!records.length||records[0].map(norm).join('|')!==HEADER.join('|'))
+  throw Error('En-têtes CSV non reconnus.');
  if(records.length===1)throw Error('CSV sans mission à importer.');
  if(records.length-1>MAX_ROWS)throw Error('Maximum 50 missions par import.');
  const rows=[];
