@@ -1,5 +1,21 @@
 # PUNCH 360° — État courant unique
 
+
+## Reprise du 28 octobre 2026 — Missions hors ligne : reprise partielle sécurisée
+
+**Livré et publié Web :** [PR #203](https://github.com/punch360app/Punch360/pull/203), merge 311f6fd8937460773f01872fa21f1e91ae22bd0b, SHA PR 5ee4a6ea5643528fa425140d262621e630f06b9c. Tests TypeScript/Node sur PR : [40641052015](https://github.com/punch360app/Punch360/actions/runs/40641052015) **SUCCESS** ; revue 24 écrans : [40641052003](https://github.com/punch360app/Punch360/actions/runs/40641052003) **SUCCESS**. Sur merge : Web Pages [40641328082](https://github.com/punch360app/Punch360/actions/runs/40641328082) **SUCCESS**, TypeScript [40641327957](https://github.com/punch360app/Punch360/actions/runs/40641327957) **SUCCESS**, visuel et passation issue #200 [40641328072](https://github.com/punch360app/Punch360/actions/runs/40641328072) **SUCCESS**.
+
+**Parcours utilisable dans la portée limitée :** une mission déjà consultée en ligne et sans preuve obligatoire peut être mise en attente hors ligne Web/Expo, avec UUID idempotent, version et jour cloisonnés par utilisateur/compagnie/salarié. Aucune mission, heure, paie ni sortie de pointage ne devient officielle sans accusé serveur. Bouton manuel « Vérifier et synchroniser » au retour réseau : nouvelle vérification de session, autorisation, ordre, version et politiques de preuve par RPC; conflits conservés. Aucune adresse, client, instruction, photo ou commentaire stocké dans la file.
+
+**Suite en cours dans [PR #204](https://github.com/punch360app/Punch360/pull/204) :** si l'accusé réseau s'est perdu après une fin réellement acceptée, seule la RPC serveur V4 peut confirmer duplicate:true pour le même request_id. Ne pas annoncer ce lot livré sans CI sur SHA final, fusion et publication contrôlée.
+
+**MISSION-010 / MISSION-013 restent PARTIELS.** Manquent cache autorisé des missions après redémarrage hors ligne (stockage privé/chiffré avant toute adresse et donnée client), file de pièces jointes avec protection et reprise, gestion complète de conflits, synchronisation automatique conditionnée aux autorisations, et recettes réelles Android/iOS/PWA. Source Expo ≠ build installée. Aucune altération du moteur de pointage, des heures, des prix, des contrats ou de RLS.
+
+**Prochaine action sûre :** après #204, fermer le prochain sous-parcours MISSION-010 réellement utilisable avec deux compagnies et droits révoqués; si stockage sécurisé hors ligne bloqué, avancer sur un jalon indépendant. Préserver le mode gros lots du maître. Les sections suivantes restent historiques et ne remplacent pas cet ordre de reprise.
+
+---
+
+
 ## Dernier lot — 27 octobre 2026, preuves photos réellement expirables (#191)
 
 **PR [#191](https://github.com/punch360app/Punch360/pull/191) fusionnée**, merge `bd92018641b27b53cba31e81113e6d7599d0bdc0` ; SHA final PR `ccc3a96343483234a0571363e07069f856eeb330` : CI [40533994669](https://github.com/punch360app/Punch360/actions/runs/40533994669) **SUCCESS** ; CI sur merge [40534268230](https://github.com/punch360app/Punch360/actions/runs/40534268230) **SUCCESS**.
