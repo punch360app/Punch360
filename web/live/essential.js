@@ -27,7 +27,7 @@ import {createAppearanceController} from './appearance.js';
 import {createBillingController} from './billing.js';
 import {createPlanningController} from './planning.js';
 /** Real Essentiel screens; all mutations go through checked server RPCs. */
-export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{},getLocale=()=> 'fr'}) {
+export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{},getLocale=()=> 'fr',confirmRestart=message=>globalThis.confirm(message)}) {
  const subscriptions=createSubscriptionDirectoryController({sb,redraw,escape:e});
  const qualifiedCoverage=createQualifiedCoverageController({sb,redraw,escape:e});
  const laborBudgets=createLaborBudgetsController({sb,redraw,escape:e});
@@ -66,9 +66,23 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const get=id=>doc.getElementById(id), val=id=>get(id)?.value.trim()??'';
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
- async function load(user,account){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
+ async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
-   if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(!s.mfaRequired){const snapshot=await rpc('platform_snapshot');if(!current())return;s.snapshot=snapshot;const accounts=await rpc('platform_test_accounts');if(!current())return;s.testAccounts=accounts;}}
+   if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(s.mfaRequired){
+    const listed=await sb.auth.mfa.listFactors();if(listed.error)throw listed.error;if(!current())return;
+    const all=listed.data?.all||[],verified=all.find(f=>f.factor_type==='totp'&&f.status==='verified')||
+      (listed.data?.totp||[]).find(f=>f.status==='verified');
+    const pending=all.find(f=>f.factor_type==='totp'&&f.status==='unverified'&&f.friendly_name==='Console PUNCH');
+    const found=verified||pending;
+    if(found){
+     s.factor=found.id;
+     const same=!verified&&previous.user===user.id&&previous.factor===found.id&&previous.mode==='enroll'&&previous.qr&&previous.key;
+     s.mfaMode=verified?'verify':same?'enroll':'pending';
+     if(same){s.qr=previous.qr;s.mfaSecret=previous.key;}
+     s.mfaNotice=verified?'Authentificateur déjà actif. Entrez son code.':
+      'Configuration en cours. Revenez de votre application Authenticator et entrez le code sans créer de nouveau QR.';
+    }
+   }if(!s.mfaRequired){const snapshot=await rpc('platform_snapshot');if(!current())return;s.snapshot=snapshot;const accounts=await rpc('platform_test_accounts');if(!current())return;s.testAccounts=accounts;}}
    if(account?.companies?.product_edition==='essential'){
     if(['boss','admin'].includes(account.role)){
      // Server-computed status includes Super Admin holds, unlike companies.billing_status.
@@ -156,12 +170,13 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  function renderPlatform(){return `<div class="ess-platform"><aside><h1>PUNCH</h1><small>SUPER ADMIN</small><nav aria-label="Navigation Super Admin">${nav.map(([id,title])=>btn(title,'tab',`data-id="${id}" aria-pressed="${s.tab===id}"`)).join('')}</nav>${btn('Actualiser','refresh')}${btn('Se déconnecter','logout')}</aside><main id="main"><header><h2>${e(nav.find(x=>x[0]===s.tab)?.[1]||'Accueil')}</h2><span class="ess-badge">Espace sécurisé</span></header>${s.error?`<div class="ess-notice" role="alert">${e(s.error)}</div>`:''}${s.mfaRequired?renderMfa():s.tab==='home'?renderPlatformHome():s.tab==='plans'?renderPlanEditor():s.tab==='companies'?renderCompanies():s.tab==='users'?platformUsers.render():s.tab==='specialPrices'?platformPriceProposals.render():s.tab==='tests'?renderTests():s.tab==='billing'?renderPlatformBilling():s.tab==='archives'?archives.render():s.tab==='support'?support.render():s.tab==='promotions'?promotions.render():s.tab==='finance'?finance.render():renderAudit()}</main></div>`;}
  function renderPlatformBilling(){return subscriptions.render(s.plans)}
  function renderMfa(){
-  const existing=s.mfaMode==='verify',enrolling=s.mfaMode==='enroll';
+  const existing=s.mfaMode==='verify',enrolling=s.mfaMode==='enroll',pending=s.mfaMode==='pending';
   const description=existing?
     'Un authentificateur est déjà activé sur ce compte. Ouvrez celui qui affiche le code PUNCH et saisissez son code à six chiffres.':
+    pending?'Configuration déjà commencée. Entrez simplement le code affiché dans Authenticator : ne recréez pas votre QR.':
     enrolling?'Ajoutez maintenant PUNCH dans Google Authenticator, Microsoft Authenticator ou une application compatible.':
     'Pour accéder au Super Admin, configurez votre authentificateur ou utilisez celui déjà activé sur ce compte.';
-  const actionLabel=enrolling?'Recommencer la configuration':existing?'Utiliser mon authentificateur':'Configurer ou utiliser mon authentificateur';
+  const actionLabel=enrolling||pending?'Reprendre la configuration':existing?'Utiliser mon authentificateur':'Configurer ou utiliser mon authentificateur';
   return '<section class="ess-panel ess-platform-mfa"><h3>Sécuriser la console</h3>'+
    '<p>'+e(description)+'</p>'+
    (s.mfaNotice?'<p class="ess-notice" role="status">'+e(s.mfaNotice)+'</p>':'')+
@@ -170,9 +185,10 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
    (enrolling&&s.mfaSecret?'<label class="ess-field"><strong>Clé de configuration manuelle</strong>'+
      '<input id="ess-mfa-secret" value="'+e(s.mfaSecret)+'" type="text" readonly aria-label="Clé secrète à recopier dans votre authentificateur" autocomplete="off" spellcheck="false">'+
      '</label><p class="ess-fine">Dans Authenticator : ajouter un compte → saisir une clé de configuration. Choisissez le type basé sur le temps. Ne partagez jamais cette clé.</p>':'')+
-   btn(actionLabel,'enroll',s.saving?'disabled':'')+
+   ((enrolling||pending)?btn('J’ai perdu ma clé : créer un nouveau QR','restart-mfa'):btn(actionLabel,'enroll',s.saving?'disabled':''))+
+   ((enrolling||pending)?'<p class="ess-fine">Un nouveau QR invalide le code déjà enregistré. Ne recommencez pas simplement parce que vous avez changé d’application.</p>':'')+
    (existing&&!enrolling?'<p class="ess-fine">Si vous n’avez plus accès à cet authentificateur déjà validé, contactez le support pour une récupération sécurisée. PUNCH ne le désactive pas automatiquement.</p>':'')+
-   ((enrolling||existing||s.factor)?'<div class="ess-mfa-verify"><p><strong>2.</strong> Entrez le code à six chiffres affiché par votre application.</p>'+
+   ((enrolling||pending||existing||s.factor)?'<div class="ess-mfa-verify"><p><strong>2.</strong> Entrez le code à six chiffres affiché par votre application.</p>'+
     field('Code à six chiffres','ess-mfa-code','','text','inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}"')+
     btn('Vérifier et ouvrir le Super Admin','verify',s.saving?'disabled':'')+'</div>':'')+
    '</section>';
@@ -217,7 +233,8 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  else if(action==='pin-enroll'){s.enrollment=await rpc('create_pin_enrollment',{p_worker:el.dataset.id});}
  else if(action==='channels'){const mode=val('ess-mode-'+el.dataset.id);await rpc('set_essential_worker_channels',{p_worker:el.dataset.id,p_mobile:mode!=='kiosk',p_kiosk:mode!=='mobile',p_personal:true,p_reason:'Mode de pointage modifié par le Boss'});const w=s.workers.find(x=>x.id===el.dataset.id);if(w){w.can_mobile_punch=mode!=='kiosk';w.can_kiosk_punch=mode!=='mobile';}}
  else if(action==='invite-worker'){await inviteWorker(el.dataset.id);}
- else if(action==='enroll'){
+ else if(action==='enroll'||action==='restart-mfa'){
+  if(s.saving)return true;
   // listFactors().totp contains only verified factors; .all includes abandoned
   // unverified enrollments. Never discard a verified factor without AAL2 recovery.
   const f=await sb.auth.mfa.listFactors();if(f.error)throw f.error;
@@ -227,8 +244,15 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   if(existing){
    s.factor=existing.id;s.qr=null;s.mfaSecret=null;s.mfaMode='verify';
    s.mfaNotice='Authentificateur déjà actif. Entrez le code généré par votre application.';
+  }else if(action==='enroll'&&factors.some(x=>x.status==='unverified'&&x.friendly_name==='Console PUNCH')){
+   const active=factors.find(x=>x.status==='unverified'&&x.friendly_name==='Console PUNCH');
+   if(s.factor!==active.id){s.qr=null;s.mfaSecret=null;}
+   s.factor=active.id;s.mfaMode=s.qr?'enroll':'pending';
+   s.mfaNotice='Reprenez avec le code déjà présent dans Authenticator.';
   }else{
-   const abandoned=factors.filter(x=>x.factor_type==='totp'&&x.status==='unverified'&&
+   if(action==='restart-mfa'&&!confirmRestart('Créer un nouveau QR rendra invalide le code PUNCH déjà ajouté dans Authenticator. Continuer ?'))return true;
+   s.saving=true;
+   const abandoned=factors.filter(x=>action==='restart-mfa'&&x.factor_type==='totp'&&x.status==='unverified'&&
     x.friendly_name==='Console PUNCH');
    // Only remove factors created by the current user's unfinished PUNCH setup.
    // Removing a verified factor here would bypass legitimate account recovery.

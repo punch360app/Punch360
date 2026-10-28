@@ -123,10 +123,11 @@ test('Super Admin mobile stylesheet collapses the sidebar on tablet and desktop-
 });
 
 
-function setupMfa({factors=[],verificationError=null,level='aal2'}={}){
+function setupMfa({factors=[],verificationError=null,level='aal2',confirmRestart=()=>true}={}){
  const w=new Window(),calls=[];
  let liveLevel=level;
  const sb={
+  from:()=>({select:()=>({order:async()=>({data:[plan],error:null})})}),
   rpc:async(name)=>({data:name==='platform_access'?true:name==='platform_snapshot'?{companies:1}:
    name==='platform_test_accounts'?[]:true}),
   auth:{mfa:{
@@ -154,14 +155,14 @@ function setupMfa({factors=[],verificationError=null,level='aal2'}={}){
    getAuthenticatorAssuranceLevel:async()=>({data:{currentLevel:liveLevel}})
   }}
  };
- const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document,confirmRestart});
  ui.state.platform=true;ui.state.mfaRequired=true;
  return{w,ui,calls};
 }
 test('unfinished TOTP Console PUNCH is re-enrolled, new QR and manual key displayed',async()=>{
  const old={id:'unfinished',factor_type:'totp',status:'unverified',friendly_name:'Console PUNCH'};
  const {w,ui,calls}=setupMfa({factors:[old]});
- await ui.handle({dataset:{action:'ess:enroll'}});
+ await ui.handle({dataset:{action:'ess:restart-mfa'}});
  assert.deepEqual(calls,['list','unenroll:unfinished','enroll:Console PUNCH']);
  assert.equal(ui.state.factor,'new');
  assert.equal(ui.state.mfaMode,'enroll');
@@ -223,5 +224,59 @@ test('MFA setup does not display verification code entry before QR is prepared',
  w.document.body.innerHTML=ui.renderPlatform();
  assert.equal(w.document.getElementById('ess-mfa-code'),null);
  assert.ok(w.document.querySelector('[data-action="ess:enroll"]'));
+ await w.happyDOM.close();
+});
+
+
+test('Android app return reloads unfinished factor without making a new QR',async()=>{
+ const pending={id:'unfinished',factor_type:'totp',status:'unverified',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[pending],level:'aal1'});
+ await ui.load({id:'worker1'},null);
+ assert.equal(ui.state.factor,'unfinished');
+ assert.equal(ui.state.mfaMode,'pending');
+ assert.equal(ui.state.qr,null);
+ w.document.body.innerHTML=ui.renderPlatform();
+ assert.ok(w.document.getElementById('ess-mfa-code'));
+ assert.match(w.document.body.textContent,/ne recréez pas votre QR/);
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.equal(ui.state.factor,'unfinished');
+ assert.equal(calls.filter(x=>x.startsWith('enroll:')||x.startsWith('unenroll:')).length,0);
+ w.document.body.innerHTML=ui.renderPlatform();
+ w.document.getElementById('ess-mfa-code').value='123456';
+ await ui.handle({dataset:{action:'ess:verify'}});
+ assert.equal(ui.state.mfaRequired,false);
+ assert.ok(calls.includes('verify:unfinished'));
+ await w.happyDOM.close();
+});
+test('same-person reinitialization retains current TOTP QR while session lives',async()=>{
+ const {w,ui,calls}=setupMfa({factors:[],level:'aal1'});
+ ui.state.platformUser='worker1';
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.equal(ui.state.mfaMode,'enroll');
+ await ui.load({id:'worker1'},null);
+ assert.equal(ui.state.factor,'new');
+ assert.equal(ui.state.mfaMode,'enroll');
+ assert.equal(ui.state.qr,'data:image/svg+xml;base64,QVI=');
+ assert.equal(calls.filter(x=>x.startsWith('enroll:')).length,1);
+ await w.happyDOM.close();
+});
+test('refusing replacement never invalidates previous MFA factor',async()=>{
+ const pending={id:'unfinished',factor_type:'totp',status:'unverified',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[pending],level:'aal1',confirmRestart:()=>false});
+ await ui.load({id:'worker1'},null);
+ await ui.handle({dataset:{action:'ess:restart-mfa'}});
+ assert.equal(ui.state.factor,'unfinished');
+ assert.equal(calls.filter(x=>x.startsWith('enroll:')||x.startsWith('unenroll:')).length,0);
+ await w.happyDOM.close();
+});
+test('another user cannot inherit the previously open MFA setup',async()=>{
+ const {w,ui}=setupMfa({factors:[],level:'aal1'});
+ ui.state.platformUser='worker1';
+ await ui.handle({dataset:{action:'ess:enroll'}});
+ assert.equal(ui.state.mfaMode,'enroll');
+ await ui.load({id:'worker2'},null);
+ assert.equal(ui.state.qr,null);
+ assert.equal(ui.state.mfaSecret,null);
+ assert.equal(ui.state.mfaMode,'pending');
  await w.happyDOM.close();
 });
