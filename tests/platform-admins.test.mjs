@@ -95,7 +95,7 @@ test('untrusted email escaped in render and malformed membership responses fail 
  const x=create({items:[root,{...alice,email:'<script>alert(1)</script>'}]});
  await x.ctrl.load();const html=x.ctrl.render();
  assert.doesNotMatch(html,/<script>/);
- assert.match(html,/&lt;script>/);
+ assert.match(html,/&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
  const s=create({items:[root,alice,bob,bob]});
  assert.equal(await s.ctrl.load(),false);
  assert.deepEqual(s.ctrl.state.items,[]);
