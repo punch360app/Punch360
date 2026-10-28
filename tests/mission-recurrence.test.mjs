@@ -23,7 +23,7 @@ test('past, 180-day horizon, invalid counts and bad title are rejected before an
  assert.throws(()=>recurringMissionDrafts({...form,intervalWeeks:3},{today}),/2 à 12/);
  assert.throws(()=>recurringMissionDrafts({...form,count:1},{today}),/2 à 12/);
  assert.throws(()=>recurringMissionDrafts({...form,count:13},{today}),/2 à 12/);
- assert.throws(()=>recurringMissionDrafts({...form,count:12,intervalWeeks:2},{today}),/180 jours/);
+ assert.throws(()=>recurringMissionDrafts({...form,day:'2026-12-01',count:12,intervalWeeks:2},{today}),/180 jours/);
  assert.throws(()=>recurringMissionDrafts({...form,title:'x'},{today}),/invalide/);
 });
 test('any previous mission of the same worker/day/order blocks a recurring draft',()=>{
