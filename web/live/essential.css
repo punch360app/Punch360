@@ -166,3 +166,17 @@
 .onboarding .public-edition-tabs button:focus-visible{outline:3px solid #779574;outline-offset:3px}
 .essential-public .public-edition-tabs button{min-height:44px}
 @media(max-width:680px){.essential-public .public-edition-tabs button{min-height:44px;padding:8px 14px}}
+
+
+/* Accessible controls: public price cadence, member count, detail toggle,
+   and choose CTA retain the same minimum 44px tap area on S25. */
+.essential-public .ess-switch .ess-btn,
+.essential-public .ess-pricing>.ess-field input,
+.essential-public .ess-price .ess-btn,
+.essential-public .ess-market-details>summary{min-height:44px}
+@media(max-width:680px){
+ .essential-public .ess-switch .ess-btn,
+ .essential-public .ess-pricing>.ess-field input,
+ .essential-public .ess-price .ess-btn,
+ .essential-public .ess-market-details>summary{min-height:44px}
+}

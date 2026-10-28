@@ -313,3 +313,9 @@ test('edition selector retains 44px touch size in Construction and Essentiel',as
  assert.match(c,/\.onboarding \.public-edition-tabs button\{min-height:44px/);
  assert.match(c,/@media\(max-width:680px\)\{\.essential-public \.public-edition-tabs button\{min-height:44px/);
 });
+
+test('public monthly, yearly, people and plan actions remain usable at 44px on S25',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const c=readFileSync(new URL('../web/live/essential.css',import.meta.url),'utf8');
+ assert.match(c,/\.essential-public \.ess-switch \.ess-btn,\s*\.essential-public \.ess-pricing>\.ess-field input,[\s\S]*?min-height:44px/);
+});
