@@ -43,6 +43,8 @@ jobs:
         run: node --test .github/scripts/visual-feedback.test.cjs
       - name: Verify deduplicated Work issue handoff contract
         run: node --test .github/scripts/visual-issue.test.cjs
+      - name: Verify Figma evidence pack from authentic browser images
+        run: node --test .github/scripts/visual-figma-pack.test.cjs
       - run: npx playwright install --with-deps chromium
       - name: Serve the real Punch Web interface locally
         run: |
@@ -58,6 +60,11 @@ jobs:
       - name: Verify all 24 distinct public screen states were visited
         run: |
           node -e "const fs=require('fs');const p='visual-captures/functional-journeys.json';const x=JSON.parse(fs.readFileSync(p,'utf8'));if(x.visits!==24||new Set(x.results.map(r=>r.image)).size!==24){console.error('Incomplete public journey coverage',x.visits);process.exit(1)};for(const r of x.results){if(!fs.statSync('visual-captures/'+r.image).size)process.exit(1)}"
+      - name: Create three Figma-ready contact sheets with source hashes (never approve)
+        run: node .github/scripts/visual-figma-pack.cjs
+      - name: Validate Figma handoff files are present
+        run: |
+          node -e "const fs=require('fs');const p='visual-captures/';for(const n of ['figma-contact-S25.png','figma-contact-iPad.png','figma-contact-PC.png','figma-handoff.json','FIGMA_HANDOFF.md']){if(!fs.existsSync(p+n)||!fs.statSync(p+n).size)throw Error('Missing Figma evidence: '+n)}"
       - name: Compare owner-approved screenshot baselines and create Work recommendations
         if: always()
         run: node .github/scripts/visual-compare.cjs
