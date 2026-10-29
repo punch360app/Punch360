@@ -95,6 +95,9 @@ jobs:
       - name: Exercise and capture public onboarding journeys on phone, tablet and PC
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-capture.cjs
+      - name: Capture unpaired kiosk phone, tablet, PC and RTL (no credentials)
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node .github/scripts/visual-kiosk.cjs
       - name: Verify all 24 distinct public screen states were visited
         if: steps.visual-scope.outputs.mode == 'full'
         run: |
