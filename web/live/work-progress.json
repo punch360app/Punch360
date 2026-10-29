@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T01:11:36.165Z",
+  "generated_at": "2026-10-29T01:28:09.403Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 220,
+      "sha": "8e7794eb02b1dc95418a54f59ce8972198b93fd6",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : inventorier les commandes publiques et protéger les fondations UX",
+      "merged_at": "2026-10-29T01:28:00Z"
+    },
+    {
       "number": 219,
       "sha": "41e1c51ec334e4b677e562486e46bc9c410f1f80",
       "ci": "success",
@@ -2014,17 +2022,6 @@
       ],
       "title": "Missions — consulter les instructions de sa mission publiée (Web/Expo)",
       "merged_at": "2026-10-27T02:41:19Z"
-    },
-    {
-      "number": 168,
-      "sha": "b87670f9b384a55225e7ffdf24de1f67a98f013d",
-      "ci": "success",
-      "ids": [
-        "MISSION-004",
-        "MISSION-009"
-      ],
-      "title": "Missions — consulter les interventions des 14 prochains jours sans pointage",
-      "merged_at": "2026-10-27T02:35:39Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
