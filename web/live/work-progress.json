@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T02:00:29.310Z",
+  "generated_at": "2026-10-29T02:13:43.684Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 224,
+      "sha": "d2523f056591098a5b7776ba58dea8899c267050",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : confirmer les décisions de pointage hors ligne sur Web et Expo",
+      "merged_at": "2026-10-29T02:13:34Z"
+    },
+    {
       "number": 223,
       "sha": "6b6e89e640af3e199b6500203d3aebcc32d6062c",
       "ci": "success",
@@ -2006,16 +2014,6 @@
       ],
       "title": "Passation Punch — trois livraisons SACATALOG vérifiées et prochain parcours",
       "merged_at": "2026-10-27T10:13:11Z"
-    },
-    {
-      "number": 172,
-      "sha": "879593283111c9a7f79efdd473be3e07ad61bcc3",
-      "ci": "success",
-      "ids": [
-        "SACATALOG-016"
-      ],
-      "title": "SACATALOG-016 — permettre employés et invitations au-delà des places avec contrat illimité payé",
-      "merged_at": "2026-10-27T10:09:49Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
