@@ -101,6 +101,9 @@ jobs:
       - name: Audit kiosk identity and PIN enrollment with a synthetic local device
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-kiosk-paired.cjs
+      - name: Audit Boss/Admin offline-review confirmations with synthetic records
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node .github/scripts/visual-offline-review.cjs
       - name: Verify all 24 distinct public screen states were visited
         if: steps.visual-scope.outputs.mode == 'full'
         run: |
