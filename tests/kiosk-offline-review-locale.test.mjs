@@ -40,6 +40,10 @@ test('Boss kiosk offline review changes language and keeps decisions under serve
  assert.equal(calls.filter(c=>c.name==='review_kiosk_offline').length,0);
  controller.input({id:'offreview-note',value:'Verified against published shifts'});
  await controller.handle({dataset:{action:'offreview:approve',id:'grant-1'}});
+ assert.equal(calls.filter(c=>c.name==='review_kiosk_offline').length,0,'first tap only arms a decision');
+ assert.match(controller.render(),/data-action="offreview:confirm"/);
+ assert.match(controller.render(),/readonly/);
+ await controller.handle({dataset:{action:'offreview:confirm',id:'grant-1'}});
  const decisions=calls.filter(c=>c.name==='review_kiosk_offline');
  assert.equal(decisions.length,1);
  assert.deepEqual(decisions[0].params,{p_grant:'grant-1',p_approve:true,p_note:'Verified against published shifts'});
@@ -59,5 +63,57 @@ test('review errors never leak sensitive server diagnostics or mutate without an
  await controller.handle({dataset:{action:'offreview:reject',id:'grant-2'}});
  assert.equal(controller.state.error,'reviewSaveFailed');
  assert.doesNotMatch(controller.render(),/internal SQL error|private tenant key/);
- assert.equal(attempts,2);
+ assert.equal(attempts,1,'an unverified list must never reach the decision RPC');
+});
+
+test('manager may cancel, reselect, or switch companies without accidentally approving hours',async()=>{
+ const calls=[],rows=[{id:'lot-a',worker:'Employé test',device:'Tablette test',closed_at:null,events:[]}];
+ const sb={rpc:async(name,params)=>{calls.push({name,params});return {data:rows,error:null}}};
+ let draws=0;const ctrl=createOfflineReviewController({sb,redraw:()=>draws++,escape});
+ await ctrl.load('company-A');
+ ctrl.input({id:'offreview-note',value:'Verified shift in test fixture'});
+ await ctrl.handle({dataset:{action:'offreview:approve',id:'lot-a'}});
+ assert.equal(ctrl.state.pending?.action,'approve');
+ assert.equal(calls.filter(x=>x.name==='review_kiosk_offline').length,0);
+ await ctrl.handle({dataset:{action:'offreview:cancel',id:'lot-a'}});
+ assert.equal(ctrl.state.pending,null);
+ await ctrl.handle({dataset:{action:'offreview:confirm',id:'lot-a'}});
+ assert.equal(calls.filter(x=>x.name==='review_kiosk_offline').length,0);
+ await ctrl.handle({dataset:{action:'offreview:reject',id:'lot-a'}});
+ assert.equal(ctrl.state.pending?.action,'reject');
+ await ctrl.load('company-B');
+ assert.equal(ctrl.state.pending,null);
+ await ctrl.handle({dataset:{action:'offreview:confirm',id:'lot-a'}});
+ assert.equal(calls.filter(x=>x.name==='review_kiosk_offline').length,0);
+ assert.ok(draws>=3);
+});
+
+test('the manager cannot replace the approval reason after choosing a lot',async()=>{
+ const calls=[],rows=[{id:'lot-a',worker:'Test',device:'Tab',closed_at:null,events:[]}];
+ const sb={rpc:async(name,params)=>{calls.push(name);return {data:rows,error:null}}};
+ const ctrl=createOfflineReviewController({sb,redraw:()=>{},escape});
+ await ctrl.load('tenant');
+ ctrl.input({id:'offreview-note',value:'First reason'});
+ await ctrl.handle({dataset:{action:'offreview:approve',id:'lot-a'}});
+ ctrl.input({id:'offreview-note',value:'Other reason'});
+ await ctrl.handle({dataset:{action:'offreview:confirm',id:'lot-a'}});
+ assert.equal(calls.filter(x=>x==='review_kiosk_offline').length,0);
+ assert.equal(ctrl.state.pending,null);
+});
+
+test('a closed or missing offline lot is rechecked before any approval is sent',async()=>{
+ let calls=0,version=0;
+ const row={id:'lot-a',worker:'Test',device:'Tab',closed_at:null,events:[]};
+ const sb={rpc:async(name)=>{
+  calls++;
+  if(name==='review_kiosk_offline')assert.fail('a closed lot must never be modified');
+  return {data:[{...row,closed_at:version++===0?null:'2026-10-29T00:00:00Z'}],error:null};
+ }};
+ const ctrl=createOfflineReviewController({sb,redraw:()=>{},escape});
+ await ctrl.load('tenant');
+ ctrl.input({id:'offreview-note',value:'Shift verified'});
+ await ctrl.handle({dataset:{action:'offreview:approve',id:'lot-a'}});
+ await ctrl.handle({dataset:{action:'offreview:confirm',id:'lot-a'}});
+ assert.equal(calls,2,'load plus latest-state check only');
+ assert.equal(ctrl.state.error,'reviewSaveFailed');
 });
