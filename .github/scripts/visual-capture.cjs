@@ -5,6 +5,7 @@ const {chromium}=require('playwright');
 const fs=require('node:fs');
 const path=require('node:path');
 const output='visual-captures';
+const {buildPublicInventory}=require('./ux-public-inventory.cjs');
 fs.mkdirSync(output,{recursive:true});
 const devices=[['S25',412,915],['iPad',820,1180],['PC',1440,900]];
 const editions=['construction','essential'];
@@ -35,6 +36,33 @@ async function metrics(page) {
     const targets=Array.from(document.querySelectorAll(
       'button,a[href],[role="button"],input:not([type="hidden"]),select,textarea'
     )).filter(visible);
+    // Capture all displayed controls, including those below the fold.
+    // Do not record input values or any credential-bearing URL.
+    const controls=Array.from(document.querySelectorAll(
+      'button,a[href],[role="button"],input:not([type="hidden"]),select,textarea'
+    )).filter(el=>{
+      const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+      return s.display!=='none' && s.visibility!=='hidden' && Number(s.opacity)!==0 &&
+        r.width>0 && r.height>0;
+    }).map((el,index)=>{
+      const r=el.getBoundingClientRect();
+      const labeledBy=(el.getAttribute('aria-labelledby')||'').split(/\s+/).filter(Boolean)
+        .map(id=>document.getElementById(id)?.textContent||'').join(' ');
+      const labelText=Array.from(el.labels||[]).map(label=>label.textContent||'').join(' ');
+      const fallback=el.closest('label')?.textContent||'';
+      const inputValue=['submit','button','reset'].includes(el.getAttribute('type'))
+        ? el.getAttribute('value')||'' : '';
+      const name=(el.getAttribute('aria-label')||labeledBy||labelText||fallback||
+        el.textContent||inputValue||el.getAttribute('title')||'').trim().slice(0,100);
+      return {
+        index,element:el.getAttribute('role')==='button'&&!['BUTTON','A'].includes(el.tagName)
+          ?'role-button':el.tagName.toLowerCase(),
+        id:el.id||null,action:el.getAttribute('data-action')||null,
+        name,disabled:!!el.disabled,tabIndex:el.tabIndex,
+        inViewport:r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth,
+        width:Math.round(r.width),height:Math.round(r.height)
+      };
+    });
     const small=targets.filter(el=>{
       const r=el.getBoundingClientRect();
       return r.width<44 || r.height<44;
@@ -42,6 +70,7 @@ async function metrics(page) {
     return {
       layout:{documentWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth,
         overflowPx:Math.max(0,document.documentElement.scrollWidth-innerWidth)},
+      controls,
       tapTargets:{total:targets.length,smallCount:small.length,
         examples:small.slice(0,8).map(el=>({
           label:(el.getAttribute('aria-label')||el.textContent||el.tagName).trim().slice(0,70),
@@ -144,5 +173,18 @@ async function assertHeading(page,expected) {
   fs.writeFileSync(path.join(output,'functional-journeys.json'),
     JSON.stringify({coverage:'Unauthenticated public UI only; zero form submits, zero real accounts',
       visits:results.length,results},null,2)+'\n');
+  const audits=[];
+  for(const item of results) {
+    const screen=item.state==='welcome'?'logged-out':item.state;
+    audits.push(JSON.parse(fs.readFileSync(
+      path.join(output,'audit-'+item.device+'-'+item.edition+'-'+item.state+'.json'),'utf8')));
+  }
+  const inventory=buildPublicInventory(audits);
+  if(inventory.screens!==24 || inventory.controls===0)
+    throw new Error('Incomplete public control inventory; refusing silent coverage loss');
+  fs.writeFileSync(path.join(output,'public-ui-inventory.json'),
+    JSON.stringify(inventory,null,2)+'\n');
+  console.log('Public control inventory: '+inventory.controls+
+    ' controls, '+inventory.findings.length+' actionable findings; logged-in UI NOT VERIFIED');
   console.log('Validated public browser states: '+results.length);
 })().catch(error=>{console.error('PUBLIC-UI-SMOKE FAILED:',error);process.exitCode=1;});
