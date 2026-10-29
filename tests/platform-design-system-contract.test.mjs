@@ -29,8 +29,26 @@ test('company cards and buttons keep sage tokens, 44px touch targets and a mobil
 });
 
 test('new shared modules and scoped CSS are included in the PWA and live HTML',()=>{
- assert.match(sw,/punch-360-essential-v49/);
+ assert.match(sw,/const CACHE='punch-360-essential-v\d+';/);
  assert.match(sw,/\.\/platform-ui-guards\.js/);
  assert.match(sw,/\.\/platform-directory\.css\?v=directory-1/);
  assert.match(html,/platform-directory\.css\?v=directory-1/);
+});
+
+test('Support PUNCH reuses the approved sage and responsive form/button contracts',()=>{
+ const support=readFileSync(new URL('../web/live/support.css',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../web/live/support.js',import.meta.url),'utf8');
+ const index=readFileSync(new URL('../web/live/index.html',import.meta.url),'utf8');
+ const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
+ assert.match(support,/\.punch-support\{[^}]*--ess-text/);
+ assert.match(support,/var\(--ess-sage,#779574\)/);
+ assert.match(support,/\.punch-support \.ess-person\{[^}]*flex-wrap:wrap/);
+ assert.match(support,/\.punch-support \.ess-person \.ess-btn\{[^}]*min-height:44px/);
+ assert.match(support,/@media\(max-width:600px\)/);
+ assert.match(source,/class="punch-support"/);
+ assert.match(source,/role="status"/);
+ assert.match(source,/role="alert"/);
+ assert.match(index,/support\.css\?v=support-1/);
+ assert.match(sw,/punch-360-essential-v50/);
+ assert.match(sw,/\.\/support\.css\?v=support-1/);
 });
