@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T01:28:09.403Z",
+  "generated_at": "2026-10-29T01:40:37.518Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 221,
+      "sha": "cf3a074ba24eb495bd02c0d4079cddccecc11145",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : corriger la borne clavier et vérifier son responsive",
+      "merged_at": "2026-10-29T01:40:23Z"
+    },
+    {
       "number": 220,
       "sha": "8e7794eb02b1dc95418a54f59ce8972198b93fd6",
       "ci": "success",
@@ -2012,16 +2020,6 @@
       ],
       "title": "Super Admin — membres inclus illimités, calcul contrat et affichage Web/Expo",
       "merged_at": "2026-10-27T09:53:14Z"
-    },
-    {
-      "number": 169,
-      "sha": "fa7e7b8c9894eca8615395ed01e5991e55db2f0f",
-      "ci": "success",
-      "ids": [
-        "MISSION-004"
-      ],
-      "title": "Missions — consulter les instructions de sa mission publiée (Web/Expo)",
-      "merged_at": "2026-10-27T02:41:19Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
