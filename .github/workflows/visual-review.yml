@@ -113,6 +113,9 @@ jobs:
       - name: Audit Support PUNCH list, thread and authorization failure on four viewports
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-support.cjs
+      - name: Exercise the local visual annotation dashboard on four viewports
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node .github/scripts/visual-annotations.cjs
       - name: Verify all 24 distinct public screen states were visited
         if: steps.visual-scope.outputs.mode == 'full'
         run: |
