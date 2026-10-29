@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T02:26:59.710Z",
+  "generated_at": "2026-10-29T02:37:29.656Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 227,
+      "sha": "fd555190a79864308859ad0432073f4ce17b3c99",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : protéger l’annuaire Super Admin et unifier ses états Design System",
+      "merged_at": "2026-10-29T02:37:20Z"
+    },
+    {
       "number": 225,
       "sha": "ce78b95fb99417b742f2f6edc33271dc1f1d6fb9",
       "ci": "success",
@@ -1995,19 +2003,6 @@
       ],
       "title": "Missions — démarrage volontaire En cours, puis Terminer ou Signaler",
       "merged_at": "2026-10-27T10:47:47Z"
-    },
-    {
-      "number": 175,
-      "sha": "23def3d8faf98b5dc5bdd5dae1ee3d31dca6fd5b",
-      "ci": "success",
-      "ids": [
-        "MISSION-007",
-        "MISSION-008",
-        "MISSION-011",
-        "MISSION-013"
-      ],
-      "title": "Missions — reporter une mission impossible et montrer la nouvelle journée",
-      "merged_at": "2026-10-27T10:37:13Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
