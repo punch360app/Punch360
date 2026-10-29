@@ -28,8 +28,10 @@ function sample(){
     const response=await page.goto('http://127.0.0.1:8765/annotations.html',{waitUntil:'domcontentloaded'});
     assert.equal(response?.status(),200);
     await page.locator('#page-title').waitFor({state:'visible'});
-    const initial=await page.evaluate(()=>({width:innerWidth,doc:document.documentElement.scrollWidth}));
+    const initial=await page.evaluate(()=>({width:innerWidth,doc:document.documentElement.scrollWidth,
+      tooSmall:[...document.querySelectorAll('button')].filter(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'&&r.height<44}).map(el=>el.id||el.textContent.slice(0,36))}));
     assert.ok(initial.doc<=initial.width,'dashboard must fit '+device);
+    assert.deepEqual(initial.tooSmall,[],'dashboard touch targets below 44px on '+device);
     await page.screenshot({path:path.join(output,'annotations-dashboard-'+device+'.png'),animations:'disabled'});
     await page.locator('#new-capture-top').click();
     await page.locator('#capture-name').fill('Écran test '+device);
