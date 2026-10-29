@@ -43,7 +43,7 @@ function sample(){
     await page.locator('#save-note').click();
     await page.getByText('Réduire le bouton et vérifier le responsive').waitFor();
     await page.reload({waitUntil:'domcontentloaded'});
-    await page.locator('[data-tab="reviews"]').first().click();
+    await page.locator(width<720?'.mobile-nav [data-tab="reviews"]':'.side-nav [data-tab="reviews"]').click();
     await page.getByText('Réduire le bouton et vérifier le responsive').waitFor();
     assert.equal(await page.locator('.note-card').count(),1,'note must survive IndexedDB reload');
     await page.locator('#add-after').click();
