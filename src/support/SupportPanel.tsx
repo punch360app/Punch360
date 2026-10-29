@@ -119,7 +119,7 @@ export function SupportPanel({account}:{account:WorkspaceAccount}){
  const button=(title:string,action:(token:number,company:string)=>Promise<void>)=>
   <Pressable accessibilityRole="button" disabled={busy||loading}
    onPress={()=>run(action)}
-   style={{padding:12,minHeight:48,borderRadius:8,backgroundColor:'#edf2e9',opacity:busy||loading?.5:1}}>
+   style={{padding:12,minHeight:48,borderRadius:8,backgroundColor:'#edf2e9',opacity:(busy||loading)?0.5:1}}>
    {text(title)}
   </Pressable>;
  const field=(label:string,value:string,change:(s:string)=>void,maxLength:number,multiline=false)=>
