@@ -2,20 +2,21 @@
 
 ## Campagne prioritaire — PUNCH-AUDIT-GLOBAL-20261028
 
-Cette campagne est ordonnée en tête du [prompt maître](MASTER_PROMPT_20261025.md). Elle autorise l'harmonisation conforme à la charte approuvée avant les nouveaux ajouts. Les contrôles métier, les droits et les validations des changements sensibles restent applicables. Les six rôles sont une organisation du travail ; ne pas prétendre qu'ils ont été exécutés sans travail réel.
+Cette campagne est ordonnée en tête du [prompt maître](MASTER_PROMPT_20261025.md). Elle autorise l'harmonisation conforme à la charte approuvée avant les nouveaux ajouts. Les contrôles métier, les droits et les validations des changements sensibles restent applicables. Les sept rôles sont des regards complémentaires dans un seul travail ; ne pas prétendre qu'ils ont été exécutés sans travail réel.
 
 ### Organisation dès l'audit initial
 
 | Rôle | Responsabilité |
 |---|---|
 | **Pilote / développeur intégrateur** | Organiser le lot, préserver l'architecture et les droits, consolider les constats, appliquer seul les modifications et livrer. |
-| **Direction artistique** | Couleurs, images, typographie, proportions, hiérarchie visuelle et cohérence de la marque. |
+| **Direction artistique / graphiste** | Couleurs, images, typographie, proportions, hiérarchie visuelle et esthétique de la marque. |
+| **Architecte Design System / gardien de cohérence visuelle** | Auditer les tokens, composants communs, variantes et états (actif, désactivé, chargement, erreur, succès, focus) sur toutes les pages et formats ; signaler les doublons et écarts ; définir des garde-fous ciblés pour chaque futur ajout. |
 | **UX / ergonomie / accessibilité** | Navigation, ordre des actions, lisibilité, vocabulaire, confort tactile et clavier. |
 | **Responsive** | Examiner dès le départ téléphone, tablette et PC, orientations, contenu long, zoom, clavier et adaptations de disposition. |
 | **Client / utilisateur final** | Comprendre et terminer le vrai parcours, relever ambiguïtés, efforts inutiles, frustrations et valeur perçue. |
 | **QA fonctionnelle et visuelle** | Vérifier commandes, états, erreurs, régressions, preuves et résultat effectivement publié. |
 
-Déléguer les cinq audits en lecture seule et en parallèle lorsque les sous-agents sont disponibles. Le pilote regroupe les défauts dans un seul inventaire puis applique les corrections ; aucune écriture concurrente sur les mêmes fichiers, aucun rapport ou accord séparé obligatoire par casquette. Si une revue indépendante est indisponible, le signaler et exercer les regards requis avec les outils accessibles. Les responsabilités architecture, Auth, confidentialité et sécurité restent intégrées au pilote et à la QA.
+Déléguer les six audits spécialisés en lecture seule et en parallèle lorsque les sous-agents sont disponibles. Le pilote regroupe les défauts dans un seul inventaire puis applique les corrections ; aucune écriture concurrente sur les mêmes fichiers, aucun rapport ou accord séparé obligatoire par casquette. Si une revue indépendante est indisponible, le signaler et exercer les regards requis avec les outils accessibles. Les responsabilités architecture, Auth, confidentialité et sécurité restent intégrées au pilote et à la QA.
 
 ### Inventaire et compréhension du client
 
@@ -33,7 +34,7 @@ Faire vérifier tôt un écran réel représentatif, puis les familles différen
 
 ### Référence commune et corrections par lots
 
-Appliquer l'identité sauge, le logo officiel « Heure validée » et les thèmes/variantes déjà approuvés. Identifier les fichiers réellement actifs et le SHA de la version observée. Stabiliser tokens et composants communs : couleurs sémantiques, polices, tailles, espacements, arrondis, bordures, états, boutons, champs, cartes, navigation et dialogues.
+Appliquer l'identité sauge, le logo officiel « Heure validée » et les thèmes/variantes déjà approuvés. Identifier les fichiers réellement actifs et le SHA de la version observée. Stabiliser tokens et composants communs : couleurs sémantiques, polices, tailles, espacements, arrondis, bordures, états, boutons, champs, cartes, navigation et dialogues. **L'architecte Design System** relève, pour chaque famille de pages touchée, les composants effectivement partagés, les variantes légitimes et les styles locaux redondants ; il propose leur consolidation et les consommateurs à vérifier. Le graphiste reste responsable de l'intention visuelle ; le pilote est seul à modifier les fichiers et à installer les contrôles automatisés.
 
 Corriger les causes des écarts : anciens styles, doublons, surcharges et assets/caches incohérents. Toute nouvelle variante a un usage explicite dans le système commun. Respecter les couleurs légitimes des images, pictogrammes, données ou thèmes métier ; ne pas appliquer une interdiction aveugle des couleurs à tous les fichiers.
 
@@ -45,7 +46,7 @@ Vérifier chaque commande inventoriée dans son scénario autorisé : destinatio
 
 Produire et examiner les captures de l'app réellement exécutée, avec version, rôle, état et format identifiés. Comparer le même état, les mêmes données de test et le même environnement. Une référence du rendu dégradé n'est pas automatiquement approuvée. Conserver les règles d'approbation et de traçabilité existantes ; toute baseline changée exige une justification et une revue du rendu, sans tolérance élargie pour cacher un défaut.
 
-Installer dans le dépôt les protections adaptées : composants/tokens réutilisables, contrôles ciblés sur les nouveaux écarts de style, interactions et comparaisons de rendu sur les pages/états concernés. Une modification partagée déclenche la couverture de ses consommateurs. Toute nouvelle page rejoint la matrice de couverture. La règle est permanente : revue design, UX, responsive, client et QA pendant le lot, avec vraie preuve avant livraison.
+Installer dans le dépôt les protections adaptées : composants/tokens réutilisables, contrats de cohérence visuelle ciblés (couleurs approuvées, tailles minimales, styles et états de boutons/champs/navigation), contrôles sur les nouveaux écarts de style, interactions et comparaisons de rendu sur les pages/états concernés. Avant de livrer un nouvel écran ou élément, réutiliser le composant existant ou justifier sa variante ; ne pas multiplier les composants quasi identiques. Les tests doivent confirmer le rendu et les interactions des consommateurs touchés, sans bloquer les variantes de thème approuvées. Une modification partagée déclenche la couverture de ses consommateurs. Toute nouvelle page rejoint la matrice de couverture. La règle est permanente : revue direction artistique, Design System, UX, responsive, client et QA pendant le lot, avec vraie preuve avant livraison.
 
 Après correction, réévaluer **UX OK / À CORRIGER / NON VÉRIFIÉ**, preuves et limites à l'appui. Corriger les défauts autorisés dans la session, puis attendre les contrôles requis sur le SHA final, publier dans le cadre autorisé et vérifier le résultat réellement servi. Aucune modification documentaire ne vaut contrôle installé ou audit exécuté.
 
