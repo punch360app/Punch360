@@ -13,8 +13,9 @@ function msg(t){clearTimeout(toastTimer);$('toast').textContent=t;$('toast').cla
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE,{keyPath:'id'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 function dbCall(mode,run){return new Promise((resolve,reject)=>{if(!db)return reject(Error('Base locale indisponible'));const tr=db.transaction(STORE,mode),request=run(tr.objectStore(STORE));request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);tr.onerror=()=>reject(tr.error)})}
 async function save(row){
- try{if(storageOk)await dbCall('readwrite',s=>s.put(row));else msg('Stockage local indisponible : exporte ta revue avant de fermer')}
- catch{storageOk=false;msg('Stockage saturé ou indisponible. Exporte ta revue pour la conserver.')}
+ if(!storageOk){msg('Stockage local indisponible : exporte ta revue avant de fermer');return false}
+ try{await dbCall('readwrite',s=>s.put(row));return true}
+ catch{storageOk=false;msg('Stockage saturé ou indisponible. Exporte ta revue pour la conserver.');return false}
 }
 async function erase(id){try{if(storageOk)await dbCall('readwrite',s=>s.delete(id))}catch{msg('La suppression locale n’est pas confirmée')}}
 function sort(){screens.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)))}
@@ -25,8 +26,9 @@ function metrics(){
  $('nav-count').textContent=all.length;$('mobile-count').textContent=all.length;
  $('screen-count').textContent=screens.length+' écran'+(screens.length>1?'s':'');
 }
-function update(){
- const s=selected();if(!s)return;s.updatedAt=stamp();sort();void save(s);renderScreens();metrics();
+async function update(){
+ const s=selected();if(!s)return false;s.updatedAt=stamp();sort();renderScreens();metrics();
+ return await save(s)
 }
 function tab(which){
  $('activity-view').classList.toggle('hidden',which!=='activity');
@@ -54,8 +56,8 @@ async function createScreen(ev){
  if(!name||!file)return msg('Ajoute un nom et une capture.');
  const button=$('create-screen');button.disabled=true;
  try{const image=await asImage(file),s={id:newId(),name:name.slice(0,100),device:$('capture-device').value,before:image,after:null,notes:[],createdAt:stamp(),updatedAt:stamp()};
- screens.unshift(s);selectedId=s.id;viewMode='before';draft=null;await save(s);
- metrics();renderScreens();renderEditor();tab('reviews');closeModal();msg('Capture ajoutée. Dessine une annotation sur l’image.')}
+ screens.unshift(s);selectedId=s.id;viewMode='before';draft=null;const saved=await save(s);
+ metrics();renderScreens();renderEditor();tab('reviews');closeModal();msg(saved?'Capture ajoutée. Dessine une annotation sur l’image.':'Capture ouverte, mais non sauvegardée : exporte immédiatement la revue.')}
  catch(e){msg(e.message||'Capture impossible')}finally{button.disabled=false}
 }
 function renderScreens(){
@@ -155,21 +157,21 @@ function editPanel(n){
  $('note-text').focus({preventScroll:true})
 }
 function closeNote(){draft=null;$('note-editor').classList.add('hidden');drawNotes();drawScreens()}
-function saveNote(){
+async function saveNote(){
  if(!draft||!selected())return;
  const text=$('note-text').value.trim();if(text.length<3)return msg('Explique la correction en au moins trois caractères.');
  const s=selected(),n={...draft,text:text.slice(0,2000),status:STATUSES[$('note-status').value]?$('note-status').value:'todo',updatedAt:stamp()};
  const index=s.notes.findIndex(x=>x.id===n.id);if(index>=0)s.notes[index]=n;else s.notes.push(n);
- draft=null;update();renderEditor();msg('Annotation enregistrée sur cet appareil.')
+ draft=null;const saved=await update();renderEditor();msg(saved?'Annotation enregistrée sur cet appareil.':'Annotation ajoutée sans sauvegarde persistante : exporte la revue.')
 }
-function deleteNote(){
+async function deleteNote(){
  if(!draft||!selected()||!confirm('Supprimer cette annotation ?'))return;
- selected().notes=selected().notes.filter(n=>n.id!==draft.id);draft=null;update();renderEditor();msg('Annotation supprimée')
+ selected().notes=selected().notes.filter(n=>n.id!==draft.id);draft=null;const saved=await update();renderEditor();msg(saved?'Annotation supprimée localement':'Modification non sauvegardée : exporte la revue.')
 }
 async function addAfter(ev){
  const s=selected(),file=ev.target.files?.[0];if(!s||!file)return;
  try{const img=await asImage(file);if(s.after&&!confirm('Remplacer l’image Après ? Les repères existants restent aux mêmes positions relatives.'))return;
-  s.after=img;viewMode='compare';draft=null;update();renderEditor();msg('Capture Après ajoutée')
+  s.after=img;viewMode='compare';draft=null;const saved=await update();renderEditor();msg(saved?'Capture Après ajoutée':'Capture Après non sauvegardée : exporte la revue.')
  }catch(e){msg(e.message||'Import impossible')}finally{ev.target.value=''}
 }
 async function removeScreen(){
@@ -209,9 +211,9 @@ async function importReview(ev){
    body.screens.length>50||body.screens.length===0)throw Error('Ce fichier n’est pas un export Punch 360 reconnu.');
   const items=body.screens.map(validateScreen);
   if(!confirm('Importer '+items.length+' capture(s) sans écraser les anciennes ?'))return;
-  screens.unshift(...items);sort();for(const s of items)await save(s);
+  screens.unshift(...items);sort();const results=[];for(const s of items)results.push(await save(s));
   selectedId=items[0].id;viewMode='before';draft=null;metrics();renderScreens();renderEditor();tab('reviews');
-  msg(items.length+' capture(s) importée(s) localement.')
+  msg(results.every(Boolean)?items.length+' capture(s) importée(s) localement.':'Import visible mais pas complètement sauvegardé : exporte la revue.')
  }catch(e){msg(e.message||'Import impossible')}finally{ev.target.value=''}
 }
 const API='https://api.github.com/repos/punch360app/Punch360';
