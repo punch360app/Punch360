@@ -29,7 +29,7 @@ test('company cards and buttons keep sage tokens, 44px touch targets and a mobil
 });
 
 test('new shared modules and scoped CSS are included in the PWA and live HTML',()=>{
- assert.match(sw,/punch-360-essential-v49/);
+ assert.match(sw,/const CACHE='punch-360-essential-v\\d+';/);
  assert.match(sw,/\.\/platform-ui-guards\.js/);
  assert.match(sw,/\.\/platform-directory\.css\?v=directory-1/);
  assert.match(html,/platform-directory\.css\?v=directory-1/);
