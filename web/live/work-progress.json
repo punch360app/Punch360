@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T02:46:12.175Z",
+  "generated_at": "2026-10-29T02:53:17.754Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 229,
+      "sha": "0f835d4833b437b6fb855bfe18cc53151b2062e0",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : isoler le Support Expo lors d’un changement d’entreprise",
+      "merged_at": "2026-10-29T02:53:07Z"
+    },
+    {
       "number": 228,
       "sha": "52131ca5b4f91a449a036ba427b9c5128f34c1b8",
       "ci": "success",
@@ -1989,16 +1997,6 @@
       "ids": [],
       "title": "CI — supprimer les doubles runs Punch et accélérer les installations",
       "merged_at": "2026-10-27T10:52:00Z"
-    },
-    {
-      "number": 177,
-      "sha": "117fb2bd39f0883bf9bfa135c75e8cb59e705b02",
-      "ci": "success",
-      "ids": [
-        "GOV-005"
-      ],
-      "title": "Passation Punch — missions publiées #174 à #176 et prochaine preuve configurable",
-      "merged_at": "2026-10-27T10:51:46Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
