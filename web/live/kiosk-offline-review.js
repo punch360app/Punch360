@@ -23,7 +23,7 @@ export function createOfflineReviewController({sb,redraw,escape:e,getLocale=()=>
  const actionNames={in:'reviewEntryIn',out:'reviewEntryOut',break_start:'reviewBreakUnpaid',break_start_paid:'reviewBreakPaid',break_end:'reviewBreakEnd'};
  const statusNames={pending:'reviewPending',approved:'reviewApproved',rejected:'reviewRejected',conflict:'reviewConflict'};
  function render(){
-  return `<section class="ess-panel">
+  return `<section class="ess-panel offreview-card">
    <h2>${e(t('reviewTitle'))}</h2><p>${e(t('reviewHelp'))}</p>
    ${s.error?`<p role="alert">${e(t(s.error))}</p>`:''}
    <label class="ess-field">${e(t('reviewReason'))}<input id="offreview-note" value="${e(s.note)}" maxlength="1000" ${s.pending?'readonly':''}></label>
@@ -31,8 +31,8 @@ export function createOfflineReviewController({sb,redraw,escape:e,getLocale=()=>
    ${s.rows.map(g=>`<article class="ess-panel"><h3>${e(g.worker)} · ${e(g.device)}</h3>
     ${g.events.map(ev=>`<p><bdi dir="ltr">${e(new Date(ev.at).toLocaleString(dateLocale()))}</bdi> · ${e(t(actionNames[ev.action]||ev.action))} · ${e(t(statusNames[ev.state]||ev.state))}${ev.note?' · '+e(ev.note):''}</p>`).join('')}
     ${!g.closed_at?(s.pending?.id===g.id?
-      '<p class="ess-notice" role="status"><strong>'+e(t(s.pending.action==='approve'?'reviewApprove':'reviewReject'))+'</strong> — '+e(g.worker)+' · '+e(g.device)+'</p>'+btn('save','confirm',g.id)+btn('cancel','cancel',g.id):
-      btn('reviewApprove','approve',g.id)+btn('reviewReject','reject',g.id)):''}
+      '<div class="offreview-confirmation"><p role="status"><strong>'+e(t(s.pending.action==='approve'?'reviewApprove':'reviewReject'))+'</strong> — '+e(g.worker)+' · '+e(g.device)+'</p><div class="offreview-actions">'+btn('save','confirm',g.id)+btn('cancel','cancel',g.id)+'</div></div>':
+      '<div class="offreview-actions">'+btn('reviewApprove','approve',g.id)+btn('reviewReject','reject',g.id)+'</div>'):''}
    </article>`).join('')||`<p>${e(t('reviewEmpty'))}</p>`}
    <p>${e(t('reviewLimit'))}</p>
   </section>`;
