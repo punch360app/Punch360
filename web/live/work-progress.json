@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T01:40:37.518Z",
+  "generated_at": "2026-10-29T01:46:44.023Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 222,
+      "sha": "8d45605df9a56d3f11184a2bae246c56a7f43257",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : couvrir l'identification et l'enrôlement de la borne",
+      "merged_at": "2026-10-29T01:46:33Z"
+    },
+    {
       "number": 221,
       "sha": "cf3a074ba24eb495bd02c0d4079cddccecc11145",
       "ci": "success",
@@ -2010,16 +2018,6 @@
       ],
       "title": "SACATALOG-016 — membres illimités dans les offres négociées par entreprise",
       "merged_at": "2026-10-27T10:01:59Z"
-    },
-    {
-      "number": 170,
-      "sha": "274524e49acb47f3fcc97ee271cf5f8a8d74bdf2",
-      "ci": "success",
-      "ids": [
-        "SACATALOG-016"
-      ],
-      "title": "Super Admin — membres inclus illimités, calcul contrat et affichage Web/Expo",
-      "merged_at": "2026-10-27T09:53:14Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
