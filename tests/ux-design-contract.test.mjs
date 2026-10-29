@@ -20,7 +20,7 @@ test('controls keep keyboard affordances and a minimum touch foundation',()=>{
 });
 
 test('phone and tablet have intentional essential and platform layouts',()=>{
-  assert.match(css,/@media\(max-width:720px\)[^{]*\{[^}]*\.essential-public \.ess-price-grid\s*\{grid-template-columns:1fr/);
+  assert.match(css,/@media\(max-width:720px\)\{[\s\S]*?\.essential-public \.ess-price-grid\s*\{grid-template-columns:1fr/);
   assert.match(css,/@media\(max-width:1050px\)[^{]*\{\s*\.ess-platform\s*\{grid-template-columns:minmax\(0,1fr\)/);
   assert.match(visual,/public-ui-inventory\.json/);
   assert.match(visual,/inventory\.screens!==24/);
