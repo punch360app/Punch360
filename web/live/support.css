@@ -1,0 +1,15 @@
+/* PUNCH Support: use the approved sage tokens and shared Essentiel components. */
+.punch-support{min-width:0;color:var(--ess-text,#2F4935);overflow-wrap:anywhere}
+.punch-support .ess-panel{min-width:0;max-width:100%}
+.punch-support .ess-person{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.punch-support .ess-person>div{min-width:0;flex:1 1 220px}
+.punch-support .ess-person .ess-btn{flex:0 1 auto;min-height:44px;white-space:normal}
+.punch-support .ess-field textarea{box-sizing:border-box;width:100%;max-width:100%;min-height:108px;padding:12px;border:1px solid var(--ess-line,#E1E8DB);border-radius:9px;color:var(--ess-text,#2F4935);background:#fafcf7;font:inherit;resize:vertical}
+.punch-support .ess-field textarea:focus-visible{outline:3px solid var(--ess-sage,#779574);outline-offset:2px}
+.punch-support .ess-checks{display:flex;flex-wrap:wrap;gap:10px}
+.punch-support .ess-checks .ess-btn{min-height:44px;white-space:normal}
+.punch-support [role="alert"],.punch-support [role="status"]{overflow-wrap:anywhere}
+@media(max-width:600px){
+ .punch-support .ess-person>div{flex:1 1 100%}
+ .punch-support .ess-person>.ess-btn,.punch-support .ess-checks>.ess-btn{flex:1 1 100%;width:100%}
+}
