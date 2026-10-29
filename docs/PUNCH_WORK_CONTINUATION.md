@@ -1,6 +1,14 @@
 # PUNCH 360° — État courant unique
 
-## Lot actuel — MISSION-012 CSV sur plusieurs journées (en validation)
+## Priorité actuelle — PUNCH-AUDIT-GLOBAL-20261028 (28 octobre 2026, À EXÉCUTER)
+
+Le propriétaire demande l'audit de chaque page, état et bouton, avec **responsive dès le départ**, puis corrections et protections durables avant les nouvelles fonctionnalités. Suivre le bloc en tête du [maître](prompt-board/MASTER_PROMPT_20261025.md), le [démarrage](prompt-board/WORK_START.md) et le [protocole UX/UI](prompt-board/UX_UI_AUTONOME_WORKFLOW.md).
+
+**Organisation :** un pilote intégrateur, cinq spécialités en lecture seule : design, UX/ergonomie/accessibilité, responsive, client/utilisateur et QA. **Prochaine action :** établir/reprendre ici la matrice page/état/rôle/format/objectif/défaut/priorité/correction/preuve/statut, relever la version servie et commencer les audits initiaux ; traiter d'abord les défauts critiques réels et les composants partagés.
+
+**État honnête :** priorité et organisation documentées uniquement ; aucun audit de page, correctif applicatif ou nouveau contrôle CI attesté par cette mise à jour. Les preuves et travaux antérieurs ci-dessous restent conservés, sans remplacer cet ordre courant. La campagne reprend par ses entrées ouvertes, sans réaudit des entrées inchangées déjà vérifiées.
+
+## Lot antérieur à préserver — MISSION-012 CSV sur plusieurs journées (état à revalider)
 
 Ajout sur Web d'un import de 1 à 50 brouillons CSV pour des dates comprises entre aujourd'hui et J+14, avec contrôle des doublons par date, multi-compagnies et refus de listes serveur incomplètes. Prévisualisation avant écriture; nouvelle vérification des journées et de l'identité avant confirmation et chaque enregistrement. Ne jamais déclarer livré avant les contrôles CI sur le SHA final, fusion, Pages. XLSX natif, heures/durées, publication et édition d'occurrences restent hors de ce lot.
 
