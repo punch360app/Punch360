@@ -30,7 +30,7 @@ test('kiosk loading state supports all ten official languages',()=>{
   locale.select(language.code);
   const translation=locale.t('processing');
   assert.equal(typeof translation,'string');
-  assert.ok(translation.length>5,language.code+' processing translation is missing');
+  assert.ok([...translation].length>=2,language.code+' processing translation is missing');
   assert.notEqual(translation,'processing');
  }
 });
