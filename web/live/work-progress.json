@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T02:13:43.684Z",
+  "generated_at": "2026-10-29T02:24:44.004Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 226,
+      "sha": "84797ae79dc040188dbb905354278763b98106df",
+      "ci": "success",
+      "ids": [],
+      "title": "Docs Punch 360 : 7e expert Architecte Design System et cohérence visuelle",
+      "merged_at": "2026-10-29T02:24:33Z"
+    },
+    {
       "number": 224,
       "sha": "d2523f056591098a5b7776ba58dea8899c267050",
       "ci": "success",
@@ -2004,16 +2012,6 @@
       ],
       "title": "Missions impossibles — décision responsable et retour salarié (Web/Expo)",
       "merged_at": "2026-10-27T10:26:17Z"
-    },
-    {
-      "number": 173,
-      "sha": "dcb799741ad7ddc0bdbca742b30aa3eacfca5193",
-      "ci": "success",
-      "ids": [
-        "GOV-005"
-      ],
-      "title": "Passation Punch — trois livraisons SACATALOG vérifiées et prochain parcours",
-      "merged_at": "2026-10-27T10:13:11Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
