@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T02:37:29.656Z",
+  "generated_at": "2026-10-29T02:46:12.175Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 228,
+      "sha": "52131ca5b4f91a449a036ba427b9c5128f34c1b8",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH-AUDIT-GLOBAL : corriger Support PUNCH après refus d'accès et harmoniser le responsive",
+      "merged_at": "2026-10-29T02:46:02Z"
+    },
+    {
       "number": 227,
       "sha": "fd555190a79864308859ad0432073f4ce17b3c99",
       "ci": "success",
@@ -1991,18 +1999,6 @@
       ],
       "title": "Passation Punch — missions publiées #174 à #176 et prochaine preuve configurable",
       "merged_at": "2026-10-27T10:51:46Z"
-    },
-    {
-      "number": 176,
-      "sha": "b126577a77be4ad862aed001ed40a47f865e19ea",
-      "ci": "success",
-      "ids": [
-        "MISSION-007",
-        "MISSION-011",
-        "MISSION-013"
-      ],
-      "title": "Missions — démarrage volontaire En cours, puis Terminer ou Signaler",
-      "merged_at": "2026-10-27T10:47:47Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
