@@ -634,16 +634,16 @@ const KIOSK_SESSION_WORDS={
 };
 
 const ACTIONS={
- fr:{startDay:'COMMENCER MA JOURNÉE',endDay:'TERMINER MA JOURNÉE'},
- en:{startDay:'CLOCK IN',endDay:'CLOCK OUT'},
- es:{startDay:'INICIAR JORNADA',endDay:'TERMINAR JORNADA'},
- pt:{startDay:'INICIAR O DIA',endDay:'ENCERRAR O DIA'},
- it:{startDay:'INIZIA LA GIORNATA',endDay:'TERMINA LA GIORNATA'},
- de:{startDay:'ARBEIT BEGINNEN',endDay:'ARBEIT BEENDEN'},
- ar:{startDay:'بدء يوم العمل',endDay:'إنهاء يوم العمل'},
- zh:{startDay:'开始工作',endDay:'结束工作'},
- hi:{startDay:'काम शुरू करें',endDay:'काम समाप्त करें'},
- tl:{startDay:'SIMULAN ANG TRABAHO',endDay:'TAPUSIN ANG TRABAHO'}
+ fr:{startDay:'COMMENCER MA JOURNÉE',endDay:'TERMINER MA JOURNÉE',processing:'Traitement en cours…'},
+ en:{startDay:'CLOCK IN',endDay:'CLOCK OUT',processing:'Processing…'},
+ es:{startDay:'INICIAR JORNADA',endDay:'TERMINAR JORNADA',processing:'Procesando…'},
+ pt:{startDay:'INICIAR O DIA',endDay:'ENCERRAR O DIA',processing:'Processando…'},
+ it:{startDay:'INIZIA LA GIORNATA',endDay:'TERMINA LA GIORNATA',processing:'Operazione in corso…'},
+ de:{startDay:'ARBEIT BEGINNEN',endDay:'ARBEIT BEENDEN',processing:'Wird verarbeitet…'},
+ ar:{startDay:'بدء يوم العمل',endDay:'إنهاء يوم العمل',processing:'جارٍ المعالجة…'},
+ zh:{startDay:'开始工作',endDay:'结束工作',processing:'正在处理…'},
+ hi:{startDay:'काम शुरू करें',endDay:'काम समाप्त करें',processing:'प्रक्रिया जारी है…'},
+ tl:{startDay:'SIMULAN ANG TRABAHO',endDay:'TAPUSIN ANG TRABAHO',processing:'Pinoproseso…'}
 };
 
 export function createKioskLocale(){

@@ -121,6 +121,42 @@ async function audit(page,device,state){
      throw Error(device+': Arabic enrollment state lost RTL/focus');
     if(device==='iPad')await page.screenshot({
      path:path.join(output,'kiosk-synthetic-enroll-iPad-RTL.png'),animations:'disabled'});
+    // Fake an in-flight enrollment request in the browser only. Nothing reaches Supabase.
+    await page.evaluate(()=>{
+     window.fetch=()=>new Promise(resolve=>{window.__kioskResolvePending=resolve});
+    });
+    await page.locator('#number').fill('SYNTHETIC-001');
+    await page.locator('#pin').fill('123456');
+    await page.locator('#pinConfirm').fill('123456');
+    await page.locator('#enrollment').fill('LOCAL-DEMO');
+    await page.locator('[data-key="OK"]').click();
+    const inProgress=await page.evaluate(()=>{
+     const status=document.querySelector('.kiosk-notice[role="status"]');
+     return {visible:!!status&&getComputedStyle(status).display!=='none',
+      message:status?.textContent?.trim()||'',
+      aboveForm:!!status&&!status.closest('.kiosk-content'),
+      regionBusy:document.querySelector('.kiosk-content')?.getAttribute('aria-busy')==='true',
+      allDisabled:[...document.querySelectorAll('#kiosk button,#kiosk input,#kiosk select')].every(x=>x.disabled)
+     };
+    });
+    if(!inProgress.visible||!inProgress.aboveForm||!inProgress.regionBusy||
+       !inProgress.allDisabled||inProgress.message.length<5)
+     throw Error(device+': no accessible verification feedback: '+JSON.stringify(inProgress));
+    if(device==='iPad')await page.screenshot({
+     path:path.join(output,'kiosk-synthetic-iPad-pending-RTL.png'),animations:'disabled'});
+    // Deliberate server-style denial: the UI must leave the pending state and report the refusal.
+    await page.evaluate(()=>window.__kioskResolvePending({
+     json:async()=>({ok:false,error:'IDENTITY_DENIED'})
+    }));
+    await page.waitForFunction(()=>!document.querySelector('.kiosk-content')?.hasAttribute('aria-busy'),
+     null,{timeout:10000});
+    const recovered=await page.evaluate(()=>({
+     enabled:[...document.querySelectorAll('#kiosk button')].some(x=>!x.disabled),
+     notice:document.querySelector('.kiosk-notice[role="status"]')?.textContent?.trim()||''
+    }));
+    if(!recovered.enabled||!recovered.notice||recovered.notice===inProgress.message)
+     throw Error(device+': pending/error state did not recover: '+JSON.stringify(recovered));
+    console.log('Kiosk synthetic '+device+': Arabic progress and denial restore controls');
     if(errors.length||externalCalls.length)
      throw Error(device+': prohibited outside request or JS error: '+JSON.stringify({errors,externalCalls}));
    }finally{await page.close()}

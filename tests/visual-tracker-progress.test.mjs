@@ -6,6 +6,8 @@ import {masterIds,pullProgressIds,updateWorkRegister} from '../scripts/update-wo
 
 const html=readFileSync(new URL('../web/live/suivi.html',import.meta.url),'utf8');
 const progress=JSON.parse(readFileSync(new URL('../web/live/work-progress.json',import.meta.url),'utf8'));
+// Fictional PR IDs must remain disjoint from real merged PR history as the repo grows.
+const fixturePrNumber=Math.max(1000,...progress.activity.map(x=>x.number))+1000;
 const master=readFileSync(new URL('../docs/prompt-board/MASTER_PROMPT_20261025.md',import.meta.url),'utf8');
 const valid=masterIds(master);
 const bundle=html.match(/<script type="application\/json" id="dataBundle">([\s\S]*?)<\/script>/);
@@ -77,24 +79,24 @@ test('PR marker requires explicit IDs and never infers from title or ambiguous p
  assert.deepEqual(pullProgressIds('PUNCH-PROGRESS: GOV-014; GOV-014'),['GOV-014']);
 });
 test('merged PR with successful CI updates exact mapped requirement without certifying deployment',()=>{
- const pull={merged:true,number:222,merge_commit_sha:'a'.repeat(40),head:{sha:'b'.repeat(40)},
+ const pull={merged:true,number:fixturePrNumber,merge_commit_sha:'a'.repeat(40),head:{sha:'b'.repeat(40)},
   title:'Strengthen invoice status',merged_at:'2026-10-26T12:00:00Z',body:'PUNCH-PROGRESS: STRIPE-012, GOV-014'};
  const next=updateWorkRegister(progress,pull,true,valid,'2026-10-26T12:01:00Z');
- assert.ok(next.requirements['STRIPE-012'].pr.includes(222));
+ assert.ok(next.requirements['STRIPE-012'].pr.includes(fixturePrNumber));
  assert.equal(next.requirements['STRIPE-012'].tested,'software');
  assert.equal(next.requirements['STRIPE-012'].deployed,false);
- assert.equal(next.activity[0].number,222);
+ assert.equal(next.activity[0].number,fixturePrNumber);
  assert.equal(next.activity[0].ci,'success');
  assert.equal(summarize(next).delivered,0);
  assert.deepEqual(updateWorkRegister(next,pull,true,valid,'2026-10-26T12:03:00Z'),next);
 });
 test('unknown ID is rejected and an unannotated merged PR only updates activity',()=>{
- const base={merged:true,number:223,merge_commit_sha:'b'.repeat(40),title:'No markers',body:'Unrelated change'};
+ const base={merged:true,number:fixturePrNumber+1,merge_commit_sha:'b'.repeat(40),title:'No markers',body:'Unrelated change'};
  const next=updateWorkRegister(progress,base,false,valid,'2026-10-26T12:01:00Z');
  assert.equal(Object.keys(next.requirements).length,Object.keys(progress.requirements).length);
  assert.equal(next.activity[0].ci,'not_verified');
  assert.equal(next.activity[0].ids.length,0);
- assert.throws(()=>updateWorkRegister(progress,{...base,number:224,body:'PUNCH-PROGRESS: UNKNOWN-001'},true,valid,'2026-10-26T12:01:00Z'),/UNKNOWN_PROGRESS_ID/);
+ assert.throws(()=>updateWorkRegister(progress,{...base,number:fixturePrNumber+2,body:'PUNCH-PROGRESS: UNKNOWN-001'},true,valid,'2026-10-26T12:01:00Z'),/UNKNOWN_PROGRESS_ID/);
  assert.throws(()=>updateWorkRegister(progress,{...base,merged:false},true,valid,'2026-10-26T12:01:00Z'),/MERGED_PR_REQUIRED/);
 });
 test('automation is merge triggered, scoped and preserves security of owner Stripe contracts',()=>{
