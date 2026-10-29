@@ -1,0 +1,19 @@
+/* Shared sage layout for the Super Admin company directory.
+ * Scoped here so the storefront PR and other products keep their own styling.
+ */
+.platform-directory{min-width:0;color:var(--ess-text,#2F4935)}
+.platform-directory .ess-panel{min-width:0;max-width:100%}
+.platform-directory .ess-person{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:8px 10px}
+.platform-directory .ess-person>div{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.platform-directory .ess-person .ess-btn{flex:0 1 auto;min-width:110px;min-height:44px;white-space:normal;overflow-wrap:anywhere}
+.platform-directory .ess-field select{min-height:46px;width:100%;max-width:100%;border:1px solid var(--ess-line,#E1E8DB);border-radius:9px;padding:10px;color:var(--ess-text,#2F4935);background:#fafcf7}
+.platform-directory .ess-field select:focus-visible{outline:3px solid var(--ess-sage,#779574);outline-offset:2px}
+.platform-directory nav[aria-label="Pages des entreprises"]{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.platform-directory nav[aria-label="Pages des entreprises"] .ess-btn{min-height:44px}
+.platform-directory .ess-panel details{max-width:100%;min-width:0}
+@media(max-width:600px){
+ .platform-directory .ess-person{align-items:stretch}
+ .platform-directory .ess-person>div{flex:1 1 100%}
+ .platform-directory .ess-person .ess-btn{flex:1 1 100%;width:100%;text-align:center}
+ .platform-directory nav[aria-label="Pages des entreprises"] .ess-btn{flex:1 1 120px}
+}

@@ -1,14 +1,15 @@
+import {isPlatformAuthorizationDenied,platformSafeError,renderPlatformFeedback} from './platform-ui-guards.js';
+
 export function createPlatformAuditController({sb,redraw,escape:e,download=(text)=>{const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='PUNCH-audit.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}}){
  let generation=0;const s={rows:[],query:'',entity:'',from:'',until:'',error:'',busy:false,more:true,filters:null};
  const button=(title,action,disabled=false)=>`<button type="button" class="ess-btn" data-action="audit:${action}" ${disabled||s.busy?'disabled':''}>${title}</button>`;
  function reset(){generation++;Object.assign(s,{rows:[],query:'',entity:'',from:'',until:'',error:'',busy:false,more:true,filters:null})}
- function privateDenied(error){return error?.code==='42501'||error?.status===401||error?.status===403}
  function clearPrivate(){s.rows=[];s.more=false;s.filters=null}
  function safeError(error){
-  if(privateDenied(error)){clearPrivate();return 'Accès expiré ou refusé. Reconnectez-vous avec MFA.'}
+  if(isPlatformAuthorizationDenied(error))clearPrivate();
   if(error?.message==='AUDIT_FILTER_DATES')return 'La date de début doit précéder la date de fin.';
   if(error?.message==='AUDIT_DATE_INVALID')return 'Indiquez des dates complètes avec un fuseau horaire.';
-  return 'Impossible de charger le journal d’audit. Réessayez.';
+  return platformSafeError(error,{fallback:'Impossible de charger le journal d’audit. Réessayez.'});
  }
  function input(el){const key=el.id?.replace('audit-','');if(['query','entity','from','until'].includes(key))s[key]=el.value;}
  function filters(){
@@ -24,7 +25,7 @@ export function createPlatformAuditController({sb,redraw,escape:e,download=(text
  }
  async function page(more=false){const n=generation,f=more?s.filters:filters(),last=more?s.rows.at(-1):null;const r=await sb.rpc('platform_search_audit',{...f,p_before:last?.created_at||null,p_before_id:last?.id||null});if(n!==generation)return;if(r.error)throw r.error;if(!Array.isArray(r.data))throw Error('AUDIT_INVALID_RESPONSE');s.rows=more?[...s.rows,...r.data.filter(x=>!s.rows.some(y=>y.id===x.id))]:r.data;s.filters=f;s.more=r.data.length===100;}
  async function load(){reset();const n=generation;try{await page()}catch(err){if(n===generation)s.error=safeError(err)}finally{if(n===generation)redraw()}}
- function render(){return `${s.error?`<p role="alert">${e(s.error)}</p>`:''}<section class="ess-panel"><p>Historique immuable des opérations plateforme. Dates avec fuseau : 2026-10-25T00:00:00-04:00.</p>${[['query','Action contient'],['entity','Identifiant de l’objet (facultatif)'],['from','Depuis (inclus)'],['until','Jusqu’au (exclu)']].map(([key,label])=>`<label class="ess-field">${label}<input id="audit-${key}" value="${e(s[key])}"></label>`).join('')}${button('Rechercher','search')}${button('Exporter les événements chargés','export',!s.rows.length)}<p>${s.rows.length} événements chargés. L’export contient uniquement ces lignes.</p></section><section class="ess-panel">${s.rows.map(row=>`<details><summary>${e(row.action)} · ${e(new Date(row.created_at).toLocaleString('fr-CA'))}</summary><p>Acteur : ${e(row.actor_id)}<br>Objet : ${e(row.entity_id||'—')}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${e(JSON.stringify(row.detail,null,2))}</pre></details>`).join('')||'<p>Aucun événement.</p>'}${s.more?button('Charger les événements précédents','more'):''}</section>`}
+ function render(){return `${renderPlatformFeedback(s,e)}<section class="ess-panel"><p>Historique immuable des opérations plateforme. Dates avec fuseau : 2026-10-25T00:00:00-04:00.</p>${[['query','Action contient'],['entity','Identifiant de l’objet (facultatif)'],['from','Depuis (inclus)'],['until','Jusqu’au (exclu)']].map(([key,label])=>`<label class="ess-field">${label}<input id="audit-${key}" value="${e(s[key])}"></label>`).join('')}${button('Rechercher','search')}${button('Exporter les événements chargés','export',!s.rows.length)}<p>${s.rows.length} événements chargés. L’export contient uniquement ces lignes.</p></section><section class="ess-panel">${s.rows.map(row=>`<details><summary>${e(row.action)} · ${e(new Date(row.created_at).toLocaleString('fr-CA'))}</summary><p>Acteur : ${e(row.actor_id)}<br>Objet : ${e(row.entity_id||'—')}</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${e(JSON.stringify(row.detail,null,2))}</pre></details>`).join('')||'<p>Aucun événement.</p>'}${s.more?button('Charger les événements précédents','more'):''}</section>`}
  async function handle(el){
   const raw=el?.dataset?.action;
   if(!raw?.startsWith('audit:'))return false;

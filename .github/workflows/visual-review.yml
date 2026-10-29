@@ -107,6 +107,9 @@ jobs:
       - name: Audit Super Admin privacy after MFA denial on four viewports
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-platform-audit.cjs
+      - name: Audit Super Admin company directory and revoked access on four viewports
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node .github/scripts/visual-platform-directory.cjs
       - name: Verify all 24 distinct public screen states were visited
         if: steps.visual-scope.outputs.mode == 'full'
         run: |
