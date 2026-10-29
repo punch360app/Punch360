@@ -21,3 +21,106 @@ test('price draft entry is limited to real Essentiel companies and opens only it
  await ui.handle({dataset:{action:'directory:price',id:'real'}});
  assert.deepEqual(chosen.map(c=>c.id),['real']);
 });
+
+test('revoked Super Admin access clears company list, profile, cursor and private service controls',async()=>{
+ let deny=false;const opened=[],calls=[];
+ const company={id:'tenant-test-1',name:'Entreprise interne fictive',product_edition:'essential',
+  billing_status:'active',seat_limit:5,is_test:false};
+ const sb={rpc:async(name,args)=>{
+  calls.push(name);
+  if(deny)return {error:{code:'42501',message:'SQL SECRET: owner support email'}};
+  if(name==='platform_search_companies')return {data:{items:[company],has_more:true,
+   before:'2026-10-28T12:00:00Z',before_id:'cursor'}};
+  if(name==='platform_company_detail')return {data:{...company,entitlement:{features:[]},
+   service_controls:{version:2,suspended:false,grace_days:null}}};
+  throw Error('Unexpected RPC');
+ }};
+ const ui=createPlatformDirectoryController({sb,redraw(){},
+  escape:x=>String(x??'').replaceAll('<','&lt;'),onArchives:c=>opened.push(c),
+  onPriceCompany:c=>opened.push(c)});
+ await ui.load();
+ ui.input({id:'directory-reason',value:'Consultation de support'});
+ await ui.handle({dataset:{action:'directory:detail',id:company.id}});
+ assert.match(ui.render(),/Entreprise interne fictive/);
+ assert.ok(ui.state.detail?.service_controls);
+ deny=true;
+ await ui.handle({dataset:{action:'directory:next'}});
+ assert.deepEqual(ui.state.items,[]);
+ assert.equal(ui.state.detail,null);
+ assert.deepEqual(ui.state.pages,[]);
+ assert.equal(ui.state.cursor,null);
+ assert.equal(ui.state.next,null);
+ assert.deepEqual(ui.state.applied,{});
+ assert.equal(ui.state.reason,'');
+ assert.equal(ui.state.serviceConfirmation,'');
+ assert.match(ui.render(),/Reconnectez-vous avec MFA/);
+ assert.doesNotMatch(ui.render(),/Entreprise interne fictive|SQL SECRET/);
+ await ui.handle({dataset:{action:'directory:archives',id:company.id}});
+ await ui.handle({dataset:{action:'directory:price',id:company.id}});
+ assert.deepEqual(opened,[]);
+});
+
+test('denied detail and service responses never retain prior real-company data',async()=>{
+ let denial=null,op='';
+ const company={id:'tenant-a',name:'Client test',product_edition:'essential',
+  billing_status:'active',seat_limit:3,is_test:false,
+  service_controls:{version:4,suspended:false,grace_days:30},entitlement:{features:[]}};
+ const sb={rpc:async(name)=>{
+  op=name;
+  if(denial===name)return {error:{status:403,message:'provider diagnostic private'}};
+  return name==='platform_search_companies'?{data:{items:[company],has_more:false}}:
+   name==='platform_company_detail'?{data:company}:
+   {data:{version:5,suspended:true,effective_status:'restricted',grace_days:null}};
+ }};
+ const ui=createPlatformDirectoryController({sb,redraw(){},escape:String});
+ await ui.load();
+ ui.input({id:'directory-reason',value:'Contrôle autorisé'});
+ denial='platform_company_detail';
+ await ui.handle({dataset:{action:'directory:detail',id:'tenant-a'}});
+ assert.deepEqual(ui.state.items,[]);
+ assert.equal(ui.state.detail,null);
+ assert.doesNotMatch(ui.render(),/Client test|provider diagnostic private/);
+ denial=null;
+ await ui.load();
+ ui.input({id:'directory-reason',value:'Contrôle autorisé'});
+ await ui.handle({dataset:{action:'directory:detail',id:'tenant-a'}});
+ ui.input({id:'directory-service-confirmation',value:'tenant-a'});
+ ui.input({id:'directory-service-reason',value:'Test motif valide'});
+ denial='platform_set_company_service';
+ await ui.handle({dataset:{action:'directory:service'}});
+ assert.equal(op,'platform_set_company_service');
+ assert.equal(ui.state.detail,null);
+ assert.deepEqual(ui.state.items,[]);
+ assert.match(ui.state.error,/Reconnectez-vous avec MFA/);
+});
+
+test('directory shows actionable loading state without two simultaneous searches',async()=>{
+ let finish;let calls=0;
+ const sb={rpc:async()=>{
+  calls++;
+  await new Promise(resolve=>{finish=resolve});
+  return {data:{items:[],has_more:false}};
+ }};
+ const ui=createPlatformDirectoryController({sb,redraw(){},escape:String});
+ const pending=ui.handle({dataset:{action:'directory:search'}});
+ assert.equal(ui.state.busy,true);
+ assert.match(ui.render(),/role="status"/);
+ assert.match(ui.render(),/Vérification en cours/);
+ assert.match(ui.render(),/data-action="directory:search" disabled/);
+ await ui.handle({dataset:{action:'directory:search'}});
+ assert.equal(calls,1);
+ finish();await pending;
+ assert.equal(ui.state.busy,false);
+ assert.doesNotMatch(ui.render(),/Vérification en cours/);
+});
+
+test('unexpected response or provider error is safely presented without data or diagnostics',async()=>{
+ const cases=[{data:{unexpected:'shape'}},{error:{message:'internal secret query params'}}];
+ for(const result of cases){
+  const ui=createPlatformDirectoryController({sb:{rpc:async()=>result},redraw(){},escape:String});
+  await ui.load();
+  assert.deepEqual(ui.state.items,[]);
+  assert.match(ui.render(),/Impossible de consulter ou modifier/);
+  assert.doesNotMatch(ui.render(),/internal secret|unexpected/);
+ }
+});
