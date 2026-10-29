@@ -81,7 +81,7 @@ export function KioskOfflineReviewPanel({account}:{account:WorkspaceAccount}){
    {!g.closed_at?(pending?.id===g.id?
     <View style={{gap:8,padding:12,backgroundColor:'#eef3e8',borderRadius:8}}>
      <Text accessibilityLiveRegion="polite" style={{color:'#2F4935',fontWeight:'600'}}>
-      {pending.approve?'Confirmer les observations':'Refuser et conserver l’historique'} — {g.worker} · {g.device}
+      {pending?.approve?'Confirmer les observations':'Refuser et conserver l’historique'} — {g.worker} · {g.device}
      </Text>
      {button('Enregistrer cette décision',commit)}
      <Pressable accessibilityRole="button" disabled={busy} onPress={()=>setPending(null)}
