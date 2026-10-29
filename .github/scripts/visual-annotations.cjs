@@ -55,11 +55,12 @@ function sample(){
     await page.screenshot({path:path.join(output,'annotations-editor-'+device+'.png'),animations:'disabled'});
     await page.locator('[data-view="before"]').click();
     await page.locator('[data-tool="rect"]').click();
+    await page.locator('.image-frame svg').scrollIntoViewIfNeeded();
     const box=await page.locator('.image-frame svg').boundingBox();
     assert.ok(box&&box.width>50);
     await page.mouse.move(box.x+box.width*.23,box.y+box.height*.25);
     await page.mouse.down();await page.mouse.move(box.x+box.width*.65,box.y+box.height*.5,{steps:5});await page.mouse.up();
-    await page.locator('#note-text').fill('Encadrer cette zone et harmoniser les espacements');
+    await page.locator('#note-text').fill('Encadrer cette zone et harmoniser les espacements',{timeout:8000});
     await page.locator('#save-note').click();
     assert.equal(await page.locator('.note-card').count(),2);
     const downloadPromise=page.waitForEvent('download');
