@@ -20,6 +20,7 @@ Chaque ligne de la matrice doit être affinée par **page/sous-page, état, rôl
 | Horaires, missions, trajets et hors ligne | Chef/Boss/Admin/salarié, multi-formats | `MISSION-012` en validation avant la campagne, ne pas écraser ni marquer terminé | NON VÉRIFIÉ |
 | Personnel, messages, notifications, réglages et autres pages réellement livrées | Rôles autorisés, multi-formats | Inventaire exhaustif par route et bouton à réaliser | NON VÉRIFIÉ |
 | Super Admin, MFA, tableaux, catalogue et contrats | Super Admin, PC/iPad surtout; téléphone d'urgence | Vérifier vraies données et protections serveur, sans opération réelle | NON VÉRIFIÉ |
+| Super Admin — journal d’audit, recherche et export | Super Admin MFA, téléphone/tablette/PC | Défaut observé dans le code : anciennes lignes privées conservées après refus RPC MFA; erreurs fournisseur brutes exposées. Correctif d’effacement, erreurs neutres, validation de dates et garde d’export à vérifier en CI | EN VALIDATION ; MFA réelle NON VÉRIFIÉE |
 | Construction et fonctions conditionnées aux forfaits | Rôles autorisés, multi-formats | Découvrir les pages/états réels; garder distinct d'Essentiel | NON VÉRIFIÉ |
 
 ## Première protection technique de la campagne
@@ -64,3 +65,11 @@ Nouvelle couverture navigateur (sans mutation applicative) : appareil *stricteme
 **Responsive et harmonisation** : Web utilise une famille `.offreview-*` dédiée avec palette sauge, boutons adaptatifs de 48 px, focus clavier et annonce `role=status`; Expo reprend les deux étapes et le style sauge avec `Pressable` et confirmation accessible. Les traductions Web restent celles des dix langues Essentiel, sans rendre une nouvelle chaîne publique inventée; Expo demeure partiellement en français, limite à reprendre dans sa localisation complète.
 
 **Preuves attendues** : tests Node contre premier appui, double confirmation, annulation, compte changé, motif changé, lot fermé, refus fournisseur; contrôle TypeScript/Expo et captures du vrai contrôleur Web avec données strictement fictives sur 320 px, S25, iPad et PC, dans `visual-captures`. Vérifier le SHA final et la publication servie. **Ce lot ne prouve pas une approbation réelle, une authentification Boss/Admin, ni les heures finales en base de données.**
+
+## Lot 6 — journal d’audit Super Admin, refus MFA et confidentialité
+
+**Constat de code** : après consultation des événements, une nouvelle demande `platform_search_audit` refusée par droits/MFA conservait les anciennes lignes privées dans le DOM. En plus, `s.error=err.message` exposait directement le diagnostic serveur. L’export CSV restait disponible même si le contexte d’accès avait changé. Les filtres date inversés n’étaient pas refusés localement.
+
+**Correctif Web** : sur refus de permission (code SQL `42501` ou HTTP 401/403), vider lignes/cursseur/filtres et retirer les détails du rendu; message sûr « Accès expiré ou refusé. Reconnectez-vous avec MFA ». Erreurs de disponibilité neutralisées et filtres date+fuseau validés; export vide désactivé à l’écran. La RPC serveur reste seule source des événements et de leurs permissions; la neutralisation CSV contre formules est préservée. Aucun événement ni donnée Supabase modifié.
+
+**QA attendue** : simulations de droit retiré après liste privée, export impossible d’anciennes lignes, réponse tardive après déconnexion, date invalide et date inversée, CSV sécurisé; vrais rendus sur téléphone 320/S25, iPad et PC par injection de données de test et refus RPC fictif, avec captures avant/après et vérification d’absence de débordement. **Une simulation visuelle ne prouve pas la vraie session MFA, les RLS SQL ni la publication réelle.**
