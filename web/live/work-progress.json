@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T22:58:27.287Z",
+  "generated_at": "2026-10-29T01:11:36.165Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1518,9 +1518,29 @@
         208
       ],
       "note": "Travail rattaché à la PR #207. Vérifier la portée, le déploiement et les recettes avant validation complète."
+    },
+    "DESIGN-015": {
+      "developed": "partial",
+      "tested": "software",
+      "deployed": false,
+      "external_required": true,
+      "pr": [
+        219
+      ],
+      "note": "Travail rattaché à la PR #219. Vérifier la portée, le déploiement et les recettes avant validation complète."
     }
   },
   "activity": [
+    {
+      "number": 219,
+      "sha": "41e1c51ec334e4b677e562486e46bc9c410f1f80",
+      "ci": "success",
+      "ids": [
+        "DESIGN-015"
+      ],
+      "title": "Audit global prioritaire : design, client et responsive dès le départ",
+      "merged_at": "2026-10-29T01:11:24Z"
+    },
     {
       "number": 218,
       "sha": "483b7ba8fa0a051aa39ad701284f1b909b66cbd9",
@@ -2005,16 +2025,6 @@
       ],
       "title": "Missions — consulter les interventions des 14 prochains jours sans pointage",
       "merged_at": "2026-10-27T02:35:39Z"
-    },
-    {
-      "number": 167,
-      "sha": "9aa1c5364e6b95e8e7711f15471021870ff82e47",
-      "ci": "success",
-      "ids": [
-        "MISSION-008"
-      ],
-      "title": "Missions — reprogrammer une mission publiée (date, adresse et rang) Web/Expo",
-      "merged_at": "2026-10-27T02:23:59Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
