@@ -107,7 +107,7 @@ h2,h3,h4,p{margin-top:0}
 .pane-heading,.section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .pane-heading strong{display:block;font-size:14px}
 .pane-heading small{display:block;font-size:11px;color:#839586;margin-top:4px}
-.icon-action{display:grid;place-items:center;min-width:42px;height:42px;border:1px solid #e0eade;border-radius:10px;background:#f5f8f1;color:#527255;font-size:22px;font-weight:500}
+.icon-action{display:grid;place-items:center;min-width:44px;height:44px;border:1px solid #e0eade;border-radius:10px;background:#f5f8f1;color:#527255;font-size:22px;font-weight:500}
 .icon-action:hover{background:#ebf1e8}
 .icon-action.delete{color:#a8655a;background:#fff8f6;font-size:19px}
 .screens-list{display:grid;gap:8px;margin-top:16px}
@@ -140,12 +140,12 @@ h2,h3,h4,p{margin-top:0}
 .editor-top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .editor-viewbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:17px 0 12px}
 .segmented{display:inline-flex;border:1px solid var(--line);border-radius:10px;background:#f5f8f2;padding:3px;gap:3px;flex-wrap:wrap}
-.segmented button{border:0;background:transparent;padding:8px 13px;min-height:40px;border-radius:8px;color:#6e8372;font-size:11px;font-weight:800}
+.segmented button{border:0;background:transparent;padding:8px 13px;min-height:44px;border-radius:8px;color:#6e8372;font-size:11px;font-weight:800}
 .segmented button.active{background:white;box-shadow:0 1px 5px rgba(40,62,48,.08);color:#2f613c}
 .count-label{font-size:11px;color:#8a998c;font-weight:700}
 .toolstrip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:12px 0 16px}
 .toolstrip>span{font-size:10px;letter-spacing:1.2px;color:#8d9c8f;font-weight:900;margin-right:8px}
-.tool{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:white;border-radius:8px;min-height:39px;padding:8px 11px;color:#57735d;font-weight:760;font-size:12px}
+.tool{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:white;border-radius:8px;min-height:44px;padding:8px 11px;color:#57735d;font-weight:760;font-size:12px}
 .tool.active{background:#edf4e9;border-color:#a7c5a4;color:#2d5939}
 .toolstrip small{font-size:10px;color:#91a094;margin-left:auto}
 .image-area{background:#e9eee6;border-radius:14px;min-height:220px;padding:clamp(12px,2vw,28px);display:flex;align-items:center;justify-content:center;overflow:hidden;gap:16px}
@@ -184,10 +184,10 @@ h2,h3,h4,p{margin-top:0}
 .notes-empty{font-size:12px;color:#879989;line-height:1.6}
 .note-editor{background:#f8fbf5}
 .note-editor label{display:block;color:#556e59;font-weight:800;font-size:11px;margin-bottom:6px}
-.note-editor textarea,.note-editor select{width:100%;border:1px solid #d7e3d3;border-radius:10px;padding:11px 12px;color:#29472f;background:white;margin-bottom:15px;min-height:43px}
+.note-editor textarea,.note-editor select{width:100%;border:1px solid #d7e3d3;border-radius:10px;padding:11px 12px;color:#29472f;background:white;margin-bottom:15px;min-height:44px}
 .note-editor textarea{resize:vertical;min-height:115px}
 .note-actions{display:flex;flex-wrap:wrap;gap:8px}
-.plain-close{border:0;background:transparent;color:#6c816f;font-size:25px;min-height:40px;min-width:40px;border-radius:7px}
+.plain-close{border:0;background:transparent;color:#6c816f;font-size:25px;min-height:44px;min-width:44px;border-radius:7px}
 .privacy-note{margin-top:18px;border:1px solid #dbe6d7;border-radius:13px;background:#edf3e9;color:#647967;padding:16px 19px;font-size:12px;line-height:1.65}
 .capture-dialog{border:1px solid var(--line);border-radius:20px;width:min(480px,calc(100% - 28px));box-shadow:0 25px 90px rgba(22,42,26,.3);padding:0;color:var(--ink)}
 .capture-dialog::backdrop{background:rgba(21,43,30,.55);backdrop-filter:blur(3px)}
@@ -255,3 +255,6 @@ h2,h3,h4,p{margin-top:0}
  .metric>span{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Device-independent touch targets and keyboard-accessible review links. */
+.feed-title,.side-links a,.hero-link{display:inline-flex;align-items:center;min-height:44px}
