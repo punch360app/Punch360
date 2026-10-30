@@ -90,6 +90,8 @@ const results=[];
      markers:[...document.querySelectorAll('[data-punch-annotation-kind]')].map(x=>x.dataset.punchAnnotationKind),
      formHidden:document.getElementById('punch-note-form')?.classList.contains('hidden')
     }))));
+    assert.match(await page.locator('#punch-note-target').textContent(),/Punaise/,
+      'A free tap must open a positional annotation, not the previous element form');
     await page.locator('#punch-note-text').fill('Punaise libre sur le texte, pas un bouton');
     await page.locator('#punch-note-save').click();
     const pinState=await page.evaluate(()=>{
