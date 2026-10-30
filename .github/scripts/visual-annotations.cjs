@@ -84,6 +84,12 @@ const results=[];
     if(width<900)await layer.tap({position:tap,timeout:15000});
     else await layer.click({position:tap,timeout:15000});
     await page.locator('#punch-note-form').waitFor({state:'visible'});
+    console.log('PUNCH PIN BEFORE SAVE',JSON.stringify(await page.evaluate(()=>({
+     target:document.getElementById('punch-note-target')?.textContent,
+     active:document.getElementById('annotate-pin')?.getAttribute('aria-pressed'),
+     markers:[...document.querySelectorAll('[data-punch-annotation-kind]')].map(x=>x.dataset.punchAnnotationKind),
+     formHidden:document.getElementById('punch-note-form')?.classList.contains('hidden')
+    }))));
     await page.locator('#punch-note-text').fill('Punaise libre sur le texte, pas un bouton');
     await page.locator('#punch-note-save').click();
     const pinState=await page.evaluate(()=>{
