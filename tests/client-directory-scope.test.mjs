@@ -58,6 +58,6 @@ test('Expo component gates data, pagination, confirmations and retry',async()=>{
 test('parent remounts private directory when a different person signs into the same company',async()=>{
  const {readFileSync}=await import('node:fs');
  const parent=readFileSync(new URL('../src/workforce/EssentialPlanningPanel.tsx',import.meta.url),'utf8');
- assert.match(parent,/<ClientDirectoryPanel key=\{\[account\.companyId,account\.userId,account\.role,account\.edition\]\.join\(':'\)\}/);
+ assert.match(parent,/\{manager\?<ClientDirectoryPanel key=\{\[account\.companyId,account\.userId,account\.role,account\.edition\]\.join\(':'\)\}/);
  assert.match(parent,/<ClientDirectoryPanel[^>]*companyId=\{account\.companyId\}/);
 });
