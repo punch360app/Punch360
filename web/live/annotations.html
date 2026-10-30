@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#223d30">
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Aperçu responsive partagé d'Atelier et annotations sur les vrais contrôles Punch 360.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self' https://atelier-projets-jf.juliensav.chatgpt.site; style-src 'self' 'unsafe-inline' https://atelier-projets-jf.juliensav.chatgpt.site; img-src 'self' data: blob: https://atelier-projets-jf.juliensav.chatgpt.site; connect-src https://api.github.com https://atelier-projets-jf.juliensav.chatgpt.site; font-src 'self' data: https://atelier-projets-jf.juliensav.chatgpt.site">
+<title>PUNCH 360° — Aperçu responsive et annotations</title>
+<link rel="stylesheet" href="./essential.css?v=essential-41">
+<link rel="stylesheet" href="./platform-directory.css?v=directory-1">
+<link rel="stylesheet" href="./support.css?v=support-1">
+<link rel="stylesheet" href="./annotations.css?v=2">
+<script type="module" src="./annotations.js?v=2"></script>
+</head>
+<body>
+<div id="punch-preview-boot" role="status" aria-live="polite">Chargement de l'aperçu responsive commun d’Atelier…</div>
+<aside id="punch-review" class="punch-review-panel" aria-label="Annotations et suivi PUNCH 360" data-punch-review-panel>
+  <header class="punch-review-header">
+    <div><div class="punch-eyebrow">PUNCH 360° · ATELIER</div><strong>Suivi visuel</strong></div>
+    <button class="punch-review-close" type="button" id="review-toggle" aria-expanded="true" aria-controls="punch-review-body" title="Réduire les annotations">−</button>
+  </header>
+  <div id="punch-review-body" class="punch-review-body">
+    <div class="punch-privacy">Aperçu partagé Atelier · vraies commandes Punch dans le même document. Données fictives, jamais de compte client réel.</div>
+    <label for="punch-screen-select">Écran Punch à vérifier</label>
+    <select id="punch-screen-select">
+      <option value="support">Support — entreprise</option>
+      <option value="directory">Super Admin — entreprises</option>
+      <option value="audit">Super Admin — journal d'audit</option>
+    </select>
+    <div class="punch-controls">
+      <button type="button" id="annotate-mode" aria-pressed="false">⌖ Annoter un élément</button>
+      <button type="button" id="test-mode">Tester les boutons</button>
+    </div>
+    <p id="punch-mode-hint" class="punch-hint">Mode interaction : tu peux utiliser les vrais boutons de l'écran de démonstration.</p>
+    <div class="punch-mini-header"><strong>Annotations</strong><span id="review-count">0</span></div>
+    <div id="punch-notes" class="punch-notes" aria-live="polite"><p>Aucune annotation pour cet écran.</p></div>
+    <form id="punch-note-form" class="punch-note-form hidden">
+      <strong id="punch-note-target">Élément sélectionné</strong>
+      <label for="punch-note-text">Correction demandée</label>
+      <textarea id="punch-note-text" rows="3" maxlength="2000" required placeholder="Ex. : ce bouton doit être plus petit…"></textarea>
+      <label for="punch-note-status">Statut</label>
+      <select id="punch-note-status">
+        <option value="todo">À corriger</option>
+        <option value="progress">En cours</option>
+        <option value="review">À vérifier</option>
+        <option value="approved">Approuvée</option>
+      </select>
+      <div class="punch-note-actions">
+        <button type="submit" id="punch-note-save">Enregistrer</button>
+        <button type="button" id="punch-note-cancel">Annuler</button>
+        <button type="button" id="punch-note-delete" class="hidden">Supprimer</button>
+      </div>
+    </form>
+    <div class="punch-mini-header punch-github-head"><strong>GitHub · suivi public</strong><button type="button" id="github-refresh">↻</button></div>
+    <div id="punch-github-status" role="status" aria-live="polite">Lecture de GitHub…</div>
+    <div class="punch-review-actions">
+      <button type="button" id="review-export">Exporter mes corrections</button>
+      <button type="button" id="review-import">Importer une revue</button>
+      <input id="review-import-file" type="file" accept=".json,application/json" hidden>
+    </div>
+    <p class="punch-local-warning">Tes annotations restent sur cet appareil. L'export JSON contient les descriptions et sélecteurs, pas de données clients ni de captures privées. Aucun envoi automatique à Atelier ou GitHub.</p>
+    <div class="punch-review-links">
+      <a href="https://github.com/punch360app/Punch360/pulls" target="_blank" rel="noopener noreferrer">PR GitHub</a>
+      <a href="./suivi.html" target="_blank" rel="noopener noreferrer">Suivi maître</a>
+    </div>
+  </div>
+</aside>
+<button id="punch-review-reopen" class="punch-review-reopen hidden" type="button" aria-label="Ouvrir les annotations">✎ Commentaires</button>
+<div id="punch-review-toast" class="punch-review-toast hidden" role="status" aria-live="polite"></div>
+</body>
+</html>
