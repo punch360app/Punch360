@@ -100,12 +100,15 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
   try{await action(token)}catch{if(current(token))setError(failure)}
   finally{if(current(token)){actionLocked.current=false;setBusy(false)}}
  }
- function openChat(chat:Chat){
-  if(actionLocked.current)return;
-  // Invalidate previous thread immediately, before a new effect or network response.
+ function selectChat(chat:Chat){
+  // Invalidate previous thread immediately, including when opened by a successful action.
   scope.current.selectThread(chat.id);threadRequest.current++;
   setMessages([]);setDraft('');setThreadLoading(true);
   setActive({...chat,companyId:account.companyId,userId:account.userId,role:account.role});
+ }
+ function openChat(chat:Chat){
+  if(actionLocked.current)return;
+  selectChat(chat);
  }
  function closeChat(){
   if(actionLocked.current)return;
@@ -131,7 +134,7 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
   if(createError||typeof data!=='string'){setError(failure);return;}
   setNewGroup(false);setGroupName('');setPicked([]);
   await load(token);
-  if(current(token)){actionLocked.current=false;openChat({id:data,title:name,kind:'group'});actionLocked.current=true;}
+  if(current(token))selectChat({id:data,title:name,kind:'group'});
  }
  async function createLeadChat(token:ReturnType<typeof scope.current.current>){
   if(!lead||!current(token))return;
@@ -143,7 +146,7 @@ export function MessagesScreen({account}:{account:WorkspaceAccount}){
   if(!current(token))return;
   if(result.error||typeof result.data!=='string'){setError(failure);return;}
   await load(token);
-  if(current(token)){actionLocked.current=false;openChat({id:result.data,title:data.name,kind:'team_private'});actionLocked.current=true;}
+  if(current(token))selectChat({id:result.data,title:data.name,kind:'team_private'});
  }
  const row=(children:React.ReactNode)=><View style={{padding:13,marginVertical:5,backgroundColor:c.panel,borderWidth:1,borderColor:c.line,borderRadius:13}}>{children}</View>;
  if(!identityMatches)return <View style={{padding:16,flex:1}}><Text accessibilityLiveRegion="polite" style={{color:c.text}}>Changement d’entreprise en cours…</Text></View>;
