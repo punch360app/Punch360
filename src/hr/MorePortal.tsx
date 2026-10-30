@@ -1,6 +1,6 @@
 import {OperationsPanel} from '../workforce/OperationsPanel';
 import {GeofencePanel} from '../workforce/GeofencePanel';
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {Alert,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import {supabase} from '../lib/supabase';
@@ -8,6 +8,7 @@ import {createJob} from '../jobs/api';
 import {WorkforcePanel} from '../workforce/WorkforcePanel';
 import {TeamsPanel} from './TeamsPanel';
 import {WorkspaceAccount} from '../auth/AuthGate';
+import {createMorePortalScope} from './morePortalScope.js';
 const C={bg:'#08131C',panel:'#112532',panel2:'#1B3441',text:'#FFFFFF',muted:'#9FB4C1',gold:'#FFBF40',mint:'#21E2B0',stroke:'#36505A'};
 export type Section='menu'|'profile'|'emergency'|'credentials'|'leave'|'admin'|'teams'|'workforce'|'geofence'|'schedule'|'documents'|'invite';
 type Leave={id:string;leave_type:string;begins_on:string;ends_on:string;status:string};
@@ -37,9 +38,15 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  const [number,setNumber]=useState('');
  const [jobName,setJobName]=useState('');
  const [address,setAddress]=useState('');
+ const scope=useRef(createMorePortalScope(account.companyId,account.userId,account.role));
+ const alive=useRef(false),reloadSequence=useRef(0);
+ const identityMatches=scope.current.matches(account.companyId,account.userId,account.role);
+ const current=(token:ReturnType<typeof scope.current.current>)=>alive.current&&scope.current.allows(token);
  const manager=account.role==='admin'||account.role==='boss';
  const restricted=['restricted','cancelled'].includes(account.billingStatus);
- async function reload(){
+ async function reload(token:ReturnType<typeof scope.current.current>=scope.current.current()){
+  if(!current(token))return;
+  const seq=++reloadSequence.current;
   try{
    const [p,c,k,l]=await Promise.all([
     supabase.from('employee_profiles').select('full_name,phone').eq('user_id',account.userId).maybeSingle(),
@@ -47,13 +54,29 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
     supabase.from('employee_credentials').select('id,credential_type,expires_on,trade').eq('user_id',account.userId),
     supabase.from('leave_requests').select('id,leave_type,begins_on,ends_on,status').eq('company_id',account.companyId).eq('user_id',account.userId).order('created_at',{ascending:false})
    ]);
-   if(p.data){setFullName(p.data.full_name||'');setPhone(p.data.phone||'');}
-   if(!c.error)setContacts((c.data||[]) as Contact[]);
-   if(!k.error)setCredentials(k.data||[]);
-   if(!l.error)setLeaves((l.data||[]) as Leave[]);
+   if(!current(token)||seq!==reloadSequence.current)return;
+   if(p.error||c.error||k.error||l.error){
+    setFullName('');setPhone('');setContacts([]);setCredentials([]);setLeaves([]);
+    return;
+   }
+   setFullName(p.data?.full_name||'');setPhone(p.data?.phone||'');
+   setContacts((c.data||[]) as Contact[]);
+   setCredentials(k.data||[]);
+   setLeaves((l.data||[]) as Leave[]);
   }catch{}
  }
- useEffect(()=>{reload()},[account.userId,account.companyId]);
+ useEffect(()=>{
+  const token=scope.current.enter(account.companyId,account.userId,account.role);
+  alive.current=true;reloadSequence.current++;
+  setSection(initialSection);
+  setFullName('');setPhone('');setContactName('');setContactPhone('');
+  setContactRelation('');setContactPriority(1);setContacts([]);
+  setCredentialType('Carte CCQ');setTrade('');setExpires('');setCredentials([]);
+  setLeaveType('vacation');setFrom('');setTo('');setReason('');setLeaves([]);
+  setNumber('');setJobName('');setAddress('');
+  void reload(token);
+  return()=>{alive.current=false;scope.current.invalidate();reloadSequence.current++};
+ },[account.userId,account.companyId,account.role]);
  const notify=(title:string,e:any)=>Alert.alert(title,e?.message||String(e));
  async function saveProfile(){
   const {error}=await supabase.from('employee_profiles').upsert({user_id:account.userId,full_name:fullName.trim(),phone:phone.trim()},{onConflict:'user_id'});
@@ -79,7 +102,8 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
   try{await createJob(account.companyId,number,jobName,address);setNumber('');setJobName('');setAddress('');await onRefresh();Alert.alert('Chantier créé');}
   catch(e){notify('Création impossible',e)}
  }
- const open=(next:Section)=>{setSection(next);reload()};
+ const open=(next:Section)=>{if(!identityMatches)return;setSection(next);void reload()};
+ if(!identityMatches)return <View style={{flex:1,padding:16}}><Text accessibilityLiveRegion="polite" style={{color:C.text}}>Changement de compte en cours…</Text></View>;
  return <View style={{flex:1,paddingHorizontal:14,paddingBottom:8,gap:10}}>
   <View style={s.header}><Pressable onPress={()=>section==='menu'?undefined:setSection('menu')}><Ionicons name={section==='menu'?'grid-outline':'arrow-back'} size={23} color={C.gold}/></Pressable><Text style={s.title}>{section==='menu'?'Plus':section==='profile'?'Mon profil':section==='emergency'?'Contacts d’urgence':section==='credentials'?'Compétences et cartes':section==='leave'?'Mes congés et absences':section==='teams'?'Mes équipes':section==='schedule'?'Horaire':section==='documents'?'Plans et documents':section==='invite'?'Invitations':section==='geofence'?'Punch GPS et alertes':section==='workforce'?'Heures et approbations':'Administration'}</Text></View>
   {section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
