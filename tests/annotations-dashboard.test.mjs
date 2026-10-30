@@ -1,4 +1,3 @@
-
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -6,47 +5,67 @@ const root=new URL('../web/live/',import.meta.url);
 const html=readFileSync(new URL('annotations.html',root),'utf8');
 const css=readFileSync(new URL('annotations.css',root),'utf8');
 const js=readFileSync(new URL('annotations.js',root),'utf8');
+const demo=readFileSync(new URL('punch-review-data.js',root),'utf8');
 const pages=readFileSync(new URL('../.github/workflows/deploy-web.yml',import.meta.url),'utf8');
-test('annotation dashboard is a standalone responsive GitHub Pages entry point',()=>{
- assert.match(html,/<html lang="fr-CA">/);
- assert.match(html,/name="viewport"/);
- assert.match(html,/annotations\.js\?v=1/);
- assert.match(html,/annotations\.css\?v=1/);
- assert.match(css,/@media\(max-width:720px\)/);
- assert.match(css,/@media\(max-width:395px\)/);
- assert.match(css,/--sage:#779574/);
+
+test('the shared Atelier responsive workspace is imported once, never copied',()=>{
+ const url='https://atelier-projets-jf.juliensav.chatgpt.site/responsive/v1/entry.mjs';
+ assert.ok(js.includes("import {mountResponsiveWorkspace} from '"+url+"'"));
+ assert.match(js,/await mountResponsiveWorkspace\(\{/);
+ assert.match(js,/renderApp\(\{container,slot\}\)/);
+ assert.match(js,/renderWeb\(\{container\}\)/);
+ assert.match(js,/projectId:PROJECT_ID/);
+ assert.match(js,/punch360-12fb1917-94ea-481d-b131-16c58a5bf010/);
+ assert.doesNotMatch(js,/attachDeviceChrome|createRenderedDevice|DEVICE_PRESETS|LAYOUTS|iframe/i);
+ assert.doesNotMatch(html,/<iframe|class="image-frame"|id="capture-file"/i);
+ assert.doesNotMatch(css,/\.image-frame|\.ornament|\.device-catalog|\.responsive-frame/);
+});
+
+test('real Punch controllers render directly in the same document and handle events',()=>{
+ for(const name of ['createSupportController','createPlatformDirectoryController','createPlatformAuditController'])
+  assert.match(js,new RegExp(name));
+ assert.match(js,/container\.append\(host\)/);
+ assert.match(js,/panel\.innerHTML=view\.controller\.render\(\)/);
+ assert.match(js,/view\.controller\?\.handle\?\.\(element\)/);
+ assert.match(js,/handleAnnotateClick/);
+ assert.match(js,/target\.closest\?\.\('\[data-punch-live-root\]'\)/);
+ assert.match(html,/id="punch-note-form"/);
+ assert.match(html,/id="annotate-mode"/);
+});
+
+test('notes stay local and import/export is scoped to the Punch project',()=>{
+ assert.match(js,/const STORAGE_KEY=PROJECT_ID\+':live-annotations:v1'/);
+ assert.match(js,/localStorage\.setItem\(STORAGE_KEY,JSON\.stringify\(notes\)\)/);
+ assert.match(js,/punch360-live-annotations/);
+ assert.match(js,/parsed\.projectId!==PROJECT_ID/);
+ assert.match(js,/const safeNotes|function safeNotes/);
+ assert.doesNotMatch(js,/supabase|sendBeacon|XMLHttpRequest|WebSocket/i);
+ assert.match(html,/Aucun envoi automatique à Atelier/);
+ assert.match(html,/connect-src https:\/\/api\.github\.com https:\/\/atelier-projets-jf\.juliensav\.chatgpt\.site/);
+ assert.match(html,/script-src 'self' https:\/\/atelier-projets-jf\.juliensav\.chatgpt\.site/);
+});
+
+test('real responsive layout uses container queries on Atelier ap-content',()=>{
+ assert.match(css,/\.ap-content\{container-type:inline-size;container-name:ap-content\}/);
+ assert.match(css,/@container ap-content \(max-width:540px\)/);
+ assert.match(css,/--punch-sage:#779574/);
+ assert.match(css,/min-height:44px/);
  assert.match(pages,/path: \.\/web\/live/);
 });
-test('local screenshots and comments are not automatically uploaded to a remote app',()=>{
- assert.match(html,/Stockage local/);
- assert.match(html,/Rien n’est envoyé à Atelier/);
- assert.match(js,/indexedDB\.open\(DB,1\)/);
- assert.match(js,/punch360-annotation-review/);
- assert.match(js,/JSON\.stringify\(file,null,2\)/);
- assert.doesNotMatch(js,/supabase|sendBeacon|XMLHttpRequest|WebSocket/i);
+
+test('the preview data adapter never reaches production Supabase or external RPCs',()=>{
+ assert.match(demo,/createPunchReviewBackend/);
+ assert.match(demo,/REVIEW_COMPANY_ID='punch-preview-company'/);
+ assert.match(demo,/support_list_tickets/);
+ assert.match(demo,/platform_search_companies/);
+ assert.match(demo,/platform_search_audit/);
+ assert.doesNotMatch(demo,/createClient|fetch\(|https:|supabase/i);
 });
-test('upload and import accept only bounded image types, and external links remain Github scoped',()=>{
- assert.match(js,/MAX_IMAGE=12\*1024\*1024/);
- assert.match(js,/image\/png','image\/jpeg','image\/webp/);
- assert.match(js,/IMAGE_RE\.test\(data\)/);
- assert.match(js,/body\.screens\.length>50/);
- assert.match(js,/validLink\(value\)/);
- assert.match(html,/connect-src https:\/\/api\.github\.com/);
- assert.match(html,/script-src 'self'/);
-});
-test('all four annotation statuses, tools and comparison modes are present',()=>{
- for(const id of ['activity-view','reviews-view','capture-dialog','image-area','note-editor','export-button','import-button','after-file']){
-  assert.match(html,new RegExp('id="'+id+'"'));
- }
- for(const tool of ['pin','rect','arrow'])assert.match(html,new RegExp('data-tool="'+tool+'"'));
- for(const mode of ['before','after','compare'])assert.match(html,new RegExp('data-view="'+mode+'"'));
- for(const state of ['todo','progress','review','approved'])assert.match(html,new RegExp('value="'+state+'"'));
- assert.match(js,/saveNote\(\)/);assert.match(js,/deleteNote\(\)/);
-});
-test('the visual review tests a synthetic image, with no private customer input',()=>{
+
+test('visual QA checks actual rendered controls rather than screenshot-only overlays',()=>{
  const visual=readFileSync(new URL('../.github/scripts/visual-annotations.cjs',import.meta.url),'utf8');
- assert.match(visual,/PNG\.sync\.write/);
- assert.match(visual,/IndexedDB reload/);
- assert.match(visual,/download/);
- assert.match(visual,/annotations-dashboard-audit\.json/);
+ assert.match(visual,/annotations\.html/);
+ assert.match(visual,/data-punch-live-root/);
+ assert.match(visual,/punch-annotation-pin/);
+ assert.match(visual,/punch360-live-annotations/);
 });
