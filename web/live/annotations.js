@@ -286,8 +286,15 @@ function ensureAnnotationLayer(view){
    label:geometryLabel(kind,geometry),
    text:'',status:'todo',createdAt:new Date().toISOString()
   };
-  openNoteForm(note,null);
+  // On touch devices the compatibility click fires after pointerup. Keep the
+  // drawer closed until the gesture completes, so that click cannot hit an old
+  // comment in the drawer and silently replace the newly placed marker.
+  selectedNote=note;selectedTarget=null;
   paintSpatial(view);
+  const idToOpen=note.id;
+  window.setTimeout(()=>{
+   if(!view.disposed&&selectedNote?.id===idToOpen)openNoteForm(note,null);
+  },90);
  }
  layer.addEventListener('pointerup',event=>{
   if(!gesture||gesture.pointerId!==event.pointerId||view.disposed)return;
