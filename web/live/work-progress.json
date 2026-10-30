@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-30T00:41:38.311Z",
+  "generated_at": "2026-10-30T01:34:11.765Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 231,
+      "sha": "d44e5bce42b644c80d8d9297c3854fe2ddf62d76",
+      "ci": "success",
+      "ids": [],
+      "title": "Punch 360 — épingler n’importe où et tracer des zones avec coordonnées JSON",
+      "merged_at": "2026-10-30T01:34:01Z"
+    },
+    {
       "number": 230,
       "sha": "82f405b365d6ac93053666f729b9f66d5949ea64",
       "ci": "success",
@@ -1985,18 +1993,6 @@
       ],
       "title": "Missions — checklist configurable et obligatoire avant fin (Web/Expo)",
       "merged_at": "2026-10-27T13:26:41Z"
-    },
-    {
-      "number": 179,
-      "sha": "d8a86276a9fe61e7eea2d7aab7c9db6848f5fdc1",
-      "ci": "success",
-      "ids": [
-        "MISSION-007",
-        "MISSION-011",
-        "MISSION-013"
-      ],
-      "title": "Missions — preuves de fin configurables : aucune ou commentaire privé obligatoire",
-      "merged_at": "2026-10-27T13:13:19Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
