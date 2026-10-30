@@ -125,7 +125,7 @@ export function KioskOfflineReviewPanel({account}:{account:WorkspaceAccount}){
     {isPendingKioskLot(grant,rows)?pending?.id===grant.id?
      <View style={{gap:8,padding:12,backgroundColor:'#eef3e8',borderRadius:8}}>
       <Text accessibilityLiveRegion="polite" style={{color:'#2F4935',fontWeight:'600'}}>
-       {pending.approve?'Confirmer les observations':'Refuser et conserver l’historique'} — {String(grant.worker||'Employé')} · {String(grant.device||'Borne')}
+       {pending?.approve?'Confirmer les observations':'Refuser et conserver l’historique'} — {String(grant.worker||'Employé')} · {String(grant.device||'Borne')}
       </Text>
       {button('Enregistrer cette décision',()=>void run(commit))}
       <Pressable accessibilityRole="button" accessibilityLabel="Annuler cette confirmation"
