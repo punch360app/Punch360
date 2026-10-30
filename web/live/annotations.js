@@ -277,23 +277,33 @@ function ensureAnnotationLayer(view){
  layer.addEventListener('lostpointercapture',()=>{
   if(gesture)discard();
  });
- layer.addEventListener('pointerup',event=>{
-  if(!gesture||gesture.pointerId!==event.pointerId||view.disposed)return;
-  event.preventDefault();event.stopPropagation();
-  const active=gesture;
-  const end=pointerPosition(event);
-  const geometry=active.kind==='pin'?active.start:rectangleInScreen(active.start,end);
+ function createPositionalNote(kind,geometry){
   const bounds=view.host.getBoundingClientRect();
-  gesture=null;view.preview=null;
   const note={
-   id:id(),screen:view.screen,slot:view.slot,kind:active.kind,
+   id:id(),screen:view.screen,slot:view.slot,kind,
    selector:'',coordinateSpace:ANNOTATION_SPACE,geometry,
    sourceSize:sourceDimensions(bounds),
-   label:geometryLabel(active.kind,geometry),
+   label:geometryLabel(kind,geometry),
    text:'',status:'todo',createdAt:new Date().toISOString()
   };
   openNoteForm(note,null);
   paintSpatial(view);
+ }
+ layer.addEventListener('pointerup',event=>{
+  if(!gesture||gesture.pointerId!==event.pointerId||view.disposed)return;
+  event.preventDefault();event.stopPropagation();
+  const active=gesture,end=pointerPosition(event);
+  const geometry=active.kind==='pin'?active.start:rectangleInScreen(active.start,end);
+  gesture=null;view.preview=null;
+  createPositionalNote(active.kind,geometry);
+ });
+ // Browsers can cancel touch pointer capture during viewport emulation or
+ // accessibility-generated taps; a plain click remains a valid free pin.
+ // The pointerup path opens the editor first, preventing duplicate notes.
+ layer.addEventListener('click',event=>{
+  if(view.disposed||annotationMode!=='pin'||selectedNote)return;
+  event.preventDefault();event.stopPropagation();
+  createPositionalNote('pin',pointerPosition(event));
  });
  view.host.append(layer);
  view.layer=layer;
