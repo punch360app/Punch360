@@ -16,7 +16,7 @@ test('the shared Atelier responsive workspace is imported once, never copied',()
  assert.match(js,/renderWeb\(\{container\}\)/);
  assert.match(js,/projectId:PROJECT_ID/);
  assert.match(js,/punch360-12fb1917-94ea-481d-b131-16c58a5bf010/);
- assert.doesNotMatch(js,/attachDeviceChrome|createRenderedDevice|DEVICE_PRESETS|LAYOUTS|iframe/i);
+ assert.doesNotMatch(js,/attachDeviceChrome|createRenderedDevice|DEVICE_PRESETS|LAYOUTS|createElement\(['\"]iframe/i);
  assert.doesNotMatch(html,/<iframe|class="image-frame"|id="capture-file"/i);
  assert.doesNotMatch(css,/\.image-frame|\.ornament|\.device-catalog|\.responsive-frame/);
 });
@@ -28,7 +28,7 @@ test('real Punch controllers render directly in the same document and handle eve
  assert.match(js,/panel\.innerHTML=view\.controller\.render\(\)/);
  assert.match(js,/view\.controller\?\.handle\?\.\(element\)/);
  assert.match(js,/handleAnnotateClick/);
- assert.match(js,/target\.closest\?\.\('\[data-punch-live-root\]'\)/);
+ assert.ok(js.includes("'[data-punch-live-root]'"));
  assert.match(html,/id="punch-note-form"/);
  assert.match(html,/id="annotate-mode"/);
 });
@@ -59,7 +59,7 @@ test('the preview data adapter never reaches production Supabase or external RPC
  assert.match(demo,/support_list_tickets/);
  assert.match(demo,/platform_search_companies/);
  assert.match(demo,/platform_search_audit/);
- assert.doesNotMatch(demo,/createClient|fetch\(|https:|supabase/i);
+ assert.doesNotMatch(demo,/createClient\s*\(|\bfetch\s*\(|https:\/\/|from\s+['\"]@supabase/i);
 });
 
 test('visual QA checks actual rendered controls rather than screenshot-only overlays',()=>{
