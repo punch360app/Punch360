@@ -41,6 +41,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  const scope=useRef(createMorePortalScope(account.companyId,account.userId,account.role));
  const alive=useRef(false),reloadSequence=useRef(0),actionLock=useRef(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [privateReadsVerified,setPrivateReadsVerified]=useState(false);
  const identityMatches=scope.current.matches(account.companyId,account.userId,account.role);
  const current=(token:ReturnType<typeof scope.current.current>)=>alive.current&&scope.current.allows(token);
  const manager=account.role==='admin'||account.role==='boss';
@@ -48,7 +49,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  async function reload(token:ReturnType<typeof scope.current.current>=scope.current.current()){
   if(!current(token))return;
   const seq=++reloadSequence.current;
-  setLoading(true);
+  setLoading(true);setPrivateReadsVerified(false);
   try{
    const [p,c,k,l]=await Promise.all([
     supabase.from('employee_profiles').select('full_name,phone').eq('user_id',account.userId).maybeSingle(),
@@ -66,6 +67,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
    setContacts((c.data||[]) as Contact[]);
    setCredentials(k.data||[]);
    setLeaves((l.data||[]) as Leave[]);
+   setPrivateReadsVerified(true);setError('');
   }catch{
    if(current(token)&&seq===reloadSequence.current){
     setFullName('');setPhone('');setContacts([]);setCredentials([]);setLeaves([]);
@@ -78,7 +80,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  useEffect(()=>{
   const token=scope.current.enter(account.companyId,account.userId,account.role);
   alive.current=true;reloadSequence.current++;actionLock.current=false;
-  setError('');setBusy(false);setLoading(true);
+  setError('');setBusy(false);setLoading(true);setPrivateReadsVerified(false);
   setSection(initialSection);
   setFullName('');setPhone('');setContactName('');setContactPhone('');
   setContactRelation('');setContactPriority(1);setContacts([]);
@@ -100,13 +102,13 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
   if(current(token))Alert.alert(title,'Vérifie tes autorisations ou réessaie.');
  }
  async function saveProfile(token:ReturnType<typeof scope.current.current>){
-  if(!current(token))return;
+  if(!current(token)||!privateReadsVerified)return;
   const {error:saveError}=await supabase.from('employee_profiles').upsert({user_id:account.userId,full_name:fullName.trim(),phone:phone.trim()},{onConflict:'user_id'});
   if(!current(token))return;
   if(saveError)notify('Profil non enregistré',token);else Alert.alert('Profil enregistré');
  }
  async function saveContact(token:ReturnType<typeof scope.current.current>){
-  if(!current(token))return;
+  if(!current(token)||!privateReadsVerified)return;
   if(!contactName.trim()||!contactPhone.trim())return Alert.alert('Nom et numéro requis');
   const {error:saveError}=await supabase.from('emergency_contacts').upsert({user_id:account.userId,name:contactName.trim(),phone:contactPhone.trim(),relationship:contactRelation.trim(),priority:contactPriority},{onConflict:'user_id,priority'});
   if(!current(token))return;
@@ -114,7 +116,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
   else{setContactName('');setContactPhone('');await reload(token);if(current(token))Alert.alert('Contact enregistré');}
  }
  async function saveCredential(token:ReturnType<typeof scope.current.current>){
-  if(!current(token))return;
+  if(!current(token)||!privateReadsVerified)return;
   if(!credentialType.trim())return Alert.alert('Type de carte requis');
   const {error:saveError}=await supabase.from('employee_credentials').insert({user_id:account.userId,credential_type:credentialType.trim(),trade:trade.trim()||null,expires_on:expires.trim()||null});
   if(!current(token))return;
@@ -122,7 +124,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
   else{setExpires('');await reload(token);if(current(token))Alert.alert('Carte ajoutée','Le téléversement privé recto/verso sera ajouté séparément.');}
  }
  async function requestLeave(token:ReturnType<typeof scope.current.current>){
-  if(!current(token))return;
+  if(!current(token)||!privateReadsVerified)return;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||to<from)return Alert.alert('Dates invalides','Format requis AAAA-MM-JJ.');
   const {error:saveError}=await supabase.from('leave_requests').insert({company_id:account.companyId,user_id:account.userId,leave_type:leaveType,begins_on:from,ends_on:to,reason:reason.trim()||null});
   if(!current(token))return;
@@ -140,11 +142,16 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
    if(current(token))Alert.alert('Chantier créé');
   }catch{notify('Création impossible',token)}
  }
+ const privateFieldsDisabled=busy||loading||!privateReadsVerified;
  const open=(next:Section)=>{if(!identityMatches||busy||loading)return;setSection(next);setError('');void reload()};
  if(!identityMatches)return <View style={{flex:1,padding:16}}><Text accessibilityLiveRegion="polite" style={{color:C.text}}>Changement de compte en cours…</Text></View>;
  return <View style={{flex:1,paddingHorizontal:14,paddingBottom:8,gap:10}}>
   <View style={s.header}><Pressable onPress={()=>section==='menu'?undefined:setSection('menu')}><Ionicons name={section==='menu'?'grid-outline':'arrow-back'} size={23} color={C.gold}/></Pressable><Text style={s.title}>{section==='menu'?'Plus':section==='profile'?'Mon profil':section==='emergency'?'Contacts d’urgence':section==='credentials'?'Compétences et cartes':section==='leave'?'Mes congés et absences':section==='teams'?'Mes équipes':section==='schedule'?'Horaire':section==='documents'?'Plans et documents':section==='invite'?'Invitations':section==='geofence'?'Punch GPS et alertes':section==='workforce'?'Heures et approbations':'Administration'}</Text></View>
-  {error?<Text accessibilityRole="alert" style={{color:'#FFB5A8'}}>{error}</Text>:null}
+  {error?<View style={{gap:8,paddingVertical:4}}><Text accessibilityRole="alert" style={{color:'#FFB5A8'}}>{error}</Text>
+   {!loading&&!busy?<Pressable accessibilityRole="button" accessibilityLabel="Réessayer le chargement du compte"
+    onPress={()=>{setError('');void reload()}} style={{minHeight:48,padding:12,borderRadius:10,backgroundColor:C.panel2,alignSelf:'flex-start'}}>
+    <Txt color={C.text} bold>Réessayer</Txt></Pressable>:null}
+  </View>:null}
   {loading||busy?<Text accessibilityLiveRegion="polite" style={{color:C.muted}}>{busy?'Enregistrement en cours…':'Chargement du compte…'}</Text>:null}
   {section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
    <Card><Txt bold>{account.companyName}</Txt><Txt small color={C.muted}>{account.email} · {account.role}</Txt><Txt small color={restricted?'#FE8F8F':C.mint}>Abonnement : {account.billingStatus}</Txt></Card>
@@ -163,11 +170,11 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
    <Txt small color={C.muted}>À suivre : réglages langue et thème, notifications push et forfait.</Txt>
    <Pressable onPress={()=>supabase.auth.signOut()} style={s.logOut}><Txt color={C.gold}>Se déconnecter</Txt></Pressable>
   </View>:<ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:20,gap:11}}>
-   {section==='profile'?<Card><Txt bold>Informations personnelles</Txt><Field disabled={busy||loading} label="Nom et prénom" value={fullName} onChange={setFullName}/><Field disabled={busy||loading} label="Téléphone" value={phone} onChange={setPhone}/><Btn disabled={busy||loading} accent label="Enregistrer le profil" onPress={()=>void runAction(saveProfile)}/><Txt small color={C.muted}>Les responsables autorisés peuvent consulter ces renseignements professionnels.</Txt></Card>:null}
-   {section==='emergency'?<><Card><Txt bold>Deux contacts d’urgence</Txt><Txt small color={C.muted}>Accès réservé à toi et aux responsables autorisés.</Txt><Field disabled={busy||loading} label="Nom du contact" value={contactName} onChange={setContactName}/><Field disabled={busy||loading} label="Téléphone" value={contactPhone} onChange={setContactPhone}/><Field disabled={busy||loading} label="Lien (conjoint, parent...)" value={contactRelation} onChange={setContactRelation}/><View style={{flexDirection:'row',gap:10,marginTop:10}}><Btn disabled={busy||loading} label={'Priorité : '+contactPriority} onPress={()=>setContactPriority(v=>v===1?2:1)}/></View><Btn disabled={busy||loading} accent label="Ajouter / mettre à jour" onPress={()=>void runAction(saveContact)}/></Card>{contacts.map(c=><Card key={c.id}><Txt bold>{c.priority}. {c.name}</Txt><Txt>{c.phone}</Txt><Txt small color={C.muted}>{c.relationship||'Contact d’urgence'}</Txt></Card>)}</>:null}
-   {section==='credentials'?<><Card><Txt bold>Cartes et certifications</Txt><Field disabled={busy||loading} label="Type (CCQ, ASP, SIMDUT, nacelle…)" value={credentialType} onChange={setCredentialType}/><Field disabled={busy||loading} label="Métier / qualification" value={trade} onChange={setTrade}/><Field disabled={busy||loading} label="Expiration AAAA-MM-JJ (si applicable)" value={expires} onChange={setExpires}/><Btn disabled={busy||loading} accent label="Ajouter ma carte" onPress={()=>void runAction(saveCredential)}/><Txt small color={C.muted}>Les photos recto/verso devront être téléversées dans un stockage privé. Aucun document sensible ne doit être déposé dans une galerie publique.</Txt></Card>{credentials.map(c=><Card key={c.id}><Txt bold>{c.credential_type}</Txt><Txt small color={C.muted}>{c.trade||'Qualification non spécifiée'} · Expire : {c.expires_on||'Non précisé'}</Txt></Card>)}</>:null}
-   {section==='leave'?<><Card><Txt bold>Faire une demande</Txt><View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginTop:10}}>{[['vacation','Vacances'],['sick','Maladie'],['personal','Personnel'],['other','Autre']].map(([val,label])=><Pressable key={val} onPress={()=>setLeaveType(val)} style={[s.chip,leaveType===val&&{backgroundColor:C.gold}]}><Txt small bold color={leaveType===val?C.bg:C.text}>{label}</Txt></Pressable>)}</View><Field disabled={busy||loading} label="Du (AAAA-MM-JJ)" value={from} onChange={setFrom}/><Field disabled={busy||loading} label="Au (AAAA-MM-JJ)" value={to} onChange={setTo}/><Field disabled={busy||loading} label="Commentaire (facultatif)" value={reason} onChange={setReason}/><Btn disabled={busy||loading} accent label="Soumettre la demande" onPress={()=>void runAction(requestLeave)}/></Card><Card><Txt bold>Mes demandes</Txt>{leaves.length===0?<Txt small color={C.muted}>Aucune demande.</Txt>:leaves.map(l=><View key={l.id} style={s.leaveRow}><Txt small>{l.begins_on} → {l.ends_on} · {l.leave_type}</Txt><Txt small color={l.status==='approved'?C.mint:C.gold}>{l.status}</Txt></View>)}</Card></>:null}
-   {section==='admin'?<Card><Txt bold>Ajouter une job</Txt><Txt small color={C.muted}>Les jobs deviennent accessibles dans la liste GPS « Toutes les jobs ».</Txt>{restricted?<Txt color="#FF8A8A">Administration suspendue pour défaut de paiement.</Txt>:null}<Field disabled={busy||loading} label="Numéro de job" value={number} onChange={setNumber}/><Field disabled={busy||loading} label="Nom du chantier" value={jobName} onChange={setJobName}/><Field disabled={busy||loading} label="Adresse (ou coordonnées à définir)" value={address} onChange={setAddress}/><Btn disabled={busy||loading} accent label="Créer ce chantier" onPress={()=>void runAction(addJob)}/></Card>:null}
+   {section==='profile'?<Card><Txt bold>Informations personnelles</Txt><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Nom et prénom" value={fullName} onChange={setFullName}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Téléphone" value={phone} onChange={setPhone}/><Btn disabled={section==='admin'?busy||loading:privateFieldsDisabled} accent label="Enregistrer le profil" onPress={()=>void runAction(saveProfile)}/><Txt small color={C.muted}>Les responsables autorisés peuvent consulter ces renseignements professionnels.</Txt></Card>:null}
+   {section==='emergency'?<><Card><Txt bold>Deux contacts d’urgence</Txt><Txt small color={C.muted}>Accès réservé à toi et aux responsables autorisés.</Txt><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Nom du contact" value={contactName} onChange={setContactName}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Téléphone" value={contactPhone} onChange={setContactPhone}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Lien (conjoint, parent...)" value={contactRelation} onChange={setContactRelation}/><View style={{flexDirection:'row',gap:10,marginTop:10}}><Btn disabled={section==='admin'?busy||loading:privateFieldsDisabled} label={'Priorité : '+contactPriority} onPress={()=>setContactPriority(v=>v===1?2:1)}/></View><Btn disabled={section==='admin'?busy||loading:privateFieldsDisabled} accent label="Ajouter / mettre à jour" onPress={()=>void runAction(saveContact)}/></Card>{contacts.map(c=><Card key={c.id}><Txt bold>{c.priority}. {c.name}</Txt><Txt>{c.phone}</Txt><Txt small color={C.muted}>{c.relationship||'Contact d’urgence'}</Txt></Card>)}</>:null}
+   {section==='credentials'?<><Card><Txt bold>Cartes et certifications</Txt><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Type (CCQ, ASP, SIMDUT, nacelle…)" value={credentialType} onChange={setCredentialType}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Métier / qualification" value={trade} onChange={setTrade}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Expiration AAAA-MM-JJ (si applicable)" value={expires} onChange={setExpires}/><Btn disabled={section==='admin'?busy||loading:privateFieldsDisabled} accent label="Ajouter ma carte" onPress={()=>void runAction(saveCredential)}/><Txt small color={C.muted}>Les photos recto/verso devront être téléversées dans un stockage privé. Aucun document sensible ne doit être déposé dans une galerie publique.</Txt></Card>{credentials.map(c=><Card key={c.id}><Txt bold>{c.credential_type}</Txt><Txt small color={C.muted}>{c.trade||'Qualification non spécifiée'} · Expire : {c.expires_on||'Non précisé'}</Txt></Card>)}</>:null}
+   {section==='leave'?<><Card><Txt bold>Faire une demande</Txt><View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginTop:10}}>{[['vacation','Vacances'],['sick','Maladie'],['personal','Personnel'],['other','Autre']].map(([val,label])=><Pressable key={val} onPress={()=>setLeaveType(val)} style={[s.chip,leaveType===val&&{backgroundColor:C.gold}]}><Txt small bold color={leaveType===val?C.bg:C.text}>{label}</Txt></Pressable>)}</View><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Du (AAAA-MM-JJ)" value={from} onChange={setFrom}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Au (AAAA-MM-JJ)" value={to} onChange={setTo}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Commentaire (facultatif)" value={reason} onChange={setReason}/><Btn disabled={section==='admin'?busy||loading:privateFieldsDisabled} accent label="Soumettre la demande" onPress={()=>void runAction(requestLeave)}/></Card><Card><Txt bold>Mes demandes</Txt>{leaves.length===0?<Txt small color={C.muted}>Aucune demande.</Txt>:leaves.map(l=><View key={l.id} style={s.leaveRow}><Txt small>{l.begins_on} → {l.ends_on} · {l.leave_type}</Txt><Txt small color={l.status==='approved'?C.mint:C.gold}>{l.status}</Txt></View>)}</Card></>:null}
+   {section==='admin'?<Card><Txt bold>Ajouter une job</Txt><Txt small color={C.muted}>Les jobs deviennent accessibles dans la liste GPS « Toutes les jobs ».</Txt>{restricted?<Txt color="#FF8A8A">Administration suspendue pour défaut de paiement.</Txt>:null}<Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Numéro de job" value={number} onChange={setNumber}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Nom du chantier" value={jobName} onChange={setJobName}/><Field disabled={section==='admin'?busy||loading:privateFieldsDisabled} label="Adresse (ou coordonnées à définir)" value={address} onChange={setAddress}/><Btn disabled={section==='admin'?busy||loading:privateFieldsDisabled} accent label="Créer ce chantier" onPress={()=>void runAction(addJob)}/></Card>:null}
   </ScrollView>}
  </View>;
 }
