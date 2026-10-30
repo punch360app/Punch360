@@ -23,7 +23,8 @@ export function rectangleInScreen(start,end){
  let width=Math.abs(end.x-start.x),height=Math.abs(end.y-start.y);
  // A tap without a drag still produces a visible editable region.
  if(width<0.015||height<0.015){
-  width=Math.min(0.12,1-x);height=Math.min(0.08,1-y);
+  width=0.12;height=0.08;
+  x=Math.min(x,1-width);y=Math.min(y,1-height);
  }
  return {x:round(x),y:round(y),width:round(width),height:round(height)};
 }
