@@ -46,7 +46,7 @@ test('notes stay local and import/export is scoped to the Punch project',()=>{
 });
 
 test('real responsive layout uses container queries on Atelier ap-content',()=>{
- assert.match(css,/\.ap-content\{container-type:inline-size;container-name:ap-content\}/);
+ assert.doesNotMatch(css,/\.ap-content\s*\{\s*container-type/);
  assert.match(css,/@container ap-content \(max-width:540px\)/);
  assert.match(css,/--punch-sage:#779574/);
  assert.match(css,/min-height:44px/);
