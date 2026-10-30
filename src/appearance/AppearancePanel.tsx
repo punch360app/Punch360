@@ -141,7 +141,7 @@ export function AppearancePanel({appearance:a,onPreviewActual}:{
     disabled={inactive} onPress={()=>a.preview(c.id)}
     style={{width:itemWidth,minHeight:240,borderWidth:t.id===c.id?3:1,
      borderColor:t.id===c.id?t.accent:t.line,borderRadius:14,overflow:'hidden',
-     backgroundColor:c.bg,opacity:inactive?.6:1}}>
+     backgroundColor:c.bg,opacity:inactive?0.6:1}}>
     <View style={{height:160,padding:12,alignItems:'center',gap:8,justifyContent:'center'}}>
      <ThemeDecoration theme={c}/>
      <Text style={{color:c.text,fontWeight:'700'}}>PUNCH 360°</Text>
@@ -173,7 +173,7 @@ export function AppearancePanel({appearance:a,onPreviewActual}:{
   <Pressable accessibilityRole="button" accessibilityLabel="Utiliser ce design"
    accessibilityState={{disabled:inactive}} disabled={inactive}
    onPress={a.save} style={{minHeight:48,padding:16,borderRadius:12,
-    justifyContent:'center',backgroundColor:t.accent,opacity:inactive?.5:1}}>
+    justifyContent:'center',backgroundColor:t.accent,opacity:inactive?0.5:1}}>
    <Text style={{color:t.buttonText,textAlign:'center',fontWeight:'700'}}>
     {a.busy?'Enregistrement…':'Utiliser ce design'}
    </Text>
