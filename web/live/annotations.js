@@ -4,6 +4,7 @@ import {createSupportController} from './support.js';
 import {createPlatformDirectoryController} from './platform-directory.js';
 import {createPlatformAuditController} from './platform-audit.js';
 import {createPunchReviewBackend,REVIEW_COMPANY_ID} from './punch-review-data.js';
+import {ANNOTATION_SPACE,pointInScreen,rectangleInScreen,isGeometry,sourceDimensions} from './annotation-geometry.js';
 
 // Project-specific ID; unrelated to other apps and stable between revisions.
 const PROJECT_ID='punch360-12fb1917-94ea-481d-b131-16c58a5bf010';
@@ -14,7 +15,7 @@ const SCREEN_LABELS={support:'Support — entreprise',directory:'Super Admin —
 const $=id=>document.getElementById(id);
 const project=createPunchReviewBackend();
 const mounts=new Set();
-let screen='support',notes=[],annotationMode=false,selectedNote=null,selectedTarget=null,toastTimer=0;
+let screen='support',notes=[],annotationMode='off',selectedNote=null,selectedTarget=null,toastTimer=0;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const id=()=>crypto.randomUUID();
 function notify(text){
@@ -24,12 +25,28 @@ function notify(text){
 }
 function safeNotes(payload){
  if(!Array.isArray(payload)||payload.length>250)return [];
- return payload.filter(n=>n&&VALID_SCREENS.includes(n.screen)&&['primary','secondary','web'].includes(n.slot)&&
-  typeof n.selector==='string'&&n.selector.length<=350&&
-  typeof n.text==='string'&&n.text.length<=2000&&STATUS_LABELS[n.status])
-  .map(n=>({id:typeof n.id==='string'?n.id.slice(0,80):id(),screen:n.screen,slot:n.slot,
-   selector:n.selector,label:String(n.label||'Élément').slice(0,140),text:n.text,
-   status:n.status,createdAt:String(n.createdAt||new Date().toISOString()).slice(0,40)}));
+ return payload.flatMap(n=>{
+  if(!n||!VALID_SCREENS.includes(n.screen)||!['primary','secondary','web'].includes(n.slot)||
+     typeof n.text!=='string'||n.text.length>2000||!STATUS_LABELS[n.status])return [];
+  // Old exports contained only a CSS selector. Keep them fully readable/editable.
+  const kind=n.kind||'element';
+  if(!['element','pin','rect'].includes(kind))return [];
+  if(kind==='element'&&(typeof n.selector!=='string'||n.selector.length>350))return [];
+  if(kind!=='element'&&(n.coordinateSpace!==ANNOTATION_SPACE||!isGeometry(kind,n.geometry)))return [];
+  const sourceSize=n.sourceSize&&Number.isFinite(n.sourceSize.width)&&
+   Number.isFinite(n.sourceSize.height)&&n.sourceSize.width>0&&n.sourceSize.height>0&&
+   n.sourceSize.width<=20000&&n.sourceSize.height<=20000?
+   {width:Math.round(n.sourceSize.width),height:Math.round(n.sourceSize.height)}:null;
+  return [{
+   id:typeof n.id==='string'?n.id.slice(0,80):id(),screen:n.screen,slot:n.slot,kind,
+   selector:kind==='element'?n.selector:'',
+   coordinateSpace:kind==='element'?null:ANNOTATION_SPACE,
+   geometry:kind==='element'?null:{...n.geometry},
+   sourceSize:kind==='element'?null:sourceSize,
+   label:String(n.label||'Annotation').slice(0,140),text:n.text,status:n.status,
+   createdAt:String(n.createdAt||new Date().toISOString()).slice(0,40)
+  }];
+ });
 }
 function loadNotes(){
  try{return safeNotes(JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'))}
@@ -83,7 +100,9 @@ function draw(view){
   });
  }
  root.append(panel);
- root.classList.toggle('punch-annotate-active',annotationMode);
+ root.classList.toggle('punch-annotate-active',annotationMode!=='off');
+ ensureAnnotationLayer(view);
+ drawSpatialLayers();
  schedulePins();
 }
 async function load(view){
@@ -119,7 +138,7 @@ function screenMount(container,slot){
  });
  const onClick=async e=>{
   const element=e.target.closest?.('[data-action]');
-  if(!element||!host.contains(element)||view.disposed||annotationMode)return;
+  if(!element||!host.contains(element)||view.disposed||annotationMode!=='off')return;
   await view.controller?.handle?.(element);
   // All presentation instances share the same synthetic Punch state, not library state.
   mounts.forEach(other=>{if(other!==view&&!other.disposed&&other.screen===view.screen)void load(other)});
