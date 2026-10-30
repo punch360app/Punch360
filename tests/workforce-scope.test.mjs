@@ -58,7 +58,8 @@ test('source protects asynchronous export and server decisions',async()=>{
  assert.match(src,/exportSessionIds/);
  assert.match(src,/if\(!current\(token\)\)throw/);
  assert.match(src,/if\(!current\(token\)\)return/);
- assert.match(src,/\\.in\('session_id',batch\)/);
+ assert.match(src,/\.in\('session_id',batch\)/);
+ assert.match(src,/\.range\(page,page\+399\)/);
  assert.match(src,/Sharing\.shareAsync/);
  assert.match(src,/Share\.share/);
  assert.match(src,/accessibilityRole="alert"/);
