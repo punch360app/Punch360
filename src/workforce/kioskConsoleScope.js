@@ -51,11 +51,11 @@ export function canAlterKiosk(device,devices,account){
  devices.some(d=>d.id===device.id&&!d.revoked_at));
 }
 export function canAlterKioskWorker(worker,workers,account){
- return maySetWorkerChannels(account)&&Boolean(worker?.id&&worker.status==='active'&&
+ return maySetWorkerChannels(account)&&Boolean(worker?.id&&worker.company_id===account.companyId&&worker.status==='active'&&
  workers.some(w=>w.id===worker.id&&w.status==='active'&&w.company_id===account.companyId));
 }
 export function canEnrollKioskPin(worker,workers,account){
- return mayManageKiosks(account)&&Boolean(worker?.id&&worker.status==='active'&&
+ return mayManageKiosks(account)&&Boolean(worker?.id&&worker.company_id===account.companyId&&worker.status==='active'&&
  worker.can_kiosk_punch===true&&worker.role!=='admin'&&
  workers.some(w=>w.id===worker.id&&w.status==='active'&&w.company_id===account.companyId&&w.can_kiosk_punch===true));
 }
