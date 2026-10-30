@@ -20,12 +20,12 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
  const manager=['admin','boss'].includes(account.role);
  const scope=useRef(createTeamsScope(account.companyId,account.userId,account.role));
  const alive=useRef(false),requestVersion=useRef(0),actionLock=useRef(false);
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
  const identityMatches=scope.current.matches(account.companyId,account.userId,account.role);
  const current=(token:ReturnType<typeof scope.current.current>)=>alive.current&&scope.current.allows(token);
  async function load(token:ReturnType<typeof scope.current.current>=scope.current.current()){
   if(!current(token))return;
-  const version=++requestVersion.current;setLoading(true);
+  const version=++requestVersion.current;setLoading(true);setLoaded(false);
   try{
    const t=await supabase.from('teams').select('id,name,lead_user_id')
     .eq('company_id',account.companyId).limit(900);
@@ -87,11 +87,11 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
    }
    if(!current(token)||version!==requestVersion.current)return;
    setTeams(visible);setPeople(newPeople);setJobs(newJobs);
-   setTeamHours(hours);setVisibleCount(count);setError('');
+   setTeamHours(hours);setVisibleCount(count);setError('');setLoaded(true);
   }catch{
    if(current(token)&&version===requestVersion.current){
     setTeams([]);setPeople([]);setJobs([]);setTeamHours(0);setVisibleCount(0);
-    setError('Impossible de vérifier les équipes et les heures. Réessaie.');
+    setLoaded(false);setError('Impossible de vérifier les équipes et les heures. Réessaie.');
    }
   }finally{if(current(token)&&version===requestVersion.current)setLoading(false)}
  }
@@ -100,7 +100,7 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
   alive.current=true;requestVersion.current++;actionLock.current=false;
   setTeams([]);setPeople([]);setJobs([]);setTeamHours(0);setVisibleCount(0);
   setName('');setLead('');setSelectedTeam('');setWorker('');setJobId('');
-  setBusy(false);setError('');setLoading(true);
+  setBusy(false);setError('');setLoading(true);setLoaded(false);
   void load(token);
   return()=>{alive.current=false;scope.current.invalidate();requestVersion.current++};
  },[account.companyId,account.userId,account.role]);
@@ -136,19 +136,19 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
   {loading?box(<Text accessibilityLiveRegion="polite" style={{color:colors.muted}}>Chargement des équipes…</Text>):null}
   {busy?box(text('Enregistrement en cours…',true)):null}
   {error?box(<><Text accessibilityRole="alert" style={{color:colors.text}}>{error}</Text>
-   {!loading&&!busy&&error!=='Enregistré.'?<Pressable accessibilityRole="button" accessibilityLabel="Réessayer le chargement des équipes"
+   {!loading&&!busy&&!loaded?<Pressable accessibilityRole="button" accessibilityLabel="Réessayer le chargement des équipes"
     onPress={()=>{setError('');void load(scope.current.current())}} style={{padding:12,minHeight:48,justifyContent:'center',backgroundColor:'#29444F',borderRadius:9}}>
     {text('Réessayer')}</Pressable>:null}
   </>):null}
-  {account.role==='lead'&&!loading&&!error?box(<>
+  {account.role==='lead'&&!loading&&loaded?box(<>
    <Text style={{color:colors.gold,fontSize:16,fontWeight:'800'}}>Heures de mes équipes aujourd’hui</Text>
    {text((teamHours/3600000).toFixed(2)+' h · '+visibleCount+' segments autorisés')}
    {text('Heures brutes des employés affectés aux chantiers de ces mêmes équipes; pauses non déduites.',true)}
   </>):null}
-  {!loading&&!error?box(<><Text style={{color:colors.gold,fontSize:16,fontWeight:'800'}}>Mes équipes</Text>
+  {!loading&&loaded?box(<><Text style={{color:colors.gold,fontSize:16,fontWeight:'800'}}>Mes équipes</Text>
    {teams.length?teams.map(t=><View key={t.id}>{text(t.name+' · Chef : '+t.lead_user_id.slice(0,8))}</View>):text('Aucune équipe attribuée.',true)}
   </>):null}
-  {manager&&!loading&&!error?<>
+  {manager&&!loading&&loaded?<>
    {box(<>
     <Text style={{color:colors.gold,fontWeight:'800'}}>Créer une équipe</Text>
     <TextInput accessibilityLabel="Nom de l’équipe" editable={!disabled} value={name} onChangeText={setName}
@@ -178,6 +178,6 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
      void submit(()=>supabase.from('team_jobs').insert({company_id:account.companyId,team_id:selectedTeam,job_id:jobId}));
     })}
    </>)}
-  </>:!manager&&!loading&&!error?box(text('Le groupe privé de ton équipe est accessible dans l’onglet Messages.',true)):null}
+  </>:!manager&&!loading&&loaded?box(text('Le groupe privé de ton équipe est accessible dans l’onglet Messages.',true)):null}
  </ScrollView>;
 }
