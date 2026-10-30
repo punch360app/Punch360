@@ -365,7 +365,7 @@ function handleAnnotateClick(e){
  if(!view)return;
  const label=(target.getAttribute('aria-label')||target.textContent||target.getAttribute('placeholder')||target.tagName).trim().replace(/\s+/g,' ').slice(0,140);
  target.classList.add('punch-review-highlight');
- openNoteForm({id:id(),screen:view.screen,slot:view.slot,selector,label,text:'',status:'todo',createdAt:new Date().toISOString()},target);
+ openNoteForm({id:id(),screen:view.screen,slot:view.slot,kind:'element',selector,label,text:'',status:'todo',createdAt:new Date().toISOString()},target);
 }
 function mode(tool){
  if(!['off','element','pin','rect'].includes(tool))return;
