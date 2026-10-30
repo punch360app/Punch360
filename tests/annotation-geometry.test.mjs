@@ -28,7 +28,7 @@ test('reverse drag produces a normalized rectangle within the screen',()=>{
 
 test('short taps in zone mode create a visible bounded box',()=>{
  const r=rectangleInScreen({x:0.98,y:0.97},{x:0.98,y:0.97});
- assert.deepEqual(r,{x:0.98,y:0.97,width:0.02,height:0.03});
+ assert.deepEqual(r,{x:0.88,y:0.92,width:0.12,height:0.08});
  assert.equal(isGeometry('rect',r),true);
 });
 
