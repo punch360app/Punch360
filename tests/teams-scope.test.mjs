@@ -54,3 +54,21 @@ test('late network result after switching account is ignored',async()=>{
  s.enter('B','lead','lead');finish({hours:999});await p;
  assert.deepEqual(display,[]);
 });
+
+
+test('TeamsPanel includes guards and bounded supervised hours query',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../src/hr/TeamsPanel.tsx',import.meta.url),'utf8');
+ assert.match(source,/if\(!identityMatches\)return <View/);
+ assert.match(source,/scope\.current\.enter\(account\.companyId,account\.userId,account\.role\)/);
+ assert.match(source,/requestVersion\.current/);
+ assert.match(source,/buildTeamWorkerJobPairs\(visible,members\.data,assignments\.data\)/);
+ assert.match(source,/summarizeTeamHours\(segments,sessions,pairs,dayStart,now\)/);
+ assert.match(source,/\.eq\('company_id',account\.companyId\)\.in\('team_id',teamIds\)/);
+ assert.match(source,/\.order\('id'\)\.range\(offset,offset\+499\)/);
+ assert.match(source,/if\(offset===4500\)throw Error\('cap'\)/);
+ assert.match(source,/if\(!identityMatches\|\|!manager\|\|!current\(token\)\|\|actionLock\.current\|\|loading\)return/);
+ assert.match(source,/const \[loading,setLoading\]/);
+ assert.match(source,/minHeight:48/);
+ assert.doesNotMatch(source,/select\('started_at,ended_at'\)\.eq\('company_id',account\.companyId\)/);
+});
