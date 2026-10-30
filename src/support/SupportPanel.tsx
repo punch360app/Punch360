@@ -183,7 +183,7 @@ export function SupportPanel({account}:{account:WorkspaceAccount}){
   {notice?<Text accessibilityLiveRegion="polite">{notice}</Text>:null}
   {busy||loading?<Text accessibilityLiveRegion="polite" style={{color:'#4e7051'}}>Vérification en cours…</Text>:null}
   {!busy&&!loading?<Pressable accessibilityRole="button" accessibilityLabel="Réessayer le chargement"
-   onPress={()=>{if(!actionLock.current){setError('');setLoading(true);void load(false).finally(()=>{if(scope.current.matches(latest.current))setLoading(false)})}}}
+   onPress={()=>{const token=scope.current.current();if(!actionLock.current&&current(token)){setError('');setLoading(true);void load(false,token).finally(()=>{if(current(token))setLoading(false)})}}}
    style={{minHeight:48,padding:12,borderRadius:8,backgroundColor:'#edf2e9'}}>
    {text(loaded?'Actualiser':'Réessayer')}
   </Pressable>:null}
