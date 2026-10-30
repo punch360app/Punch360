@@ -183,6 +183,122 @@ function anchorFor(note){
  if(!view)return null;
  try{return view.host.querySelector(note.selector)}catch{return null}
 }
+
+function geometryLabel(kind,geometry){
+ const pct=n=>Math.round(n*100)+' %';
+ if(kind==='pin')return 'Punaise · '+pct(geometry.x)+' horizontal, '+pct(geometry.y)+' vertical';
+ return 'Zone · '+pct(geometry.x)+' / '+pct(geometry.y)+' · '+pct(geometry.width)+' × '+pct(geometry.height);
+}
+
+function paintSpatial(view){
+ const layer=view.layer;if(!layer||layer.parentElement!==view.host)return;
+ layer.classList.toggle('is-drawing',annotationMode==='pin'||annotationMode==='rect');
+ layer.setAttribute('aria-label',annotationMode==='rect'?
+  'Tracer un rectangle sur cet écran Punch':'Placer une punaise sur cet écran Punch');
+ layer.replaceChildren();
+ const visible=notes.filter(n=>n.screen===view.screen&&n.slot===view.slot&&
+  (n.kind==='pin'||n.kind==='rect'));
+ const pending=selectedNote&&selectedNote.screen===view.screen&&selectedNote.slot===view.slot&&
+  selectedNote.kind!=='element'&&!notes.some(n=>n.id===selectedNote.id)?selectedNote:null;
+ if(pending)visible.push(pending);
+ if(view.preview)visible.push({
+  id:'preview',kind:'rect',geometry:view.preview,screen:view.screen,slot:view.slot
+ });
+ visible.forEach(n=>{
+  const marker=document.createElement('div');
+  marker.dataset.punchAnnotationKind=n.kind;
+  marker.dataset.punchAnnotationId=n.id;
+  marker.setAttribute('aria-hidden','true');
+  const g=n.geometry;
+  if(n.kind==='pin'){
+   marker.className='punch-annotation-pin-marker';
+   marker.style.left=(g.x*100)+'%';
+   marker.style.top=(g.y*100)+'%';
+   marker.textContent=String(notes.indexOf(n)+1||visible.indexOf(n)+1);
+  }else{
+   marker.className='punch-annotation-rect-marker'+(n.id==='preview'?' is-preview':'');
+   marker.style.left=(g.x*100)+'%';
+   marker.style.top=(g.y*100)+'%';
+   marker.style.width=(g.width*100)+'%';
+   marker.style.height=(g.height*100)+'%';
+   if(n.id!=='preview'){
+    const badge=document.createElement('span');
+    badge.className='punch-annotation-rect-number';
+    badge.textContent=String(notes.indexOf(n)+1||visible.indexOf(n)+1);
+    marker.append(badge);
+   }
+  }
+  layer.append(marker);
+ });
+}
+
+function drawSpatialLayers(){
+ for(const view of mounts)paintSpatial(view);
+}
+
+function ensureAnnotationLayer(view){
+ const previous=view.layer;
+ if(previous?.parentElement===view.host)return previous;
+ const layer=document.createElement('div');
+ layer.className='punch-annotation-layer';
+ layer.dataset.punchAnnotationLayer='true';
+ layer.setAttribute('aria-label','Annotations par coordonnées de l’écran Punch');
+ let gesture=null;
+ const pointerPosition=event=>pointInScreen(
+  event.clientX,event.clientY,view.host.getBoundingClientRect()
+ );
+ layer.addEventListener('pointerdown',event=>{
+  if(view.disposed||!['pin','rect'].includes(annotationMode))return;
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  if(selectedNote){
+   notify('Enregistre ou annule ton commentaire avant une nouvelle annotation.');
+   return;
+  }
+  event.preventDefault();event.stopPropagation();
+  const start=pointerPosition(event);
+  gesture={pointerId:event.pointerId,start,kind:annotationMode};
+  layer.setPointerCapture(event.pointerId);
+  if(annotationMode==='rect'){
+   view.preview=rectangleInScreen(start,start);
+   paintSpatial(view);
+  }
+ });
+ layer.addEventListener('pointermove',event=>{
+  if(!gesture||gesture.pointerId!==event.pointerId||gesture.kind!=='rect')return;
+  event.preventDefault();
+  view.preview=rectangleInScreen(gesture.start,pointerPosition(event));
+  paintSpatial(view);
+ });
+ function discard(){
+  gesture=null;view.preview=null;paintSpatial(view);
+ }
+ layer.addEventListener('pointercancel',discard);
+ layer.addEventListener('lostpointercapture',()=>{
+  if(gesture)discard();
+ });
+ layer.addEventListener('pointerup',event=>{
+  if(!gesture||gesture.pointerId!==event.pointerId||view.disposed)return;
+  event.preventDefault();event.stopPropagation();
+  const active=gesture;
+  const end=pointerPosition(event);
+  const geometry=active.kind==='pin'?active.start:rectangleInScreen(active.start,end);
+  const bounds=view.host.getBoundingClientRect();
+  gesture=null;view.preview=null;
+  const note={
+   id:id(),screen:view.screen,slot:view.slot,kind:active.kind,
+   selector:'',coordinateSpace:ANNOTATION_SPACE,geometry,
+   sourceSize:sourceDimensions(bounds),
+   label:geometryLabel(active.kind,geometry),
+   text:'',status:'todo',createdAt:new Date().toISOString()
+  };
+  openNoteForm(note,null);
+  paintSpatial(view);
+ });
+ view.host.append(layer);
+ view.layer=layer;
+ return layer;
+}
+
 let pinFrame=0;
 function schedulePins(){
  if(pinFrame)return;pinFrame=requestAnimationFrame(()=>{pinFrame=0;drawPins()});
