@@ -61,6 +61,27 @@ function draw(view){
  const panel=document.createElement('div');panel.className='punch-live-controls';
  // The controller owns its actual markup and logic. No screenshot or iframe is used.
  panel.innerHTML=view.controller.render();
+ // Device views share one document. Make element IDs unique per Atelier slot;
+ // keep original Punch controller IDs for input() without mutating business logic.
+ const prefix='punch-'+String(view.slot).replace(/[^a-z0-9_-]/gi,'-')+'-'+view.screen+'-';
+ const idMap=new Map();
+ panel.querySelectorAll('[id]').forEach(field=>{
+  const old=field.id;
+  if(!old)return;
+  field.dataset.punchOriginalId=old;
+  field.id=prefix+old;
+  idMap.set(old,field.id);
+ });
+ panel.querySelectorAll('[for]').forEach(label=>{
+  const old=label.getAttribute('for');
+  if(idMap.has(old))label.setAttribute('for',idMap.get(old));
+ });
+ for(const attribute of ['aria-labelledby','aria-describedby','aria-controls']){
+  panel.querySelectorAll('['+attribute+']').forEach(element=>{
+   const values=(element.getAttribute(attribute)||'').split(/\s+/);
+   element.setAttribute(attribute,values.map(value=>idMap.get(value)||value).join(' '));
+  });
+ }
  root.append(panel);
  root.classList.toggle('punch-annotate-active',annotationMode);
  schedulePins();
@@ -90,7 +111,12 @@ function screenMount(container,slot){
  const view={slot,container,host,screen,disposed:false,controller:null};
  container.append(host);
  mounts.add(view);
- const onInput=e=>view.controller?.input?.(e.target);
+ const onInput=e=>view.controller?.input?.({
+  id:e.target.dataset?.punchOriginalId||e.target.id,
+  value:e.target.value,
+  checked:e.target.checked,
+  dataset:e.target.dataset
+ });
  const onClick=async e=>{
   const element=e.target.closest?.('[data-action]');
   if(!element||!host.contains(element)||view.disposed||annotationMode)return;
