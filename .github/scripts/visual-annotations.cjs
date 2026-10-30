@@ -26,16 +26,25 @@ const results=[];
     assert.equal(response?.status(),200);
     await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:25000});
     await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:15000});
-    const structure=await page.evaluate(()=>({
-     roots:document.querySelectorAll('[data-punch-live-root]').length,
-     sameDocument:document.querySelector('[data-punch-live-root]').ownerDocument===document,
-     apContent:document.querySelector('.ap-content')!==null,
-     iframes:document.querySelectorAll('iframe').length
-    }));
+    const structure=await page.evaluate(()=>{
+     const root=document.querySelector('[data-punch-live-root]');
+     const ancestors=[];let node=root;
+     while(node&&ancestors.length<12){
+      const style=getComputedStyle(node);
+      ancestors.push({tag:node.tagName,className:String(node.className).slice(0,100),
+       containerName:style.containerName,containerType:style.containerType});
+      node=node.parentElement;
+     }
+     return {roots:document.querySelectorAll('[data-punch-live-root]').length,
+      sameDocument:root?.ownerDocument===document,
+      apContent:ancestors.some(x=>String(x.containerName).split(/\\s+/).includes('ap-content')),
+      iframes:document.querySelectorAll('iframe').length,ancestors};
+    });
+    console.log('Atelier shared DOM containers',JSON.stringify(structure));
     assert.ok(structure.roots>=1,'Atelier callback must mount at least one Punch screen');
     assert.equal(structure.sameDocument,true);
     assert.equal(structure.iframes,0);
-    assert.ok(structure.apContent,'Atelier ap-content is absent');
+    assert.ok(structure.apContent,'Atelier ap-content container name is absent');
     await page.locator('[data-punch-live-root] [data-action="support:open"]:visible').first().click();
     await page.getByText('Comment déplacer un quart dans le calendrier ?').first().waitFor({state:'visible',timeout:12000});
     await page.screenshot({path:path.join(output,'atelier-responsive-'+device+'.png'),animations:'disabled'});
