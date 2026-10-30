@@ -2,7 +2,7 @@
    device presets, zoom, rotation and the five responsive layouts. */
 :root{--punch-sage:#779574;--punch-dark:#223e2d;--punch-ink:#2f4935;--punch-line:#dce7d8}
 #punch-preview-boot{font:600 14px/1.5 system-ui,sans-serif;padding:20px;color:var(--punch-dark);background:#eff5ea}
-.punch-live-screen{box-sizing:border-box;padding:12px;min-width:0;min-height:100%;background:#f7faf5;color:var(--punch-ink);font:14px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}
+.punch-live-screen{box-sizing:border-box;padding:12px;min-width:0;min-height:100%;container-type:inline-size;container-name:punch-screen;background:#f7faf5;color:var(--punch-ink);font:14px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}
 .punch-live-screen .ess-panel{max-width:100%;min-width:0}
 .punch-live-screen button,.punch-live-screen input,.punch-live-screen select,.punch-live-screen textarea{font:inherit;min-height:44px;box-sizing:border-box;max-width:100%}
 .punch-live-screen button:focus-visible,.punch-live-screen input:focus-visible,.punch-live-screen select:focus-visible,
@@ -10,8 +10,8 @@
  outline:3px solid #8fae85;outline-offset:2px
 }
 .punch-live-screen .ess-person{min-width:0;overflow-wrap:anywhere}
-/* Atelier owns the named ap-content query container and its dimensions. */
-@container ap-content (max-width:540px){
+/* Atelier owns device dimensions and chrome; Punch owns only its in-slot component rules. */
+@container punch-screen (max-width:540px){
  .punch-live-screen .ess-person{display:flex;flex-direction:column;align-items:stretch;gap:8px}
  .punch-live-screen .ess-person>.ess-btn{width:100%;min-height:44px}
  .punch-live-screen .ess-field input,.punch-live-screen .ess-field select,.punch-live-screen .ess-field textarea{width:100%}
