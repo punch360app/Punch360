@@ -30,6 +30,7 @@ export function BossHandoffPanel({account}:{account:WorkspaceAccount}){
  const allowed=canViewHandoff(account);
  const current=(token:Token)=>alive.current&&scope.current.allows(token)&&scope.current.matches(latest.current);
  const disabled=!identityMatches||busy||loading||!loaded||!allowed;
+ const txt=(value:string)=><Text style={{color:ink,lineHeight:21}}>{value}</Text>;
  const panel=(children:React.ReactNode)=><View style={{backgroundColor:'#fff',borderWidth:1,
   borderColor:edge,borderRadius:14,padding:16,gap:10,marginBottom:12}}>{children}</View>;
  const button=(title:string,fn:()=>void,blocked=false)=><Pressable accessibilityRole="button"
@@ -38,10 +39,10 @@ export function BossHandoffPanel({account}:{account:WorkspaceAccount}){
    padding:12,borderRadius:10,backgroundColor:disabled||blocked?'#CBD4C8':sage,alignItems:'center'}}>
   <Text style={{color:'#fff',fontWeight:'700'}}>{title}</Text>
  </Pressable>;
- const field=(label:string,value:string,change:(v:string)=>void,numeric=false)=><View style={{gap:6}}>
+ const field=(label:string,value:string,change:(v:string)=>void,numeric=false,allowPending=false)=><View style={{gap:6}}>
   <Text style={{color:ink,fontWeight:'600'}}>{label}</Text>
   <TextInput accessibilityLabel={label} value={value} onChangeText={change}
-   editable={!disabled&&!pending} maxLength={numeric?6:1000} autoCapitalize="none" autoCorrect={false}
+   editable={!disabled&&(!pending||allowPending)} maxLength={numeric?6:1000} autoCapitalize="none" autoCorrect={false}
    keyboardType={numeric?'number-pad':'default'}
    style={{minHeight:48,padding:12,color:ink,borderRadius:9,borderWidth:1,borderColor:edge}}/>
  </View>;
@@ -259,7 +260,7 @@ export function BossHandoffPanel({account}:{account:WorkspaceAccount}){
     <Text style={{color:muted}}>La demande doit toujours correspondre au compte, au rôle et à la version en cours.</Text>
     {pending.action!=='cancel'?<>
      <Text selectable style={{color:ink,fontWeight:'600'}}>{pending.expected}</Text>
-     {field('Recopier les identifiants exactement',confirmation,setConfirmation)}
+     {field('Recopier les identifiants exactement',confirmation,setConfirmation,false,true)}
     </>:null}
     {button('Confirmer maintenant',execute,pending.action!=='cancel'&&confirmation!==pending.expected)}
     {button('Retour sans modifier',()=>{setPending(null);setConfirmation('')})}
