@@ -11,8 +11,8 @@
 <link rel="stylesheet" href="./essential.css?v=essential-41">
 <link rel="stylesheet" href="./platform-directory.css?v=directory-1">
 <link rel="stylesheet" href="./support.css?v=support-1">
-<link rel="stylesheet" href="./annotations.css?v=2">
-<script type="module" src="./annotations.js?v=2"></script>
+<link rel="stylesheet" href="./annotations.css?v=3">
+<script type="module" src="./annotations.js?v=3"></script>
 </head>
 <body>
 <div id="punch-preview-boot" role="status" aria-live="polite">Chargement de l'aperçu responsive commun d’Atelier…</div>
@@ -29,11 +29,13 @@
       <option value="directory">Super Admin — entreprises</option>
       <option value="audit">Super Admin — journal d'audit</option>
     </select>
-    <div class="punch-controls">
-      <button type="button" id="annotate-mode" aria-pressed="false">⌖ Annoter un élément</button>
-      <button type="button" id="test-mode">Tester les boutons</button>
+    <div class="punch-controls" role="group" aria-label="Outils d'annotation">
+      <button type="button" id="annotate-pin" aria-pressed="false">⌖ Punaise</button>
+      <button type="button" id="annotate-zone" aria-pressed="false">▣ Rectangle</button>
+      <button type="button" id="annotate-mode" aria-pressed="false">◉ Élément</button>
+      <button type="button" id="test-mode" aria-pressed="true">Tester les boutons</button>
     </div>
-    <p id="punch-mode-hint" class="punch-hint">Mode interaction : tu peux utiliser les vrais boutons de l'écran de démonstration.</p>
+    <p id="punch-mode-hint" class="punch-hint">Punaise : touche n’importe où. Rectangle : glisse pour entourer une zone. Élément : sélectionne un bouton ou un champ. Tester : utilise les commandes normales.</p>
     <div class="punch-mini-header"><strong>Annotations</strong><span id="review-count">0</span></div>
     <div id="punch-notes" class="punch-notes" aria-live="polite"><p>Aucune annotation pour cet écran.</p></div>
     <form id="punch-note-form" class="punch-note-form hidden">
@@ -60,7 +62,7 @@
       <button type="button" id="review-import">Importer une revue</button>
       <input id="review-import-file" type="file" accept=".json,application/json" hidden>
     </div>
-    <p class="punch-local-warning">Tes annotations restent sur cet appareil. L'export JSON contient les descriptions et sélecteurs, pas de données clients ni de captures privées. Aucun envoi automatique à Atelier ou GitHub.</p>
+    <p class="punch-local-warning">Tes annotations restent sur cet appareil. L’export JSON contient les commentaires, les repères et les coordonnées relatives de chaque punaise ou rectangle, mais aucune capture ni donnée client. Aucun envoi automatique à Atelier ou GitHub.</p>
     <div class="punch-review-links">
       <a href="https://github.com/punch360app/Punch360/pulls" target="_blank" rel="noopener noreferrer">PR GitHub</a>
       <a href="./suivi.html" target="_blank" rel="noopener noreferrer">Suivi maître</a>

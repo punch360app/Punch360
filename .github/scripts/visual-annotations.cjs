@@ -65,25 +65,103 @@ const results=[];
     // Collapse the side panel to access the actual Punch controls on small screens.
     await page.locator('#review-toggle').click();
     await page.locator('[data-punch-live-root] [data-action="support:refresh"]:visible').first().click();
-    await page.locator('#punch-review-reopen').click();
+    if(await page.locator('#punch-review-reopen').isVisible())await page.locator('#punch-review-reopen').click();
     await page.locator('#punch-note-form').waitFor({state:'visible',timeout:10000});
     await page.locator('#punch-note-text').fill('Déplacer le bouton Actualiser et harmoniser son espacement');
     await page.locator('#punch-note-save').click();
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
+    await page.locator('#punch-note-form').waitFor({state:'hidden',timeout:7000});
     await page.waitForFunction(()=>document.querySelectorAll('.punch-annotation-pin').length>=1,null,{timeout:7000});
     await page.screenshot({path:path.join(output,'atelier-annotations-'+device+'.png'),animations:'disabled'});
+
+    // A free pin must work over any visible content, not only input or button.
+    await page.locator('#annotate-pin').click();
+    await page.locator('#review-toggle').click();
+    const layer=page.locator('[data-punch-live-root]:visible').first().locator('[data-punch-annotation-layer]');
+    await layer.waitFor({state:'visible'});
+    const layerBox=await layer.boundingBox();
+    assert.ok(layerBox&&layerBox.width>100&&layerBox.height>100);
+    const tap={x:Math.min(layerBox.width*.35,120),y:Math.min(layerBox.height*.20,110)};
+    if(width<900)await layer.tap({position:tap,timeout:15000});
+    else await layer.click({position:tap,timeout:15000});
+    await page.locator('#punch-note-form').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.getElementById('punch-note-target')?.textContent?.includes('Punaise'),null,{timeout:5000});
+    console.log('PUNCH PIN BEFORE SAVE',JSON.stringify(await page.evaluate(()=>({
+     target:document.getElementById('punch-note-target')?.textContent,
+     active:document.getElementById('annotate-pin')?.getAttribute('aria-pressed'),
+     markers:[...document.querySelectorAll('[data-punch-annotation-kind]')].map(x=>x.dataset.punchAnnotationKind),
+     formHidden:document.getElementById('punch-note-form')?.classList.contains('hidden')
+    }))));
+    assert.match(await page.locator('#punch-note-target').textContent(),/Punaise/,
+      'A free tap must open a positional annotation, not the previous element form');
+    await page.locator('#punch-note-text').fill('Punaise libre sur le texte, pas un bouton');
+    await page.locator('#punch-note-save').click();
+    const pinState=await page.evaluate(()=>{
+     const key='punch360-12fb1917-94ea-481d-b131-16c58a5bf010:live-annotations:v1';
+     const saved=JSON.parse(localStorage.getItem(key)||'[]');
+     return {notes:saved.map(n=>({kind:n.kind,slot:n.slot,screen:n.screen,geometry:n.geometry})),
+      layers:[...document.querySelectorAll('[data-punch-annotation-layer]')].map(layer=>({
+       slot:layer.closest('[data-punch-live-root]')?.dataset.punchSlot,
+       children:layer.children.length,content:layer.innerHTML.slice(0,300),
+       className:layer.className
+      })),pinCount:document.querySelectorAll('[data-punch-annotation-kind="pin"]').length};
+    });
+    console.log('PUNCH PIN STATE',JSON.stringify(pinState));
+    assert.ok(pinState.pinCount>=1,'Free pin marker missing: '+JSON.stringify(pinState));
+
+    await page.locator('#annotate-zone').click();
+    await page.locator('#review-toggle').click();
+    const rectLayer=page.locator('[data-punch-live-root]:visible').first().locator('[data-punch-annotation-layer]');
+    await rectLayer.scrollIntoViewIfNeeded();
+    const region=await rectLayer.boundingBox();
+    console.log('PUNCH RECTANGLE PREVIEW BOUNDS',JSON.stringify(region));
+    assert.ok(region&&region.width>30&&region.height>35,'Responsive previews can be miniaturized inside Atelier frames');
+    const sx=region.x+Math.min(region.width*.18,65);
+    const sy=region.y+Math.min(region.height*.18,75);
+    const ex=sx+Math.min(region.width*.28,110);
+    const ey=sy+Math.min(region.height*.19,90);
+    await page.mouse.move(sx,sy);
+    await page.mouse.down();
+    await page.mouse.move(ex,ey,{steps:7});
+    await page.mouse.up();
+    await page.locator('#punch-note-form').waitFor({state:'visible',timeout:10000});
+    await page.locator('#punch-note-text').fill('Rectangle autour de toute cette section');
+    await page.locator('#punch-note-save').click();
+    assert.ok(await page.locator('[data-punch-annotation-kind="rect"]').count()>=1);
+    await page.screenshot({path:path.join(output,'atelier-free-pin-rectangle-'+device+'.png'),animations:'disabled'});
+
     const dlPromise=page.waitForEvent('download');
     await page.locator('#review-export').click();
     const download=await dlPromise;
     const payload=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
     assert.equal(payload.format,'punch360-live-annotations');
     assert.equal(payload.projectId,'punch360-12fb1917-94ea-481d-b131-16c58a5bf010');
-    assert.equal(payload.notes.length,1);
+    assert.equal(payload.version,2);
+    assert.equal(payload.coordinateSpace,'screen-content-relative-v1');
+    assert.equal(payload.notes.length,3);
     assert.equal(payload.notes[0].screen,'support');
+    assert.equal(payload.notes[0].kind,'element');
+    const free=payload.notes.find(n=>n.kind==='pin');
+    const rect=payload.notes.find(n=>n.kind==='rect');
+    assert.ok(free&&rect,'free pin and rectangle should be present in JSON');
+    assert.equal(free.selector,'');
+    assert.equal(free.coordinateSpace,'screen-content-relative-v1');
+    assert.ok(free.geometry.x>0&&free.geometry.x<1&&free.geometry.y>0&&free.geometry.y<1);
+    assert.ok(rect.geometry.width>.05&&rect.geometry.height>.05);
+    assert.ok(rect.geometry.x+rect.geometry.width<=1.000002);
+    assert.ok(free.sourceSize.width>100&&free.sourceSize.height>100);
     await page.reload({waitUntil:'domcontentloaded'});
     await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:25000});
     if(await page.locator('#punch-review-reopen').isVisible())await page.locator('#punch-review-reopen').click();
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
+    await page.getByText('Punaise libre sur le texte, pas un bouton').first().waitFor({state:'visible'});
+    assert.ok(await page.locator('[data-punch-annotation-kind="pin"]').count()>=1);
+    assert.ok(await page.locator('[data-punch-annotation-kind="rect"]').count()>=1);
+    const marker=await page.locator('[data-punch-annotation-kind="pin"]').first().evaluate(node=>({
+     x:parseFloat(node.style.left)/100,y:parseFloat(node.style.top)/100
+    }));
+    assert.ok(Math.abs(marker.x-free.geometry.x)<0.00001);
+    assert.ok(Math.abs(marker.y-free.geometry.y)<0.00001);
     await page.locator('#test-mode').click();
     await page.locator('#punch-screen-select').selectOption('directory');
     await page.locator('[data-punch-live-root] [data-action="directory:detail"]').first().waitFor({state:'attached',timeout:12000});
@@ -98,7 +176,8 @@ const results=[];
     assert.deepEqual(errors,[],'script errors on '+device);
     assert.ok(!blocked.some(x=>/supabase/i.test(x)),'live Supabase must not be queried');
     results.push({device,viewport:{width,height},sameDocument:true,realInteraction:true,
-      elementAnnotation:true,localPersistence:true,export:true,noOverflow:true});
+      elementAnnotation:true,freePin:true,dragRectangle:true,relativeCoordinates:true,
+      localPersistence:true,export:true,noOverflow:true});
     console.log('Atelier shared responsive '+device+': live Punch DOM, interaction, annotation, export, reload PASS');
    }finally{await context.close()}
   }
