@@ -7,6 +7,7 @@ import {canAlterKiosk,canAlterKioskWorker,canEnrollKioskPin,createKioskConsoleSc
  kioskIdleOptions,mayManageKiosks,validKioskDevices,validKioskLocations,
  validKioskSecret,validKioskWorkers,validPairingInput} from './kioskConsoleScope.js';
 
+import type {KioskDevice,KioskLocation,KioskWorker} from './kioskConsoleScope.js';
 type Row=Record<string,any>;
 type Token=ReturnType<ReturnType<typeof createKioskConsoleScope>['current']>;
 const kioskUrl='https://punch360app.github.io/Punch360/kiosk.html';
@@ -19,8 +20,8 @@ const safeDate=(value:unknown)=>{
 };
 
 export function KioskPanel({account}:{account:WorkspaceAccount}){
- const [devices,setDevices]=useState<Row[]>([]);
- const [locations,setLocations]=useState<Row[]>([]),[workers,setWorkers]=useState<Row[]>([]);
+ const [devices,setDevices]=useState<KioskDevice[]>([]);
+ const [locations,setLocations]=useState<KioskLocation[]>([]),[workers,setWorkers]=useState<KioskWorker[]>([]);
  const [location,setLocation]=useState(''),[name,setName]=useState('');
  const [code,setCode]=useState(''),[enrollment,setEnrollment]=useState('');
  const [error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -123,7 +124,7 @@ export function KioskPanel({account}:{account:WorkspaceAccount}){
  }
  function pair(){
   let values:{location:string;name:string};
-  try{values=validPairingInput(location,name,locations as any)}
+  try{values=validPairingInput(location,name,locations)}
   catch{setError('Choisis un établissement actif et un nom de borne (2 à 100 caractères).');return}
   void run(async token=>{
    if(!current(token))throw Error('Compte modifié');
@@ -135,20 +136,20 @@ export function KioskPanel({account}:{account:WorkspaceAccount}){
    setCode(secret);setEnrollment('');
   },true);
  }
- function setIdle(device:Row,value:number){
-  if(!kioskIdleOptions.includes(value)||!canAlterKiosk(device,devices as any,account))return;
+ function setIdle(device:KioskDevice,value:number){
+  if(!kioskIdleOptions.includes(value)||!canAlterKiosk(device,devices,account))return;
   void run(async token=>{
    if(!current(token))throw Error('Compte modifié');
    await rpc('set_kiosk_idle',{p_device:device.id,p_seconds:value},token);
   },true);
  }
- function revoke(device:Row){
-  if(disabled||!canAlterKiosk(device,devices as any,account))return;
+ function revoke(device:KioskDevice){
+  if(disabled||!canAlterKiosk(device,devices,account))return;
   const token=scope.current.current();
   Alert.alert('Révoquer la borne','Cette tablette ne pourra plus pointer.',
    [{text:'Annuler',style:'cancel'},{
     text:'Révoquer',style:'destructive',onPress:()=>{
-     if(!current(token)||!canAlterKiosk(device,devices as any,account))return;
+     if(!current(token)||!canAlterKiosk(device,devices,account))return;
      void run(async activeToken=>{
       if(!current(activeToken))throw Error('Compte modifié');
       await rpc('revoke_kiosk',{p_device:device.id,p_reason:'Révocation depuis la console mobile'},activeToken);
@@ -156,8 +157,8 @@ export function KioskPanel({account}:{account:WorkspaceAccount}){
     }
    }]);
  }
- function updateWorker(worker:Row,mode:'mobile'|'kiosk'|'mixed'){
-  if(!canAlterKioskWorker(worker,workers as any,account))return;
+ function updateWorker(worker:KioskWorker,mode:'mobile'|'kiosk'|'mixed'){
+  if(!canAlterKioskWorker(worker,workers,account))return;
   void run(async token=>{
    if(!current(token))throw Error('Compte modifié');
    await rpc('set_essential_worker_channels',{
@@ -166,8 +167,8 @@ export function KioskPanel({account}:{account:WorkspaceAccount}){
    },token);
   },true);
  }
- function enroll(worker:Row){
-  if(!canEnrollKioskPin(worker,workers as any,account))return;
+ function enroll(worker:KioskWorker){
+  if(!canEnrollKioskPin(worker,workers,account))return;
   void run(async token=>{
    if(!current(token))throw Error('Compte modifié');
    const secret=validKioskSecret(await rpc('create_pin_enrollment',{p_worker:worker.id},token));
