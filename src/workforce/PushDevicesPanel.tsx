@@ -5,6 +5,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import {supabase} from '../lib/supabase';
 import type {WorkspaceAccount} from '../auth/AuthGate';
+import {createPushDevicesScope} from './pushDevicesScope.js';
 type Row={id:string;platform:string;updated_at:string;revoked_at:string|null};
 export function PushDevicesPanel({account}:{account:WorkspaceAccount}){
  const [devices,setDevices]=useState<Row[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);const generation=useRef(0);
