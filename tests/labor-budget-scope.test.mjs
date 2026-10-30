@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createLaborBudgetScope,laborBudgetIdentity,laborBudgetMonday,thisLaborBudgetMonday,laborBudgetAmountCents,validLaborBudgetReason,allowedLaborDepartment,scopedLaborBudget,matchesLaborReport} from '../src/workforce/laborBudgetScope.js';
+const a={companyId:'A',userId:'alice',role:'admin',edition:'essential'};
+const budget={id:'b1',company_id:'A',week_start:'2026-10-26',department_id:null,version:3};
+test('tenant, user, role, edition, week, department and A B A invalidate old snapshots',()=>{
+ const s=createLaborBudgetScope(a,'2026-10-26',''),old=s.enter(a,'2026-10-26','');
+ const b=s.enter({...a,companyId:'B'},'2026-10-26','');
+ assert.equal(s.allows(old),false);
+ const user=s.enter({...a,userId:'bob'},'2026-10-26','');assert.equal(s.allows(b),false);
+ const role=s.enter({...a,role:'employee'},'2026-10-26','');assert.equal(s.allows(user),false);
+ const week=s.enter(a,'2026-11-02','');assert.equal(s.allows(role),false);
+ const dept=s.enter(a,'2026-11-02','d1');assert.equal(s.allows(week),false);
+ s.enter(a,'2026-10-26','');assert.equal(s.allows(old),false);
+ const last=s.current();s.invalidate();assert.equal(s.allows(last),false);
+ assert.notEqual(laborBudgetIdentity(a,'2026-10-26',''),laborBudgetIdentity({...a,edition:'construction'},'2026-10-26',''));
+ assert.notEqual(laborBudgetIdentity(a,'2026-10-26',''),laborBudgetIdentity(a,'2026-10-26','d1'));
+});
+test('late budget/report read cannot repaint prior department',async()=>{
+ const scope=createLaborBudgetScope(a,'2026-10-26',''),old=scope.enter(a,'2026-10-26','');
+ let resolve;const pending=new Promise(r=>resolve=r);let writes=0;
+ const completion=pending.then(()=>{if(scope.allows(old))writes++});
+ scope.enter(a,'2026-10-26','d1');resolve(budget);await completion;assert.equal(writes,0);
+});
+test('Monday validation handles bad dates and daylight boundary',()=>{
+ assert.equal(laborBudgetMonday('2026-10-26'),'2026-10-26');
+ assert.equal(laborBudgetMonday('2026-11-02'),'2026-11-02');
+ assert.throws(()=>laborBudgetMonday('2026-10-27'),/lundi/);
+ assert.throws(()=>laborBudgetMonday('2026-02-30'),/lundi/);
+ assert.throws(()=>laborBudgetMonday('2026-2-9'),/Lundi/);
+ assert.equal(thisLaborBudgetMonday(new Date('2026-10-29T12:00:00')),'2026-10-26');
+});
+test('money and reasons reject malformed, negative, oversized or infinite values',()=>{
+ assert.equal(laborBudgetAmountCents('0'),0);
+ assert.equal(laborBudgetAmountCents('1,23'),123);
+ assert.equal(laborBudgetAmountCents('1000000000'),100000000000);
+ assert.throws(()=>laborBudgetAmountCents('-1'),/Montant/);
+ assert.throws(()=>laborBudgetAmountCents('1.234'),/Montant/);
+ assert.throws(()=>laborBudgetAmountCents('1000000000,01'),/limites/);
+ assert.throws(()=>laborBudgetAmountCents('Infinity'),/Montant/);
+ assert.equal(validLaborBudgetReason('123'),true);
+ assert.equal(validLaborBudgetReason('ab'),false);
+ assert.equal(validLaborBudgetReason('a'.repeat(1001)),false);
+});
+test('budget must match company, selected week and department; report must match version',()=>{
+ assert.equal(allowedLaborDepartment('',[]),true);
+ assert.equal(allowedLaborDepartment('d',[{id:'d',active:true}]),true);
+ assert.equal(allowedLaborDepartment('d',[{id:'d',active:false}]),false);
+ assert.equal(scopedLaborBudget(budget,a,'2026-10-26',''),true);
+ assert.equal(scopedLaborBudget({...budget,company_id:'B'},a,'2026-10-26',''),false);
+ assert.equal(scopedLaborBudget(budget,a,'2026-11-02',''),false);
+ assert.equal(scopedLaborBudget(budget,a,'2026-10-26','d1'),false);
+ assert.equal(scopedLaborBudget({...budget,version:0},a,'2026-10-26',''),false);
+ const payload={budget_id:'b1',week:'2026-10-26',department_id:null,budget_version:3};
+ assert.equal(matchesLaborReport(payload,budget,'2026-10-26',''),true);
+ assert.equal(matchesLaborReport({...payload,budget_version:2},budget,'2026-10-26',''),false);
+ assert.equal(matchesLaborReport(payload,budget,'2026-10-26','d'),false);
+});
+test('Expo screen scopes server operations and shields private report on switch',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const s=readFileSync(new URL('../src/workforce/LaborBudgetsPanel.tsx',import.meta.url),'utf8');
+ assert.match(s,/if\(!identityMatches\)return <View/);
+ assert.match(s,/scope\.current\.enter\(account,loadedWeek,department\)/);
+ assert.match(s,/scope\.current\.invalidate\(\)/);
+ assert.match(s,/actionLock\.current/);
+ assert.match(s,/if\(!current\(token\)\)throw/);
+ assert.match(s,/p_expected_version/);
+ assert.match(s,/laborBudgetMonday\(weekInput\)/);
+ assert.match(s,/laborBudgetAmountCents\(amount\)/);
+ assert.match(s,/matchesLaborReport/);
+ assert.match(s,/essential_hr_access/);
+ assert.match(s,/essential_entitlements/);
+ assert.match(s,/minHeight:48/);
+ assert.match(s,/accessibilityRole="alert"/);
+ assert.match(s,/Réessayer/);
+});
