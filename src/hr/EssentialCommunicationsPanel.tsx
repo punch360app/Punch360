@@ -36,7 +36,7 @@ export function EssentialCommunicationsPanel({account}:{account:WorkspaceAccount
   accessibilityLabel={label} accessibilityState={{disabled:disabled||blocked}}
   disabled={disabled||blocked} onPress={action}
   style={{minHeight:48,justifyContent:'center',padding:12,borderRadius:9,marginVertical:3,
-   backgroundColor:'#4d7051',opacity:disabled||blocked?.5:1}}>
+   backgroundColor:'#4d7051',opacity:disabled||blocked?0.5:1}}>
   <Text style={{color:'white',fontWeight:'600'}}>{label}</Text>
  </Pressable>;
  const field=(label:string,value:string,change:(s:string)=>void,maxLength:number,multi=false)=><View style={{gap:4}}>
