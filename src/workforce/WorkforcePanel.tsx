@@ -194,15 +194,19 @@ export function WorkforcePanel({account,managementOnly=false}:{account:Workspace
   // Restrict breaks to the exact sessions present in the already-scoped export.
   const ids=exportSessionIds(rows);
   for(let i=0;i<ids.length;i+=50){
-   if(!current(token))throw Error('Compte modifié');
    const batch=ids.slice(i,i+50);
-   const result=await supabase.from('punch_breaks')
-    .select('session_id,started_at,ended_at,is_paid').eq('company_id',account.companyId)
-    .in('session_id',batch).limit(EXPORT_MAX+1);
-   if(!current(token))return;
-   if(result.error||!Array.isArray(result.data)||result.data.length>EXPORT_MAX)throw Error('Pauses indisponibles');
-   pauses.push(...result.data);
-   if(pauses.length>EXPORT_MAX)throw Error('Export trop volumineux');
+   // Page explicitly: PostgREST can silently cap a huge .limit() at max_rows.
+   for(let page=0;page<=EXPORT_MAX;page+=400){
+    if(!current(token))throw Error('Compte modifié');
+    const result=await supabase.from('punch_breaks')
+     .select('session_id,started_at,ended_at,is_paid').eq('company_id',account.companyId)
+     .in('session_id',batch).order('id').range(page,page+399);
+    if(!current(token))return;
+    if(result.error||!Array.isArray(result.data))throw Error('Pauses indisponibles');
+    pauses.push(...result.data);
+    if(pauses.length>EXPORT_MAX)throw Error('Export trop volumineux');
+    if(result.data.length<400)break;
+   }
   }
   let roster:Row[]=[],locations:Row[]=[];
   if(account.edition==='essential'&&rows.length){
