@@ -37,14 +37,17 @@ const results=[];
      }
      return {roots:document.querySelectorAll('[data-punch-live-root]').length,
       sameDocument:root?.ownerDocument===document,
-      apContent:ancestors.some(x=>String(x.containerName).split(/\\s+/).includes('ap-content')),
+      atelierSlot:!!root?.closest('.ap-device-content'),
+      atelierFrame:!!root?.closest('.ap-device-frame'),
+      punchContainer:ancestors[0]?.containerName==='punch-screen'&&ancestors[0]?.containerType==='inline-size',
       iframes:document.querySelectorAll('iframe').length,ancestors};
     });
     console.log('Atelier shared DOM containers',JSON.stringify(structure));
     assert.ok(structure.roots>=1,'Atelier callback must mount at least one Punch screen');
     assert.equal(structure.sameDocument,true);
     assert.equal(structure.iframes,0);
-    assert.ok(structure.apContent,'Atelier ap-content container name is absent');
+    assert.ok(structure.atelierSlot&&structure.atelierFrame,'Atelier must own real device slot and frame');
+    assert.ok(structure.punchContainer,'Punch component container must follow actual slot dimensions');
     await page.locator('[data-punch-live-root] [data-action="support:open"]:visible').first().click();
     await page.getByText('Comment déplacer un quart dans le calendrier ?').first().waitFor({state:'visible',timeout:12000});
     await page.screenshot({path:path.join(output,'atelier-responsive-'+device+'.png'),animations:'disabled'});
