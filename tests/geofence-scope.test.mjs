@@ -10,7 +10,7 @@ test('account/role/edition switches and A-B-A invalidate all old tokens',()=>{
  const b=s.enter({...a,companyId:'B'});assert.equal(s.allows(one),false);
  const role=s.enter({...a,companyId:'B',role:'employee'});assert.equal(s.allows(b),false);
  s.enter({...a,companyId:'B',edition:'construction'});assert.equal(s.allows(role),false);
- s.enter(a);assert.equal(s.allows(one),false);s.invalidate();assert.equal(s.allows(s.current()),false);
+ s.enter(a);assert.equal(s.allows(one),false);const beforeInvalidate=s.current();s.invalidate();assert.equal(s.allows(beforeInvalidate),false);
  assert.notEqual(geofenceIdentity(a),geofenceIdentity({...a,userId:'charlie'}));
 });
 test('response from previous company cannot render or trigger UI',async()=>{
