@@ -40,7 +40,13 @@ const results=[];
       atelierSlot:!!root?.closest('.ap-device-content'),
       atelierFrame:!!root?.closest('.ap-device-frame'),
       punchContainer:ancestors[0]?.containerName==='punch-screen'&&ancestors[0]?.containerType==='inline-size',
-      iframes:document.querySelectorAll('iframe').length,ancestors};
+      iframes:document.querySelectorAll('iframe').length,
+      duplicateIds:(()=>{
+       const ids=[...document.querySelectorAll('[data-punch-live-root] [id]')].map(el=>el.id);
+       return ids.filter((id,index)=>ids.indexOf(id)!==index);
+      })(),
+      firstField:document.querySelector('[data-punch-live-root] [data-punch-original-id="support-subject"]')?.id,
+      ancestors};
     });
     console.log('Atelier shared DOM containers',JSON.stringify(structure));
     assert.ok(structure.roots>=1,'Atelier callback must mount at least one Punch screen');
@@ -48,6 +54,8 @@ const results=[];
     assert.equal(structure.iframes,0);
     assert.ok(structure.atelierSlot&&structure.atelierFrame,'Atelier must own real device slot and frame');
     assert.ok(structure.punchContainer,'Punch component container must follow actual slot dimensions');
+    assert.deepEqual(structure.duplicateIds,[],'IDs must be unique across rendered Atelier device slots');
+    assert.match(structure.firstField||'',/^punch-[a-z0-9-]+-support-support-subject$/);
     await page.locator('[data-punch-live-root] [data-action="support:open"]:visible').first().click();
     await page.getByText('Comment déplacer un quart dans le calendrier ?').first().waitFor({state:'visible',timeout:12000});
     await page.screenshot({path:path.join(output,'atelier-responsive-'+device+'.png'),animations:'disabled'});
