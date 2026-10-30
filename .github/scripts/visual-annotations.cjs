@@ -86,7 +86,18 @@ const results=[];
     await page.locator('#punch-note-form').waitFor({state:'visible'});
     await page.locator('#punch-note-text').fill('Punaise libre sur le texte, pas un bouton');
     await page.locator('#punch-note-save').click();
-    assert.ok(await page.locator('[data-punch-annotation-kind="pin"]').count()>=1);
+    const pinState=await page.evaluate(()=>{
+     const key='punch360-12fb1917-94ea-481d-b131-16c58a5bf010:live-annotations:v1';
+     const saved=JSON.parse(localStorage.getItem(key)||'[]');
+     return {notes:saved.map(n=>({kind:n.kind,slot:n.slot,screen:n.screen,geometry:n.geometry})),
+      layers:[...document.querySelectorAll('[data-punch-annotation-layer]')].map(layer=>({
+       slot:layer.closest('[data-punch-live-root]')?.dataset.punchSlot,
+       children:layer.children.length,content:layer.innerHTML.slice(0,300),
+       className:layer.className
+      })),pinCount:document.querySelectorAll('[data-punch-annotation-kind="pin"]').length};
+    });
+    console.log('PUNCH PIN STATE',JSON.stringify(pinState));
+    assert.ok(pinState.pinCount>=1,'Free pin marker missing: '+JSON.stringify(pinState));
 
     await page.locator('#annotate-zone').click();
     await page.locator('#review-toggle').click();
