@@ -72,6 +72,42 @@ const results=[];
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
     await page.waitForFunction(()=>document.querySelectorAll('.punch-annotation-pin').length>=1,null,{timeout:7000});
     await page.screenshot({path:path.join(output,'atelier-annotations-'+device+'.png'),animations:'disabled'});
+
+    // A free pin must work over any visible content, not only input or button.
+    await page.locator('#annotate-pin').click();
+    await page.locator('#review-toggle').click();
+    const layer=page.locator('[data-punch-live-root]:visible').first().locator('[data-punch-annotation-layer]');
+    await layer.waitFor({state:'visible'});
+    const layerBox=await layer.boundingBox();
+    assert.ok(layerBox&&layerBox.width>100&&layerBox.height>100);
+    const tap={x:Math.min(layerBox.width*.35,120),y:Math.min(layerBox.height*.20,110)};
+    if(width<900)await layer.tap({position:tap,timeout:15000});
+    else await layer.click({position:tap,timeout:15000});
+    await page.locator('#punch-note-form').waitFor({state:'visible'});
+    await page.locator('#punch-note-text').fill('Punaise libre sur le texte, pas un bouton');
+    await page.locator('#punch-note-save').click();
+    assert.ok(await page.locator('[data-punch-annotation-kind="pin"]').count()>=1);
+
+    await page.locator('#annotate-zone').click();
+    await page.locator('#review-toggle').click();
+    const rectLayer=page.locator('[data-punch-live-root]:visible').first().locator('[data-punch-annotation-layer]');
+    await rectLayer.scrollIntoViewIfNeeded();
+    const region=await rectLayer.boundingBox();
+    assert.ok(region&&region.width>120&&region.height>110);
+    const sx=region.x+Math.min(region.width*.18,65);
+    const sy=region.y+Math.min(region.height*.18,75);
+    const ex=sx+Math.min(region.width*.28,110);
+    const ey=sy+Math.min(region.height*.19,90);
+    await page.mouse.move(sx,sy);
+    await page.mouse.down();
+    await page.mouse.move(ex,ey,{steps:7});
+    await page.mouse.up();
+    await page.locator('#punch-note-form').waitFor({state:'visible',timeout:10000});
+    await page.locator('#punch-note-text').fill('Rectangle autour de toute cette section');
+    await page.locator('#punch-note-save').click();
+    assert.ok(await page.locator('[data-punch-annotation-kind="rect"]').count()>=1);
+    await page.screenshot({path:path.join(output,'atelier-free-pin-rectangle-'+device+'.png'),animations:'disabled'});
+
     const dlPromise=page.waitForEvent('download');
     await page.locator('#review-export').click();
     const download=await dlPromise;
