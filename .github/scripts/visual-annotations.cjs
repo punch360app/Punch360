@@ -114,12 +114,32 @@ const results=[];
     const payload=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
     assert.equal(payload.format,'punch360-live-annotations');
     assert.equal(payload.projectId,'punch360-12fb1917-94ea-481d-b131-16c58a5bf010');
-    assert.equal(payload.notes.length,1);
+    assert.equal(payload.version,2);
+    assert.equal(payload.coordinateSpace,'screen-content-relative-v1');
+    assert.equal(payload.notes.length,3);
     assert.equal(payload.notes[0].screen,'support');
+    assert.equal(payload.notes[0].kind,'element');
+    const free=payload.notes.find(n=>n.kind==='pin');
+    const rect=payload.notes.find(n=>n.kind==='rect');
+    assert.ok(free&&rect,'free pin and rectangle should be present in JSON');
+    assert.equal(free.selector,'');
+    assert.equal(free.coordinateSpace,'screen-content-relative-v1');
+    assert.ok(free.geometry.x>0&&free.geometry.x<1&&free.geometry.y>0&&free.geometry.y<1);
+    assert.ok(rect.geometry.width>.05&&rect.geometry.height>.05);
+    assert.ok(rect.geometry.x+rect.geometry.width<=1.000002);
+    assert.ok(free.sourceSize.width>100&&free.sourceSize.height>100);
     await page.reload({waitUntil:'domcontentloaded'});
     await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:25000});
     if(await page.locator('#punch-review-reopen').isVisible())await page.locator('#punch-review-reopen').click();
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
+    await page.getByText('Punaise libre sur le texte, pas un bouton').first().waitFor({state:'visible'});
+    assert.ok(await page.locator('[data-punch-annotation-kind="pin"]').count()>=1);
+    assert.ok(await page.locator('[data-punch-annotation-kind="rect"]').count()>=1);
+    const marker=await page.locator('[data-punch-annotation-kind="pin"]').first().evaluate(node=>({
+     x:parseFloat(node.style.left)/100,y:parseFloat(node.style.top)/100
+    }));
+    assert.ok(Math.abs(marker.x-free.geometry.x)<0.00001);
+    assert.ok(Math.abs(marker.y-free.geometry.y)<0.00001);
     await page.locator('#test-mode').click();
     await page.locator('#punch-screen-select').selectOption('directory');
     await page.locator('[data-punch-live-root] [data-action="directory:detail"]').first().waitFor({state:'attached',timeout:12000});
@@ -134,7 +154,8 @@ const results=[];
     assert.deepEqual(errors,[],'script errors on '+device);
     assert.ok(!blocked.some(x=>/supabase/i.test(x)),'live Supabase must not be queried');
     results.push({device,viewport:{width,height},sameDocument:true,realInteraction:true,
-      elementAnnotation:true,localPersistence:true,export:true,noOverflow:true});
+      elementAnnotation:true,freePin:true,dragRectangle:true,relativeCoordinates:true,
+      localPersistence:true,export:true,noOverflow:true});
     console.log('Atelier shared responsive '+device+': live Punch DOM, interaction, annotation, export, reload PASS');
    }finally{await context.close()}
   }
