@@ -70,6 +70,7 @@ const results=[];
     await page.locator('#punch-note-text').fill('Déplacer le bouton Actualiser et harmoniser son espacement');
     await page.locator('#punch-note-save').click();
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
+    await page.locator('#punch-note-form').waitFor({state:'hidden',timeout:7000});
     await page.waitForFunction(()=>document.querySelectorAll('.punch-annotation-pin').length>=1,null,{timeout:7000});
     await page.screenshot({path:path.join(output,'atelier-annotations-'+device+'.png'),animations:'disabled'});
 
@@ -84,6 +85,7 @@ const results=[];
     if(width<900)await layer.tap({position:tap,timeout:15000});
     else await layer.click({position:tap,timeout:15000});
     await page.locator('#punch-note-form').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.getElementById('punch-note-target')?.textContent?.includes('Punaise'),null,{timeout:5000});
     console.log('PUNCH PIN BEFORE SAVE',JSON.stringify(await page.evaluate(()=>({
      target:document.getElementById('punch-note-target')?.textContent,
      active:document.getElementById('annotate-pin')?.getAttribute('aria-pressed'),
