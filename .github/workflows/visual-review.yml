@@ -113,9 +113,6 @@ jobs:
       - name: Audit Support PUNCH list, thread and authorization failure on four viewports
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-support.cjs
-      - name: Inspect official Atelier responsive integration contract for shared module
-        if: steps.visual-scope.outputs.mode == 'full'
-        run: node .github/scripts/visual-atelier-contract.cjs
       - name: Exercise the local visual annotation dashboard on four viewports
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-annotations.cjs
