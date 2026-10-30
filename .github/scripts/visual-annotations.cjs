@@ -65,7 +65,7 @@ const results=[];
     // Collapse the side panel to access the actual Punch controls on small screens.
     await page.locator('#review-toggle').click();
     await page.locator('[data-punch-live-root] [data-action="support:refresh"]:visible').first().click();
-    await page.locator('#punch-review-reopen').click();
+    if(await page.locator('#punch-review-reopen').isVisible())await page.locator('#punch-review-reopen').click();
     await page.locator('#punch-note-form').waitFor({state:'visible',timeout:10000});
     await page.locator('#punch-note-text').fill('Déplacer le bouton Actualiser et harmoniser son espacement');
     await page.locator('#punch-note-save').click();
