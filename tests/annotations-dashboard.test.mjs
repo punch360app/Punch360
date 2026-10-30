@@ -45,9 +45,10 @@ test('notes stay local and import/export is scoped to the Punch project',()=>{
  assert.match(html,/script-src 'self' https:\/\/atelier-projets-jf\.juliensav\.chatgpt\.site/);
 });
 
-test('real responsive layout uses container queries on Atelier ap-content',()=>{
+test('Punch adapts its own controls within the shared Atelier device content slot',()=>{
  assert.doesNotMatch(css,/\.ap-content\s*\{\s*container-type/);
- assert.match(css,/@container ap-content \(max-width:540px\)/);
+ assert.match(css,/\.punch-live-screen\{[^}]*container-type:inline-size;container-name:punch-screen/);
+ assert.match(css,/@container punch-screen \(max-width:540px\)/);
  assert.match(css,/--punch-sage:#779574/);
  assert.match(css,/min-height:44px/);
  assert.match(pages,/path: \.\/web\/live/);
