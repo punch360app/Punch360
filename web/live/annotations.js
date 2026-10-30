@@ -313,8 +313,15 @@ function bind(){
  $('review-import-file').addEventListener('change',importNotes);
  $('github-refresh').addEventListener('click',githubStatus);
  const panel=$('punch-review'),reopen=$('punch-review-reopen');
- $('review-toggle').addEventListener('click',()=>{panel.classList.add('hidden');reopen.classList.remove('hidden')});
- reopen.addEventListener('click',()=>{reopen.classList.add('hidden');panel.classList.remove('hidden')});
+ function setPanelOpen(open){
+  panel.classList.toggle('hidden',!open);
+  reopen.classList.toggle('hidden',open);
+  $('review-toggle').setAttribute('aria-expanded',String(open));
+ }
+ $('review-toggle').addEventListener('click',()=>setPanelOpen(false));
+ reopen.addEventListener('click',()=>setPanelOpen(true));
+ // On phones, the controls must be accessible before opening the annotation drawer.
+ if(matchMedia('(max-width:600px)').matches)setPanelOpen(false);
  window.addEventListener('scroll',schedulePins,true);
  window.addEventListener('resize',schedulePins);
  setInterval(()=>{if(document.visibilityState==='visible')void githubStatus()},180000);
