@@ -82,7 +82,7 @@ export function SupervisorApprovalsPanel({account}:{account:WorkspaceAccount}){
    if(r.error||!Array.isArray(r.data)||r.data.length>400)throw Error('inbox');
    // The server limits the departments and delegated permissions; do not permit unknown actions.
    const clean:Approval[]=r.data.filter((row:Approval)=>row&&typeof row.id==='string'&&
-    Boolean(approvalRpcNames[row.kind])).map((row:Approval)=>({
+    Boolean(approvalRpcNames[row.kind as keyof typeof approvalRpcNames])).map((row:Approval)=>({
     id:row.id,kind:row.kind,worker:row.worker,reason:row.reason,start:row.start,end:row.end,
     before_start:row.before_start,before_end:row.before_end,paid:row.paid,breaks:row.breaks
    }));
@@ -119,7 +119,7 @@ export function SupervisorApprovalsPanel({account}:{account:WorkspaceAccount}){
   if(reason.length<3||reason.length>1000){
    setError('Un motif de décision de 3 à 1000 caractères est requis.');return;
   }
-  const rpc=approvalRpcNames[row.kind];
+  const rpc=approvalRpcNames[row.kind as keyof typeof approvalRpcNames];
   actionLock.current=true;setBusy(true);setError('');setNotice('');
   try{
    const result=await supabase.rpc(rpc,{p_request:row.id,p_approve:approve,p_note:reason});
