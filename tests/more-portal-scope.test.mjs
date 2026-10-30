@@ -51,3 +51,24 @@ test('only latest reload may update current identity',()=>{
  apply(next,'new data');apply(old,'old data');
  assert.deepEqual(output,['new data']);
 });
+
+
+test('sensitive Expo form gates survive refactors',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../src/hr/MorePortal.tsx',import.meta.url),'utf8');
+ assert.match(source,/if\(!identityMatches\)return <View/);
+ assert.match(source,/privateSection&&!privateReadsVerified/);
+ assert.match(source,/setPrivateReadsVerified\(false\)/);
+ assert.match(source,/setPrivateReadsVerified\(true\)/);
+ assert.match(source,/seq!==reloadSequence\.current/);
+ for(const section of ['profile','emergency','credentials','leave']){
+  assert.ok(source.includes("section==='"+section+"'&&privateReadsVerified"),
+   section+' must not show unverified private data');
+ }
+ for(const operation of ['saveProfile','saveContact','saveCredential','requestLeave']){
+  const guard="async function "+operation+"(token:ReturnType<typeof scope.current.current>){\n  if(!current(token)||!privateReadsVerified)return;";
+  assert.ok(source.includes(guard),operation+' must reject unverified writes');
+ }
+ assert.match(source,/Réessayer le chargement du compte/);
+ assert.match(source,/minHeight:48/);
+});
