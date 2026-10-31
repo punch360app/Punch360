@@ -167,6 +167,22 @@ const results=[];
     await page.locator('[data-punch-live-root] [data-action="directory:detail"]').first().waitFor({state:'attached',timeout:12000});
     await page.locator('#punch-screen-select').selectOption('audit');
     await page.locator('[data-punch-live-root] [data-action="audit:search"]').first().waitFor({state:'attached',timeout:12000});
+    // Check the actual shared public welcome fragments mounted inside Atelier's
+    // same-document slots. No real login or dynamic pricing API may be called.
+    await page.locator('#punch-screen-select').selectOption('client');
+    await page.locator('[data-punch-live-root] [data-punch-client-page]').first().waitFor({state:'attached',timeout:12000});
+    if(await page.locator('#review-toggle').isVisible())await page.locator('#review-toggle').click();
+    const client=page.locator('[data-punch-live-root]:visible').first();
+    assert.match(await client.textContent(),/Vos chantiers/);
+    await client.locator('[data-action="chooseEdition"][data-id="essential"]').click();
+    assert.match(await client.textContent(),/Vos heures/);
+    assert.ok(await client.evaluate(el=>el.classList.contains('punch-client-essential')));
+    await page.screenshot({path:path.join(output,'atelier-real-client-'+device+'.png'),animations:'disabled'});
+    await client.locator('[data-action="continueSignup"]').click();
+    assert.match(await client.textContent(),/Aucun compte ni paiement/);
+    await client.locator('[data-action="authBack"]').last().click();
+    assert.match(await client.textContent(),/Vos heures/);
+    assert.equal(await page.locator('iframe').count(),0);
     const layout=await page.evaluate(()=>({
       width:innerWidth,documentWidth:document.documentElement.scrollWidth,
       projectElement:document.querySelectorAll('[data-punch-live-root]').length
@@ -177,7 +193,7 @@ const results=[];
     assert.ok(!blocked.some(x=>/supabase/i.test(x)),'live Supabase must not be queried');
     results.push({device,viewport:{width,height},sameDocument:true,realInteraction:true,
       elementAnnotation:true,freePin:true,dragRectangle:true,relativeCoordinates:true,
-      localPersistence:true,export:true,noOverflow:true});
+      localPersistence:true,export:true,publicClientPreview:true,noOverflow:true});
     console.log('Atelier shared responsive '+device+': live Punch DOM, interaction, annotation, export, reload PASS');
    }finally{await context.close()}
   }
