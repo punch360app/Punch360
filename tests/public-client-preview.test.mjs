@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Window} from 'happy-dom';
 import {renderPublicWelcomeIntro,renderPublicPlanCards} from '../web/live/public-client-components.js';
+import {renderPublicAuthStep} from '../web/live/public-auth-step.js';
 import {createPublicClientPreviewController} from '../web/live/public-client-preview.js';
 
 const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
@@ -10,6 +11,7 @@ const review=readFileSync(new URL('../web/live/annotations.js',import.meta.url),
 const html=readFileSync(new URL('../web/live/annotations.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../web/live/public-client-preview.css',import.meta.url),'utf8');
 const shared=readFileSync(new URL('../web/live/public-client-components.js',import.meta.url),'utf8');
+const authSource=readFileSync(new URL('../web/live/public-auth-step.js',import.meta.url),'utf8');
 const preview=readFileSync(new URL('../web/live/public-client-preview.js',import.meta.url),'utf8');
 
 function click(controller,action,id){
@@ -44,9 +46,9 @@ test('review screens include the public client without querying production auth 
  assert.match(review,/if\(view\.screen==='client'\)\{draw\(view\);return;\}/);
  assert.match(review,/view\.screen!=='client'/);
  assert.match(html,/<option value="client">/);
- assert.match(html,/public-client-preview\.css\?v=1/);
+ assert.match(html,/public-client-preview\.css\?v=2/);
  assert.match(css,/@container punch-screen \(max-width:700px\)/);
- assert.doesNotMatch(preview+shared,/createClient\(|sb\.auth|sb\.rpc|localStorage|sessionStorage|\bfetch\(|window\.location/);
+ assert.doesNotMatch(preview+shared+authSource,/createClient\(|sb\.auth|sb\.rpc|localStorage|sessionStorage|\bfetch\(|window\.location/);
  assert.doesNotMatch(preview+shared,/Stripe|submit\(|onSubmit\(/);
 });
 
@@ -73,11 +75,22 @@ test('client public preview offers working, independent interactions in the same
  assert.equal(a.state.edition,'essential');
  assert.equal(click(a,'continueSignup'),true);
  assert.match(first.textContent,/Aucun compte ni paiement/);
- assert.doesNotMatch(first.innerHTML,/<form|type="submit"/);
+ assert.equal(first.querySelectorAll('form#authForm').length,1);
+ assert.equal(first.querySelectorAll('form#authForm input').length,2);
+ assert.ok([...first.querySelectorAll('form#authForm input')].every(input=>input.disabled));
+ assert.equal(first.querySelector('form#authForm button[type="submit"]')?.disabled,true);
  assert.equal(click(a,'authBack'),true);
  assert.match(first.textContent,/Vos heures/);
  assert.equal(click(b,'openLogin'),true);
  assert.match(second.textContent,/Se connecter/);
+ assert.equal(second.querySelector('form#authForm button[type="submit"]')?.disabled,true);
+ assert.equal(click(b,'authMode'),true);
+ assert.match(second.textContent,/Créer mon compte/);
+ assert.ok(second.querySelector('input#password')?.hasAttribute('minlength'));
+ assert.equal(click(b,'authMode'),true);
+ assert.equal(click(b,'openReset'),true);
+ assert.match(second.textContent,/récupération sécurisée/);
+ assert.equal(click(b,'openLogin'),true);
  assert.equal(click(b,'authBack'),true);
  assert.match(second.textContent,/Vos chantiers/);
  assert.equal(click(b,'unknown'),false);
@@ -92,5 +105,25 @@ test('preview does not introduce a second device renderer, auth tokens or unscop
  assert.doesNotMatch(css,/^\.ap-device|^\.ap-content|^\.device-frame/m);
  assert.match(css,/\.punch-client-preview/);
  assert.match(css,/\.punch-client-essential/);
- assert.match(html,/script type="module" src="\.\/annotations\.js\?v=5"/);
+ assert.match(html,/script type="module" src="\.\/annotations\.js\?v=6"/);
+});
+
+test('shared production login/signup markup is read-only under the Atelier review',()=>{
+ const noInput=(label,id,_value,type,extra)=>'<label>'+label+'<input id="'+id+'" type="'+type+'" '+extra+' disabled></label>';
+ const btn=(title,name)=>'<button type="button" data-action="'+name+'">'+title+'</button>';
+ const oauth=()=>'<div class="oauth-buttons"></div>';
+ for(const mode of ['login','signup']){
+  const live=renderPublicAuthStep({mode,edition:'essential',formfield:noInput,button:btn,oauthButtons:oauth});
+  const review=renderPublicAuthStep({mode,edition:'essential',readOnly:true,formfield:noInput,button:btn,oauthButtons:oauth});
+  assert.match(live,/id="authForm"/);
+  assert.match(review,/type="submit" disabled/);
+  assert.match(review,/PUNCH ESSENTIEL/);
+  assert.match(review,/autocomplete="email"/);
+  assert.match(review,/autocomplete="(current|new)-password"/);
+  assert.equal((review.match(/<form/g)||[]).length,1);
+  assert.match(review,mode==='signup'?/Créer mon compte/:/Se connecter/);
+ }
+ assert.match(app,/import \{renderPublicAuthStep\} from '\.\/public-auth-step\.js'/);
+ assert.match(app,/renderPublicAuthStep\(\{mode,edition:state\.creationEdition,busy:state\.authBusy,formfield,button,oauthButtons\}\)/);
+ assert.match(review,/host\.addEventListener\('submit',onSubmit\)/);
 });
