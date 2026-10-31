@@ -151,11 +151,16 @@ function screenMount(container,slot){
  host.addEventListener('input',onInput);
  host.addEventListener('change',onInput);
  host.addEventListener('click',onClick);
+ // Read-only client controls use a real form element but must never navigate,
+ // submit credentials or trigger production authentication.
+ const onSubmit=e=>{if(view.screen==='client')e.preventDefault()};
+ host.addEventListener('submit',onSubmit);
  changeScreenFor(view,screen);
  return {
   dispose(){
    if(view.disposed)return;view.disposed=true;view.controller?.reset?.();
    host.removeEventListener('input',onInput);host.removeEventListener('change',onInput);host.removeEventListener('click',onClick);
+   host.removeEventListener('submit',onSubmit);
    mounts.delete(view);host.remove();schedulePins();
   }
  };
