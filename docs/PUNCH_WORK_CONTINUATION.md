@@ -1,5 +1,15 @@
 # PUNCH 360° — État courant unique
 
+## Passage client réel Atelier — PR #259 (30 octobre 2026, en revue)
+
+**Changement codé, non livré** : [PR #259](https://github.com/punch360app/Punch360/pull/259) est empilée sur [PR #258](https://github.com/punch360app/Punch360/pull/258). Le site Web de production utilise désormais les mêmes fonctions HTML publiques de bienvenue, choix Essentiel/Construction et formulaires Connexion/Créer un compte que la revue Atelier via `public-client-components.js` et `public-auth-step.js`. Le nouveau contrôleur `public-client-preview.js` affiche ces vrais composants au sein du DOM du moteur responsive **externe** sans authentification, collecte de mot de passe, paiement ni Supabase. Les champs et boutons d'authentification sont désactivés et les soumissions de formulaire sont interceptées dans la revue seulement. Les tests Node/DOM et Playwright ciblés sont ajoutés aux sources, avec parcours des éditions, formulaires et non-soumission. **Aucun résultat vert des nouveaux tests n'est encore confirmé sur le dernier SHA**.
+
+**Dépendances** : le module commun `https://atelier-projets-jf.juliensav.chatgpt.site/responsive/v1/entry.mjs` n'était pas accessible dans la revue CI de #258 ; le contrôle obligatoire qui le requiert reste en échec, tandis que le test de récupération hors ligne a réussi. Les écrans publiés ne peuvent donc pas être déclarés validés. La PR #217 de Julien modifie déjà la vitrine Essentiel et les trois forfaits ; **réconcilier #217 avant toute fusion de #259** au lieu d'écraser ses ajouts. Aucun merge, déploiement, compte client ou facture réelle.
+
+**BOSS** : [PR documentaire #260](https://github.com/punch360app/Punch360/pull/260) ajoute en tête du prompt maître l'obligation de consulter précisément le plugin privé **Atelier — Julien et Fred** (`asdk_app_6ae22e22dbb88191870e10edbf2a9699`). Ce plugin est installé dans le compte mais son outil BOSS n'est **pas exposé dans ce chat PC** : **Non synchronisé avec Atelier — Julien et Fred (plugin BOSS)**. Ne pas présenter les missions de l'autre plugin comme son avis. Réessayer uniquement lorsque l'app exacte est exposée dans le clavardage ; conserver cette passation.
+
+
+
 ## Priorité actuelle — PUNCH-AUDIT-GLOBAL-20261028 (28 octobre 2026, À EXÉCUTER)
 
 Le propriétaire demande l'audit de chaque page, état et bouton, avec **responsive dès le départ**, puis corrections et protections durables avant les nouvelles fonctionnalités. Suivre le bloc en tête du [maître](prompt-board/MASTER_PROMPT_20261025.md), le [démarrage](prompt-board/WORK_START.md) et le [protocole UX/UI](prompt-board/UX_UI_AUTONOME_WORKFLOW.md).
