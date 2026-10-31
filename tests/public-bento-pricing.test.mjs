@@ -111,13 +111,30 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
   assert.ok(cards[0].textContent.includes(cad(3050)));
   assert.ok(cards[1].textContent.includes(cad(4400)));
   assert.ok(cards[2].textContent.includes(cad(5100)));
+  const live=window.document.getElementById('ess-seats-status');
+  assert.equal(live.getAttribute('role'),'status');
+  assert.equal(live.getAttribute('aria-live'),'polite');
+  assert.match(live.textContent,/12 membres/);
+  assert.equal(original.getAttribute('aria-describedby'),'ess-seats-status');
   original.value='';ui.input(original);
   assert.equal(ui.state.seats,12,'Incomplete count must not change prices');
   assert.equal(window.document.activeElement,original,'The empty edit keeps focus');
+  assert.equal(original.getAttribute('aria-invalid'),'true');
+  assert.match(live.textContent,/Indiquez un nombre entier/);
+  assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,3);
+  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
+  assert.equal(ui.state.checkout,null,'Blank member input must not enter checkout');
+  original.value='0';ui.input(original);
+  assert.equal(original.getAttribute('aria-invalid'),'true');
+  original.value='1e2';ui.input(original);
+  assert.equal(original.getAttribute('aria-invalid'),'true');
   original.value='5';ui.input(original);
   assert.equal(ui.state.seats,5);
+  assert.equal(original.getAttribute('aria-invalid'),'false');
+  assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,0);
+  assert.match(live.textContent,/5 membres/);
   assert.equal(window.document.getElementById('ess-seats'),original);
-  assert.equal(redraws,0,'Only price cards change during typing, never the whole screen');
+  assert.equal(redraws,1,'Only one redraw comes from handled invalid checkout notification');
  }finally{await window.happyDOM.close();}
 });
 

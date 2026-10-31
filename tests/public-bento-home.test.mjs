@@ -39,7 +39,7 @@ test('Unavailable public catalog is explicit and never exposes technical API err
  assert.match(essential,/Tarifs temporairement indisponibles/);
  assert.match(essential,/ess-pricing-status/);
  assert.doesNotMatch(essential,/e\(s\.error\|\|'Chargement des tarifs/);
- assert.match(css,/\.ess-pricing>\.ess-pricing-status/);
+ assert.match(css,/\.ess-pricing>\.ess-pricing-status/);\n assert.match(css,/\.ess-seats-status/);
  const visual=readFileSync(new URL('../.github/scripts/visual-bento-five.cjs',import.meta.url),'utf8');
  assert.match(visual,/No invented prices should be rendered without the real catalog/);
  assert.match(visual,/TypeError\|Failed to fetch\|NetworkError/);
@@ -89,5 +89,5 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v55-bento/);
+ assert.match(sw,/punch-360-essential-v56-bento/);
 });

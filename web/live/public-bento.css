@@ -101,6 +101,15 @@
 .essential-public .punch-public-bento .ess-pricing>.ess-field input{
  min-height:44px;border-color:#b9cfc0;background:#fffdf8;color:#203834
 }
+/* Announce live seat-price updates to screen readers without consuming the
+   320px mobile viewport required for all three primary offer actions. */
+.essential-public .punch-public-bento .ess-seats-status{
+ position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+ overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0
+}
+.essential-public .punch-public-bento #ess-seats[aria-invalid=true]{
+ outline:2px solid #f7c2a5;outline-offset:1px
+}
 .essential-public .punch-public-bento .ess-price-grid{
  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0
 }

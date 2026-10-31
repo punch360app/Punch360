@@ -137,12 +137,20 @@ async function assertCards(page,amounts,device,period){
     const seatsInput=page.locator('#ess-seats');
     await seatsInput.focus();
     await seatsInput.fill('');
+    assert.equal(await page.locator('#ess-seats').getAttribute('aria-invalid'),'true',
+      'Empty member count must be marked invalid: '+device);
+    assert.equal(await page.locator('.ess-price button[data-action="ess:choose"]:disabled').count(),3,
+      'No plan may be chosen using a stale member count: '+device);
+    assert.match(await page.locator('#ess-seats-status').innerText(),/Indiquez un nombre entier/);
     await page.evaluate(()=>{window.__bentoSeatsInputBeforeTyping=document.getElementById('ess-seats')});
     await page.keyboard.type('12',{delay:40});
     assert.equal(await page.evaluate(()=>document.getElementById('ess-seats')===window.__bentoSeatsInputBeforeTyping),
       true,'Typing must not replace the member input node: '+device);
     assert.equal(await page.locator('#ess-seats').inputValue(),'12',
       'Member count lost the next keystroke after redraw: '+device);
+    assert.equal(await page.locator('#ess-seats').getAttribute('aria-invalid'),'false');
+    assert.equal(await page.locator('.ess-price button[data-action="ess:choose"]:disabled').count(),0);
+    assert.match(await page.locator('#ess-seats-status').innerText(),/12 membres/);
     assert.equal(await page.evaluate(()=>document.activeElement?.id),'ess-seats',
       'Member count must retain keyboard focus across price redraw: '+device);
     assert.equal(await page.evaluate(()=>document.querySelector('#ess-seats')?.value),'12');
