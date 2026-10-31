@@ -17,7 +17,7 @@ const SCREEN_LABELS={support:'Support — entreprise',directory:'Super Admin —
 const $=id=>document.getElementById(id);
 const project=createPunchReviewBackend();
 const mounts=new Set();
-let screen='support',notes=[],annotationMode='off',selectedNote=null,selectedTarget=null,toastTimer=0;
+let screen='client',notes=[],annotationMode='off',selectedNote=null,selectedTarget=null,toastTimer=0;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const id=()=>crypto.randomUUID();
 function notify(text){
