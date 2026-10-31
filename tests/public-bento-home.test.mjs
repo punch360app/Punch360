@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
+const read = path => readFileSync(new URL('../web/live/'+path,import.meta.url),'utf8');
+const app=read('app.js'),essential=read('essential.js'),css=read('public-bento.css');
+const html=read('index.html'),sw=read('sw.js');
+
+test('selected Bento layout is scoped to welcome; logged-in account flows remain unchanged',()=>{
+ assert.match(app,/mode==='welcome'\?' punch-public-bento':''/);
+ assert.match(css,/\.essential-public \.punch-public-bento/);
+ assert.match(css,/html\.auth-screen:not\(\.essential-public\) \.punch-public-bento/);
+ assert.match(app,/Une équipe\.<br><em>Un seul espace\.<\/em>/);
+ assert.match(app,/class="bento-proof"/);
+ assert.match(app,/Pointer/);
+ assert.match(app,/Planifier/);
+ assert.match(app,/Valider/);
+ assert.doesNotMatch(css,/\.ess-platform\b/);
+ assert.doesNotMatch(css,/\.management-shell\b/);
+});
+
+test('Bento has the real dynamic public plans, the original handlers and separate editions',()=>{
+ assert.match(app,/essentialUI\.renderPricing\(\)/);
+ assert.match(app,/data-action="chooseEdition"/);
+ assert.match(app,/data-id="essential"/);
+ assert.match(app,/data-id="construction"/);
+ assert.match(app,/continueSignup/);
+ assert.match(app,/openLogin/);
+ assert.match(essential,/s\.plans\.filter\(p=>p\.active&&p\.public_visible\)/);
+ assert.match(essential,/monthly=p\.base_cents/);
+ assert.match(essential,/p\.annual_discount/);
+ assert.match(essential,/btn\('Choisir ce forfait','choose'/);
+ assert.match(essential,/ess-market-details/);
+ assert.doesNotMatch(css,/19\s*\$|39\s*\$|69\s*\$|\.base_cents|annual_discount/);
+});
+
+test('Bento CSS and PWA references are versioned and responsive',()=>{
+ assert.match(html,/public-bento\.css\?v=bento-05-1/);
+ assert.match(html,/app\.js\?v=essential-51-bento/);
+ assert.match(sw,/public-bento\.css\?v=bento-05-1/);
+ assert.match(sw,/app\.js\?v=essential-51-bento/);
+ assert.match(css,/@media\(max-width:1100px\)/);
+ assert.match(css,/@media\(max-width:680px\)/);
+ assert.match(css,/@media\(max-width:360px\)/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(css,/focus-visible/);
+ assert.match(css,/min-height:44px/);
+ assert.match(css,/overflow-x:hidden/);
+ assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+});
