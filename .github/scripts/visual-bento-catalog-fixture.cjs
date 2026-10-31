@@ -23,7 +23,10 @@ const plans=[
   annual_discount:10,kiosk_limit:null,establishment_limit:null,features:[],sort_order:3},
  {id:'fixture_hidden',title:'TEST NEVER SHOW',active:true,public_visible:false,
   base_cents:9999,included_seats:1,included_seats_unlimited:false,extra_seat_cents:0,
-  annual_discount:0,kiosk_limit:1,establishment_limit:1,features:[],sort_order:4}
+  annual_discount:0,kiosk_limit:1,establishment_limit:1,features:[],sort_order:4},
+ {id:'fixture_inactive',title:'TEST NEVER ACTIVE',active:false,public_visible:true,
+  base_cents:9999,included_seats:1,included_seats_unlimited:false,extra_seat_cents:0,
+  annual_discount:0,kiosk_limit:1,establishment_limit:1,features:[],sort_order:5}
 ];
 const cents=c=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(c/100).replace(/\s/g,'');
 const normalize=s=>String(s).replace(/\s/g,'');
@@ -112,7 +115,7 @@ async function assertCards(page,amounts,device,period){
       catalogReads++;
       return route.fulfill({status:200,
        headers:{'content-type':'application/json','access-control-allow-origin':'*',
-        'access-control-expose-headers':'content-range','content-range':'0-3/4'},
+        'access-control-expose-headers':'content-range','content-range':'0-4/5'},
        body:JSON.stringify(plans)});
     }
     blocked++;return route.abort('blockedbyclient');
@@ -139,14 +142,33 @@ async function assertCards(page,amounts,device,period){
     await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-yearly.png'),
      animations:'disabled',fullPage:true});
 
+    // Exercise the real public DOM event handler with a tampered catalog ID.
+    // Hidden/inactive/nonexistent plans must not open account creation or save
+    // an unauthorized selected-plan ID to sessionStorage.
+    for(const forgedId of ['fixture_hidden','fixture_inactive','fixture_missing']){
+      const forgedButton=page.locator('.ess-price button[data-action="ess:choose"]').nth(1);
+      await forgedButton.evaluate((node,id)=>{node.dataset.id=id},forgedId);
+      await forgedButton.click();
+      await page.waitForTimeout(45);
+      assert.equal(await page.locator('#authForm').count(),0,
+       'Tampered plan must not start signup: '+device+' / '+forgedId);
+      assert.equal(await page.evaluate(()=>sessionStorage.getItem('punch-selected-plan')),null,
+       'Tampered plan must not save a selected plan: '+device+' / '+forgedId);
+      assert.equal(await page.locator('.ess-price').count(),3,
+       'Tampered selection must preserve visible public catalog');
+    }
+    assert.deepEqual(errors,[],'No uncaught exception from a forged ID: '+device);
     // A keyboard-only customer must also be able to choose the recommended plan.
     const recommendedChoose=page.locator('.ess-price button[data-action="ess:choose"]').nth(1);
+    await recommendedChoose.evaluate(node=>{node.dataset.id='fixture_only_b'});
     await recommendedChoose.focus();
     assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('data-action')),'ess:choose');
     await page.keyboard.press('Enter');
     await page.locator('#authForm').waitFor({state:'visible',timeout:10000});
     assert.match(await page.locator('#main h2').innerText(),/Créer mon compte/);
     assert.equal(await page.locator('#authForm button[type="submit"]').count(),1);
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('punch-selected-plan')),'fixture_only_b',
+     'Public plan selection must save only the valid plan');
     assert.ok(catalogReads>=1,'Expected a synthetic catalog GET for '+device);
     assert.deepEqual(errors,[], 'Browser exceptions: '+device);
     results.push({device,width,height,monthly,yearly,catalogReads,
