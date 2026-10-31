@@ -218,7 +218,16 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }
  s.error='';try{
  if(action==='monthly'||action==='yearly')s.cadence=action;
- else if(action==='choose'){s.checkout=s.plans.find(p=>p.id===el.dataset.id)?.title;notify('Forfait choisi. Paiement Stripe encore à configurer.');onChoose(s.plans.find(p=>p.id===el.dataset.id));}
+ else if(action==='choose'){
+  // The list renders only active, public plans. A forged/stale data-id
+  // must never open onboarding for a plan that the catalog no longer offers.
+  // Server-side subscription entitlement checks remain mandatory.
+  const plan=s.plans.find(p=>p.id===el.dataset.id&&p.active&&p.public_visible);
+  if(!plan)throw Error('Ce forfait n’est plus disponible. Actualisez les tarifs.');
+  s.checkout=plan.title;
+  notify('Forfait choisi. Paiement Stripe encore à configurer.');
+  onChoose(plan);
+ }
  else if(action==='select')s.selected=el.dataset.id;
  else if(action==='tab'){platformTests.hideCredentials();s.tab=el.dataset.id;if(s.tab==='companies')await directory.load();if(s.tab==='archives')archives.reset(null,true);if(s.tab==='support')await support.load(null,true);if(s.tab==='audit')await audit.load();if(s.tab==='promotions')await promotions.load(s.platformUser);if(s.tab==='finance')await finance.load();}
  else if(action==='logout'){subscriptions.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();archives.reset();finance.reset();promotions.reset();support.reset();audit.reset();platformTests.reset();await sb.auth.signOut();s.platform=false;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;}

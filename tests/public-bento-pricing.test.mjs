@@ -86,6 +86,30 @@ test('Keyboard focus survives the public monthly/yearly redraw without changing 
  }finally{await window.happyDOM.close()}
 });
 
+test('Forged hidden, inactive, and missing public plan IDs cannot open signup',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ const chosen=[],notifications=[];let redraws=0;
+ try{
+  const ui=createEssentialController({sb:{},document:window.document,escape,
+   redraw:()=>{redraws++},notify:msg=>notifications.push(msg),
+   onChoose:plan=>chosen.push(plan)});
+  ui.state.plans=fakePlans;
+  ui.state.checkout=null;
+  for(const badId of ['fixture_hidden','fixture_inactive','missing-plan-id']){
+   assert.equal(await ui.handle({dataset:{action:'ess:choose',id:badId}}),true);
+   assert.equal(ui.state.checkout,null,'Rejected plan must not set checkout');
+   assert.equal(chosen.length,0,'Rejected plan must never enter signup');
+  }
+  assert.equal(notifications.filter(msg=>msg.includes('n’est plus disponible')).length,3);
+  assert.ok(redraws>=3);
+  // A public, active plan must keep its original onboarding behavior.
+  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
+  assert.equal(chosen.length,1);
+  assert.equal(chosen[0].id,'fixture_only_b');
+  assert.equal(ui.state.checkout,'FICTION B');
+ }finally{await window.happyDOM.close();}
+});
+
 test('Real public pricing renderer uses only three visible synthetic test plans and existing actions',async()=>{
  const window=new Window({url:'https://fixture.invalid/?edition=essential'});
  const notifications=[];
