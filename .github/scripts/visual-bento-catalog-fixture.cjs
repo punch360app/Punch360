@@ -25,8 +25,8 @@ const plans=[
   base_cents:9999,included_seats:1,included_seats_unlimited:false,extra_seat_cents:0,
   annual_discount:0,kiosk_limit:1,establishment_limit:1,features:[],sort_order:4}
 ];
-const cents=c=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(c/100).replace(/\\s/g,'');
-const normalize=s=>String(s).replace(/\\s/g,'');
+const cents=c=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(c/100).replace(/\s/g,'');
+const normalize=s=>String(s).replace(/\s/g,'');
 const results=[];
 fs.mkdirSync(output,{recursive:true});
 
@@ -110,5 +110,5 @@ async function assertCards(page,amounts,device,period){
  fs.writeFileSync(path.join(output,'FIXTURE-ONLY-bento-catalog-results.json'),
   JSON.stringify({source:'SYNTHETIC TEST DATA ONLY; never Supabase or Stripe',
    viewports:results.length,screenshots:results.length*2,results,
-   limitations:'Real plan amounts, live network/auth/Stripe, and owner-approved design NOT VERIFIED'},null,2)+'\\n');
+   limitations:'Real plan amounts, live network/auth/Stripe, and owner-approved design NOT VERIFIED'},null,2)+'\n');
 })().catch(err=>{console.error('BENTO SYNTHETIC CATALOG FAILURE',err);process.exitCode=1});
