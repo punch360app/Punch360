@@ -45,10 +45,15 @@ test('Unavailable public catalog is explicit and never exposes technical API err
  assert.match(visual,/TypeError\|Failed to fetch\|NetworkError/);
 });
 
+test('Recommended plan badge precedes its selection button on compact phones',()=>{
+ const mobile=css.slice(css.indexOf('@media(max-width:680px)'));
+ assert.match(mobile,/\.ess-price>\.ess-badge\{[\s\S]*?grid-row:3/);
+ assert.match(mobile,/\.ess-price>\.ess-btn\{[\s\S]*?grid-row:4/);
+});
 test('Bento CSS and PWA references are versioned and responsive',()=>{
- assert.match(html,/public-bento\.css\?v=bento-05-2/);
+ assert.match(html,/public-bento\.css\?v=bento-05-3/);
  assert.match(html,/app\.js\?v=essential-52-bento/);
- assert.match(sw,/public-bento\.css\?v=bento-05-2/);
+ assert.match(sw,/public-bento\.css\?v=bento-05-3/);
  assert.match(sw,/app\.js\?v=essential-52-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
@@ -72,5 +77,5 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v48-bento/);
+ assert.match(sw,/punch-360-essential-v49-bento/);
 });

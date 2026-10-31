@@ -47,12 +47,32 @@ async function assertCards(page,amounts,device,period){
   const rect=await button.boundingBox();
   assert.ok(rect&&rect.width>=44&&rect.height>=44,'Pricing CTA <44px: '+device+' '+title);
  }
+ // A recommended label belongs above the action, never below it on mobile.
+ if(['Small320','Mobile390'].includes(device)){
+  const recommended=cards.nth(1);
+  const badge=await recommended.locator('.ess-badge').boundingBox();
+  const cta=await recommended.locator('button[data-action="ess:choose"]').boundingBox();
+  assert.ok(badge&&cta&&badge.y+badge.height<=cta.y+2,
+   'Recommended badge must be visually before the choose button: '+device);
+ }
  const body=await page.locator('.punch-public-bento .ess-pricing').innerText();
  assert.doesNotMatch(body,/TEST NEVER SHOW|Tarifs temporairement indisponibles|Failed to fetch|TypeError/);
  const dimensions=await page.evaluate(()=>({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth}));
  assert.ok(dimensions.documentWidth<=dimensions.viewport+2,
   'Horizontal overflow with synthetic pricing: '+device+' '+period+' '+JSON.stringify(dimensions));
- return {headings,amounts,dimensions};
+ // This is a visibility AUDIT, not a false claim of one-screen mobile fit.
+ // A 320px phone or enlarged text may require vertical scrolling for readability.
+ const initialViewport=await page.evaluate(()=>{
+  const main=document.querySelector('.punch-public-bento .onboard-main');
+  const buttons=[...document.querySelectorAll('.punch-public-bento .ess-price button[data-action="ess:choose"]')];
+  const onscreen=buttons.filter(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;});
+  return {viewportHeight:innerHeight,fullyVisiblePlanActions:onscreen.length,
+   planActions:buttons.length,mainCanScroll:Boolean(main&&main.scrollHeight>main.clientHeight+2)};
+ });
+ if(initialViewport.fullyVisiblePlanActions<3)
+  console.warn('BENTO VIEWPORT AUDIT '+device+' '+period+': only '+
+   initialViewport.fullyVisiblePlanActions+'/3 plan actions initially visible; vertical scrolling required.');
+ return {headings,amounts,dimensions,initialViewport};
 }
 
 (async()=>{
