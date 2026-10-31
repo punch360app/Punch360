@@ -1,5 +1,20 @@
 # PUNCH 360° — PROMPT MAÎTRE CONSOLIDÉ ET PRIORISÉ
 
+## COORDINATION OBLIGATOIRE — BOSS ET AGENTS DU PLUGIN ATELIER — JULIEN ET FRED
+
+> **Décision du propriétaire — 30 octobre 2026.** Lors de chaque nouveau travail substantiel ou de la reprise d'un lot de développement PUNCH 360, **consulter en priorité le vrai BOSS et les agents du plugin ChatGPT « Atelier — Julien et Fred »** :
+> **[Atelier — Julien et Fred](app://asdk_app_6ae22e22dbb88191870e10edbf2a9699)** — identifiant canonique **`asdk_app_6ae22e22dbb88191870e10edbf2a9699`**.
+> Il ne s'agit **pas** de « Atelier partagé », « Atelier -julien-fred- » historique ni de profils locaux présentés comme des agents autonomes. Ne jamais substituer silencieusement une autre connexion.
+
+**Routine obligatoire pour chaque lot concerné :**
+1. Vérifier que **ce plugin exact** est accessible dans **le clavardage actif** sur l'appareil utilisé. Ne pas conclure que PC et mobile exposent forcément les mêmes outils, même si le plugin fonctionne déjà sur l'autre appareil. Ne pas utiliser un nom ressemblant ou des méthodes d'une autre connexion pour prétendre avoir exécuté son BOSS.
+2. Quand il est disponible, solliciter **son BOSS** pour lire l'état de Punch 360 et ses tâches, choisir **uniquement** les agents pertinents pour l'application et le lot exact, identifier branches/PR concurrentes et critères de sortie, puis répartir les responsabilités utiles. Un correctif d'une personne ne mobilise pas artificiellement plusieurs agents. **Un seul intégrateur** possède la branche et les modifications par fichier; les avis spécialisés restent ciblés.
+3. Respecter le niveau **Soft / Medium / God Mode** explicitement demandé et conserver le niveau déjà fixé dans la conversation. S'il manque et qu'une consultation doit être lancée, demander le choix une seule fois; ne pas le deviner. Le niveau gouverne la profondeur de revue, jamais l'inclusion d'agents hors sujet.
+4. Après chaque étape significative, remettre au BOSS/à ses agents **des faits vérifiés** (PR, SHA, tests, échecs, décisions, obstacles) et vérifier la réception. Protéger les tâches et changements de Julien et Fred. **Ne pas confondre mission enregistrée, avis d'expert et exécution autonome**; ne déclarer synchronisé, testé, fusionné ou déployé qu'avec preuve du système concerné.
+5. **Si ce plugin précis est inaccessible, déconnecté ou ne retourne aucun outil :** écrire explicitement **« Non synchronisé avec Atelier — Julien et Fred (plugin BOSS) »**, conserver la mission à lui transmettre et donner l'action nécessaire pour l'activer/sélectionner dans la conversation ou sur l'appareil courant. Continuer les travaux GitHub **indépendants et autorisés** sans inventer l'avis du BOSS; ne pas bloquer le projet ni utiliser une autre connexion par défaut. À la reprise de l'accès, relire les tâches, rapprocher les demandes déjà présentes et transmettre une seule fois sans doublon.
+
+Cette coordination est **complémentaire** à l'audit PUNCH-AUDIT-GLOBAL, aux tests, au protocole UX/UI et aux exigences de sécurité; elle n'accorde aucun droit supplémentaire sur Supabase, les paiements, les données clientes, les fusions ni les déploiements. Elle ne modifie pas les fonctionnalités métier existantes.
+
 ## PRIORITÉ IMMÉDIATE — PUNCH-AUDIT-GLOBAL-20261028 : audit complet, responsive et uniformité
 
 > **Décision du propriétaire — 28 octobre 2026. Commencer ici avant les nouveaux développements.** Cette campagne passe avant les anciens ordres métier ; corriger d'abord un défaut critique réel qui bloque l'accès, l'usage essentiel ou l'intégrité des données. **Statut : mandat à exécuter ; l'ajout de cette directive ne prouve aucun audit ou correctif applicatif.**
