@@ -5,6 +5,7 @@ import {createPlatformDirectoryController} from './platform-directory.js';
 import {createPlatformAuditController} from './platform-audit.js';
 import {createPunchReviewBackend,REVIEW_COMPANY_ID} from './punch-review-data.js';
 import {ANNOTATION_SPACE,pointInScreen,rectangleInScreen,isGeometry,sourceDimensions} from './annotation-geometry.js';
+import {showAtelierBootFailure} from './annotation-boot.js';
 
 // Project-specific ID; unrelated to other apps and stable between revisions.
 const PROJECT_ID='punch360-12fb1917-94ea-481d-b131-16c58a5bf010';
@@ -513,18 +514,6 @@ try{
  $('punch-preview-boot')?.remove();
  if(!result)console.info('Atelier responsive workspace mounted (no disposable handle).');
 }catch(err){
- const boot=$('punch-preview-boot');
- if(boot){
-  boot.replaceChildren();
-  boot.setAttribute('role','alert');
-  const message=document.createElement('span');
-  message.textContent="L’aperçu responsive Atelier est temporairement indisponible. Les annotations locales restent sur cet appareil.";
-  const retry=document.createElement('button');
-  retry.type='button';
-  retry.className='punch-preview-retry';
-  retry.textContent='Réessayer le chargement';
-  retry.addEventListener('click',()=>window.location.reload());
-  boot.append(message,retry);
- }
+ showAtelierBootFailure($('punch-preview-boot'),()=>window.location.reload());
  console.error('Atelier responsive module unavailable; no Punch preview mounted',err);
 }
