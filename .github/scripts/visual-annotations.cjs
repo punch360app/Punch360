@@ -25,6 +25,10 @@ const results=[];
     const response=await page.goto('http://127.0.0.1:8765/annotations.html',{waitUntil:'domcontentloaded'});
     assert.equal(response?.status(),200);
     await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:25000});
+    // The requested entrypoint must open the public Punch client, not Support.
+    assert.equal(await page.locator('#punch-screen-select').inputValue(),'client');
+    await page.locator('[data-punch-live-root] [data-punch-client-page]').first().waitFor({state:'attached',timeout:12000});
+    await page.locator('#punch-screen-select').selectOption('support');
     await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:15000});
     const structure=await page.evaluate(()=>{
      const root=document.querySelector('[data-punch-live-root]');
@@ -151,7 +155,11 @@ const results=[];
     assert.ok(rect.geometry.x+rect.geometry.width<=1.000002);
     assert.ok(free.sourceSize.width>100&&free.sourceSize.height>100);
     await page.reload({waitUntil:'domcontentloaded'});
-    await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:25000});
+    // Reload must also land on the client preview; switch to Support to
+    // verify persistence of the existing annotations from the previous view.
+    await page.locator('[data-punch-live-root] [data-punch-client-page]').first().waitFor({state:'attached',timeout:25000});
+    await page.locator('#punch-screen-select').selectOption('support');
+    await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:15000});
     if(await page.locator('#punch-review-reopen').isVisible())await page.locator('#punch-review-reopen').click();
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
     await page.getByText('Punaise libre sur le texte, pas un bouton').first().waitFor({state:'visible'});
