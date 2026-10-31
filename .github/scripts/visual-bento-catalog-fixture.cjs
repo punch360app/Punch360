@@ -127,13 +127,23 @@ async function assertCards(page,amounts,device,period){
     await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-monthly.png'),
      animations:'disabled',fullPage:true});
 
-    await page.locator('[data-action="ess:yearly"]').click();
+    // Navigate the actual public billing switch with Enter (not a synthetic click).
+    const annualToggle=page.locator('[data-action="ess:yearly"]');
+    await annualToggle.focus();
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('data-action')),'ess:yearly');
+    await page.keyboard.press('Enter');
     assert.equal(await page.locator('[data-action="ess:yearly"]').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('data-action')),'ess:yearly',
+     'The billing-period action must keep keyboard focus after the SPA redraw: '+device);
     const yearly=await assertCards(page,[17820,24840,55080],device,'yearly');
     await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-yearly.png'),
      animations:'disabled',fullPage:true});
 
-    await page.locator('.ess-price button[data-action="ess:choose"]').nth(1).click();
+    // A keyboard-only customer must also be able to choose the recommended plan.
+    const recommendedChoose=page.locator('.ess-price button[data-action="ess:choose"]').nth(1);
+    await recommendedChoose.focus();
+    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('data-action')),'ess:choose');
+    await page.keyboard.press('Enter');
     await page.locator('#authForm').waitFor({state:'visible',timeout:10000});
     assert.match(await page.locator('#main h2').innerText(),/Créer mon compte/);
     assert.equal(await page.locator('#authForm button[type="submit"]').count(),1);

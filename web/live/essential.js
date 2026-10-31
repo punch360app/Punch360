@@ -206,6 +206,9 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }
  async function handle(el){if(el?.dataset?.action?.startsWith('platform-admin:'))return platformAdmins.handle(el);if(await qualifiedCoverage.handle(el))return true;const action=el.dataset.action?.slice(4);if(!el.dataset.action?.startsWith('ess:'))return false;if(action.startsWith('plan-'))return planning.handle(el);
  if(action.startsWith('test-')||action==='simulate-plan')return platformTests.handle(el);
+ // The app redraw replaces button nodes. Keep the focused billing-period
+ // control reachable for keyboard and switch users after that redraw.
+ const focusedCadenceAction=(action==='monthly'||action==='yearly')&&doc.activeElement===el?action:null;
  if(action==='retry-public'){
   if(s.loading)return true;
   s.loading=true;s.error='';redraw();
@@ -295,7 +298,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   s.snapshot=snapshot;s.testAccounts=accounts;s.qr=null;s.mfaSecret=null;
   s.factor=null;s.mfaNotice='';s.mfaMode='unknown';s.mfaRequired=false;
  }
- }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();}return true;
+ }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();if(focusedCadenceAction)doc.querySelector('[data-action="ess:'+focusedCadenceAction+'"]')?.focus({preventScroll:true});}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
  function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';}

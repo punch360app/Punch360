@@ -65,6 +65,27 @@ test('Pricing outage retry reads only public plans and replaces the error with r
  }finally{await window.happyDOM.close()}
 });
 
+test('Keyboard focus survives the public monthly/yearly redraw without changing pricing',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ let ui,draws=0;
+ try{
+  ui=createEssentialController({sb:{},document:window.document,escape,
+   redraw:()=>{draws++;window.document.body.innerHTML=ui.renderPricing()},
+   notify:()=>{}});
+  ui.state.plans=fakePlans;
+  window.document.body.innerHTML=ui.renderPricing();
+  const oldButton=window.document.querySelector('button[data-action="ess:yearly"]');
+  oldButton.focus();
+  assert.equal(window.document.activeElement,oldButton);
+  await ui.handle(oldButton);
+  const newButton=window.document.querySelector('button[data-action="ess:yearly"]');
+  assert.notEqual(newButton,oldButton,'Redraw really replaced the button node');
+  assert.equal(window.document.activeElement,newButton,'Keyboard focus should remain on Annuel');
+  assert.equal(newButton.getAttribute('aria-pressed'),'true');
+  assert.ok(draws>0);
+ }finally{await window.happyDOM.close()}
+});
+
 test('Real public pricing renderer uses only three visible synthetic test plans and existing actions',async()=>{
  const window=new Window({url:'https://fixture.invalid/?edition=essential'});
  const notifications=[];
