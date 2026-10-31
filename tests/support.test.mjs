@@ -142,3 +142,26 @@ test('Support Web ignores delayed old-account detail after switching to another 
  assert.match(markup,/B ticket/);
  assert.doesNotMatch(markup,/SECRET A DETAIL|SECRET A MESSAGE|A ticket/);
 });
+
+
+test('Support Web must not expose tickets or submit a request when no company is selected',async()=>{
+ const calls=[];
+ const ui=createSupportController({sb:{rpc:async(name,args)=>{
+  calls.push({name,args});return {data:[]};
+ }},escape,redraw(){}});
+ await ui.load('A');
+ ui.input({id:'support-subject',value:'Draft private subject'});
+ ui.input({id:'support-body',value:'Draft private body'});
+ await ui.load(null,false);
+ assert.equal(ui.state.company,null);
+ assert.deepEqual(ui.state.tickets,[]);
+ assert.equal(ui.state.subject,'');
+ assert.equal(ui.state.body,'');
+ const html=ui.render();
+ assert.match(html,/Sélectionnez une entreprise autorisée/);
+ assert.doesNotMatch(html,/support:create|Draft private/);
+ const before=calls.length;
+ await ui.handle({dataset:{action:'support:create'}});
+ await ui.handle({dataset:{action:'support:refresh'}});
+ assert.equal(calls.length,before,'no RPC call after the company context is cleared');
+});
