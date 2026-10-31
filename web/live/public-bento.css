@@ -129,6 +129,10 @@
  background:#e8ba6c;color:#273b31;border-radius:99px;font-size:9px;
  padding:6px 8px;align-self:flex-start;max-width:100%;white-space:normal
 }
+.essential-public .punch-public-bento .ess-pricing>.ess-pricing-status{
+ color:#fffdf8;background:#3c615c;border-radius:12px;padding:12px 14px;
+ font-size:13px;line-height:1.5;margin:0
+}
 .essential-public .punch-public-bento .ess-pricing>.ess-fine{
  color:#d4e4dc;font-size:10px;line-height:1.5;text-align:left
 }

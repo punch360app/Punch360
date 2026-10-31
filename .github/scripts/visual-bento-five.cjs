@@ -58,6 +58,16 @@ async function measure(page){
     assert.equal(await page.locator('.public-edition-tabs [data-id="essential"]').getAttribute('aria-pressed'),'true');
     assert.match(await page.locator('.welcome-intro h1').textContent(),/Une équipe/);
     await page.evaluate(()=>document.fonts.ready);
+    // Network isolation intentionally means the real catalog cannot load.
+    // Do not certify live prices or display raw network/TypeError details.
+    const pricingStatus=page.locator('.punch-public-bento .ess-pricing-status');
+    await pricingStatus.waitFor({state:'visible',timeout:15000});
+    assert.match(await pricingStatus.textContent(),/Tarifs temporairement indisponibles/);
+    assert.equal(await page.locator('.punch-public-bento .ess-price').count(),0,
+     'No invented prices should be rendered without the real catalog');
+    assert.doesNotMatch(await page.locator('.punch-public-bento .ess-pricing').innerText(),
+     /TypeError|Failed to fetch|NetworkError/i,
+     'Public pricing must not leak technical API errors');
     const essential=await measure(page);
     assert.equal(essential.tiles,3,'three Bento value cards on '+device);
     assert.equal(essential.iframes,0,'real markup without an iframe');

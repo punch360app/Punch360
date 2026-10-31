@@ -35,6 +35,16 @@ test('Bento has the real dynamic public plans, the original handlers and separat
  assert.doesNotMatch(css,/19\s*\$|39\s*\$|69\s*\$|\.base_cents|annual_discount/);
 });
 
+test('Unavailable public catalog is explicit and never exposes technical API errors or fake prices',()=>{
+ assert.match(essential,/Tarifs temporairement indisponibles/);
+ assert.match(essential,/ess-pricing-status/);
+ assert.doesNotMatch(essential,/e\(s\.error\|\|'Chargement des tarifs/);
+ assert.match(css,/\.ess-pricing>\.ess-pricing-status/);
+ const visual=readFileSync(new URL('../.github/scripts/visual-bento-five.cjs',import.meta.url),'utf8');
+ assert.match(visual,/No invented prices should be rendered without the real catalog/);
+ assert.match(visual,/TypeError\|Failed to fetch\|NetworkError/);
+});
+
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-1/);
  assert.match(html,/app\.js\?v=essential-52-bento/);
