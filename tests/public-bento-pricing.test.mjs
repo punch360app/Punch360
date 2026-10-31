@@ -94,6 +94,7 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
    redraw:()=>{redraws++;window.document.body.innerHTML=ui.renderPricing()},
    notify:()=>{}});
   ui.state.plans=fakePlans;
+  ui.state.checkout=null;
   window.document.body.innerHTML=ui.renderPricing();
   const original=window.document.getElementById('ess-seats');
   original.focus();
