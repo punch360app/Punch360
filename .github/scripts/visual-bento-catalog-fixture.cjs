@@ -132,12 +132,15 @@ async function assertCards(page,amounts,device,period){
     await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-monthly.png'),
      animations:'disabled',fullPage:true});
 
-    // Type multiple digits through Chromium's REAL input events. Each price
-    // update replaces the input; the second keystroke must still reach it.
+    // Type multiple digits through Chromium's REAL input events. The price
+    // cards must reprice without replacing the focused input or moving its caret.
     const seatsInput=page.locator('#ess-seats');
     await seatsInput.focus();
     await seatsInput.fill('');
+    await page.evaluate(()=>{window.__bentoSeatsInputBeforeTyping=document.getElementById('ess-seats')});
     await page.keyboard.type('12',{delay:40});
+    assert.equal(await page.evaluate(()=>document.getElementById('ess-seats')===window.__bentoSeatsInputBeforeTyping),
+      true,'Typing must not replace the member input node: '+device);
     assert.equal(await page.locator('#ess-seats').inputValue(),'12',
       'Member count lost the next keystroke after redraw: '+device);
     assert.equal(await page.evaluate(()=>document.activeElement?.id),'ess-seats',

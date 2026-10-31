@@ -312,11 +312,18 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){
   const n=Number(el.value);
   if(Number.isSafeInteger(n)&&n>=1&&n<=100000){
-   // A live price update replaces the input node: without restoring focus,
-   // only the first digit can be typed with the keyboard or mobile keypad.
-   const wasFocused=doc.activeElement===el;
-   s.seats=n;redraw();
-   if(wasFocused)doc.getElementById('ess-seats')?.focus({preventScroll:true});
+   s.seats=n;
+   // Reprice only the cards; a full SPA redraw destroys the number input
+   // and resets the insertion caret, turning keyboard entry "12" into "21".
+   // Keep the original input, its focus, selection, and mobile keypad alive.
+   const grid=doc.querySelector('.ess-pricing .ess-price-grid');
+   if(grid){
+    const scratch=doc.createElement('div');
+    scratch.innerHTML=renderPricing();
+    const latest=scratch.querySelector('.ess-price-grid');
+    if(latest)grid.innerHTML=latest.innerHTML;
+    else redraw();
+   }else redraw();
   }
  }if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
  function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';}
