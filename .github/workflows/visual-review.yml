@@ -101,6 +101,13 @@ jobs:
         if: steps.visual-scope.outputs.mode == 'full'
         run: |
           node -e "const fs=require('fs');const p='visual-captures/functional-journeys.json';const x=JSON.parse(fs.readFileSync(p,'utf8'));if(x.visits!==24||new Set(x.results.map(r=>r.image)).size!==24){console.error('Incomplete public journey coverage',x.visits);process.exit(1)};for(const r of x.results){if(!fs.statSync('visual-captures/'+r.image).size)process.exit(1)}"
+      - name: Check Bento 05 on approved five phone/tablet/PC widths without live accounts
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node .github/scripts/visual-bento-five.cjs
+      - name: Ensure ten Bento screenshots and five independent viewport results exist
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: |
+          node -e "const fs=require('fs');const p='visual-captures/';const r=JSON.parse(fs.readFileSync(p+'bento05-five-viewports.json'));if(r.viewports!==5||r.screenshots!==10||r.results.length!==5)throw Error('Incomplete Bento breakpoints');for(const x of r.results){for(const edition of ['essential','construction']){const f=p+'bento05-'+x.device+'-'+edition+'.png';if(!fs.statSync(f).size)throw Error('Missing screenshot '+f)}}"
       - name: Create three Figma-ready contact sheets with source hashes (never approve)
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-figma-pack.cjs
