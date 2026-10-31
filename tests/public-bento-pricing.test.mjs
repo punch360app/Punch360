@@ -86,6 +86,33 @@ test('Keyboard focus survives the public monthly/yearly redraw without changing 
  }finally{await window.happyDOM.close()}
 });
 
+test('Entering member count retains focus after public pricing redraw',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ let ui,redraws=0;
+ try{
+  ui=createEssentialController({sb:{},document:window.document,escape,
+   redraw:()=>{redraws++;window.document.body.innerHTML=ui.renderPricing()},
+   notify:()=>{}});
+  ui.state.plans=fakePlans;
+  window.document.body.innerHTML=ui.renderPricing();
+  const original=window.document.getElementById('ess-seats');
+  original.focus();
+  assert.equal(window.document.activeElement,original);
+  original.value='12';
+  ui.input(original);
+  const replaced=window.document.getElementById('ess-seats');
+  assert.notEqual(replaced,original,'Price redraw replaces the input element');
+  assert.equal(window.document.activeElement,replaced,'Focus must remain on member count');
+  assert.equal(replaced.value,'12');
+  assert.equal(ui.state.seats,12);
+  const cards=[...window.document.querySelectorAll('.ess-price')];
+  assert.ok(cards[0].textContent.includes(cad(3050)));
+  assert.ok(cards[1].textContent.includes(cad(4400)));
+  assert.ok(cards[2].textContent.includes(cad(5100)));
+  assert.ok(redraws>0);
+ }finally{await window.happyDOM.close();}
+});
+
 test('Forged hidden, inactive, and missing public plan IDs cannot open signup',async()=>{
  const window=new Window({url:'https://fixture.invalid/?edition=essential'});
  const chosen=[],notifications=[];let redraws=0;

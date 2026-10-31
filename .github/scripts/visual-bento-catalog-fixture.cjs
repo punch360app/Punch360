@@ -132,6 +132,28 @@ async function assertCards(page,amounts,device,period){
     await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-monthly.png'),
      animations:'disabled',fullPage:true});
 
+    // Type multiple digits through Chromium's REAL input events. Each price
+    // update replaces the input; the second keystroke must still reach it.
+    const seatsInput=page.locator('#ess-seats');
+    await seatsInput.focus();
+    await seatsInput.fill('');
+    await page.keyboard.type('12',{delay:40});
+    assert.equal(await page.locator('#ess-seats').inputValue(),'12',
+      'Member count lost the next keystroke after redraw: '+device);
+    assert.equal(await page.evaluate(()=>document.activeElement?.id),'ess-seats',
+      'Member count must retain keyboard focus across price redraw: '+device);
+    assert.equal(await page.evaluate(()=>document.querySelector('#ess-seats')?.value),'12');
+    const updated=page.locator('.punch-public-bento .ess-price');
+    for(const [i,amount] of [3050,4400,5100].entries())
+      assert.ok(normalize(await updated.nth(i).locator('.ess-price-amount').innerText()).includes(cents(amount)),
+        'Member input did not update real pricing card '+i+' on '+device);
+    await page.locator('#ess-seats').fill('5');
+    assert.equal(await page.locator('#ess-seats').inputValue(),'5');
+    assert.equal(await page.evaluate(()=>document.activeElement?.id),'ess-seats');
+    // Remove focus before the annual keyboard scenario and keep the same
+    // first-viewport geometry for the monthly/yearly review.
+    await page.evaluate(()=>document.activeElement?.blur());
+
     // Navigate the actual public billing switch with Enter (not a synthetic click).
     const annualToggle=page.locator('[data-action="ess:yearly"]');
     await annualToggle.focus();
