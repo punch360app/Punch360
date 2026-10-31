@@ -23,7 +23,7 @@ test('Retry has a visible 44px target, keyboard focus, and updated assets',()=>{
  assert.match(css,/#punch-preview-boot \.punch-preview-retry\{[^}]*min-height:44px/);
  assert.match(css,/#punch-preview-boot \.punch-preview-retry:focus-visible/);
  assert.match(html,/annotations\.css\?v=4/);
- assert.match(html,/annotations\.js\?v=5/);
+ assert.match(html,/annotations\.js\?v=6/);
 });
 
 test('Retry button actually executes the browser reload callback without a shared Atelier mount',async()=>{

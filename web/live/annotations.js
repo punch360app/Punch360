@@ -1,6 +1,7 @@
 
 const ATELIER_RESPONSIVE_URL='https://atelier-projets-jf.juliensav.chatgpt.site/responsive/v1/entry.mjs';
 import {createSupportController} from './support.js';
+import {createPublicClientPreviewController} from './public-client-preview.js';
 import {createPlatformDirectoryController} from './platform-directory.js';
 import {createPlatformAuditController} from './platform-audit.js';
 import {createPunchReviewBackend,REVIEW_COMPANY_ID} from './punch-review-data.js';
@@ -10,13 +11,13 @@ import {showAtelierBootFailure,loadAtelierResponsiveModule} from './annotation-b
 // Project-specific ID; unrelated to other apps and stable between revisions.
 const PROJECT_ID='punch360-12fb1917-94ea-481d-b131-16c58a5bf010';
 const STORAGE_KEY=PROJECT_ID+':live-annotations:v1';
-const VALID_SCREENS=['support','directory','audit'];
+const VALID_SCREENS=['support','directory','audit','client'];
 const STATUS_LABELS={todo:'À corriger',progress:'En cours',review:'À vérifier',approved:'Approuvée'};
-const SCREEN_LABELS={support:'Support — entreprise',directory:'Super Admin — entreprises',audit:"Super Admin — journal d'audit"};
+const SCREEN_LABELS={support:'Support — entreprise',directory:'Super Admin — entreprises',audit:"Super Admin — journal d'audit",client:'Page client — vitrine publique'};
 const $=id=>document.getElementById(id);
 const project=createPunchReviewBackend();
 const mounts=new Set();
-let screen='support',notes=[],annotationMode='off',selectedNote=null,selectedTarget=null,toastTimer=0;
+let screen='client',notes=[],annotationMode='off',selectedNote=null,selectedTarget=null,toastTimer=0;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const id=()=>crypto.randomUUID();
 function notify(text){
@@ -60,12 +61,13 @@ function saveNotes(){
 notes=loadNotes();
 function screenTitle(view){
  const h=document.createElement('h2');h.className='punch-live-title';
- h.textContent=SCREEN_LABELS[view.screen]+' · données de démonstration';
+ h.textContent=SCREEN_LABELS[view.screen]+(view.screen==='client'?' · éléments publics réels, sans session':' · données de démonstration');
  return h;
 }
 function controllerFor(view){
  const redraw=()=>{if(!view.disposed)draw(view)};
  const sb=project.sb;
+ if(view.screen==='client')return createPublicClientPreviewController({redraw});
  if(view.screen==='support')return createSupportController({sb,redraw,escape:esc});
  if(view.screen==='directory')return createPlatformDirectoryController({sb,redraw,escape:esc,
   onArchives:()=>notify('Archives non ouvertes dans cette démonstration.'),
@@ -102,6 +104,7 @@ function draw(view){
  }
  root.append(panel);
  root.classList.toggle('punch-annotate-active',annotationMode!=='off');
+ root.classList.toggle('punch-client-essential',view.screen==='client'&&view.controller.state.edition==='essential');
  ensureAnnotationLayer(view);
  drawSpatialLayers();
  schedulePins();
@@ -109,6 +112,7 @@ function draw(view){
 async function load(view){
  const c=view.controller;
  try{
+  if(view.screen==='client'){draw(view);return;}
   if(view.screen==='support')await c.load(REVIEW_COMPANY_ID,false);
   else await c.load();
   if(!view.disposed)draw(view);
@@ -142,16 +146,21 @@ function screenMount(container,slot){
   if(!element||!host.contains(element)||view.disposed||annotationMode!=='off')return;
   await view.controller?.handle?.(element);
   // All presentation instances share the same synthetic Punch state, not library state.
-  mounts.forEach(other=>{if(other!==view&&!other.disposed&&other.screen===view.screen)void load(other)});
+  if(view.screen!=='client')mounts.forEach(other=>{if(other!==view&&!other.disposed&&other.screen===view.screen)void load(other)});
  };
  host.addEventListener('input',onInput);
  host.addEventListener('change',onInput);
  host.addEventListener('click',onClick);
+ // Read-only client controls use a real form element but must never navigate,
+ // submit credentials or trigger production authentication.
+ const onSubmit=e=>{if(view.screen==='client')e.preventDefault()};
+ host.addEventListener('submit',onSubmit);
  changeScreenFor(view,screen);
  return {
   dispose(){
    if(view.disposed)return;view.disposed=true;view.controller?.reset?.();
    host.removeEventListener('input',onInput);host.removeEventListener('change',onInput);host.removeEventListener('click',onClick);
+   host.removeEventListener('submit',onSubmit);
    mounts.delete(view);host.remove();schedulePins();
   }
  };

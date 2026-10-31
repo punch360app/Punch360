@@ -25,6 +25,10 @@ const results=[];
     const response=await page.goto('http://127.0.0.1:8765/annotations.html',{waitUntil:'domcontentloaded'});
     assert.equal(response?.status(),200);
     await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:25000});
+    // The requested entrypoint must open the public Punch client, not Support.
+    assert.equal(await page.locator('#punch-screen-select').inputValue(),'client');
+    await page.locator('[data-punch-live-root] [data-punch-client-page]').first().waitFor({state:'attached',timeout:12000});
+    await page.locator('#punch-screen-select').selectOption('support');
     await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:15000});
     const structure=await page.evaluate(()=>{
      const root=document.querySelector('[data-punch-live-root]');
@@ -151,7 +155,11 @@ const results=[];
     assert.ok(rect.geometry.x+rect.geometry.width<=1.000002);
     assert.ok(free.sourceSize.width>100&&free.sourceSize.height>100);
     await page.reload({waitUntil:'domcontentloaded'});
-    await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:25000});
+    // Reload must also land on the client preview; switch to Support to
+    // verify persistence of the existing annotations from the previous view.
+    await page.locator('[data-punch-live-root] [data-punch-client-page]').first().waitFor({state:'attached',timeout:25000});
+    await page.locator('#punch-screen-select').selectOption('support');
+    await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:15000});
     if(await page.locator('#punch-review-reopen').isVisible())await page.locator('#punch-review-reopen').click();
     await page.getByText('Déplacer le bouton Actualiser et harmoniser son espacement').first().waitFor({state:'visible'});
     await page.getByText('Punaise libre sur le texte, pas un bouton').first().waitFor({state:'visible'});
@@ -167,6 +175,33 @@ const results=[];
     await page.locator('[data-punch-live-root] [data-action="directory:detail"]').first().waitFor({state:'attached',timeout:12000});
     await page.locator('#punch-screen-select').selectOption('audit');
     await page.locator('[data-punch-live-root] [data-action="audit:search"]').first().waitFor({state:'attached',timeout:12000});
+    // Check the actual shared public welcome fragments mounted inside Atelier's
+    // same-document slots. No real login or dynamic pricing API may be called.
+    await page.locator('#punch-screen-select').selectOption('client');
+    await page.locator('[data-punch-live-root] [data-punch-client-page]').first().waitFor({state:'attached',timeout:12000});
+    if(await page.locator('#review-toggle').isVisible())await page.locator('#review-toggle').click();
+    const client=page.locator('[data-punch-live-root]:visible').first();
+    assert.match(await client.textContent(),/Vos chantiers/);
+    await client.locator('[data-action="chooseEdition"][data-id="essential"]').click();
+    assert.match(await client.textContent(),/Vos heures/);
+    assert.ok(await client.evaluate(el=>el.classList.contains('punch-client-essential')));
+    await page.screenshot({path:path.join(output,'atelier-real-client-'+device+'.png'),animations:'disabled'});
+    await client.locator('[data-action="continueSignup"]').click();
+    assert.match(await client.textContent(),/Aucun compte ni paiement/);
+    const signupInputs=await client.locator('form input').evaluateAll(inputs=>inputs.map(x=>({disabled:x.disabled,value:x.value})));
+    assert.equal(signupInputs.length,2,'shared signup displays two real Punch form fields');
+    assert.ok(signupInputs.every(x=>x.disabled&&x.value===''),'review never captures account credentials');
+    assert.ok(await client.locator('form button[type="submit"]').isDisabled());
+    const blockedSubmit=await client.locator('form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+    assert.equal(blockedSubmit,false,'review cancels account submission');
+    await client.locator('[data-action="authMode"]').click();
+    assert.match(await client.textContent(),/Se connecter/);
+    await client.locator('[data-action="openReset"]').click();
+    assert.match(await client.textContent(),/récupération sécurisée/);
+    await client.locator('[data-action="openLogin"]').click();
+    await client.locator('[data-action="authBack"]').last().click();
+    assert.match(await client.textContent(),/Vos heures/);
+    assert.equal(await page.locator('iframe').count(),0);
     const layout=await page.evaluate(()=>({
       width:innerWidth,documentWidth:document.documentElement.scrollWidth,
       projectElement:document.querySelectorAll('[data-punch-live-root]').length
@@ -177,7 +212,7 @@ const results=[];
     assert.ok(!blocked.some(x=>/supabase/i.test(x)),'live Supabase must not be queried');
     results.push({device,viewport:{width,height},sameDocument:true,realInteraction:true,
       elementAnnotation:true,freePin:true,dragRectangle:true,relativeCoordinates:true,
-      localPersistence:true,export:true,noOverflow:true});
+      localPersistence:true,export:true,publicClientPreview:true,noOverflow:true});
     console.log('Atelier shared responsive '+device+': live Punch DOM, interaction, annotation, export, reload PASS');
    }finally{await context.close()}
   }

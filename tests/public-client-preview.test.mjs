@@ -1,0 +1,141 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {Window} from 'happy-dom';
+import {renderPublicWelcomeIntro,renderPublicPlanCards} from '../web/live/public-client-components.js';
+import {renderPublicAuthStep} from '../web/live/public-auth-step.js';
+import {createPublicClientPreviewController} from '../web/live/public-client-preview.js';
+
+const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+const review=readFileSync(new URL('../web/live/annotations.js',import.meta.url),'utf8');
+const html=readFileSync(new URL('../web/live/annotations.html',import.meta.url),'utf8');
+const css=readFileSync(new URL('../web/live/public-client-preview.css',import.meta.url),'utf8');
+const shared=readFileSync(new URL('../web/live/public-client-components.js',import.meta.url),'utf8');
+const authSource=readFileSync(new URL('../web/live/public-auth-step.js',import.meta.url),'utf8');
+const preview=readFileSync(new URL('../web/live/public-client-preview.js',import.meta.url),'utf8');
+
+function click(controller,action,id){
+ return controller.handle({dataset:{action,id}});
+}
+
+test('production and Atelier review use the same public welcome and card functions',async()=>{
+ const win=new Window({url:'https://example.test/review'});
+ try{
+ assert.match(app,/import \{renderPublicWelcomeIntro,renderPublicPlanCards\} from '\.\/public-client-components\.js'/);
+ assert.match(app,/function welcomeIntro\(\)\{return renderPublicWelcomeIntro\(state\.creationEdition\)\}/);
+ assert.match(app,/function planCards\(\)\{return renderPublicPlanCards\(state\.creationEdition\)\}/);
+ assert.match(preview,/from '\.\/public-client-components\.js'/);
+ for(const edition of ['essential','construction']){
+  const welcome=renderPublicWelcomeIntro(edition);
+  const cards=renderPublicPlanCards(edition);
+  assert.match(welcome,/welcome-intro/);
+  assert.match(cards,/PUNCH Essentiel/);
+  assert.match(cards,/PUNCH Construction/);
+  assert.equal((cards.match(/class="plan-card/g)||[]).length,2);
+  assert.equal((cards.match(/data-action="chooseEdition"/g)||[]).length,2);
+  const chosen=win.document.createElement('div');
+  chosen.innerHTML=cards;
+  assert.equal(chosen.querySelector('.plan-card.chosen')?.dataset.id,edition);
+ }
+ }finally{await win.happyDOM.close();}
+});
+
+test('public landing is the selected default and Support remains available',()=>{
+ assert.ok(review.includes("let screen='client',notes="),'the preview must show the client initially');
+ const htmlSelect=html.indexOf('<select id="punch-screen-select">');
+ assert.ok(htmlSelect>=0,'Punch screen selector is present');
+ const selectorMarkup=html.slice(htmlSelect);
+ assert.ok(selectorMarkup.indexOf('<option value="client">')<selectorMarkup.indexOf('<option value="support">'),
+  'client is the first option in the selector');
+ const visual=readFileSync(new URL('../.github/scripts/visual-annotations.cjs',import.meta.url),'utf8');
+ assert.ok(visual.includes("inputValue(),'client'"),'visual QA verifies the initial choice');
+ assert.ok(visual.includes("selectOption('support')"),'visual QA returns to existing support tests');
+});
+
+test('review screens include the public client without querying production auth or prices',()=>{
+ assert.match(review,/client:'Page client — vitrine publique'/);
+ assert.match(review,/createPublicClientPreviewController\(\{redraw\}\)/);
+ assert.match(review,/if\(view\.screen==='client'\)\{draw\(view\);return;\}/);
+ assert.match(review,/view\.screen!=='client'/);
+ assert.match(html,/<option value="client">/);
+ assert.match(html,/public-client-preview\.css\?v=2/);
+ assert.match(css,/@container punch-screen \(max-width:700px\)/);
+ assert.doesNotMatch(preview+shared+authSource,/createClient\(|sb\.auth|sb\.rpc|localStorage|sessionStorage|\bfetch\(|window\.location/);
+ assert.doesNotMatch(preview+shared,/Stripe|submit\(|onSubmit\(/);
+});
+
+test('client public preview offers working, independent interactions in the same DOM',async()=>{
+ const win=new Window({url:'https://example.test/review'});
+ const doc=win.document;
+ const first=doc.createElement('section'),second=doc.createElement('section');
+ doc.body.append(first,second);
+ let updatesA=0,updatesB=0;
+ const a=createPublicClientPreviewController({redraw:()=>{updatesA++;first.innerHTML=a.render();}});
+ const b=createPublicClientPreviewController({redraw:()=>{updatesB++;second.innerHTML=b.render();}});
+ first.innerHTML=a.render();second.innerHTML=b.render();
+ assert.match(first.textContent,/Vos chantiers/);
+ assert.equal(first.querySelectorAll('[data-punch-client-page]').length,1);
+ assert.equal(click(a,'chooseEdition','essential'),true);
+ assert.equal(updatesA,1);
+ assert.equal(updatesB,0);
+ assert.match(first.textContent,/Vos heures/);
+ assert.match(second.textContent,/Vos chantiers/);
+ assert.match(first.textContent,/Trois forfaits disponibles/);
+ assert.equal(a.state.edition,'essential');
+ assert.equal(b.state.edition,'construction');
+ assert.equal(click(a,'chooseEdition','invalid-company'),false);
+ assert.equal(a.state.edition,'essential');
+ assert.equal(click(a,'continueSignup'),true);
+ assert.match(first.textContent,/Aucun compte ni paiement/);
+ assert.equal(first.querySelectorAll('form#authForm').length,1);
+ assert.equal(first.querySelectorAll('form#authForm input').length,2);
+ assert.ok([...first.querySelectorAll('form#authForm input')].every(input=>input.disabled));
+ assert.equal(first.querySelector('form#authForm button[type="submit"]')?.disabled,true);
+ assert.equal(click(a,'authBack'),true);
+ assert.match(first.textContent,/Vos heures/);
+ assert.equal(click(b,'openLogin'),true);
+ assert.match(second.textContent,/Se connecter/);
+ assert.equal(second.querySelector('form#authForm button[type="submit"]')?.disabled,true);
+ assert.equal(click(b,'authMode'),true);
+ assert.match(second.textContent,/Créer mon compte/);
+ assert.ok(second.querySelector('input#password')?.hasAttribute('minlength'));
+ assert.equal(click(b,'authMode'),true);
+ assert.equal(click(b,'openReset'),true);
+ assert.match(second.textContent,/récupération sécurisée/);
+ assert.equal(click(b,'openLogin'),true);
+ assert.equal(click(b,'authBack'),true);
+ assert.match(second.textContent,/Vos chantiers/);
+ assert.equal(click(b,'unknown'),false);
+ a.reset();
+ assert.equal(a.state.edition,'construction');
+ assert.equal(a.state.mode,'welcome');
+ await win.happyDOM.close();
+});
+
+test('preview does not introduce a second device renderer, auth tokens or unscoped styles',()=>{
+ assert.doesNotMatch(preview,/iframe|document\.body|new Worker|serviceWorker/i);
+ assert.doesNotMatch(css,/^\.ap-device|^\.ap-content|^\.device-frame/m);
+ assert.match(css,/\.punch-client-preview/);
+ assert.match(css,/\.punch-client-essential/);
+ assert.match(html,/script type="module" src="\.\/annotations\.js\?v=6"/);
+});
+
+test('shared production login/signup markup is read-only under the Atelier review',()=>{
+ const noInput=(label,id,_value,type,extra)=>'<label>'+label+'<input id="'+id+'" type="'+type+'" '+extra+' disabled></label>';
+ const btn=(title,name)=>'<button type="button" data-action="'+name+'">'+title+'</button>';
+ const oauth=()=>'<div class="oauth-buttons"></div>';
+ for(const mode of ['login','signup']){
+  const live=renderPublicAuthStep({mode,edition:'essential',formfield:noInput,button:btn,oauthButtons:oauth});
+  const review=renderPublicAuthStep({mode,edition:'essential',readOnly:true,formfield:noInput,button:btn,oauthButtons:oauth});
+  assert.match(live,/id="authForm"/);
+  assert.match(review,/type="submit" disabled/);
+  assert.match(review,/PUNCH ESSENTIEL/);
+  assert.match(review,/autocomplete="email"/);
+  assert.match(review,/autocomplete="(current|new)-password"/);
+  assert.equal((review.match(/<form/g)||[]).length,1);
+  assert.match(review,mode==='signup'?/Créer mon compte/:/Se connecter/);
+ }
+ assert.match(app,/import \{renderPublicAuthStep\} from '\.\/public-auth-step\.js'/);
+ assert.match(app,/renderPublicAuthStep\(\{mode,edition:state\.creationEdition,busy:state\.authBusy,formfield,button,oauthButtons\}\)/);
+ assert.match(review,/host\.addEventListener\('submit',onSubmit\)/);
+});

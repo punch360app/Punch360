@@ -1,0 +1,119 @@
+/* Punch client public preview inside Atelier's own device slots.
+ * Uses the real welcome/card HTML from public-client-components.js.
+ * The preview styles are scoped to this screen and its responsive container.
+ * No iframe, duplicated device chrome, or network-dependent assets.
+ */
+.punch-live-screen:has(> .punch-live-controls .punch-client-preview){
+ padding:8px;background:#0b2029;color:#f9fbff;
+}
+.punch-client-preview{min-height:100%;display:flex;flex-direction:column;
+ background:linear-gradient(116deg,#091a22,#13323b);color:#f9fbff;
+ border-radius:14px;overflow:hidden;font-family:Inter,system-ui,sans-serif}
+.punch-client-preview *{box-sizing:border-box}
+.punch-client-preview .onboard-header{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:18px 22px;border-bottom:1px solid #ffffff27}
+.punch-client-preview .onboard-brand{font-size:23px;font-weight:850;letter-spacing:-.055em;white-space:nowrap}
+.punch-client-preview .onboard-brand b,.punch-client-preview .welcome-intro em{color:#d8bd80}
+.punch-client-preview .onboard-link{border:0;background:transparent;color:inherit;font-size:12px;
+ padding:10px 0;white-space:nowrap}
+.punch-client-preview button{cursor:pointer;min-height:44px;font:inherit}
+.punch-client-preview button:focus-visible{outline:3px solid #e6a23c;outline-offset:2px}
+.punch-client-preview .onboard-main{flex:1;display:flex;min-height:0;padding:20px 24px;align-items:center}
+.punch-client-preview .authwrap{width:100%;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+ column-gap:8%;row-gap:13px;align-content:center}
+.punch-client-preview .welcome-intro{grid-column:1;grid-row:1 / span 3}
+.punch-client-preview .welcome-eyebrow{display:block;font-size:9px;letter-spacing:.18em;
+ color:#d8bd80;margin:0 0 20px}
+.punch-client-preview .welcome-intro h1{font-size:clamp(28px,4cqw,64px);font-weight:550;
+ letter-spacing:-.06em;line-height:1.06;margin:0 0 16px}
+.punch-client-preview .welcome-intro em{font-family:Georgia,serif;font-weight:400}
+.punch-client-preview .welcome-intro p{color:#b7c7ca;font-size:13px;line-height:1.5}
+.punch-client-preview .welcome-signature{display:block;font-size:10px;color:#a6b9b9;margin-top:20px}
+.punch-client-preview .plan-cards{grid-column:2;grid-row:1;display:grid;gap:10px}
+.punch-client-preview .plan-card{display:flex;flex-direction:column;gap:5px;text-align:left;color:inherit;
+ background:#14303bee;border:1px solid #ffffff3a;border-radius:10px;padding:16px 18px}
+.punch-client-preview .plan-card.chosen{border-color:#d8bd80;background:#21404a}
+.punch-client-preview .plan-kicker{font-size:9px;letter-spacing:.12em;color:#d7c5a1}
+.punch-client-preview .plan-card strong{font-size:17px;font-weight:650;letter-spacing:-.02em}
+.punch-client-preview .plan-card span:not(.plan-kicker),.punch-client-preview .plan-card small{font-size:11px}
+.punch-client-preview .plan-card b{font-size:16px;font-weight:600}
+.punch-client-preview .btn{border:1px solid #d8bd80;border-radius:9px;
+ padding:10px 14px;background:#203a41;color:inherit;font-weight:650}
+.punch-client-preview .btn.gold{background:#d8bd80;color:#19303a}
+.punch-client-preview .auth-step-welcome>.btn{grid-column:2;grid-row:2}
+.punch-client-preview .punch-client-preview-note{grid-column:2;grid-row:3;font-size:10px;color:#b7c7ca;line-height:1.5}
+.punch-client-preview .punch-client-preview-placeholder{grid-column:1 / -1;max-width:480px;margin:auto}
+.punch-client-preview .punch-client-preview-placeholder h2{font-size:26px;color:inherit}
+.punch-client-preview .punch-client-preview-placeholder p{font-size:14px;color:inherit}
+.punch-client-preview .punch-client-preview-placeholder .btn{margin-top:10px}
+.punch-live-screen.punch-client-essential .punch-client-preview{
+ background:#f4f5ef;color:#294333}
+.punch-client-essential .punch-client-preview .onboard-header{border-color:#263d3025}
+.punch-client-essential .punch-client-preview .onboard-brand b,
+.punch-client-essential .punch-client-preview .welcome-intro em,
+.punch-client-essential .punch-client-preview .welcome-eyebrow{color:#72906c}
+.punch-client-essential .punch-client-preview .welcome-intro p,
+.punch-client-essential .punch-client-preview .welcome-signature,
+.punch-client-essential .punch-client-preview .punch-client-preview-note{color:#687d67}
+.punch-client-essential .punch-client-preview .plan-card{background:#fafbf7;color:#294333;border-color:#dbe0d3}
+.punch-client-essential .punch-client-preview .plan-card.chosen{background:#eaf0e3;border-color:#718763}
+.punch-client-essential .punch-client-preview .plan-kicker{color:#698066}
+.punch-client-essential .punch-client-preview .btn.gold{background:#627a59;color:white;border-color:#627a59}
+@container punch-screen (max-width:700px){
+ .punch-client-preview .onboard-main{padding:16px 18px}
+ .punch-client-preview .authwrap{display:flex;flex-direction:column;gap:12px}
+ .punch-client-preview .welcome-intro h1{font-size:clamp(25px,8cqw,43px)}
+ .punch-client-preview .welcome-eyebrow{margin-bottom:8px}
+ .punch-client-preview .welcome-signature{display:none}
+ .punch-client-preview .welcome-intro p{margin:6px 0;font-size:12px}
+ .punch-client-preview .plan-card{min-height:0;padding:11px 14px}
+ .punch-client-preview .plan-card strong{font-size:17px}
+ .punch-client-preview .auth-step-welcome>.btn{width:100%}
+}
+@container punch-screen (max-width:380px){
+ .punch-client-preview .onboard-header{padding:12px}
+ .punch-client-preview .onboard-main{padding:11px 12px}
+ .punch-client-preview .onboard-brand{font-size:18px}
+ .punch-client-preview .welcome-intro h1{font-size:27px}
+ .punch-client-preview .plan-card{padding:9px 11px;gap:3px}
+ .punch-client-preview .plan-card strong{font-size:15px}
+ .punch-client-preview .plan-card b{font-size:14px}
+ .punch-client-preview .punch-client-preview-note{font-size:9px}
+}
+
+/* Shared live login and signup controls, visibly read-only in Atelier. */
+.punch-client-preview .auth-step-login,
+.punch-client-preview .auth-step-signup,
+.punch-client-preview .auth-step-reset{
+ display:flex;flex-direction:column;gap:12px;max-width:410px;margin:0 auto;
+}
+.punch-client-preview .auth-step-login h2,
+.punch-client-preview .auth-step-signup h2{font-size:clamp(22px,4cqw,31px);margin:7px 0 0}
+.punch-client-preview .eyebrow{font-size:10px;letter-spacing:.12em;color:#d8bd80}
+.punch-client-preview .authwrap form{display:flex;flex-direction:column;gap:12px}
+.punch-client-preview .group{display:flex;flex-direction:column;gap:5px}
+.punch-client-preview .group label{font-size:12px}
+.punch-client-preview .field{min-height:44px;width:100%;padding:10px 12px;
+ border-radius:10px;border:1px solid #9daeb0;background:#f0f3f0;color:#294333;
+ font-size:16px;opacity:1}
+.punch-client-preview .authwrap .btn.full{width:100%}
+.punch-client-preview .authwrap .btn:disabled{opacity:.78;cursor:not-allowed}
+.punch-client-preview .text-link{background:none;border:0;text-align:center;color:inherit}
+.punch-client-preview .oauth-divider{display:flex;gap:10px;align-items:center;color:#b9caca}
+.punch-client-preview .oauth-divider:before,
+.punch-client-preview .oauth-divider:after{content:'';height:1px;flex:1;background:#a5b3b48c}
+.punch-client-preview .oauth-buttons{display:grid;gap:9px}
+.punch-client-preview .oauth-btn{background:#f7f9f6;border:1px solid #c5d1cb;
+ color:#294333;border-radius:10px;font-size:13px;font-weight:600}
+.punch-client-preview .oauth-btn:disabled{opacity:.75;cursor:not-allowed}
+.punch-client-preview .punch-client-preview-notice{font-size:11px;color:#b7c7ca;
+ line-height:1.5;max-width:450px;margin:0 auto;padding:0 20px 16px}
+.punch-client-essential .punch-client-preview .eyebrow,
+.punch-client-essential .punch-client-preview .oauth-divider,
+.punch-client-essential .punch-client-preview .punch-client-preview-notice{color:#687d67}
+@container punch-screen (max-width:380px){
+ .punch-client-preview .auth-step-login,
+ .punch-client-preview .auth-step-signup{gap:8px}
+ .punch-client-preview .authwrap form{gap:9px}
+ .punch-client-preview .oauth-buttons{gap:6px}
+}
