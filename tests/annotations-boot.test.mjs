@@ -16,7 +16,7 @@ test('Atelier shared responsive renderer stays mandatory, but startup failure re
  assert.match(source,/renderApp\(\{container,slot\}\)/);
  assert.match(source,/renderWeb\(\{container\}\)/);
  assert.match(source,/showAtelierBootFailure\(\$\('punch-preview-boot'\),\(\)=>window\.location\.reload\(\)\)/);
- assert.match(source,/import \{showAtelierBootFailure\} from '\.\/annotation-boot\.js'/);
+ assert.match(source,/import \{showAtelierBootFailure,loadAtelierResponsiveModule\} from '\.\/annotation-boot\.js'/);
 });
 
 test('Retry has a visible 44px target, keyboard focus, and updated assets',()=>{
