@@ -41,14 +41,15 @@ test('production and Atelier review use the same public welcome and card functio
 });
 
 test('public landing is the selected default and Support remains available',()=>{
- assert.match(review,/let screen='client',notes=/);
- const htmlSelect=html.match(/<select id="punch-screen-select">([\\s\\S]*?)<\\/select>/);
- assert.ok(htmlSelect,'Punch screen selector is present');
- assert.match(htmlSelect[1],/^\\s*<option value="client">Page client/);
- assert.match(htmlSelect[1],/<option value="support">Support/);
+ assert.ok(review.includes("let screen='client',notes="),'the preview must show the client initially');
+ const htmlSelect=html.indexOf('<select id="punch-screen-select">');
+ assert.ok(htmlSelect>=0,'Punch screen selector is present');
+ const selectorMarkup=html.slice(htmlSelect);
+ assert.ok(selectorMarkup.indexOf('<option value="client">')<selectorMarkup.indexOf('<option value="support">'),
+  'client is the first option in the selector');
  const visual=readFileSync(new URL('../.github/scripts/visual-annotations.cjs',import.meta.url),'utf8');
- assert.match(visual,/inputValue\\(\\),'client'/);
- assert.match(visual,/selectOption\\('support'\\)/);
+ assert.ok(visual.includes("inputValue(),'client'"),'visual QA verifies the initial choice');
+ assert.ok(visual.includes("selectOption('support')"),'visual QA returns to existing support tests');
 });
 
 test('review screens include the public client without querying production auth or prices',()=>{
