@@ -1,7 +1,9 @@
 name: Punch 360 safe visual review
 on:
   pull_request:
-    branches: [main]
+    # Include the live parent of PR #261 so its real Bento screens are tested
+    # before the stacked PR is merged; retain fail-closed checks and all captures.
+    branches: [main, feat/public-compact-vitrine-20261028]
     paths:
       - 'web/live/**'
       - '.github/workflows/visual-review.yml'
