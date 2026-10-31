@@ -10,7 +10,10 @@ const pages=readFileSync(new URL('../.github/workflows/deploy-web.yml',import.me
 
 test('the shared Atelier responsive workspace is imported once, never copied',()=>{
  const url='https://atelier-projets-jf.juliensav.chatgpt.site/responsive/v1/entry.mjs';
- assert.ok(js.includes("import {mountResponsiveWorkspace} from '"+url+"'"));
+ // Both static and on-demand imports must reference the single official module.
+ assert.ok(js.includes(url),'the remote Atelier entrypoint must be identical');
+ assert.ok(js.includes('await import(ATELIER_RESPONSIVE_URL)'),'the external module must load on demand');
+ assert.equal(js.split(url).length-1,1,'the official Atelier module URL must be declared only once');
  assert.match(js,/await mountResponsiveWorkspace\(\{/);
  assert.match(js,/renderApp\(\{container,slot\}\)/);
  assert.match(js,/renderWeb\(\{container\}\)/);
