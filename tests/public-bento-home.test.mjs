@@ -1,3 +1,4 @@
+import {resolvePublicEdition} from '../web/live/public-edition.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -36,9 +37,9 @@ test('Bento has the real dynamic public plans, the original handlers and separat
 
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-1/);
- assert.match(html,/app\.js\?v=essential-51-bento/);
+ assert.match(html,/app\.js\?v=essential-52-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-1/);
- assert.match(sw,/app\.js\?v=essential-51-bento/);
+ assert.match(sw,/app\.js\?v=essential-52-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -47,4 +48,19 @@ test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(css,/min-height:44px/);
  assert.match(css,/overflow-x:hidden/);
  assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+});
+
+test('Fresh public visitors see Essentiel Bento; explicit and saved Construction choices are respected',()=>{
+ assert.equal(resolvePublicEdition('',null),'essential');
+ assert.equal(resolvePublicEdition('?edition=essential',null),'essential');
+ assert.equal(resolvePublicEdition('?edition=construction',null),'construction');
+ assert.equal(resolvePublicEdition('', 'construction'),'construction');
+ assert.equal(resolvePublicEdition('', 'essential'),'essential');
+ assert.equal(resolvePublicEdition('?edition=essential','construction'),'essential');
+ assert.equal(resolvePublicEdition('?edition=construction','essential'),'construction');
+ assert.equal(resolvePublicEdition('?edition=invalid','construction'),'construction');
+ assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
+ assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
+ assert.match(sw,/\.\/public-edition\.js/);
+ assert.match(sw,/punch-360-essential-v47-bento/);
 });
