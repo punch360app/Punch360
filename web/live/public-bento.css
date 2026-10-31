@@ -223,7 +223,7 @@
  /* Keep all three primary actions visible on a 320×640 phone without
     dropping plan details, reducing touch targets, or changing plan data. */
  .essential-public .punch-public-bento .onboard-header{min-height:54px}
- .essential-public .punch-public-bento .onboard-main{padding:7px 10px 10px}
+ .essential-public .punch-public-bento .onboard-main{padding:4px 10px 10px}
  .essential-public .punch-public-bento .welcome-intro h1{font-size:36px}
  .essential-public .punch-public-bento .auth-step-welcome>.ess-pricing{
   padding:9px;gap:5px;border-radius:15px
@@ -243,7 +243,7 @@
  .essential-public .punch-public-bento .ess-pricing>.ess-field{
   gap:5px;font-size:10px
  }
- .essential-public .punch-public-bento .ess-price-grid{gap:5px}
+ .essential-public .punch-public-bento .ess-price-grid{gap:2px}
  .essential-public .punch-public-bento .ess-price{
   grid-template-columns:minmax(0,1fr) 108px;grid-template-rows:auto auto auto;
   gap:4px 6px;padding:7px 8px;border-radius:11px
