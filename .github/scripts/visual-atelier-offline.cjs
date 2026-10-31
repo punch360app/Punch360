@@ -30,6 +30,18 @@ const results=[];
    try{
     const response=await page.goto('http://127.0.0.1:8765/annotations.html',{waitUntil:'domcontentloaded'});
     assert.equal(response?.status(),200);
+    // The new default landing must be the public client, not a stale Support
+    // screen. All legacy panels stay selectable while remote Atelier is down.
+    const screenPicker=page.locator('#punch-screen-select');
+    assert.equal(await screenPicker.inputValue(),'client',
+     'Page client must be the default in every responsive viewport');
+    for(const option of ['client','support','directory','audit'])
+     assert.equal(await screenPicker.locator('option[value="'+option+'"]').count(),1,
+      'existing review screens must remain available: '+option);
+    await screenPicker.selectOption('support');
+    assert.equal(await screenPicker.inputValue(),'support');
+    await screenPicker.selectOption('client');
+    assert.equal(await screenPicker.inputValue(),'client');
     const boot=page.locator('#punch-preview-boot[role="alert"]');
     await boot.waitFor({state:'visible',timeout:12000});
     assert.match(await boot.textContent(),/temporairement indisponible/);
@@ -51,6 +63,8 @@ const results=[];
      page.waitForNavigation({waitUntil:'domcontentloaded',timeout:12000}),
      retry.click()
     ]);
+    assert.equal(await page.locator('#punch-screen-select').inputValue(),'client',
+     'retry reload must restore the public client landing');
     const recovered=page.locator('#punch-preview-boot[role="alert"]');
     await recovered.waitFor({state:'visible',timeout:12000});
     assert.equal(await page.evaluate(key=>localStorage.getItem(key),notesKey),'[]',
@@ -64,7 +78,7 @@ const results=[];
      'the real Atelier module must have been attempted');
     assert.ok(!requests.some(u=>/supabase/i.test(u)),
      'fallback must never reach production Supabase');
-    results.push({device,width,height,attemptedRemoteModule:true,
+    results.push({device,width,height,initialClient:true,legacyScreensAccessible:true,attemptedRemoteModule:true,
      accessibleFailure:true,reload:true,persistence:true,
      genuineSharedModuleMounted:false,capture});
     console.log('PUNCH Atelier OFFLINE '+device+': graceful failure and retry PASS; real responsive rendering NOT VERIFIED');
