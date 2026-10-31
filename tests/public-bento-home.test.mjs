@@ -53,13 +53,13 @@ test('Recommended plan badge precedes its selection button on compact phones',()
 test('320px compact Bento preserves 44px selection while reducing card height',()=>{
  const narrow=css.slice(css.indexOf('@media(max-width:360px)'));
  assert.match(narrow,/grid-template-columns:minmax\(0,1fr\) 108px/);
- assert.match(narrow,/\.ess-price>\.ess-btn\{[\s\S]*?grid-column:2;grid-row:2;min-height:44px/);
- assert.match(narrow,/\.ess-price>\.ess-badge\{[\s\S]*?grid-column:1\/\-1;grid-row:3/);
+ assert.match(narrow,/\.ess-price>\.ess-btn\{[\s\S]*?grid-column:2;grid-row:3;min-height:44px/);
+ assert.match(narrow,/\.ess-price>\.ess-badge\{[\s\S]*?grid-column:1;grid-row:2/);
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
- assert.match(html,/public-bento\.css\?v=bento-05-4/);
+ assert.match(html,/public-bento\.css\?v=bento-05-5/);
  assert.match(html,/app\.js\?v=essential-52-bento/);
- assert.match(sw,/public-bento\.css\?v=bento-05-4/);
+ assert.match(sw,/public-bento\.css\?v=bento-05-5/);
  assert.match(sw,/app\.js\?v=essential-52-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
@@ -83,5 +83,5 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v50-bento/);
+ assert.match(sw,/punch-360-essential-v51-bento/);
 });
