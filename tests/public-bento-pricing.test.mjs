@@ -110,6 +110,23 @@ test('Forged hidden, inactive, and missing public plan IDs cannot open signup',a
  }finally{await window.happyDOM.close();}
 });
 
+test('Public annual discount label ignores hidden and inactive discounts',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ try{
+  const ui=createEssentialController({sb:{},document:window.document,escape,redraw:()=>{},notify:()=>{}});
+  ui.state.plans=fakePlans;
+  const annual=()=>{window.document.body.innerHTML=ui.renderPricing();
+   return window.document.querySelector('button[data-action="ess:yearly"]').textContent};
+  assert.equal(annual(),'Annuel −10 %','Hidden 0% plans do not suppress a true public 10% saving');
+  ui.state.plans=fakePlans.map(p=>p.id==='fixture_only_c'?{...p,annual_discount:5}:p);
+  assert.equal(annual(),'Annuel','No single advertised discount for different public plan rates');
+  ui.state.plans=fakePlans.map(p=>p.active&&p.public_visible?{...p,annual_discount:0}:p);
+  assert.equal(annual(),'Annuel','Do not advertise a 0% saving');
+  ui.state.plans=fakePlans.map(p=>({...p,active:false}));
+  assert.equal(annual(),'Annuel','Never advertise a discount without public plans');
+ }finally{await window.happyDOM.close();}
+});
+
 test('Real public pricing renderer uses only three visible synthetic test plans and existing actions',async()=>{
  const window=new Window({url:'https://fixture.invalid/?edition=essential'});
  const notifications=[];

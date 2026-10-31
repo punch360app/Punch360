@@ -127,6 +127,8 @@ async function assertCards(page,amounts,device,period){
     await page.locator('.punch-public-bento .ess-pricing').waitFor({state:'visible',timeout:30000});
     const monthly=await assertCards(page,[1650,2300,5100],device,'monthly');
     assert.equal(await page.locator('[data-action="ess:monthly"]').getAttribute('aria-pressed'),'true');
+    assert.equal((await page.locator('[data-action="ess:yearly"]').innerText()).trim(),'Annuel −10 %',
+     'An inactive or hidden plan must not mask the shared public discount: '+device);
     await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-monthly.png'),
      animations:'disabled',fullPage:true});
 
