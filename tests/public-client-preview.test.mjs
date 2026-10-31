@@ -40,6 +40,17 @@ test('production and Atelier review use the same public welcome and card functio
  }finally{await win.happyDOM.close();}
 });
 
+test('public landing is the selected default and Support remains available',()=>{
+ assert.match(review,/let screen='client',notes=/);
+ const htmlSelect=html.match(/<select id="punch-screen-select">([\\s\\S]*?)<\\/select>/);
+ assert.ok(htmlSelect,'Punch screen selector is present');
+ assert.match(htmlSelect[1],/^\\s*<option value="client">Page client/);
+ assert.match(htmlSelect[1],/<option value="support">Support/);
+ const visual=readFileSync(new URL('../.github/scripts/visual-annotations.cjs',import.meta.url),'utf8');
+ assert.match(visual,/inputValue\\(\\),'client'/);
+ assert.match(visual,/selectOption\\('support'\\)/);
+});
+
 test('review screens include the public client without querying production auth or prices',()=>{
  assert.match(review,/client:'Page client — vitrine publique'/);
  assert.match(review,/createPublicClientPreviewController\(\{redraw\}\)/);
