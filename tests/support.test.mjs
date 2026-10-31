@@ -35,7 +35,7 @@ test('Support PUNCH displays an accessible pending message and prevents duplicat
   return {data:[]};
  }},escape,redraw(){}});
  const loading=ui.load('company-test');
- assert.equal(ui.state.busy,false,'initial load is not a submitted action');
+ assert.equal(ui.state.busy,true,'initial load blocks actions until the company list is ready');
  finish();await loading;
  ui.input({id:'support-subject',value:'Test de support'});
  ui.input({id:'support-body',value:'Contenu fictif'});
@@ -78,4 +78,90 @@ test('Support PUNCH rejects malformed list and invalid status actions without wr
  await ui.handle({dataset:{action:'support:status',id:'unexpected'}});
  assert.equal(writes,0);
  assert.match(ui.state.error,/Sélectionnez une demande ouverte/);
+});
+
+
+test('Support Web hides old company tickets and thread immediately when switching accounts',async()=>{
+ const ticketA={id:'ticket-A',subject:'PRIVATE A ONLY',updated_at:'2026-10-29T10:00:00Z',status:'open'};
+ const ticketB={id:'ticket-B',subject:'B ticket',updated_at:'2026-10-29T11:00:00Z',status:'open'};
+ let resolveB,markup='',ui;const calls=[];
+ const sb={rpc:async(name,args)=>{
+  calls.push({name,args});
+  if(name==='support_list_tickets'&&args.p_company==='B')
+   return new Promise(resolve=>{resolveB=resolve});
+  if(name==='support_list_tickets')return {data:[ticketA]};
+  if(name==='support_ticket_detail')return {data:{
+   ...ticketA,version:1,messages:[{body:'PRIVATE A MESSAGE',created_at:ticketA.updated_at,is_platform:false}]
+  }};
+  throw Error('Unexpected RPC');
+ }};
+ ui=createSupportController({sb,escape,redraw(){markup=ui.render()}});
+ await ui.load('A');
+ await ui.handle({dataset:{action:'support:open',id:'ticket-A'}});
+ assert.match(markup,/PRIVATE A ONLY|PRIVATE A MESSAGE/);
+ const switching=ui.load('B');
+ assert.equal(ui.state.company,'B');
+ assert.equal(ui.state.busy,true);
+ assert.equal(ui.state.tickets.length,0);
+ assert.equal(ui.state.detail,null);
+ assert.doesNotMatch(markup,/PRIVATE A ONLY|PRIVATE A MESSAGE|ticket-A/);
+ assert.match(markup,/role="status"/);
+ assert.match(markup,/Vérification en cours/);
+ assert.match(markup,/data-action="support:refresh" data-id="" disabled/);
+ const callCount=calls.length;
+ await ui.handle({dataset:{action:'support:create'}});
+ assert.equal(calls.length,callCount,'no action may be sent before the new account is loaded');
+ resolveB({data:[ticketB]});
+ await switching;
+ assert.equal(ui.state.busy,false);
+ assert.match(markup,/B ticket/);
+ assert.doesNotMatch(markup,/PRIVATE A ONLY|PRIVATE A MESSAGE/);
+});
+
+test('Support Web ignores delayed old-account detail after switching to another account',async()=>{
+ let finishOldDetail,markup='',ui;
+ const sb={rpc:async(name,args)=>{
+  if(name==='support_list_tickets')return {data:[{
+   id:args.p_company+'-ticket',subject:args.p_company+' ticket',
+   updated_at:'2026-10-29T10:00:00Z',status:'open'
+  }]};
+  if(name==='support_ticket_detail')return new Promise(resolve=>{finishOldDetail=resolve});
+  throw Error('Unexpected RPC');
+ }};
+ ui=createSupportController({sb,escape,redraw(){markup=ui.render()}});
+ await ui.load('A');
+ const oldRequest=ui.handle({dataset:{action:'support:open',id:'A-ticket'}});
+ assert.equal(ui.state.busy,true);
+ await ui.load('B');
+ assert.equal(ui.state.company,'B');
+ assert.equal(ui.state.busy,false);
+ finishOldDetail({data:{id:'A-ticket',subject:'SECRET A DETAIL',status:'open',
+  messages:[{body:'SECRET A MESSAGE'}]}});
+ await oldRequest;
+ assert.equal(ui.state.detail,null);
+ assert.match(markup,/B ticket/);
+ assert.doesNotMatch(markup,/SECRET A DETAIL|SECRET A MESSAGE|A ticket/);
+});
+
+
+test('Support Web must not expose tickets or submit a request when no company is selected',async()=>{
+ const calls=[];
+ const ui=createSupportController({sb:{rpc:async(name,args)=>{
+  calls.push({name,args});return {data:[]};
+ }},escape,redraw(){}});
+ await ui.load('A');
+ ui.input({id:'support-subject',value:'Draft private subject'});
+ ui.input({id:'support-body',value:'Draft private body'});
+ await ui.load(null,false);
+ assert.equal(ui.state.company,null);
+ assert.deepEqual(ui.state.tickets,[]);
+ assert.equal(ui.state.subject,'');
+ assert.equal(ui.state.body,'');
+ const html=ui.render();
+ assert.match(html,/Sélectionnez une entreprise autorisée/);
+ assert.doesNotMatch(html,/support:create|Draft private/);
+ const before=calls.length;
+ await ui.handle({dataset:{action:'support:create'}});
+ await ui.handle({dataset:{action:'support:refresh'}});
+ assert.equal(calls.length,before,'no RPC call after the company context is cleared');
 });
