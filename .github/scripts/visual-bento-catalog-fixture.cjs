@@ -69,7 +69,11 @@ async function assertCards(page,amounts,device,period){
   return {viewportHeight:innerHeight,fullyVisiblePlanActions:onscreen.length,
    planActions:buttons.length,mainCanScroll:Boolean(main&&main.scrollHeight>main.clientHeight+2)};
  });
- if(initialViewport.fullyVisiblePlanActions<3)
+ if(device==='Small320'||device==='Mobile390')
+  assert.equal(initialViewport.fullyVisiblePlanActions,3,
+   'All three primary plan actions must be visible on the initial '+device+' screen: '+
+    JSON.stringify(initialViewport));
+ else if(initialViewport.fullyVisiblePlanActions<3)
   console.warn('BENTO VIEWPORT AUDIT '+device+' '+period+': only '+
    initialViewport.fullyVisiblePlanActions+'/3 plan actions initially visible; vertical scrolling required.');
  return {headings,amounts,dimensions,initialViewport};
