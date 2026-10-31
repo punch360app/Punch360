@@ -64,6 +64,13 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const check=(label,id,value)=>`<label class="ess-check"><input type="checkbox" id="${id}" ${value?'checked':''}>${label}</label>`;
  const kioskUrl='https://punch360app.github.io/Punch360/kiosk.html';
  const get=id=>doc.getElementById(id), val=id=>get(id)?.value.trim()??'';
+ // Public seat estimates are integers (not exponent/decimal input), 1..100000.
+ const validSeatCount=value=>{
+  const raw=String(value??'').trim();
+  if(!/^\d+$/.test(raw))return null;
+  const n=Number(raw);
+  return Number.isSafeInteger(n)&&n>=1&&n<=100000?n:null;
+ };
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
  async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
@@ -99,10 +106,10 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   }}catch(err){if(current())s.error=err.message;}
  }
 
- function renderPricing(){const visible=s.plans.filter(p=>p.active&&p.public_visible);return `<section class="ess-pricing"><div class="ess-pricing-head"><h2>Choisissez votre forfait</h2><div class="ess-switch" role="group" aria-label="Période de paiement">${btn('Mensuel','monthly',`aria-pressed="${s.cadence==='monthly'}"`)}${btn(s.plans.length&&s.plans.every(p=>p.annual_discount===s.plans[0].annual_discount)?'Annuel −'+s.plans[0].annual_discount+' %':'Annuel','yearly',`aria-pressed="${s.cadence==='yearly'}"`)}</div></div>${field('Nombre de membres humains','ess-seats',s.seats,'number','min="1" max="100000"')}<div class="ess-price-grid">${visible.map(p=>{
+ function renderPricing(){const visible=s.plans.filter(p=>p.active&&p.public_visible);return `<section class="ess-pricing"><div class="ess-pricing-head"><h2>Choisissez votre forfait</h2><div class="ess-switch" role="group" aria-label="Période de paiement">${btn('Mensuel','monthly',`aria-pressed="${s.cadence==='monthly'}"`)}${btn(visible.length&&visible[0].annual_discount>0&&visible.every(p=>p.annual_discount===visible[0].annual_discount)?'Annuel −'+visible[0].annual_discount+' %':'Annuel','yearly',`aria-pressed="${s.cadence==='yearly'}"`)}</div></div>${field('Nombre de membres humains','ess-seats',s.seats,'number','min="1" max="100000" required aria-describedby="ess-seats-status"')}<p id="ess-seats-status" class="ess-seats-status" role="status" aria-live="polite" aria-atomic="true">Tarifs calculés pour ${s.seats} membre${s.seats>1?'s':''}.</p><div class="ess-price-grid">${visible.map(p=>{
  const monthly=p.base_cents+(p.included_seats_unlimited===true?0:Math.max(0,s.seats-p.included_seats))*p.extra_seat_cents,annual=Math.round(monthly*12*(100-p.annual_discount)/100),yearly=s.cadence==='yearly';
  return `<article class="ess-price ${p.recommended?'recommended':''}">${p.recommended?'<span class="ess-badge">Recommandé</span>':''}<h3>${e(p.title)}</h3><div class="ess-price-amount">${money(yearly?annual:monthly)}<small> / ${yearly?'an':'mois'}</small></div><p>${p.included_seats_unlimited===true?'Membres inclus : illimité · aucun supplément par membre':p.included_seats+' membres inclus · +'+money(p.extra_seat_cents)+' / membre / mois'}</p><hr><p>${p.kiosk_limit===null?'Bornes illimitées':p.kiosk_limit+' borne(s)'} · ${p.establishment_limit===null?'Plusieurs établissements':p.establishment_limit+' établissement(s)'}</p><ul><li>Pointage et heures</li><li>Compte personnel facultatif</li><li>Invitations SMS et courriel</li><li>20 designs prévus au catalogue</li></ul><p>${yearly?'Équivalent '+money(annual/12)+'/mois · économie '+money(monthly*12-annual):'Annuel : '+money(annual)+' en un versement'}</p>${btn('Choisir ce forfait','choose',`data-id="${e(p.id)}"`)}</article>`;
- }).join('')}</div>${!visible.length?'<p role="status">'+e(s.error||'Chargement des tarifs…')+'</p>':''}<p class="ess-fine">Dollars canadiens, avant taxes. Les sièges additionnels profitent du même rabais annuel. Aucun paiement confirmé à cette étape.</p>${s.checkout?`<div class="ess-notice" role="status">Forfait choisi : ${e(s.checkout)}. Le paiement Stripe n’est pas encore activé. Aucun abonnement facturé.</div>`:''}</section><details class="ess-market-details"><summary>Comparer les forfaits et consulter la FAQ</summary><div class="ess-market-panel"><p class="ess-market-close">Détails des forfaits · cliquez de nouveau sur « Comparer » pour fermer.</p>${renderCommercialDetails(s.plans,e,money)}</div></details>`;}
+ }).join('')}</div>${!visible.length?'<div class="ess-pricing-status" role="status"><span>'+(s.error?'Tarifs temporairement indisponibles. Vérifiez votre connexion.':'Chargement des tarifs…')+'</span>'+(s.error&&!s.loading?btn('Réessayer','retry-public','aria-label="Réessayer le chargement des forfaits"'):'')+'</div>':''}<p class="ess-fine">Dollars canadiens, avant taxes. Les sièges additionnels profitent du même rabais annuel. Aucun paiement confirmé à cette étape.</p>${s.checkout?`<div class="ess-notice" role="status">Forfait choisi : ${e(s.checkout)}. Le paiement Stripe n’est pas encore activé. Aucun abonnement facturé.</div>`:''}</section><details class="ess-market-details"><summary>Comparer les forfaits et consulter la FAQ</summary><div class="ess-market-panel"><p class="ess-market-close">Détails des forfaits · cliquez de nouveau sur « Comparer » pour fermer.</p>${renderCommercialDetails(s.plans,e,money)}</div></details>`;}
  const nav=[['home','Accueil'],['plans','Forfaits et tarifs'],['companies','Entreprises'],['users','Utilisateurs'],['specialPrices','Tarifs particuliers'],['billing','Abonnements Stripe'],['tests','Comptes test'],['archives','Archives et récupération'],['finance','Rapports financiers'],['promotions','Codes promotionnels'],['support','Support clients'],['audit','Sécurité et audit']];
 
  // Overview uses existing server-authorized platform_snapshot; no new broad reads.
@@ -206,9 +213,31 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }
  async function handle(el){if(el?.dataset?.action?.startsWith('platform-admin:'))return platformAdmins.handle(el);if(await qualifiedCoverage.handle(el))return true;const action=el.dataset.action?.slice(4);if(!el.dataset.action?.startsWith('ess:'))return false;if(action.startsWith('plan-'))return planning.handle(el);
  if(action.startsWith('test-')||action==='simulate-plan')return platformTests.handle(el);
+ // The app redraw replaces button nodes. Keep the focused billing-period
+ // control reachable for keyboard and switch users after that redraw.
+ const focusedCadenceAction=(action==='monthly'||action==='yearly')&&doc.activeElement===el?action:null;
+ if(action==='retry-public'){
+  if(s.loading)return true;
+  s.loading=true;s.error='';redraw();
+  try{await plans();}catch(err){s.error=String(err?.message||'Catalogue indisponible');}
+  finally{s.loading=false;redraw();}
+  return true;
+ }
  s.error='';try{
  if(action==='monthly'||action==='yearly')s.cadence=action;
- else if(action==='choose'){s.checkout=s.plans.find(p=>p.id===el.dataset.id)?.title;notify('Forfait choisi. Paiement Stripe encore à configurer.');onChoose(s.plans.find(p=>p.id===el.dataset.id));}
+ else if(action==='choose'){
+  // The list renders only active, public plans. A forged/stale data-id
+  // must never open onboarding for a plan that the catalog no longer offers.
+  // Server-side subscription entitlement checks remain mandatory.
+  const plan=s.plans.find(p=>p.id===el.dataset.id&&p.active&&p.public_visible);
+  if(!plan)throw Error('Ce forfait n’est plus disponible. Actualisez les tarifs.');
+  const seatsInput=doc.getElementById('ess-seats');
+  if(seatsInput&&validSeatCount(seatsInput.value)===null)
+   throw Error('Indiquez un nombre entier de 1 à 100 000 membres avant de choisir.');
+  s.checkout=plan.title;
+  notify('Forfait choisi. Paiement Stripe encore à configurer.');
+  onChoose(plan);
+ }
  else if(action==='select')s.selected=el.dataset.id;
  else if(action==='tab'){platformTests.hideCredentials();s.tab=el.dataset.id;if(s.tab==='companies')await directory.load();if(s.tab==='archives')archives.reset(null,true);if(s.tab==='support')await support.load(null,true);if(s.tab==='audit')await audit.load();if(s.tab==='promotions')await promotions.load(s.platformUser);if(s.tab==='finance')await finance.load();}
  else if(action==='logout'){subscriptions.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();archives.reset();finance.reset();promotions.reset();support.reset();audit.reset();platformTests.reset();await sb.auth.signOut();s.platform=false;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;}
@@ -288,9 +317,34 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   s.snapshot=snapshot;s.testAccounts=accounts;s.qr=null;s.mfaSecret=null;
   s.factor=null;s.mfaNotice='';s.mfaMode='unknown';s.mfaRequired=false;
  }
- }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();}return true;
+ }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();if(focusedCadenceAction)doc.querySelector('[data-action="ess:'+focusedCadenceAction+'"]')?.focus({preventScroll:true});}return true;
  }
- function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
+ function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){
+  const n=validSeatCount(el.value),valid=n!==null;
+  el.setAttribute('aria-invalid',valid?'false':'true');
+  const status=doc.getElementById('ess-seats-status');
+  if(status)status.textContent=valid
+   ?'Tarifs recalculés pour '+n+' membre'+(n>1?'s':'')+'.'
+   :'Indiquez un nombre entier de 1 à 100 000 membres pour calculer les tarifs.';
+  const grid=doc.querySelector('.ess-pricing .ess-price-grid');
+  if(!valid){
+   // The displayed prices are based on the last valid count; prevent a
+   // customer from choosing them while their input is blank or invalid.
+   for(const button of grid?.querySelectorAll('button[data-action="ess:choose"]')||[])
+    button.disabled=true;
+  }else{
+   s.seats=n;
+   // Reprice only the cards. A full SPA redraw loses the number-input
+   // insertion caret and can turn typing "12" into "21".
+   if(grid){
+    const scratch=doc.createElement('div');
+    scratch.innerHTML=renderPricing();
+    const latest=scratch.querySelector('.ess-price-grid');
+    if(latest)grid.innerHTML=latest.innerHTML;
+    else redraw();
+   }else redraw();
+  }
+ }if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
  function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';}
  return {state:s,subscriptions,qualifiedCoverage,laborBudgets,platformUsers,platformAdmins,platformPriceProposals,directory,invitationEmail,notificationPreferences,supervision,breakPolicies,offlineReview,missingDays,archives,finance,promotions,audit,support,platformTests,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
 }
