@@ -46,9 +46,9 @@ test('Unavailable public catalog is explicit and never exposes technical API err
 });
 
 test('Bento CSS and PWA references are versioned and responsive',()=>{
- assert.match(html,/public-bento\.css\?v=bento-05-1/);
+ assert.match(html,/public-bento\.css\?v=bento-05-2/);
  assert.match(html,/app\.js\?v=essential-52-bento/);
- assert.match(sw,/public-bento\.css\?v=bento-05-1/);
+ assert.match(sw,/public-bento\.css\?v=bento-05-2/);
  assert.match(sw,/app\.js\?v=essential-52-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
@@ -72,5 +72,5 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v47-bento/);
+ assert.match(sw,/punch-360-essential-v48-bento/);
 });

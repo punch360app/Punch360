@@ -23,6 +23,48 @@ const fakePlans=[
 const cad=cents=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(cents/100);
 const escape=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
+test('Pricing outage retry reads only public plans and replaces the error with real cards',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ let calls=0,draws=0;const notifications=[];
+ const db={from(name){
+  assert.equal(name,'essential_plans');
+  return {select(columns){
+   assert.equal(columns,'*');
+   return {order(column){
+    assert.equal(column,'sort_order');calls++;
+    return Promise.resolve(calls===1
+     ?{data:null,error:{message:'synthetic offline failure'}}
+     :{data:fakePlans,error:null});
+   }};
+  }};
+ }};
+ try{
+  let ui;
+  ui=createEssentialController({sb:db,escape,document:window.document,
+   redraw:()=>{draws++;window.document.body.innerHTML=ui.renderPricing()},
+   notify:msg=>notifications.push(msg)});
+  ui.state.error='Failed to fetch';
+  window.document.body.innerHTML=ui.renderPricing();
+  assert.equal(window.document.querySelectorAll('.ess-price').length,0);
+  assert.match(window.document.querySelector('.ess-pricing-status').textContent,/Tarifs temporairement indisponibles/);
+  assert.doesNotMatch(window.document.body.textContent,/TypeError|Failed to fetch/);
+  let retry=window.document.querySelector('button[data-action="ess:retry-public"]');
+  assert.equal(retry?.getAttribute('aria-label'),'Réessayer le chargement des forfaits');
+  await ui.handle(retry);
+  assert.equal(calls,1);
+  assert.ok(window.document.querySelector('button[data-action="ess:retry-public"]'));
+  assert.doesNotMatch(window.document.body.textContent,/synthetic offline failure/);
+  retry=window.document.querySelector('button[data-action="ess:retry-public"]');
+  await ui.handle(retry);
+  assert.equal(calls,2);
+  assert.equal(window.document.querySelectorAll('.ess-price').length,3);
+  assert.equal(window.document.querySelector('button[data-action="ess:retry-public"]'),null);
+  assert.equal(window.document.querySelector('.ess-pricing-status'),null);
+  assert.ok(draws>=4);
+  assert.deepEqual(notifications,[]);
+ }finally{await window.happyDOM.close()}
+});
+
 test('Real public pricing renderer uses only three visible synthetic test plans and existing actions',async()=>{
  const window=new Window({url:'https://fixture.invalid/?edition=essential'});
  const notifications=[];

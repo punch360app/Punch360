@@ -63,6 +63,12 @@ async function measure(page){
     const pricingStatus=page.locator('.punch-public-bento .ess-pricing-status');
     await pricingStatus.waitFor({state:'visible',timeout:15000});
     assert.match(await pricingStatus.textContent(),/Tarifs temporairement indisponibles/);
+    const retry=page.locator('.punch-public-bento button[data-action="ess:retry-public"]');
+    await retry.waitFor({state:'visible',timeout:10000});
+    const retryRect=await retry.boundingBox();
+    assert.ok(retryRect&&retryRect.width>=44&&retryRect.height>=44,'Retry must be a touch target');
+    await retry.click();
+    await page.waitForFunction(()=>document.querySelector('.punch-public-bento .ess-pricing-status')?.textContent.includes('Tarifs temporairement indisponibles'),null,{timeout:15000});
     assert.equal(await page.locator('.punch-public-bento .ess-price').count(),0,
      'No invented prices should be rendered without the real catalog');
     assert.doesNotMatch(await page.locator('.punch-public-bento .ess-pricing').innerText(),
