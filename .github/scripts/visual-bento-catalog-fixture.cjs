@@ -66,14 +66,28 @@ async function assertCards(page,amounts,device,period){
   const main=document.querySelector('.punch-public-bento .onboard-main');
   const buttons=[...document.querySelectorAll('.punch-public-bento .ess-price button[data-action="ess:choose"]')];
   const onscreen=buttons.filter(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;});
+  const bounds=buttons.map(el=>{
+   const b=el.getBoundingClientRect(),card=el.closest('.ess-price')?.getBoundingClientRect();
+   return {buttonTop:Math.round(b.top),buttonBottom:Math.round(b.bottom),
+    cardTop:Math.round(card?.top??0),cardBottom:Math.round(card?.bottom??0)};
+  });
+  const header=document.querySelector('.punch-public-bento .onboard-header')?.getBoundingClientRect();
+  const intro=document.querySelector('.punch-public-bento .welcome-intro')?.getBoundingClientRect();
+  const pricing=document.querySelector('.punch-public-bento .ess-pricing')?.getBoundingClientRect();
   return {viewportHeight:innerHeight,fullyVisiblePlanActions:onscreen.length,
-   planActions:buttons.length,mainCanScroll:Boolean(main&&main.scrollHeight>main.clientHeight+2)};
+   planActions:buttons.length,mainCanScroll:Boolean(main&&main.scrollHeight>main.clientHeight+2),
+   bounds,headerBottom:Math.round(header?.bottom??0),
+   introBottom:Math.round(intro?.bottom??0),pricingTop:Math.round(pricing?.top??0)};
  });
- if(device==='Small320'||device==='Mobile390')
+ if(device==='Small320'||device==='Mobile390'){
+  console.log('BENTO VIEWPORT METRICS '+device+' '+period+': '+JSON.stringify(initialViewport));
+  if(initialViewport.fullyVisiblePlanActions<3)
+   await page.screenshot({path:path.join(output,'FIXTURE-ONLY-bento05-'+device+'-'+period+'-diagnostic.png'),
+    animations:'disabled',fullPage:true});
   assert.equal(initialViewport.fullyVisiblePlanActions,3,
    'All three primary plan actions must be visible on the initial '+device+' screen: '+
     JSON.stringify(initialViewport));
- else if(initialViewport.fullyVisiblePlanActions<3)
+ }else if(initialViewport.fullyVisiblePlanActions<3)
   console.warn('BENTO VIEWPORT AUDIT '+device+' '+period+': only '+
    initialViewport.fullyVisiblePlanActions+'/3 plan actions initially visible; vertical scrolling required.');
  return {headings,amounts,dimensions,initialViewport};
