@@ -104,6 +104,7 @@ function draw(view){
  }
  root.append(panel);
  root.classList.toggle('punch-annotate-active',annotationMode!=='off');
+ root.classList.toggle('punch-client-essential',view.screen==='client'&&view.controller.state.edition==='essential');
  ensureAnnotationLayer(view);
  drawSpatialLayers();
  schedulePins();
