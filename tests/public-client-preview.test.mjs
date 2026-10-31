@@ -16,7 +16,9 @@ function click(controller,action,id){
  return controller.handle({dataset:{action,id}});
 }
 
-test('production and Atelier review use the same public welcome and card functions',()=>{
+test('production and Atelier review use the same public welcome and card functions',async()=>{
+ const win=new Window({url:'https://example.test/review'});
+ try{
  assert.match(app,/import \{renderPublicWelcomeIntro,renderPublicPlanCards\} from '\.\/public-client-components\.js'/);
  assert.match(app,/function welcomeIntro\(\)\{return renderPublicWelcomeIntro\(state\.creationEdition\)\}/);
  assert.match(app,/function planCards\(\)\{return renderPublicPlanCards\(state\.creationEdition\)\}/);
@@ -29,10 +31,11 @@ test('production and Atelier review use the same public welcome and card functio
   assert.match(cards,/PUNCH Construction/);
   assert.equal((cards.match(/class="plan-card/g)||[]).length,2);
   assert.equal((cards.match(/data-action="chooseEdition"/g)||[]).length,2);
-  const chosen=new Window().document.createElement('div');
+  const chosen=win.document.createElement('div');
   chosen.innerHTML=cards;
   assert.equal(chosen.querySelector('.plan-card.chosen')?.dataset.id,edition);
  }
+ }finally{await win.happyDOM.close();}
 });
 
 test('review screens include the public client without querying production auth or prices',()=>{
