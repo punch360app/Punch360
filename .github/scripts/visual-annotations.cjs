@@ -38,7 +38,7 @@ const results=[];
      // The responsive shell is maintained by Atelier, not copied into Punch.
      // A short second attempt accommodates transient host/network failures,
      // but never considers a missing real Punch mount a passing visual test.
-     console.warn('Atelier mount not yet available; reloading once',device,firstError.message.split('\\n')[0]);
+     console.warn('Atelier mount not yet available; reloading once',device,firstError.message.split(String.fromCharCode(10))[0]);
      await page.reload({waitUntil:'domcontentloaded'});
      try{
       await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:15000});
@@ -48,7 +48,7 @@ const results=[];
        responsiveNetwork:responsiveNetwork.slice(-8),blocked:blocked.slice(-8),
        scriptTags:await page.locator('script').count()};
       fs.writeFileSync(path.join(output,'atelier-mount-diagnostic-'+device+'.json'),
-       JSON.stringify(diagnostic,null,2)+'\\n');
+       JSON.stringify(diagnostic,null,2)+String.fromCharCode(10));
       throw Error('Atelier shared responsive mount unavailable after reload: '+JSON.stringify(diagnostic));
      }
     }
