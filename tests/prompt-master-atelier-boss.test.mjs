@@ -32,6 +32,17 @@ test('BOSS method selects relevant experts without pretending to launch autonomo
  assert.match(coordination,/fusionné, déployé/);
 });
 
+test('MEDIUM is the automatic BOSS level unless Fred explicitly chooses SOFT or GOD MODE',()=>{
+ assert.match(coordination,/Niveau automatique MEDIUM quand aucun niveau n'est précisé/);
+ assert.match(coordination,/mode MEDIUM par défaut, sans reposer la question du niveau/);
+ assert.match(coordination,/SOFT\*\* ou \*\*GOD MODE\*\* l'emporte toujours/);
+ assert.match(coordination,/conserver son niveau déjà fixé/);
+ assert.match(coordination,/ne mobilise jamais 20 experts automatiquement/);
+ assert.match(start,/MEDIUM automatiquement, sans question supplémentaire/);
+ assert.match(start,/demande explicite SOFT ou GOD MODE/);
+ assert.doesNotMatch(coordination,/Pour une nouvelle mission sans niveau fixé, demander un seul choix/);
+});
+
 test('Existing audit, product priorities, and security rules remain required',()=>{
  assert.match(master,/PUNCH-AUDIT-GLOBAL-20261028/);
  assert.match(master,/QR employé vers caméra tablette/);
