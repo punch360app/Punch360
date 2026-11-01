@@ -1,10 +1,11 @@
 
-import {mountResponsiveWorkspace} from 'https://atelier-projets-jf.juliensav.chatgpt.site/responsive/v1/entry.mjs';
+const ATELIER_RESPONSIVE_URL='https://atelier-projets-jf.juliensav.chatgpt.site/responsive/v1/entry.mjs';
 import {createSupportController} from './support.js';
 import {createPlatformDirectoryController} from './platform-directory.js';
 import {createPlatformAuditController} from './platform-audit.js';
 import {createPunchReviewBackend,REVIEW_COMPANY_ID} from './punch-review-data.js';
 import {ANNOTATION_SPACE,pointInScreen,rectangleInScreen,isGeometry,sourceDimensions} from './annotation-geometry.js';
+import {showAtelierBootFailure,loadAtelierResponsiveModule} from './annotation-boot.js';
 
 // Project-specific ID; unrelated to other apps and stable between revisions.
 const PROJECT_ID='punch360-12fb1917-94ea-481d-b131-16c58a5bf010';
@@ -497,7 +498,13 @@ function bind(){
  setInterval(()=>{if(document.visibilityState==='visible')void githubStatus()},180000);
 }
 bind();renderNotes();void githubStatus();
+// A static cross-origin import would prevent *all* Punch review controls from
+// initializing when Atelier is temporarily unreachable. Import on demand and
+// keep the real shared renderer mandatory for a successful preview.
 try{
+ const {mountResponsiveWorkspace}=await loadAtelierResponsiveModule(async()=>await import(ATELIER_RESPONSIVE_URL));
+ if(typeof mountResponsiveWorkspace!=='function')
+  throw Error('Atelier shared responsive contract unavailable');
  const result=await mountResponsiveWorkspace({
   projectId:PROJECT_ID,
   title:'PUNCH 360° — revue responsive',
@@ -507,6 +514,6 @@ try{
  $('punch-preview-boot')?.remove();
  if(!result)console.info('Atelier responsive workspace mounted (no disposable handle).');
 }catch(err){
- $('punch-preview-boot').textContent='Impossible de charger l’aperçu partagé Atelier. Réessaie ou consulte les tests GitHub.';
- console.error('Atelier responsive module failed',err);
+ showAtelierBootFailure($('punch-preview-boot'),()=>window.location.reload());
+ console.error('Atelier responsive module unavailable; no Punch preview mounted',err);
 }

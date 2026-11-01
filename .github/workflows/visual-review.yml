@@ -113,6 +113,9 @@ jobs:
       - name: Audit Support PUNCH list, thread and authorization failure on four viewports
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-support.cjs
+      - name: Verify annotation recovery when the remote Atelier module is unavailable
+        if: steps.visual-scope.outputs.mode == 'full'
+        run: node .github/scripts/visual-atelier-offline.cjs
       - name: Exercise the local visual annotation dashboard on four viewports
         if: steps.visual-scope.outputs.mode == 'full'
         run: node .github/scripts/visual-annotations.cjs
