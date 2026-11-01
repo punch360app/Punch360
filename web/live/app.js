@@ -29,7 +29,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -388,8 +388,58 @@ async function sendMessage(){
   await loadChat(chatId);state.sendingMessage=false;draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
  }catch(err){error(err)}finally{state.sendingMessage=false}
 }
-async function createGroup(){if(isEssential()&&!essentialMessagesAllowed())return;const title=$val('groupTitle');if(!title)return toast('Nom de groupe requis');const ids=[...document.querySelectorAll('.member-check:checked')].map(el=>el.value);try{const r=await sb.rpc('create_company_group',{p_company:company(),p_title:title,p_member_ids:ids});if(r.error)throw r.error;await loadData();state.chatId=r.data;state.section='messages';state.sub='';state.messages=[];draw();toast('Groupe créé')}catch(err){error(err)}}
-async function privateChat(){if(isEssential()&&!essentialMessagesAllowed())return;const team=state.teamList.find(t=>t.lead_user_id===state.user.id);if(!team)return toast('Le boss doit affecter une équipe à ce chef.');try{const r=await sb.rpc('create_private_team_chat',{p_team:team.id});if(r.error)throw r.error;await loadData();state.chatId=r.data;state.messages=[];await loadChat(state.chatId);draw()}catch(err){error(err)}}
+// A single client request at a time avoids accidental duplicate groups on double-tap.
+// A late RPC must not redirect a user who switched company or left the page.
+function chatCreationStillCurrent(companyId,userId,section,sub,chatId){
+ return company()===companyId&&state.user?.id===userId&&state.section===section&&
+  state.sub===sub&&state.chatId===chatId;
+}
+async function createGroup(){
+ if(state.creatingConversation||(isEssential()&&!essentialMessagesAllowed()))return;
+ const title=$val('groupTitle');if(!title)return toast('Nom de groupe requis');
+ const companyId=company(),userId=state.user?.id,section=state.section,sub=state.sub,chatId=state.chatId;
+ if(!companyId||!userId||section!=='sub'||sub!=='group')return;
+ const ids=[...document.querySelectorAll('.member-check:checked')].map(el=>el.value);
+ const btn=document.querySelector('button[data-action="createGroup"]');
+ state.creatingConversation=true;
+ if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');}
+ try{
+  const r=await sb.rpc('create_company_group',{p_company:companyId,p_title:title,p_member_ids:ids});
+  if(r.error)throw r.error;
+  if(!chatCreationStillCurrent(companyId,userId,section,sub,chatId))return;
+  await loadData();
+  if(!chatCreationStillCurrent(companyId,userId,section,sub,chatId))return;
+  state.chatId=r.data;state.section='messages';state.sub='';state.messages=[];draw();toast('Groupe créé');
+ }catch(err){if(company()===companyId&&state.user?.id===userId)error(err)}
+ finally{
+  state.creatingConversation=false;
+  if(btn?.isConnected){btn.disabled=false;btn.removeAttribute('aria-busy');}
+ }
+}
+async function privateChat(){
+ if(state.creatingConversation||(isEssential()&&!essentialMessagesAllowed()))return;
+ const companyId=company(),userId=state.user?.id,section=state.section,sub=state.sub,chatId=state.chatId;
+ if(!companyId||!userId||section!=='messages'||chatId)return;
+ const team=state.teamList.find(t=>t.lead_user_id===userId);
+ if(!team)return toast('Le boss doit affecter une équipe à ce chef.');
+ const btn=document.querySelector('button[data-action="privateChat"]');
+ state.creatingConversation=true;
+ if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');}
+ try{
+  const r=await sb.rpc('create_private_team_chat',{p_team:team.id});
+  if(r.error)throw r.error;
+  if(!chatCreationStillCurrent(companyId,userId,section,sub,chatId))return;
+  await loadData();
+  if(!chatCreationStillCurrent(companyId,userId,section,sub,chatId))return;
+  state.chatId=r.data;state.messages=[];await loadChat(state.chatId);
+  if(company()!==companyId||state.user?.id!==userId||state.chatId!==r.data)return;
+  draw();
+ }catch(err){if(company()===companyId&&state.user?.id===userId)error(err)}
+ finally{
+  state.creatingConversation=false;
+  if(btn?.isConnected){btn.disabled=false;btn.removeAttribute('aria-busy');}
+ }
+}
 // Auth Google et Apple via la page Supabase; jamais de secret OAuth dans ce site public.
 async function loadProviders(){
  try{
