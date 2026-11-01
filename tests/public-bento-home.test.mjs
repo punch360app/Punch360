@@ -120,7 +120,7 @@ test('Essential signup restores a valid saved seat estimate without claiming pay
 // creation or signout, while a failed company RPC can be retried.
 test('Signup clears per-tab plan intent on company success and logout',()=>{
  assert.match(app,/function clearPublicPlanSelection\(\)/);
- assert.match(app,/forgetPublicPlanIntent\(sessionStorage\)/);
+ assert.match(read('public-plan-intent.js'),/const first=forgetPublicPlanIntent\(storage\)/);
  assert.match(app,/clearSavedPublicPlanSelection\(sessionStorage\)/);
  assert.match(app,/if\(r\.error\)throw r\.error;clearPublicPlanSelection\(\);await initialize\(\);toast\('Ton espace PUNCH est prêt'\)/);
  assert.match(app,/await sb\.auth\.signOut\(\);clearPublicPlanSelection\(\)/);

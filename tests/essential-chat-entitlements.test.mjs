@@ -26,5 +26,5 @@ test('All chat RPC creation paths retain their current definitions and receive a
  assert.match(acceptance,/Pro upgrade did not recover saved Plus message/);
  assert.match(acceptance,/Construction message blocked/);
  assert.match(acceptance,/Cross-company conversation visibility incorrect/);
- assert.match(acceptance,/^begin;[\s\S]*rollback;\s*$/);
+ assert.match(acceptance,/^(?:\s*--[^\n]*\n)*\s*begin;[\s\S]*rollback;\s*$/);
 });
