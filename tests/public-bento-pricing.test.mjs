@@ -142,6 +142,50 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
  }finally{await window.happyDOM.close();}
 });
 
+test('Invalid member draft survives period redraw and cannot select stale prices',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ let ui,draws=0;const chosen=[];
+ try{
+  ui=createEssentialController({sb:{},document:window.document,escape,
+   redraw:()=>{draws++;window.document.body.innerHTML=ui.renderPricing()},
+   notify:()=>{},onChoose:plan=>chosen.push(plan)});
+  ui.state.plans=fakePlans;
+  window.document.body.innerHTML=ui.renderPricing();
+  const input=window.document.getElementById('ess-seats');
+  input.value='';ui.input(input);
+  assert.equal(ui.state.seats,5,'Last valid calculation must not change');
+  const annual=window.document.querySelector('button[data-action="ess:yearly"]');
+  annual.focus();await ui.handle(annual);
+  let current=window.document.getElementById('ess-seats');
+  assert.equal(current.value,'','Period switch must preserve an empty draft');
+  assert.equal(current.getAttribute('aria-invalid'),'true');
+  assert.match(window.document.getElementById('ess-seats-status').textContent,/Indiquez un nombre entier/);
+  assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,3);
+  assert.equal(window.document.querySelector('button[data-action="ess:yearly"]').getAttribute('aria-pressed'),'true');
+  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
+  assert.deepEqual(chosen,[],'Forged choose must not accept the stale price');
+  assert.equal(ui.state.checkout??null,null);
+  current=window.document.getElementById('ess-seats');
+  assert.equal(current.value,'');
+  current.value='100001';ui.input(current);
+  const monthly=window.document.querySelector('button[data-action="ess:monthly"]');
+  await ui.handle(monthly);
+  current=window.document.getElementById('ess-seats');
+  assert.equal(current.value,'100001');
+  assert.equal(current.getAttribute('aria-invalid'),'true');
+  assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,3);
+  current.value='7';ui.input(current);
+  assert.equal(ui.state.seats,7);
+  assert.equal(current.getAttribute('aria-invalid'),'false');
+  assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,0);
+  assert.match(window.document.getElementById('ess-seats-status').textContent,/7 membres/);
+  assert.ok(window.document.querySelectorAll('.ess-price')[0].textContent.includes(cad(2050)));
+  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
+  assert.deepEqual(chosen.map(plan=>plan.id),['fixture_only_b']);
+  assert.ok(draws>=3);
+ }finally{await window.happyDOM.close();}
+});
+
 test('Forged hidden, inactive, and missing public plan IDs cannot open signup',async()=>{
  const window=new Window({url:'https://fixture.invalid/?edition=essential'});
  const chosen=[],notifications=[];let redraws=0;
