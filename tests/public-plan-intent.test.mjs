@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {beginPublicEssentialSignup,rememberPublicPlanIntent,readPublicPlanIntent,readPublicPlanEstimate,forgetPublicPlanIntent,renderPublicPlanReminder} from '../web/live/public-plan-intent.js';
+import {beginPublicEssentialSignup,rememberPublicPlanIntent,readPublicPlanIntent,readPublicPlanEstimate,forgetPublicPlanIntent,clearSavedPublicPlanSelection,renderPublicPlanReminder} from '../web/live/public-plan-intent.js';
 
 const store=()=>{
  const data=new Map();
@@ -117,4 +117,21 @@ test('Blocked tab or edition storage cannot prevent a valid public signup',()=>{
  assert.deepEqual(readPublicPlanIntent(tab),draft);
  assert.equal(beginPublicEssentialSignup(tab,prefs,{...draft,seats:0}),false);
  assert.equal(beginPublicEssentialSignup(tab,prefs,{...draft,planId:'<invalid>'}),false);
+});
+
+// Cleanup is a best-effort UX operation, not a step that may invalidate a
+// completed server-side signup or leave the fallback key behind.
+test('Selected plan cleanup clears both keys and tolerates blocked storage',()=>{
+ const s=store();
+ beginPublicEssentialSignup(s,store(),{planId:'fixture_basic',seats:9,cadence:'monthly'});
+ assert.equal(clearSavedPublicPlanSelection(s),true);
+ assert.equal(readPublicPlanIntent(s),null);
+ assert.equal(s.getItem('punch-selected-plan'),null);
+ const firstBlocked={removeItem(key){if(key==='punch-public-plan-intent-v1')throw Error('blocked');}};
+ assert.equal(clearSavedPublicPlanSelection(firstBlocked),false,'A blocked key does not prevent trying the other');
+ let removed=0;
+ const secondBlocked={removeItem(key){if(key==='punch-selected-plan')throw Error('blocked');removed++;}};
+ assert.equal(clearSavedPublicPlanSelection(secondBlocked),false);
+ assert.equal(removed,1,'Attempts to clear the primary key before the fallback key');
+ assert.equal(clearSavedPublicPlanSelection(null),false);
 });

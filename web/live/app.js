@@ -1,7 +1,7 @@
 import {createEssentialController} from './essential.js';
 import {validatePublicSignupPassword} from './public-signup-validation.js';
-import {resolvePublicEdition} from './public-edition.js';
-import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,forgetPublicPlanIntent} from './public-plan-intent.js';
+import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
+import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -382,8 +382,7 @@ async function savePassword(){if(state.authBusy)return;const password=$('newPass
 function clearPublicPlanSelection(){
  // A completed signup or logout must not expose a previous visitor's choice
  // on a shared tablet; failed company creation keeps it for a retry.
- forgetPublicPlanIntent(sessionStorage);
- sessionStorage.removeItem('punch-selected-plan');
+ clearSavedPublicPlanSelection(sessionStorage);
 }
 async function createCompany(){if(state.authBusy)return;const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);state.authBusy=true;draw();try{const r=await sb.rpc('create_company_for_edition',{p_name:n,p_edition:state.creationEdition});if(r.error)throw r.error;clearPublicPlanSelection();await initialize();toast('Ton espace PUNCH est prêt')}catch(err){authFailure(err)}finally{state.authBusy=false;draw()}}
 
@@ -489,7 +488,7 @@ else if(a==='logout')await logOut();
  else if(a==='selectCompany')await switchCompany(id);
 else if(a==='resetPassword')await resetPassword();
 else if(a==='createCompany')await createCompany();
-else if(a==='chooseEdition'){state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection();localStorage.setItem('punch-creation-edition',id);const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
+else if(a==='chooseEdition'){if(!isPublicEdition(id))return;state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection();try{localStorage.setItem('punch-creation-edition',id)}catch{}const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
 else if(a==='pausePaid')await doPause(true);
 else if(a==='pause')await doPause();
 else if(a==='reviewBreak')await reviewBreak(id,el.dataset.worker);

@@ -1,4 +1,4 @@
-import {resolvePublicEdition} from '../web/live/public-edition.js';
+import {resolvePublicEdition,isPublicEdition} from '../web/live/public-edition.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -66,9 +66,9 @@ test('320px viewport recovers 9px with no text or CTA shrinkage',()=>{
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-6/);
- assert.match(html,/app\.js\?v=essential-58-bento/);
+ assert.match(html,/app\.js\?v=essential-59-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-6/);
- assert.match(sw,/app\.js\?v=essential-58-bento/);
+ assert.match(sw,/app\.js\?v=essential-59-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -89,15 +89,19 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=construction','essential'),'construction');
  assert.equal(resolvePublicEdition('?edition=invalid','construction'),'construction');
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
+ assert.equal(isPublicEdition('essential'),true);
+ assert.equal(isPublicEdition('construction'),true);
+ for(const invalid of ['',undefined,null,'invalid','__proto__'])assert.equal(isPublicEdition(invalid),false);
+ assert.match(app,/if\(!isPublicEdition\(id\)\)return/);
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v65-bento/);
+ assert.match(sw,/punch-360-essential-v66-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{
  assert.match(app,/beginPublicEssentialSignup\(sessionStorage,localStorage/);
  assert.match(app,/renderPublicPlanReminder\(sessionStorage/);
- assert.match(app,/forgetPublicPlanIntent\(sessionStorage/);
+ assert.match(app,/clearSavedPublicPlanSelection\(sessionStorage/);
  assert.match(app,/Modifier mon forfait/);
  assert.match(app,/Modifier mon choix/);
  assert.match(sw,/\.\/public-plan-intent\.js/);
@@ -117,7 +121,7 @@ test('Essential signup restores a valid saved seat estimate without claiming pay
 test('Signup clears per-tab plan intent on company success and logout',()=>{
  assert.match(app,/function clearPublicPlanSelection\(\)/);
  assert.match(app,/forgetPublicPlanIntent\(sessionStorage\)/);
- assert.match(app,/sessionStorage\.removeItem\('punch-selected-plan'\)/);
+ assert.match(app,/clearSavedPublicPlanSelection\(sessionStorage\)/);
  assert.match(app,/if\(r\.error\)throw r\.error;clearPublicPlanSelection\(\);await initialize\(\);toast\('Ton espace PUNCH est prêt'\)/);
  assert.match(app,/await sb\.auth\.signOut\(\);clearPublicPlanSelection\(\)/);
  assert.match(essential,/s\.seats=5;s\.seatDraft=null;s\.cadence='monthly';s\.checkout=null/);

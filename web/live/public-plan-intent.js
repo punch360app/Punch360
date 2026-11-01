@@ -46,6 +46,15 @@ export function forgetPublicPlanIntent(storage){
  try{storage.removeItem(KEY);return true}catch{return false}
 }
 
+// A failed storage removal must never turn a successful company creation into
+// an apparent failure or prevent clearing remaining keys on shared devices.
+export function clearSavedPublicPlanSelection(storage){
+ const first=forgetPublicPlanIntent(storage);
+ let second=true;
+ try{storage.removeItem('punch-selected-plan')}catch{second=false}
+ return first&&second;
+}
+
 export function renderPublicPlanReminder(storage,plans,escape){
  const intent=readPublicPlanIntent(storage);
  if(!intent)return '';
