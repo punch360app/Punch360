@@ -207,6 +207,7 @@ test('Real public pricing renderer uses only three visible synthetic test plans 
    assert.match(card.textContent,/Pointage et heures/);
    assert.match(card.textContent,/Compte personnel facultatif/);
    assert.doesNotMatch(card.textContent,/Invitations SMS|20 designs prévus/);
+   assert.equal(card.querySelectorAll('li').length,2,'Only the two supported common features appear on public cards');
   }
   assert.equal(window.document.querySelector('.ess-pricing-status'),null);
   assert.ok(window.document.querySelector('.ess-market-details summary'));
