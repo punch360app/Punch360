@@ -28,10 +28,25 @@ function parseQueue(raw,time) {
  if(keys!=='createdAt,day,id,queuedAt')throw Error('Format de demande en attente non autorisé.');
  return x;
 }
+// Serialize same-tab reservations; preserve the 25-entry cap under concurrent taps.
+const enqueueTails=new WeakMap();
+async function serializedEnqueue(storage,action){
+ const previous=enqueueTails.get(storage)||Promise.resolve();
+ let release;
+ const completed=new Promise(resolve=>{release=resolve;});
+ enqueueTails.set(storage,completed);
+ await previous;
+ try{return await action();}
+ finally{
+  if(enqueueTails.get(storage)===completed)enqueueTails.delete(storage);
+  release();
+ }
+}
 export async function queueOfflineMissionCompletion({storage,identity,day,uuid,now=Date.now}) {
  if(!DAY.test(String(day||'')))throw Error('Journée de mission invalide.');
  if(!storage||typeof storage.getItem!=='function'||typeof storage.setItem!=='function')
   throw Error('Stockage local indisponible.');
+ return serializedEnqueue(storage,async()=>{
  // Count only queued actions; ordinary completed online idempotency UUIDs are not queued.
  const queuedEntries=await listOfflineMissionCompletions({storage,identity,now});
  if(queuedEntries.length>=LIMIT&&!queuedEntries.some(x=>x.mission===identity.mission&&x.version===identity.version))
@@ -52,6 +67,7 @@ export async function queueOfflineMissionCompletion({storage,identity,day,uuid,n
  if(!checked||parseQueue(checked,time).id!==req.id)
   throw Error('File locale non confirmée; aucune fin enregistrée.');
  return {...req,day,queued:true};
+ });
 }
 export async function listOfflineMissionCompletions({storage,identity,now=Date.now}) {
  if(!storage||typeof storage.getAllKeys!=='function'||typeof storage.getItem!=='function')
@@ -69,7 +85,14 @@ export async function listOfflineMissionCompletions({storage,identity,now=Date.n
   const raw=await storage.getItem(key);
   if(raw==null)continue;
   let entry;try{entry=JSON.parse(raw)}catch{throw Error('File de mission locale illisible.');}
-  if(entry?.queuedAt===undefined)continue; // ordinary online idempotency records
+  if(entry?.queuedAt===undefined){
+   // Online reservations have exactly two fields. Missing queuedAt on a
+   // damaged offline request is an error, never an absent pending action.
+   const keys=entry&&typeof entry==='object'&&!Array.isArray(entry)?Object.keys(entry).sort().join(','):'';
+   if(keys!=='createdAt,id'||!UUID.test(String(entry.id||''))||!Number.isSafeInteger(entry.createdAt))
+    throw Error('Enregistrement local de mission incomplet : vérification manuelle nécessaire.');
+   continue;
+  }
   const q=parseQueue(raw,now());
   results.push({key,id:q.id,day:q.day,mission:rest[0],version:Number(rest[1]),queuedAt:q.queuedAt});
   if(results.length>LIMIT)throw Error('File de missions trop volumineuse : assistance requise.');
@@ -125,4 +148,36 @@ export async function syncOfflineMissionCompletions({storage,identity,verifyUser
  const pending=await listOfflineMissionCompletions({storage,identity,now});
  return {sent,pending:pending.length,conflicts,networkError};
  }finally{activeSynchronizations.delete(storage);}
+}
+
+/** Move only validated queued requests from a tab to durable browser storage.
+ * Never replace a different UUID or discard the legacy copy before readback.
+ */
+export async function migrateSessionOfflineMissionCompletions({storage,legacyStorage,identity,now=Date.now}){
+ if(!legacyStorage||legacyStorage===storage)return {migrated:0};
+ if(!storage||typeof storage.getItem!=='function'||typeof storage.setItem!=='function'||
+    typeof legacyStorage.removeItem!=='function')
+  throw Error('Migration de la file locale indisponible.');
+ const pending=await listOfflineMissionCompletions({storage:legacyStorage,identity,now});
+ let migrated=0;
+ for(const entry of pending){
+  const raw=await legacyStorage.getItem(entry.key);
+  if(raw===null||raw===undefined)continue;
+  const record=parseQueue(raw,now());
+  if(record.id!==entry.id||record.day!==entry.day||record.queuedAt!==entry.queuedAt)
+   throw Error('Demande locale modifiée pendant le transfert : vérification nécessaire.');
+  const saved=await storage.getItem(entry.key);
+  if(saved!==null&&saved!==undefined&&saved!==raw)
+   throw Error('Deux demandes différentes pour une mission : conservation et vérification manuelle.');
+  if(saved===null||saved===undefined){
+   await storage.setItem(entry.key,raw);
+   if(await storage.getItem(entry.key)!==raw)
+    throw Error('Transfert non confirmé : ancienne demande conservée.');
+  }
+  if(await legacyStorage.getItem(entry.key)!==raw)
+   throw Error('Demande locale modifiée : ancienne copie conservée.');
+  await legacyStorage.removeItem(entry.key);
+  migrated++;
+ }
+ return {migrated};
 }

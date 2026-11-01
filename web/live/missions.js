@@ -8,7 +8,7 @@ import {MISSION_ISSUE_REASONS,missionIssueArgs,missionIssueLabel} from './missio
 import {ISSUE_DECISIONS,missionIssueDecisionArgs,issueDecisionLabel,resolvedMissionNotice} from './mission-issue-decision.js';
 import {missionPostponeArgs} from './mission-postpone.js';
 import {missionChecklistItems,missionChecklistConfirmed} from './mission-checklist.js';
-import {missionOfflineEligible,queueOfflineMissionCompletion,listOfflineMissionCompletions,syncOfflineMissionCompletions} from './mission-offline-queue.js';
+import {missionOfflineEligible,queueOfflineMissionCompletion,listOfflineMissionCompletions,syncOfflineMissionCompletions,migrateSessionOfflineMissionCompletions} from './mission-offline-queue.js';
 import {missionCancelArgs} from './mission-cancel.js';
 import {missionReassignArgs} from './mission-reassign.js';
 import {missionRescheduleArgs} from './mission-reschedule.js';
@@ -618,15 +618,25 @@ export function createMissionManager({sb,document:doc,escape:e,redraw,notify}){
 export function createPersonalMissionController({sb,document:doc,escape:e,redraw,notify}){
  const s={company:null,user:null,worker:null,day:missionDate(),items:[],commentRequired:false,photoRequired:false,photoOptional:false,uploadedPhoto:null,checklistRequired:false,checklistItems:[],completionChecks:null,completionDraft:null,enabled:false,previouslyEnabled:false,loadedOnline:false,queued:[],queueMessage:'',error:'',truncated:false,busy:false,pending:new Map(),issue:null,details:null,upcoming:{open:false,day:nextMissionDay(),loadedDay:null,items:[],truncated:false,error:'',busy:false}};
  let generation=0,upcomingGeneration=0,detailsGeneration=0;
- const queueStorage={
-  getItem:key=>doc.defaultView.sessionStorage.getItem(key),
-  setItem:(key,value)=>doc.defaultView.sessionStorage.setItem(key,value),
-  removeItem:key=>doc.defaultView.sessionStorage.removeItem(key),
-  getAllKeys:()=>Array.from({length:doc.defaultView.sessionStorage.length},
-    (_,i)=>doc.defaultView.sessionStorage.key(i))
- };
+ // Persistent storage retains only opaque IDs, versions and dates across tab closure.
+ // Previous per-tab queued requests must be migrated before reading or sending.
+ const browserStorage=kind=>({
+  getItem:key=>doc.defaultView[kind].getItem(key),
+  setItem:(key,value)=>doc.defaultView[kind].setItem(key,value),
+  removeItem:key=>doc.defaultView[kind].removeItem(key),
+  getAllKeys:()=>Array.from({length:doc.defaultView[kind].length},
+    (_,i)=>doc.defaultView[kind].key(i))
+ });
+ const queueStorage=browserStorage('localStorage');
+ const legacyQueueStorage=browserStorage('sessionStorage');
  const queueIdentity=()=>({company:s.company,user:s.user,worker:s.worker});
- async function readQueue(identity=queueIdentity()){return listOfflineMissionCompletions({storage:queueStorage,identity});}
+ async function migrateQueue(identity=queueIdentity()){
+  await migrateSessionOfflineMissionCompletions({storage:queueStorage,legacyStorage:legacyQueueStorage,identity});
+ }
+ async function readQueue(identity=queueIdentity()){
+  await migrateQueue(identity);
+  return listOfflineMissionCompletions({storage:queueStorage,identity});
+ }
  async function load(company,user,worker,day=missionDate()){
   const same=s.company===company&&s.user===user&&s.worker===worker;
   const previous=missionWarningEligible(s.previouslyEnabled||s.enabled,same);
@@ -859,6 +869,8 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
   };
   s.busy=true;s.error='';
   try{
+   await migrateQueue({company,user,worker});
+   requireContext();
    const result=await syncOfflineMissionCompletions({
     storage:queueStorage,identity:{company,user,worker},
     verifyUser:async()=>{
@@ -928,6 +940,7 @@ export function createPersonalMissionController({sb,document:doc,escape:e,redraw
    if(!doc.defaultView.confirm('Mettre cette fin en attente hors ligne ? Elle ne sera officielle qu’après synchronisation et nouvelle vérification des droits.'))return false;
    s.busy=true;
    try{
+    await migrateQueue();
     await queueOfflineMissionCompletion({storage:queueStorage,
      identity:{...queueIdentity(),mission:id,version:x.version},day:s.day,
      uuid:()=>doc.defaultView.crypto.randomUUID()});
