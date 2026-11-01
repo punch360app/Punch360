@@ -142,3 +142,31 @@ test('simultaneous sync attempts cannot send the same pending event twice',async
  const result=await first;
  assert.equal(result.sent,1);assert.equal(spy.sends.length,1);assert.equal(result.pending,0);
 });
+
+
+test('two concurrent offline completions cannot overfill a 24/25 queue',async()=>{
+ const storage=store();
+ for(let i=0;i<24;i++)
+  await queueOfflineMissionCompletion(args(storage,{...A,mission:'m-'+i,version:1}));
+ const first=queueOfflineMissionCompletion(args(storage,{...A,mission:'m-24',version:1}));
+ const second=queueOfflineMissionCompletion(args(storage,{...A,mission:'m-25',version:1}));
+ const results=await Promise.allSettled([first,second]);
+ assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
+ assert.equal(results.filter(x=>x.status==='rejected').length,1);
+ assert.match(String(results.find(x=>x.status==='rejected').reason),/Limite de 25/);
+ const queued=await listOfflineMissionCompletions({storage,identity:A,now:()=>1000000});
+ assert.equal(queued.length,25,'the full queue remains readable and syncable');
+});
+
+test('damaged queued record without queuedAt cannot be mistaken for an online request',async()=>{
+ const storage=store();await queueOfflineMissionCompletion(args(storage));
+ const key=[...storage.m.keys()][0];
+ const stored=JSON.parse(storage.m.get(key));
+ delete stored.queuedAt;
+ storage.m.set(key,JSON.stringify(stored));
+ await assert.rejects(listOfflineMissionCompletions({storage,identity:A,now:()=>1000000}),/incomplet/);
+ const {spy,run}=sync(storage);
+ await assert.rejects(run(),/incomplet/);
+ assert.equal(spy.sends.length,0);
+ assert.equal(storage.m.has(key),true,'the suspect record is preserved for review');
+});
