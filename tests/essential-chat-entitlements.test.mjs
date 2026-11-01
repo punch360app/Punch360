@@ -8,7 +8,9 @@ const original=read('supabase/migrations/20261024035200_punch_360_team_chat_v1.s
 
 test('Essentiel chat entitlement gates existing shared RLS membership instead of introducing unrestricted policy',()=>{
  assert.match(sql,/private\.essential_feature\(c\.id,'messages'\)/);
- assert.match(sql,/c\.product_edition='construction'/);
+ assert.match(sql,/when 'construction' then true/);
+ assert.match(sql,/when 'essential' then private\.essential_feature\(c\.id,'messages'\)/);
+ assert.match(sql,/case c\.product_edition/);
  assert.match(sql,/create or replace function private\.is_chat_member/);
  assert.match(sql,/private\.company_chat_enabled\(cm\.company_id\)/);
  assert.doesNotMatch(sql,/create policy.*allow.*all/i);

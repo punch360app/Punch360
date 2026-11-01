@@ -1,12 +1,16 @@
 -- PUNCH Essentials: existing company chats are Plus / Pro only.
 -- Preserve the Construction experience and existing chat participation RLS.
+-- CASE prevents even evaluating the Essentiel-only entitlement RPC for Construction.
 -- No data deletion: downgrades hide threads, later restoration reuses them.
 create function private.company_chat_enabled(p_company uuid)
 returns boolean language sql stable security definer set search_path='' as $$
  select exists(
   select 1 from public.companies c where c.id=p_company
-   and (c.product_edition='construction'
-    or (c.product_edition='essential' and private.essential_feature(c.id,'messages')))
+   and case c.product_edition
+    when 'construction' then true
+    when 'essential' then private.essential_feature(c.id,'messages')
+    else false
+   end
  )
 $$;
 revoke all on function private.company_chat_enabled(uuid) from public,anon,authenticated;

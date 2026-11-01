@@ -56,3 +56,11 @@ test('Read receipts only follow visible chats and never replace an active messag
  assert.match(app,/chatUnread\.mark\(companyId,id,newest\)\.then\(\(\)=>\{if\(company\(\)===companyId&&currentCompanyChat\(id\)\)refreshChatUnreadBadges\(\)\}/);
  assert.doesNotMatch(app,/chatUnread\.mark\(companyId,id,newest\)\.then\(\(\)=>\{[^}]*draw\(\)/);
 });
+
+test('Construction does not evaluate Essentiel-only entitlement code',()=>{
+ const chat=readFileSync(new URL('../supabase/migrations/20261101190000_essential_chat_plan_gate.sql',import.meta.url),'utf8');
+ assert.match(chat,/case c\.product_edition[\s\S]*when 'construction' then true[\s\S]*when 'essential' then private\.essential_feature\(c\.id,'messages'\)/);
+ const readCursors=readFileSync(new URL('../supabase/migrations/20261101201000_chat_unread_receipts.sql',import.meta.url),'utf8');
+ assert.match(readCursors,/left join public\.chat_read_cursors read_cursor/);
+ assert.doesNotMatch(readCursors,/\bcursor\.last_read_at\b/);
+});

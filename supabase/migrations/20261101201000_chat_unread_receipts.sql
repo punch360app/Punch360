@@ -25,14 +25,14 @@ begin
  into summary
  from public.conversation_members cm
  join public.conversations c on c.id=cm.conversation_id and c.company_id=cm.company_id
- left join public.chat_read_cursors cursor on cursor.company_id=cm.company_id
-  and cursor.conversation_id=cm.conversation_id and cursor.user_id=cm.user_id
+ left join public.chat_read_cursors read_cursor on read_cursor.company_id=cm.company_id
+  and read_cursor.conversation_id=cm.conversation_id and read_cursor.user_id=cm.user_id
  cross join lateral (
   select count(*) as unread_count from public.conversation_messages m
   where m.company_id=cm.company_id and m.conversation_id=cm.conversation_id
    and m.sender_id<>auth.uid()
-   and (cursor.last_read_at is null or
-        (m.created_at,m.id)>(cursor.last_read_at,cursor.last_read_message_id))
+   and (read_cursor.last_read_at is null or
+        (m.created_at,m.id)>(read_cursor.last_read_at,read_cursor.last_read_message_id))
  ) msg
  where cm.company_id=p_company and cm.user_id=auth.uid()
   and private.is_chat_member(c.id);
