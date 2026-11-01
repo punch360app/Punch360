@@ -47,3 +47,12 @@ test('Client reads newest 150 and keeps cross-company unread badges behind verif
  assert.match(app,/chatUnread\.total\(\)/);
  assert.match(app,/chatUnread\.reset\(\)/);
 });
+
+test('Read receipts only follow visible chats and never replace an active message composer',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/if\(newest&&state\.section==='messages'&&document\.visibilityState==='visible'\)chatUnread\.mark/);
+ assert.match(app,/function refreshChatUnreadBadges\(\)/);
+ assert.match(app,/button\.querySelector\(selector\)/);
+ assert.match(app,/chatUnread\.mark\(companyId,id,newest\)\.then\(\(\)=>\{if\(company\(\)===companyId&&currentCompanyChat\(id\)\)refreshChatUnreadBadges\(\)\}/);
+ assert.doesNotMatch(app,/chatUnread\.mark\(companyId,id,newest\)\.then\(\(\)=>\{[^}]*draw\(\)/);
+});

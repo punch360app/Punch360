@@ -66,9 +66,9 @@ test('320px viewport recovers 9px with no text or CTA shrinkage',()=>{
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-7/);
- assert.match(html,/app\.js\?v=essential-65-bento/);
+ assert.match(html,/app\.js\?v=essential-66-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-7/);
- assert.match(sw,/app\.js\?v=essential-65-bento/);
+ assert.match(sw,/app\.js\?v=essential-66-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -95,7 +95,7 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.match(app,/if\(!isPublicEdition\(id\)\)return/);
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v72-bento/);
+ assert.match(sw,/punch-360-essential-v73-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{
