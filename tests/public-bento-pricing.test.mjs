@@ -201,6 +201,13 @@ test('Real public pricing renderer uses only three visible synthetic test plans 
   assert.deepEqual(cards.map(el=>el.querySelector('h3').textContent),
    ['FICTION A','FICTION B','FICTION C']);
   assert.equal(window.document.querySelectorAll('[data-action="ess:choose"]').length,3);
+  // Public cards promise only the common capabilities, not unfinished SMS
+  // delivery or design catalog assets. The details panel stays available.
+  for(const card of cards){
+   assert.match(card.textContent,/Pointage et heures/);
+   assert.match(card.textContent,/Compte personnel facultatif/);
+   assert.doesNotMatch(card.textContent,/Invitations SMS|20 designs prévus/);
+  }
   assert.equal(window.document.querySelector('.ess-pricing-status'),null);
   assert.ok(window.document.querySelector('.ess-market-details summary'));
   // 1250 base cents + 2 extra seats at 200 cents = 1650 cents, never a hardcoded public price.
