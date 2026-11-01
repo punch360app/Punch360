@@ -135,7 +135,7 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
   assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,0);
   assert.match(live.textContent,/5 membres/);
   assert.equal(window.document.getElementById('ess-seats'),original);
-  assert.equal(redraws,1,'Only one redraw comes from handled invalid checkout notification');
+  assert.equal(redraws,0,'Rejected checkout leaves the active seat input and caret intact');
  }finally{await window.happyDOM.close();}
 });
 
