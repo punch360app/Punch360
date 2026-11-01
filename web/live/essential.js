@@ -223,6 +223,9 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   finally{s.loading=false;redraw();}
   return true;
  }
+ // A rejected click while the seat field is being edited must not replace
+ // that input: replacing it loses the caret and discards the invalid state.
+ const preserveInvalidSeats=action==='choose'&&!!doc.getElementById('ess-seats')&&validSeatCount(doc.getElementById('ess-seats').value)===null;
  s.error='';try{
  if(action==='monthly'||action==='yearly')s.cadence=action;
  else if(action==='choose'){
@@ -317,7 +320,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   s.snapshot=snapshot;s.testAccounts=accounts;s.qr=null;s.mfaSecret=null;
   s.factor=null;s.mfaNotice='';s.mfaMode='unknown';s.mfaRequired=false;
  }
- }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();if(focusedCadenceAction)doc.querySelector('[data-action="ess:'+focusedCadenceAction+'"]')?.focus({preventScroll:true});}return true;
+ }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;if(!preserveInvalidSeats)redraw();if(focusedCadenceAction)doc.querySelector('[data-action="ess:'+focusedCadenceAction+'"]')?.focus({preventScroll:true});}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){
   const n=validSeatCount(el.value),valid=n!==null;
