@@ -385,7 +385,7 @@ async function sendMessage(){
   if(chatDrafts.get(key)?.trim()===body)chatDrafts.delete(key);
   if(company()!==companyId||state.chatId!==chatId||!currentCompanyChat(chatId))return;
   const input=$('chatMessage');if(input?.value.trim()===body)input.value='';
-  await loadChat(chatId);draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
+  await loadChat(chatId);state.sendingMessage=false;draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
  }catch(err){error(err)}finally{state.sendingMessage=false}
 }
 async function createGroup(){if(isEssential()&&!essentialMessagesAllowed())return;const title=$val('groupTitle');if(!title)return toast('Nom de groupe requis');const ids=[...document.querySelectorAll('.member-check:checked')].map(el=>el.value);try{const r=await sb.rpc('create_company_group',{p_company:company(),p_title:title,p_member_ids:ids});if(r.error)throw r.error;await loadData();state.chatId=r.data;state.section='messages';state.sub='';state.messages=[];draw();toast('Groupe créé')}catch(err){error(err)}}

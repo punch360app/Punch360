@@ -73,11 +73,17 @@ test('Chat typing is preserved per company and conversation through background r
  assert.match(app,/function restoreChatDraft\(\)/);
  assert.match(app,/function draw\(\)\{saveChatDraft\(\)/);
  assert.match(app,/restoreChatDraft\(\); if\(focusId/);
- assert.match(app,/else if\(a==='chat'\)\{[^}]*saveChatDraft\(\);state.chatId=id/);
+ assert.match(app,/saveChatDraft\(\);state.chatId=id;/);
  assert.match(app,/chatDrafts.clear\(\);state.chatLoadRevision\+\+/);
  assert.match(app,/if\(state.sendingMessage\|\|/);
  assert.match(app,/state.sendingMessage=true/);
  assert.match(app,/if\(chatDrafts.get\(key\)\?\.trim\(\)===body\)chatDrafts.delete\(key\)/);
  assert.match(app,/if\(state.section!=='messages'\|\|!state.chatId/);
  assert.match(app,/state.messages.at\(-1\)\?\.id!==previous\)draw\(\)/);
+});
+
+test('After successful send, send button returns to enabled state before redraw',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/await loadChat\(chatId\);state\.sendingMessage=false;draw\(\)/);
+ assert.match(app,/finally\{state\.sendingMessage=false\}/);
 });
