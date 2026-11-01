@@ -51,3 +51,17 @@ test('Existing audit, product priorities, and security rules remain required',()
  assert.match(start,/PUNCH TypeScript/);
  assert.match(start,/Punch 360 safe visual review/);
 });
+
+test('Official @Boss plugin route is explicit and audits do not freeze deliverables',()=>{
+ assert.match(coordination,/`@Boss`/);
+ assert.match(coordination,/skills:\/\/plugins\/boss\/boss\/skill\.md/);
+ assert.match(coordination,/list_applications/);
+ assert.match(coordination,/consult_boss/);
+ assert.match(coordination,/quatre travailleurs maximum/);
+ assert.match(start,/`@Boss`/);
+ assert.match(master,/PR #217 de Julien et la PR #261 empilée/);
+ assert.match(master,/fonctionnalités indépendantes continuent sans attendre/);
+ assert.match(master,/couverture transversale progressive/);
+ assert.doesNotMatch(master,/les autres fonctionnalités attendent la clôture vérifiée/);
+ assert.match(start,/AUDIT PUNCH-AUDIT-GLOBAL-20261028 EN CONTINU/);
+});
