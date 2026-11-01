@@ -38,3 +38,12 @@ test('SQL uses private rights, not writable client cursor tables',()=>{
  assert.match(sql,/revoke all on public\.chat_read_cursors from public,anon,authenticated/);
  assert.match(sql,/m\.sender_id<>auth\.uid\(\)/);
 });
+
+test('Client reads newest 150 and keeps cross-company unread badges behind verified company',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/\.order\('created_at',\{ascending:false\}\)\.limit\(150\)/);
+ assert.match(app,/const newest=r\.data\?\.\[0\]\?\.id;state\.messages=\(r\.data\|\|\[\]\)\.reverse\(\)/);
+ assert.match(app,/chatUnread\.count\(c\.id\)/);
+ assert.match(app,/chatUnread\.total\(\)/);
+ assert.match(app,/chatUnread\.reset\(\)/);
+});

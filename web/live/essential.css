@@ -183,3 +183,9 @@
 
 /* CORE-001: Plus / Pro show Messages as the fifth tab; Basic retains four. */
 .essential .nav.ess-five-tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
+
+/* Plus/Pro message counts: compact, readable, scoped to the active tenant. */
+.essential .nav button{position:relative}
+.essential .ess-unread-badge,.ess-chat-unread{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#2b6550;color:#fff;font:700 11px/1 system-ui,sans-serif;white-space:nowrap}
+.essential .ess-unread-badge{position:absolute;top:2px;right:4px}
+.ess-chat-unread{margin-left:auto}
