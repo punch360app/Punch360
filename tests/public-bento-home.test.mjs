@@ -65,9 +65,9 @@ test('320px viewport recovers 9px with no text or CTA shrinkage',()=>{
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-6/);
- assert.match(html,/app\.js\?v=essential-54-bento/);
+ assert.match(html,/app\.js\?v=essential-55-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-6/);
- assert.match(sw,/app\.js\?v=essential-54-bento/);
+ assert.match(sw,/app\.js\?v=essential-55-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -90,7 +90,7 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v61-bento/);
+ assert.match(sw,/punch-360-essential-v62-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{
@@ -108,4 +108,15 @@ test('Essential signup restores a valid saved seat estimate without claiming pay
  assert.match(app,/readPublicPlanEstimate\(sessionStorage\)/);
  assert.match(app,/Object\.assign\(essentialUI\.state,savedPublicEstimate\)/);
  assert.match(app,/state\.creationEdition==='essential'/);
+});
+
+// Stale public selections must be removed only after a successful company
+// creation or signout, while a failed company RPC can be retried.
+test('Signup clears per-tab plan intent on company success and logout',()=>{
+ assert.match(app,/function clearPublicPlanSelection\(\)/);
+ assert.match(app,/forgetPublicPlanIntent\(sessionStorage\)/);
+ assert.match(app,/sessionStorage\.removeItem\('punch-selected-plan'\)/);
+ assert.match(app,/if\(r\.error\)throw r\.error;clearPublicPlanSelection\(\);await initialize\(\);toast\('Ton espace PUNCH est prêt'\)/);
+ assert.match(app,/await sb\.auth\.signOut\(\);clearPublicPlanSelection\(\)/);
+ assert.match(essential,/s\.seats=5;s\.seatDraft=null;s\.cadence='monthly';s\.checkout=null/);
 });

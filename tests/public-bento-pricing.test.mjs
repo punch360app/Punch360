@@ -279,3 +279,20 @@ test('Real public pricing renderer uses only three visible synthetic test plans 
   await window.happyDOM.close();
  }
 });
+
+// Reset must leave no plan quote or draft from the previous account on a
+// shared device. Never mutate server catalog prices as part of logout.
+test('Essentiel controller reset clears previous visitor seat estimate and checkout',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ try{
+  const ui=createEssentialController({sb:{},document:window.document,escape,
+   redraw:()=>{},notify:()=>{}});
+  ui.state.seats=42;ui.state.seatDraft='';ui.state.cadence='yearly';
+  ui.state.checkout='PRÉFÉRENCE PRÉCÉDENTE';
+  ui.reset();
+  assert.equal(ui.state.seats,5);
+  assert.equal(ui.state.seatDraft,null);
+  assert.equal(ui.state.cadence,'monthly');
+  assert.equal(ui.state.checkout,null);
+ }finally{await window.happyDOM.close();}
+});

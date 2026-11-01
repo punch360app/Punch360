@@ -378,9 +378,15 @@ async function login(mode){if(state.authBusy)return;const email=$val('email').to
 async function resetPassword(){if(state.authBusy)return;const email=$val('email').toLowerCase();if(!email||!$('email')?.checkValidity())return authMessage('Entre ton adresse courriel pour recevoir le lien.',true);state.authBusy=true;try{const r=await sb.auth.resetPasswordForEmail(email,{redirectTo:OAUTH_REDIRECT});if(r.error)throw r.error;authMessage('Si ce compte existe, un lien de récupération sera envoyé. Vérifie aussi les indésirables.')}catch(err){authFailure(err)}finally{state.authBusy=false}}
 async function resendConfirmation(){if(state.authBusy)return;const email=$val('email').toLowerCase();if(!email||!$('email')?.checkValidity())return authMessage('Entre une adresse courriel valide.',true);state.authBusy=true;try{const r=await sb.auth.resend({type:'signup',email,options:{emailRedirectTo:OAUTH_REDIRECT}});if(r.error)throw r.error;authMessage('Lien de confirmation demandé. Vérifie ta boîte courriel et les indésirables.')}catch(err){authFailure(err)}finally{state.authBusy=false}}
 async function savePassword(){if(state.authBusy)return;const password=$('newPassword')?.value||'';if(password.length<8)return authMessage('Choisis un mot de passe d’au moins 8 caractères.',true);if(password!==$('confirmPassword')?.value)return authMessage('Les mots de passe ne correspondent pas.',true);state.authBusy=true;try{const r=await sb.auth.updateUser({password});if(r.error)throw r.error;state.recovery=false;authMessage('Mot de passe enregistré.');await initialize()}catch(err){authFailure(err)}finally{state.authBusy=false;draw()}}
-async function createCompany(){if(state.authBusy)return;const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);state.authBusy=true;draw();try{const r=await sb.rpc('create_company_for_edition',{p_name:n,p_edition:state.creationEdition});if(r.error)throw r.error;await initialize();toast('Ton espace PUNCH est prêt')}catch(err){authFailure(err)}finally{state.authBusy=false;draw()}}
+function clearPublicPlanSelection(){
+ // A completed signup or logout must not expose a previous visitor's choice
+ // on a shared tablet; failed company creation keeps it for a retry.
+ forgetPublicPlanIntent(sessionStorage);
+ sessionStorage.removeItem('punch-selected-plan');
+}
+async function createCompany(){if(state.authBusy)return;const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);state.authBusy=true;draw();try{const r=await sb.rpc('create_company_for_edition',{p_name:n,p_edition:state.creationEdition});if(r.error)throw r.error;clearPublicPlanSelection();await initialize();toast('Ton espace PUNCH est prêt')}catch(err){authFailure(err)}finally{state.authBusy=false;draw()}}
 
-async function logOut(){companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');await sb.auth.signOut();state.user=null;state.account=null;state.authMode='welcome';state.section='home';state.chatId=null;draw()}
+async function logOut(){companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');await sb.auth.signOut();clearPublicPlanSelection();state.user=null;state.account=null;state.authMode='welcome';state.section='home';state.chatId=null;draw()}
 function tick(){state.time=Date.now();const t=$('liveTimer'),cs=currentSession();if(t)t.textContent=isEssential()?elapsed(essentialToday()):elapsed(cs?state.time-Date.parse(cs.started_at):0);const w=$('weekTotal'),y=$('yearTotal');if(w||y){const tot=clockTotals();if(w)w.textContent=mins(tot.week);if(y)y.textContent=mins(tot.year)}if($('topclock'))$('topclock').textContent=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})}
 document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-action]');if(!el)return;const a=el.dataset.action,id=el.dataset.id;try{
 if(member()&&manager()&&managementIsRestricted()&&!(state.account.role==='boss'&&state.fieldMode)&&!canUseRestrictedManagement({role:state.account.role,action:a,id,section:state.section,sub:state.sub})){toast('Gestion suspendue : utilisez Abonnement, Support ou votre pointage.');return;}
@@ -482,7 +488,7 @@ else if(a==='logout')await logOut();
  else if(a==='selectCompany')await switchCompany(id);
 else if(a==='resetPassword')await resetPassword();
 else if(a==='createCompany')await createCompany();
-else if(a==='chooseEdition'){state.creationEdition=id;if(id!=='essential'){forgetPublicPlanIntent(sessionStorage);sessionStorage.removeItem('punch-selected-plan')}localStorage.setItem('punch-creation-edition',id);const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
+else if(a==='chooseEdition'){state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection()localStorage.setItem('punch-creation-edition',id);const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
 else if(a==='pausePaid')await doPause(true);
 else if(a==='pause')await doPause();
 else if(a==='reviewBreak')await reviewBreak(id,el.dataset.worker);
