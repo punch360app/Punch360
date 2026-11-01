@@ -126,3 +126,35 @@ export async function syncOfflineMissionCompletions({storage,identity,verifyUser
  return {sent,pending:pending.length,conflicts,networkError};
  }finally{activeSynchronizations.delete(storage);}
 }
+
+/** Move only validated queued requests from a tab to durable browser storage.
+ * Never replace a different UUID or discard the legacy copy before readback.
+ */
+export async function migrateSessionOfflineMissionCompletions({storage,legacyStorage,identity,now=Date.now}){
+ if(!legacyStorage||legacyStorage===storage)return {migrated:0};
+ if(!storage||typeof storage.getItem!=='function'||typeof storage.setItem!=='function'||
+    typeof legacyStorage.removeItem!=='function')
+  throw Error('Migration de la file locale indisponible.');
+ const pending=await listOfflineMissionCompletions({storage:legacyStorage,identity,now});
+ let migrated=0;
+ for(const entry of pending){
+  const raw=await legacyStorage.getItem(entry.key);
+  if(raw===null||raw===undefined)continue;
+  const record=parseQueue(raw,now());
+  if(record.id!==entry.id||record.day!==entry.day||record.queuedAt!==entry.queuedAt)
+   throw Error('Demande locale modifiée pendant le transfert : vérification nécessaire.');
+  const saved=await storage.getItem(entry.key);
+  if(saved!==null&&saved!==undefined&&saved!==raw)
+   throw Error('Deux demandes différentes pour une mission : conservation et vérification manuelle.');
+  if(saved===null||saved===undefined){
+   await storage.setItem(entry.key,raw);
+   if(await storage.getItem(entry.key)!==raw)
+    throw Error('Transfert non confirmé : ancienne demande conservée.');
+  }
+  if(await legacyStorage.getItem(entry.key)!==raw)
+   throw Error('Demande locale modifiée : ancienne copie conservée.');
+  await legacyStorage.removeItem(entry.key);
+  migrated++;
+ }
+ return {migrated};
+}
