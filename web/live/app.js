@@ -387,7 +387,14 @@ async function sendMessage(){
   if(chatDrafts.get(key)?.trim()===body)chatDrafts.delete(key);
   if(company()!==companyId||state.user?.id!==senderId||state.section!==section||state.chatId!==chatId||!currentCompanyChat(chatId))return;
   const input=$('chatMessage');if(input?.value.trim()===body)input.value='';
-  await loadChat(chatId);
+  try{await loadChat(chatId);}
+  catch(refreshErr){
+   // The insertion succeeded. A read-only refresh failure is NOT a failed send.
+   // Do not encourage users to retry a message already stored on the server.
+   if(company()===companyId&&state.user?.id===senderId&&state.section===section&&state.chatId===chatId&&currentCompanyChat(chatId))
+    toast('Message envoyé. Actualisation indisponible : rouvrez la conversation.');
+   return;
+  }
   // The awaited refresh can finish after navigating or changing company/session.
   if(company()!==companyId||state.user?.id!==senderId||state.section!==section||state.chatId!==chatId||!currentCompanyChat(chatId))return;
   state.sendingMessage=false;draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
