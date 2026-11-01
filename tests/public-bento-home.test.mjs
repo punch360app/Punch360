@@ -2,6 +2,7 @@ import {resolvePublicEdition} from '../web/live/public-edition.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
 
 const read = path => readFileSync(new URL('../web/live/'+path,import.meta.url),'utf8');
 const app=read('app.js'),essential=read('essential.js'),css=read('public-bento.css');
@@ -65,9 +66,9 @@ test('320px viewport recovers 9px with no text or CTA shrinkage',()=>{
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-6/);
- assert.match(html,/app\.js\?v=essential-55-bento/);
+ assert.match(html,/app\.js\?v=essential-56-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-6/);
- assert.match(sw,/app\.js\?v=essential-55-bento/);
+ assert.match(sw,/app\.js\?v=essential-56-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -90,7 +91,7 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v62-bento/);
+ assert.match(sw,/punch-360-essential-v63-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{
@@ -119,4 +120,14 @@ test('Signup clears per-tab plan intent on company success and logout',()=>{
  assert.match(app,/if\(r\.error\)throw r\.error;clearPublicPlanSelection\(\);await initialize\(\);toast\('Ton espace PUNCH est prêt'\)/);
  assert.match(app,/await sb\.auth\.signOut\(\);clearPublicPlanSelection\(\)/);
  assert.match(essential,/s\.seats=5;s\.seatDraft=null;s\.cadence='monthly';s\.checkout=null/);
+});
+
+// Browser smoke must not hang on a broken root module. Parse the actual
+// entrypoint with Node before any DOM-driven tests or screenshots run.
+test('Public application entrypoint parses as an ES module',()=>{
+ const checked=spawnSync(process.execPath,['--check','--input-type=module'],{
+  input:app,encoding:'utf8',timeout:15000
+ });
+ assert.equal(checked.error,undefined,checked.error?.message);
+ assert.equal(checked.status,0,checked.stderr||'app.js has an invalid module syntax');
 });

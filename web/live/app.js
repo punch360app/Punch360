@@ -488,7 +488,7 @@ else if(a==='logout')await logOut();
  else if(a==='selectCompany')await switchCompany(id);
 else if(a==='resetPassword')await resetPassword();
 else if(a==='createCompany')await createCompany();
-else if(a==='chooseEdition'){state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection()localStorage.setItem('punch-creation-edition',id);const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
+else if(a==='chooseEdition'){state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection();localStorage.setItem('punch-creation-edition',id);const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
 else if(a==='pausePaid')await doPause(true);
 else if(a==='pause')await doPause();
 else if(a==='reviewBreak')await reviewBreak(id,el.dataset.worker);
