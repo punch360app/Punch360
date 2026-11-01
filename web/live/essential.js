@@ -66,7 +66,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const get=id=>doc.getElementById(id), val=id=>get(id)?.value.trim()??'';
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
  async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
- async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
+ async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.snapshot=null;s.testAccounts=[];s.mfaRequired=true;s.saving=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
    if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(s.mfaRequired){
     const listed=await sb.auth.mfa.listFactors();if(listed.error)throw listed.error;if(!current())return;
@@ -205,6 +205,10 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   s.invitationLink=r.data.activationUrl;s.invitationStatus=({sent:'SMS accepté par le fournisseur · livraison en attente',delivered:'SMS livré',not_configured:'SMS non configuré. Vous pouvez partager le lien sécurisé.',not_authorized:'SMS non autorisé pour ce dossier. Vous pouvez partager le lien.',failed:'Échec d’envoi SMS. Le lien reste disponible.',unknown:'Résultat d’envoi inconnu. Aucun renvoi automatique.'})[r.data.smsStatus]||'Invitation créée';notify(s.invitationStatus);
  }
  async function handle(el){if(el?.dataset?.action?.startsWith('platform-admin:'))return platformAdmins.handle(el);if(await qualifiedCoverage.handle(el))return true;const action=el.dataset.action?.slice(4);if(!el.dataset.action?.startsWith('ess:'))return false;if(action.startsWith('plan-'))return planning.handle(el);
+ // Ignore old MFA responses after logout, reset or a verified account switch.
+ const mfaAction=['enroll','restart-mfa','verify'].includes(action);
+ const mfaRevision=identityRevision,mfaUser=s.platformUser;
+ const mfaCurrent=()=>mfaRevision===identityRevision&&s.platformUser===mfaUser;
  if(action.startsWith('test-')||action==='simulate-plan')return platformTests.handle(el);
  s.error='';try{
  if(action==='monthly'||action==='yearly')s.cadence=action;
@@ -237,7 +241,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   if(s.saving)return true;
   // listFactors().totp contains only verified factors; .all includes abandoned
   // unverified enrollments. Never discard a verified factor without AAL2 recovery.
-  const f=await sb.auth.mfa.listFactors();if(f.error)throw f.error;
+  const f=await sb.auth.mfa.listFactors();if(!mfaCurrent())return true;if(f.error)throw f.error;
   const factors=Array.isArray(f.data?.all)?f.data.all:Array.isArray(f.data?.totp)?f.data.totp:[];
   const existing=factors.find(x=>x.factor_type==='totp'&&x.status==='verified')||
    (f.data?.totp||[]).find(x=>x.status==='verified');
@@ -258,10 +262,12 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
    // Removing a verified factor here would bypass legitimate account recovery.
    for(const factor of abandoned){
     const removed=await sb.auth.mfa.unenroll({factorId:factor.id});
+    if(!mfaCurrent())return true;
     if(removed.error)throw removed.error;
    }
    s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';
    const created=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Console PUNCH'});
+   if(!mfaCurrent())return true;
    if(created.error)throw created.error;
    if(!created.data?.id||!created.data?.totp?.qr_code||!created.data?.totp?.secret)
     throw Error('Configuration incomplète. Réessayez pour générer un nouveau QR.');
@@ -273,24 +279,30 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   const code=val('ess-mfa-code');
   if(!/^\d{6}$/.test(code))throw Error('Code de six chiffres requis.');
   if(!s.factor){
-   const f=await sb.auth.mfa.listFactors();if(f.error)throw f.error;
+   const f=await sb.auth.mfa.listFactors();if(!mfaCurrent())return true;if(f.error)throw f.error;
    const existing=(f.data?.totp||[]).find(x=>x.status==='verified');
    if(existing){s.factor=existing.id;s.mfaMode='verify';}
    else throw Error('Cliquez sur « Configurer ou utiliser mon authentificateur » pour obtenir votre QR.');
   }
-  const r=await sb.auth.mfa.challengeAndVerify({factorId:s.factor,code});if(r.error)throw r.error;
+  const r=await sb.auth.mfa.challengeAndVerify({factorId:s.factor,code});
+  if(!mfaCurrent())return true;
+  if(r.error)throw r.error;
   const level=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(!mfaCurrent())return true;
   if(level.error||level.data?.currentLevel!=='aal2')
    throw Error('Vérification terminée, mais session à deux facteurs non confirmée. Reconnectez-vous.');
   // The server enforces AAL2, active sessions and platform ownership independently.
   const snapshot=await rpc('platform_snapshot');
+  if(!mfaCurrent())return true;
   const accounts=await rpc('platform_test_accounts');
+  if(!mfaCurrent())return true;
   s.snapshot=snapshot;s.testAccounts=accounts;s.qr=null;s.mfaSecret=null;
   s.factor=null;s.mfaNotice='';s.mfaMode='unknown';s.mfaRequired=false;
  }
- }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();}return true;
+ }catch(err){if(!mfaAction||mfaCurrent()){s.error=err.message;notify(err.message);}}
+ finally{if(!mfaAction||mfaCurrent()){s.saving=false;redraw();}}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){const n=Number(el.value);if(Number.isSafeInteger(n)&&n>=1&&n<=100000){s.seats=n;redraw();}}if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
- function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';}
+ function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;s.platformUser=null;s.saving=false;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';}
  return {state:s,subscriptions,qualifiedCoverage,laborBudgets,platformUsers,platformAdmins,platformPriceProposals,directory,invitationEmail,notificationPreferences,supervision,breakPolicies,offlineReview,missingDays,archives,finance,promotions,audit,support,platformTests,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
 }
