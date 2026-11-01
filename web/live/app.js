@@ -377,7 +377,9 @@ async function sendMessage(){
  if(state.sendingMessage||(isEssential()&&!essentialMessagesAllowed()))return;
  const body=$val('chatMessage');if(!body||!state.chatId||!currentCompanyChat(state.chatId))return;
  const chatId=state.chatId,companyId=company(),senderId=state.user.id,section=state.section,key=chatDraftKey(companyId,chatId);
+ const btn=document.querySelector('button[data-action="sendMessage"]');
  saveChatDraft();state.sendingMessage=true;
+ if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');}
  try{
   const r=await sb.from('conversation_messages').insert({company_id:companyId,conversation_id:chatId,sender_id:senderId,body});
   if(r.error)throw r.error;
@@ -389,7 +391,13 @@ async function sendMessage(){
   // The awaited refresh can finish after navigating or changing company/session.
   if(company()!==companyId||state.user?.id!==senderId||state.section!==section||state.chatId!==chatId||!currentCompanyChat(chatId))return;
   state.sendingMessage=false;draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
- }catch(err){error(err)}finally{state.sendingMessage=false}
+ }catch(err){
+  // Do not display an old tenant's/network error on a different page or account.
+  if(company()===companyId&&state.user?.id===senderId&&state.section===section&&state.chatId===chatId&&currentCompanyChat(chatId))error(err);
+ }finally{
+  state.sendingMessage=false;
+  if(btn?.isConnected){btn.disabled=false;btn.removeAttribute('aria-busy');}
+ }
 }
 // A single client request at a time avoids accidental duplicate groups on double-tap.
 // A late RPC must not redirect a user who switched company or left the page.
