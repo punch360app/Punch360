@@ -376,16 +376,19 @@ async function loadChat(id){const companyId=company(),revision=++state.chatLoadR
 async function sendMessage(){
  if(state.sendingMessage||(isEssential()&&!essentialMessagesAllowed()))return;
  const body=$val('chatMessage');if(!body||!state.chatId||!currentCompanyChat(state.chatId))return;
- const chatId=state.chatId,companyId=company(),senderId=state.user.id,key=chatDraftKey(companyId,chatId);
+ const chatId=state.chatId,companyId=company(),senderId=state.user.id,section=state.section,key=chatDraftKey(companyId,chatId);
  saveChatDraft();state.sendingMessage=true;
  try{
   const r=await sb.from('conversation_messages').insert({company_id:companyId,conversation_id:chatId,sender_id:senderId,body});
   if(r.error)throw r.error;
   // A sent draft can be cleared, but keep any new text typed during delivery.
   if(chatDrafts.get(key)?.trim()===body)chatDrafts.delete(key);
-  if(company()!==companyId||state.chatId!==chatId||!currentCompanyChat(chatId))return;
+  if(company()!==companyId||state.user?.id!==senderId||state.section!==section||state.chatId!==chatId||!currentCompanyChat(chatId))return;
   const input=$('chatMessage');if(input?.value.trim()===body)input.value='';
-  await loadChat(chatId);state.sendingMessage=false;draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
+  await loadChat(chatId);
+  // The awaited refresh can finish after navigating or changing company/session.
+  if(company()!==companyId||state.user?.id!==senderId||state.section!==section||state.chatId!==chatId||!currentCompanyChat(chatId))return;
+  state.sendingMessage=false;draw();const c=$('main');if(c)c.scrollTop=c.scrollHeight;
  }catch(err){error(err)}finally{state.sendingMessage=false}
 }
 // A single client request at a time avoids accidental duplicate groups on double-tap.
