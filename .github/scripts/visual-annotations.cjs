@@ -11,8 +11,16 @@ const results=[];
   for(const [device,width,height] of formats){
    const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,
     isMobile:width<720,hasTouch:width<900,acceptDownloads:true,serviceWorkers:'block'});
-   const page=await context.newPage(),errors=[],blocked=[];
+   const page=await context.newPage(),errors=[],blocked=[],responsiveNetwork=[];
    page.on('pageerror',e=>errors.push(e.message));
+   page.on('requestfailed',r=>{
+    if(r.url().includes('atelier-projets-jf.juliensav.chatgpt.site/responsive/'))
+     responsiveNetwork.push({url:r.url().slice(0,200),error:r.failure()?.errorText||'request failed'});
+   });
+   page.on('response',r=>{
+    if(r.status()>=400&&r.url().includes('atelier-projets-jf.juliensav.chatgpt.site/responsive/'))
+     responsiveNetwork.push({url:r.url().slice(0,200),status:r.status()});
+   });
    await page.route('**'+'/'+'*',route=>{
     const u=new URL(route.request().url());
     if(u.protocol==='http:'&&u.hostname==='127.0.0.1'&&u.port==='8765')
@@ -24,7 +32,26 @@ const results=[];
    try{
     const response=await page.goto('http://127.0.0.1:8765/annotations.html',{waitUntil:'domcontentloaded'});
     assert.equal(response?.status(),200);
-    await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:25000});
+    try{
+     await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:15000});
+    }catch(firstError){
+     // The responsive shell is maintained by Atelier, not copied into Punch.
+     // A short second attempt accommodates transient host/network failures,
+     // but never considers a missing real Punch mount a passing visual test.
+     console.warn('Atelier mount not yet available; reloading once',device,firstError.message.split(String.fromCharCode(10))[0]);
+     await page.reload({waitUntil:'domcontentloaded'});
+     try{
+      await page.locator('[data-punch-live-root]').first().waitFor({state:'attached',timeout:15000});
+     }catch{
+      const boot=await page.locator('#punch-preview-boot').textContent().catch(()=>null);
+      const diagnostic={device,boot,scriptErrors:errors.slice(-5),
+       responsiveNetwork:responsiveNetwork.slice(-8),blocked:blocked.slice(-8),
+       scriptTags:await page.locator('script').count()};
+      fs.writeFileSync(path.join(output,'atelier-mount-diagnostic-'+device+'.json'),
+       JSON.stringify(diagnostic,null,2)+String.fromCharCode(10));
+      throw Error('Atelier shared responsive mount unavailable after reload: '+JSON.stringify(diagnostic));
+     }
+    }
     await page.locator('[data-punch-live-root] [data-action="support:open"]').first().waitFor({state:'attached',timeout:15000});
     const structure=await page.evaluate(()=>{
      const root=document.querySelector('[data-punch-live-root]');

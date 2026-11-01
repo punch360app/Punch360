@@ -26,14 +26,32 @@ export function createSupportController({sb,redraw,escape:e,document:doc=globalT
  async function rpc(name,args){const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data}
  function reset(){generation++;Object.assign(s,{company:null,platform:false,tickets:[],detail:null,error:'',busy:false,subject:'',body:'',reply:'',createRequest:null,replyRequest:null,more:true})}
  async function refresh(more=false){const n=generation,last=more?s.tickets.at(-1):null;const data=await rpc('support_list_tickets',{p_company:s.platform?null:s.company,p_before:last?.updated_at||null,p_before_id:last?.id||null});if(n!==generation)return;if(!Array.isArray(data))throw Error('INVALID_SUPPORT_RESPONSE');s.tickets=more?[...s.tickets,...data.filter(t=>!s.tickets.some(x=>x.id===t.id))]:data;s.more=data.length===50;}
- async function load(company,platform=false){reset();s.company=company;s.platform=platform;if(!company&&!platform)return;const n=generation;try{await refresh()}catch(err){if(n===generation)s.error=errorText(err)}finally{if(n===generation)redraw()}}
+ async function load(company,platform=false){
+  // A context switch must hide the previous company's tickets immediately,
+  // before the new network request resolves. An in-flight older request cannot
+  // restore the old content because reset() advances the generation.
+  reset();
+  s.company=company;s.platform=platform;
+  if(!company&&!platform){redraw();return;}
+  const n=generation;
+  s.busy=true;
+  redraw();
+  try{await refresh()}
+  catch(err){if(n===generation)s.error=errorText(err)}
+  finally{if(n===generation){s.busy=false;redraw()}}
+ }
  function input(el){const key=el.id?.replace('support-','');if(['subject','body','reply'].includes(key))s[key]=el.value;}
- function render(){const d=s.detail;return `<div class="punch-support"><h2>Support PUNCH</h2><p>Évitez d’inclure des mots de passe, NIP ou renseignements médicaux dans vos messages.</p>${s.error?`<p class="ess-notice" role="alert">${e(s.error)}</p>`:''}${s.busy?'<p class="ess-notice" role="status" aria-live="polite">Vérification en cours…</p>':''}${!s.platform?`<section class="ess-panel"><h3>Nouvelle demande</h3><label class="ess-field">Objet<input id="support-subject" maxlength="160" value="${e(s.subject)}" ${s.busy?'disabled':''}></label><label class="ess-field">Message<textarea id="support-body" maxlength="5000" ${s.busy?'disabled':''}>${e(s.body)}</textarea></label>${button('Envoyer la demande','create')}</section>`:''}<section class="ess-panel"><h3>Demandes</h3>${button('Actualiser','refresh')}${s.tickets.map(t=>`<article class="ess-person"><div><b>${e(t.subject)}</b><small>${e(labels[t.status])} · ${e(new Date(t.updated_at).toLocaleString('fr-CA'))}</small>${s.platform?`<small>${e(t.company_name)}</small>`:''}</div>${button('Ouvrir','open',t.id)}</article>`).join('')||'<p>Aucune demande.</p>'}${s.more?button('Charger les demandes précédentes','more'):''}</section>${d?`<section class="ess-panel"><h3>${e(d.subject)}</h3><p>${e(labels[d.status])}</p><p class="ess-fine">200 messages les plus récents.</p>${d.messages.map(m=>`<article class="ess-person"><div><b>${m.is_platform?'Équipe PUNCH':'Entreprise'}</b><time>${e(new Date(m.created_at).toLocaleString('fr-CA'))}</time><p style="white-space:pre-wrap">${e(m.body)}</p></div></article>`).join('')}${d.status!=='closed'?`<label class="ess-field">Votre réponse<textarea id="support-reply" maxlength="5000" ${s.busy?'disabled':''}>${e(s.reply)}</textarea></label>${button('Envoyer la réponse','reply')}`:''}<div class="ess-checks">${Object.entries(labels).filter(([status])=>status!==d.status&&(s.platform||status!=='waiting')).map(([status,title])=>button(status==='open'?'Réouvrir':title,'status',status)).join('')}</div></section>`:''}</div>`;}
+ function render(){
+  // A disconnected or not-yet-selected company cannot use Support.
+  if(!s.company&&!s.platform)
+   return `<div class="punch-support"><h2>Support PUNCH</h2><p role="status">Sélectionnez une entreprise autorisée pour accéder au support.</p></div>`;
+  const d=s.detail;return `<div class="punch-support"><h2>Support PUNCH</h2><p>Évitez d’inclure des mots de passe, NIP ou renseignements médicaux dans vos messages.</p>${s.error?`<p class="ess-notice" role="alert">${e(s.error)}</p>`:''}${s.busy?'<p class="ess-notice" role="status" aria-live="polite">Vérification en cours…</p>':''}${!s.platform?`<section class="ess-panel"><h3>Nouvelle demande</h3><label class="ess-field">Objet<input id="support-subject" maxlength="160" value="${e(s.subject)}" ${s.busy?'disabled':''}></label><label class="ess-field">Message<textarea id="support-body" maxlength="5000" ${s.busy?'disabled':''}>${e(s.body)}</textarea></label>${button('Envoyer la demande','create')}</section>`:''}<section class="ess-panel"><h3>Demandes</h3>${button('Actualiser','refresh')}${s.tickets.map(t=>`<article class="ess-person"><div><b>${e(t.subject)}</b><small>${e(labels[t.status])} · ${e(new Date(t.updated_at).toLocaleString('fr-CA'))}</small>${s.platform?`<small>${e(t.company_name)}</small>`:''}</div>${button('Ouvrir','open',t.id)}</article>`).join('')||'<p>Aucune demande.</p>'}${s.more?button('Charger les demandes précédentes','more'):''}</section>${d?`<section class="ess-panel"><h3>${e(d.subject)}</h3><p>${e(labels[d.status])}</p><p class="ess-fine">200 messages les plus récents.</p>${d.messages.map(m=>`<article class="ess-person"><div><b>${m.is_platform?'Équipe PUNCH':'Entreprise'}</b><time>${e(new Date(m.created_at).toLocaleString('fr-CA'))}</time><p style="white-space:pre-wrap">${e(m.body)}</p></div></article>`).join('')}${d.status!=='closed'?`<label class="ess-field">Votre réponse<textarea id="support-reply" maxlength="5000" ${s.busy?'disabled':''}>${e(s.reply)}</textarea></label>${button('Envoyer la réponse','reply')}`:''}<div class="ess-checks">${Object.entries(labels).filter(([status])=>status!==d.status&&(s.platform||status!=='waiting')).map(([status,title])=>button(status==='open'?'Réouvrir':title,'status',status)).join('')}</div></section>`:''}</div>`;}
  async function handle(el){
   const raw=el?.dataset?.action;
   if(!raw?.startsWith('support:'))return false;
   const action=raw.slice(8);
   if(!['create','open','reply','status','refresh','more'].includes(action))return true;
+  if(!s.company&&!s.platform)return true;
   if(s.busy||action==='more'&&!s.more)return true;
   const n=generation;s.busy=true;s.error='';redraw();
   try{
