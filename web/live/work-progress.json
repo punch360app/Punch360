@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-30T01:34:11.765Z",
+  "generated_at": "2026-11-01T03:29:23.992Z",
   "source": "docs/prompt-board/MASTER_PROMPT_20261025.md",
   "denominator": 691,
   "criteria": "L'état développé/testé peut être partiel; complet exige développement, tests, déploiement et aucune recette externe manquante.",
@@ -1532,6 +1532,14 @@
   },
   "activity": [
     {
+      "number": 260,
+      "sha": "bf0463abc7c8f1257b4f285044d46d50c931c81a",
+      "ci": "success",
+      "ids": [],
+      "title": "PUNCH prompt maître — @Boss officiel, GOD MODE et livraisons débloquées",
+      "merged_at": "2026-11-01T03:29:14Z"
+    },
+    {
       "number": 231,
       "sha": "d44e5bce42b644c80d8d9297c3854fe2ddf62d76",
       "ci": "success",
@@ -1981,18 +1989,6 @@
       ],
       "title": "Passation Punch — preuves commentaire/checklist publiées et prochaine photo privée",
       "merged_at": "2026-10-27T13:34:42Z"
-    },
-    {
-      "number": 180,
-      "sha": "0201770a0beecd8b1f6a912f11344cb76af413b9",
-      "ci": "success",
-      "ids": [
-        "MISSION-007",
-        "MISSION-011",
-        "MISSION-013"
-      ],
-      "title": "Missions — checklist configurable et obligatoire avant fin (Web/Expo)",
-      "merged_at": "2026-10-27T13:26:41Z"
     }
   ],
   "history_note": "Audit rétrospectif conservateur des PR fusionnées (toutes les 578 exigences ne sont pas encore auditées). Un titre de PR prouve une intervention ciblée, pas l'exhaustivité du développement, des tests ni le déploiement; les IDs ajoutés dans le second passage restent donc test=non vérifié."
