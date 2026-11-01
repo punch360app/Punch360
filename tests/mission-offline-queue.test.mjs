@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {queueOfflineMissionCompletion,listOfflineMissionCompletions,missionOfflineEligible,syncOfflineMissionCompletions} from '../web/live/mission-offline-queue.js';
+import {queueOfflineMissionCompletion,listOfflineMissionCompletions,missionOfflineEligible,syncOfflineMissionCompletions,migrateSessionOfflineMissionCompletions} from '../web/live/mission-offline-queue.js';
 const A={user:'user-A',company:'company-A',worker:'worker-A'},B={...A,company:'company-B'};
 const mission={...A,mission:'mission-1',version:3},uuid='123e4567-e89b-42d3-a456-426614174000',day='2026-10-28';
 function store(){const m=new Map();return{m,async getItem(k){return m.has(k)?m.get(k):null},async setItem(k,v){m.set(k,v)},async removeItem(k){m.delete(k)},async getAllKeys(){return [...m.keys()]}}}
@@ -141,4 +141,69 @@ test('simultaneous sync attempts cannot send the same pending event twice',async
  release();
  const result=await first;
  assert.equal(result.sent,1);assert.equal(spy.sends.length,1);assert.equal(result.pending,0);
+});
+
+test('legacy per-tab queue migrates intact into browser-persistent storage',async()=>{
+ const legacy=store(),persistent=store();
+ await queueOfflineMissionCompletion(args(legacy));
+ const copied=await migrateSessionOfflineMissionCompletions({
+  legacyStorage:legacy,storage:persistent,identity:A,now:()=>1000000});
+ assert.equal(copied.migrated,1);
+ assert.equal((await listOfflineMissionCompletions({storage:legacy,identity:A,now:()=>1000000})).length,0);
+ const saved=await listOfflineMissionCompletions({storage:persistent,identity:A,now:()=>1000000});
+ assert.equal(saved.length,1);assert.equal(saved[0].id,uuid);
+ // Simulates a closed tab and a new tab with the original sessionStorage gone.
+ const freshTab=store();
+ assert.equal((await listOfflineMissionCompletions({storage:freshTab,identity:A,now:()=>1000000})).length,0);
+ const {spy,run}=sync(persistent);
+ assert.equal((await run()).sent,1);
+ assert.equal(spy.sends[0].request,uuid);
+ assert.equal((await listOfflineMissionCompletions({storage:persistent,identity:A,now:()=>1000000})).length,0);
+});
+test('migration respects account separation and excludes online-only reservations',async()=>{
+ const legacy=store(),persistent=store();
+ await queueOfflineMissionCompletion(args(legacy));
+ const online='punch-mission-completion-request-v1:user-A:company-A:worker-A:online:1';
+ legacy.m.set(online,JSON.stringify({id:uuid,createdAt:1000000}));
+ assert.equal((await migrateSessionOfflineMissionCompletions({
+  legacyStorage:legacy,storage:persistent,identity:B,now:()=>1000000})).migrated,0);
+ assert.equal(persistent.m.size,0);
+ assert.equal((await migrateSessionOfflineMissionCompletions({
+  legacyStorage:legacy,storage:persistent,identity:A,now:()=>1000000})).migrated,1);
+ assert.equal(persistent.m.has(online),false);
+ assert.equal(legacy.m.has(online),true);
+});
+test('conflicting persistent requests cannot overwrite or erase legacy data',async()=>{
+ const legacy=store(),persistent=store();
+ await queueOfflineMissionCompletion(args(legacy));
+ const key=[...legacy.m.keys()][0];
+ const conflicting={...JSON.parse(legacy.m.get(key)),id:'223e4567-e89b-42d3-a456-426614174000'};
+ persistent.m.set(key,JSON.stringify(conflicting));
+ await assert.rejects(migrateSessionOfflineMissionCompletions({
+  legacyStorage:legacy,storage:persistent,identity:A,now:()=>1000000}),/Deux demandes différentes/);
+ assert.equal(JSON.parse(legacy.m.get(key)).id,uuid);
+ assert.equal(JSON.parse(persistent.m.get(key)).id,conflicting.id);
+});
+test('failed persistent storage confirmation preserves the legacy entry',async()=>{
+ const legacy=store(),persistent=store();
+ await queueOfflineMissionCompletion(args(legacy));
+ persistent.setItem=async()=>{};
+ await assert.rejects(migrateSessionOfflineMissionCompletions({
+  legacyStorage:legacy,storage:persistent,identity:A,now:()=>1000000}),/Transfert non confirmé/);
+ assert.equal(legacy.m.size,1);
+ assert.equal(persistent.m.size,0);
+});
+test('retry after interrupted migration uses one exact idempotency request',async()=>{
+ const legacy=store(),persistent=store();
+ await queueOfflineMissionCompletion(args(legacy));
+ const key=[...legacy.m.keys()][0];
+ persistent.m.set(key,legacy.m.get(key)); // copied but old session was not purged
+ const retry=await migrateSessionOfflineMissionCompletions({
+  legacyStorage:legacy,storage:persistent,identity:A,now:()=>1000000});
+ assert.equal(retry.migrated,1);
+ assert.equal(legacy.m.size,0);
+ assert.equal(persistent.m.size,1);
+ const {spy,run}=sync(persistent);
+ assert.equal((await run()).sent,1);
+ assert.equal(spy.sends.length,1);
 });
