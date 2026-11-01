@@ -1,7 +1,7 @@
 import {createEssentialController} from './essential.js';
 import {validatePublicSignupPassword} from './public-signup-validation.js';
 import {resolvePublicEdition} from './public-edition.js';
-import {rememberPublicPlanIntent,readPublicPlanEstimate,renderPublicPlanReminder,forgetPublicPlanIntent} from './public-plan-intent.js';
+import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,forgetPublicPlanIntent} from './public-plan-intent.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -23,7 +23,7 @@ const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
 const state={fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],messages:[],chatId:null,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
-const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onChoose:plan=>{if(!plan)return;rememberPublicPlanIntent(sessionStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});sessionStorage.setItem('punch-selected-plan',plan.id);state.creationEdition='essential';state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
+const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
 // the same tab still shows a different nonbinding signup preference.
 if(state.creationEdition==='essential'){

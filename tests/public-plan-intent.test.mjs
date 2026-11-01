@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {rememberPublicPlanIntent,readPublicPlanIntent,readPublicPlanEstimate,forgetPublicPlanIntent,renderPublicPlanReminder} from '../web/live/public-plan-intent.js';
+import {beginPublicEssentialSignup,rememberPublicPlanIntent,readPublicPlanIntent,readPublicPlanEstimate,forgetPublicPlanIntent,renderPublicPlanReminder} from '../web/live/public-plan-intent.js';
 
 const store=()=>{
  const data=new Map();
@@ -93,4 +93,28 @@ test('Signup reminder uses current public pricing instead of any stored price',(
  assert.doesNotMatch(html,/313,20/);
  html=render({...current,active:false});
  assert.doesNotMatch(html,/Estimation au catalogue actuel|421,20/);
+});
+
+// The selected edition must match the plan, including after an OAuth redirect.
+// Private-browsing storage errors may remove the reminder, not block signup.
+test('Choosing Essentiel persists the edition and keeps only a nonbinding plan hint',()=>{
+ const tab=store(),prefs=store();
+ prefs.setItem('punch-creation-edition','construction');
+ assert.equal(beginPublicEssentialSignup(tab,prefs,{planId:'fixture_basic',seats:12,cadence:'yearly'}),true);
+ assert.equal(prefs.getItem('punch-creation-edition'),'essential');
+ assert.equal(tab.getItem('punch-selected-plan'),'fixture_basic');
+ assert.deepEqual(readPublicPlanIntent(tab),{planId:'fixture_basic',seats:12,cadence:'yearly'});
+ assert.equal(tab.getItem('punch-public-plan-intent-v1').includes('base_cents'),false);
+});
+
+test('Blocked tab or edition storage cannot prevent a valid public signup',()=>{
+ const blocked={setItem:()=>{throw Error('storage unavailable')}};
+ const tab=store(),prefs=store();
+ const draft={planId:'fixture_basic',seats:4,cadence:'monthly'};
+ assert.equal(beginPublicEssentialSignup(blocked,prefs,draft),false,'Intent cannot be stored in blocked tab');
+ assert.equal(prefs.getItem('punch-creation-edition'),'essential','Edition can still be remembered');
+ assert.equal(beginPublicEssentialSignup(tab,blocked,draft),true,'Blocked persistent preferences are nonfatal');
+ assert.deepEqual(readPublicPlanIntent(tab),draft);
+ assert.equal(beginPublicEssentialSignup(tab,prefs,{...draft,seats:0}),false);
+ assert.equal(beginPublicEssentialSignup(tab,prefs,{...draft,planId:'<invalid>'}),false);
 });

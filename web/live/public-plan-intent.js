@@ -12,6 +12,19 @@ export function rememberPublicPlanIntent(storage,{planId,seats,cadence}={}){
  try{storage.setItem(KEY,JSON.stringify({planId,seats,cadence}));return true}catch{return false}
 }
 
+
+// An advertised plan is only a draft preference. A browser that blocks storage
+// must still allow signup; no billing, price or entitlement data is persisted.
+// Remember the edition as well, or a previous Construction choice could
+// override Essentiel after returning from email/OAuth or refreshing the page.
+export function beginPublicEssentialSignup(tabStorage,editionStorage,intent){
+ const saved=rememberPublicPlanIntent(tabStorage,intent);
+ if(!validId(intent?.planId)||!validSeats(intent?.seats)||!validCadence(intent?.cadence))return false;
+ try{tabStorage.setItem('punch-selected-plan',intent.planId)}catch{}
+ try{editionStorage.setItem('punch-creation-edition','essential')}catch{}
+ return saved;
+}
+
 export function readPublicPlanIntent(storage){
  try{
   const raw=storage.getItem(KEY);

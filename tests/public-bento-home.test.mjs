@@ -66,9 +66,9 @@ test('320px viewport recovers 9px with no text or CTA shrinkage',()=>{
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-6/);
- assert.match(html,/app\.js\?v=essential-57-bento/);
+ assert.match(html,/app\.js\?v=essential-58-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-6/);
- assert.match(sw,/app\.js\?v=essential-57-bento/);
+ assert.match(sw,/app\.js\?v=essential-58-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -91,11 +91,11 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v64-bento/);
+ assert.match(sw,/punch-360-essential-v65-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{
- assert.match(app,/rememberPublicPlanIntent\(sessionStorage/);
+ assert.match(app,/beginPublicEssentialSignup\(sessionStorage,localStorage/);
  assert.match(app,/renderPublicPlanReminder\(sessionStorage/);
  assert.match(app,/forgetPublicPlanIntent\(sessionStorage/);
  assert.match(app,/Modifier mon forfait/);
@@ -108,6 +108,7 @@ test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=
 test('Essential signup restores a valid saved seat estimate without claiming payment',()=>{
  assert.match(app,/readPublicPlanEstimate\(sessionStorage\)/);
  assert.match(app,/Object\.assign\(essentialUI\.state,savedPublicEstimate\)/);
+ assert.match(app,/url\.searchParams\.set\('edition','essential'\)/);
  assert.match(app,/state\.creationEdition==='essential'/);
 });
 
