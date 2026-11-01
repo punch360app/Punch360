@@ -207,3 +207,29 @@ test('retry after interrupted migration uses one exact idempotency request',asyn
  assert.equal((await run()).sent,1);
  assert.equal(spy.sends.length,1);
 });
+
+
+test('concurrent completions respect the 25-request cap in one runtime',async()=>{
+ const storage=store();
+ for(let i=0;i<24;i++)
+  await queueOfflineMissionCompletion(args(storage,{...A,mission:'m-'+i,version:1}));
+ const first=queueOfflineMissionCompletion(args(storage,{...A,mission:'m-24',version:1}));
+ const second=queueOfflineMissionCompletion(args(storage,{...A,mission:'m-25',version:1}));
+ const results=await Promise.allSettled([first,second]);
+ assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
+ assert.equal(results.filter(x=>x.status==='rejected').length,1);
+ assert.match(String(results.find(x=>x.status==='rejected').reason),/Limite de 25/);
+ assert.equal((await listOfflineMissionCompletions({storage,identity:A,now:()=>1000000})).length,25);
+});
+test('damaged queued record missing queuedAt is never silently treated as online-only',async()=>{
+ const storage=store();await queueOfflineMissionCompletion(args(storage));
+ const key=[...storage.m.keys()][0];
+ const record=JSON.parse(storage.m.get(key));
+ delete record.queuedAt;
+ storage.m.set(key,JSON.stringify(record));
+ await assert.rejects(listOfflineMissionCompletions({storage,identity:A,now:()=>1000000}),/incomplet/);
+ const {spy,run}=sync(storage);
+ await assert.rejects(run(),/incomplet/);
+ assert.equal(spy.sends.length,0);
+ assert.equal(storage.m.has(key),true);
+});
