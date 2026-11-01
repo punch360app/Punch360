@@ -1,6 +1,6 @@
 import {createEssentialController} from './essential.js';
 import {resolvePublicEdition} from './public-edition.js';
-import {rememberPublicPlanIntent,renderPublicPlanReminder,forgetPublicPlanIntent} from './public-plan-intent.js';
+import {rememberPublicPlanIntent,readPublicPlanEstimate,renderPublicPlanReminder,forgetPublicPlanIntent} from './public-plan-intent.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -23,6 +23,12 @@ const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=
 const state={fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],messages:[],chatId:null,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onChoose:plan=>{if(!plan)return;rememberPublicPlanIntent(sessionStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});sessionStorage.setItem('punch-selected-plan',plan.id);state.creationEdition='essential';state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
+// A reload must not change the seat estimate back to 5 / monthly while
+// the same tab still shows a different nonbinding signup preference.
+if(state.creationEdition==='essential'){
+ const savedPublicEstimate=readPublicPlanEstimate(sessionStorage);
+ if(savedPublicEstimate)Object.assign(essentialUI.state,savedPublicEstimate);
+}
 const bossHandoff=createBossHandoffController({sb,redraw:draw,escape:e,getMembers:()=>state.members,onCompleted:async()=>{state.section='home';state.sub='';await initialize();}});
 const urls={google:j=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(j.latitude!=null&&j.longitude!=null?j.latitude+','+j.longitude:j.address),waze:j=>'https://waze.com/ul?'+(j.latitude!=null&&j.longitude!=null?'ll='+encodeURIComponent(j.latitude+','+j.longitude):'q='+encodeURIComponent(j.address))+'&navigate=yes'};
 function toast(t){state.toast=t;const existing=$('toast');if(existing){existing.textContent=t;existing.style.display='block'}setTimeout(()=>{if(state.toast===t){state.toast=null;const n=$('toast');if(n)n.style.display='none'}},3900)}

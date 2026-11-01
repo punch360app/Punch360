@@ -20,6 +20,13 @@ export function readPublicPlanIntent(storage){
  }catch{return null}
 }
 
+// Only rehydrate editable pricing controls. Never restore authorization,
+// payment state, a confirmed contract or a server-selected plan.
+export function readPublicPlanEstimate(storage){
+ const intent=readPublicPlanIntent(storage);
+ return intent?{seats:intent.seats,seatDraft:String(intent.seats),cadence:intent.cadence}:null;
+}
+
 export function forgetPublicPlanIntent(storage){
  try{storage.removeItem(KEY);return true}catch{return false}
 }

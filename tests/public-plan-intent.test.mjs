@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {rememberPublicPlanIntent,readPublicPlanIntent,forgetPublicPlanIntent,renderPublicPlanReminder} from '../web/live/public-plan-intent.js';
+import {rememberPublicPlanIntent,readPublicPlanIntent,readPublicPlanEstimate,forgetPublicPlanIntent,renderPublicPlanReminder} from '../web/live/public-plan-intent.js';
 
 const store=()=>{
  const data=new Map();
@@ -55,4 +55,21 @@ test('Malformed or manipulated plan, seats and cadence are rejected',()=>{
  assert.equal(rememberPublicPlanIntent({setItem:()=>{throw Error('blocked')}},{planId:'valid',seats:1,cadence:'monthly'}),false);
  assert.equal(readPublicPlanIntent({getItem:()=>{throw Error('blocked')}}),null);
  assert.equal(forgetPublicPlanIntent({removeItem:()=>{throw Error('blocked')}}),false);
+});
+
+// A reload recreates the pricing controller. Restore only editable estimates,
+// never a server entitlement or a price the customer could rely upon.
+test('Reopen the Essentiel price picker with the saved valid estimate',()=>{
+ const storage=store();
+ rememberPublicPlanIntent(storage,{planId:'fixture_basic',seats:42,cadence:'yearly'});
+ assert.deepEqual(readPublicPlanEstimate(storage),{seats:42,seatDraft:'42',cadence:'yearly'});
+ const newController={seats:5,seatDraft:null,cadence:'monthly',checkout:null};
+ Object.assign(newController,readPublicPlanEstimate(storage));
+ assert.equal(newController.seats,42);
+ assert.equal(newController.seatDraft,'42');
+ assert.equal(newController.cadence,'yearly');
+ assert.equal(newController.checkout,null);
+ assert.equal(Object.hasOwn(readPublicPlanEstimate(storage),'planId'),false);
+ forgetPublicPlanIntent(storage);
+ assert.equal(readPublicPlanEstimate(storage),null);
 });
