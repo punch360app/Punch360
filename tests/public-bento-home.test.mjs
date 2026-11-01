@@ -28,7 +28,7 @@ test('Bento has the real dynamic public plans, the original handlers and separat
  assert.match(app,/continueSignup/);
  assert.match(app,/openLogin/);
  assert.match(essential,/s\.plans\.filter\(p=>p\.active&&p\.public_visible\)/);
- assert.match(essential,/monthly=p\.base_cents/);
+ assert.match(essential,/estimatePublicPlanPrice\(p,s\.seats,s\.cadence\)/);
  assert.match(essential,/p\.annual_discount/);
  assert.match(essential,/btn\('Choisir ce forfait','choose'/);
  assert.match(essential,/ess-market-details/);
