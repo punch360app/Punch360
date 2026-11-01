@@ -204,11 +204,45 @@ async function assertCards(page,amounts,device,period){
     assert.equal(await page.locator('#authForm button[type="submit"]').count(),1);
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('punch-selected-plan')),'fixture_only_b',
      'Public plan selection must save only the valid plan');
+    const saved=await page.evaluate(()=>({
+      edition:localStorage.getItem('punch-creation-edition'),
+      query:new URL(location.href).searchParams.get('edition'),
+      intent:JSON.parse(sessionStorage.getItem('punch-public-plan-intent-v1')||'null')
+    }));
+    assert.equal(saved.edition,'essential','Signup must preserve the Essentiel edition');
+    assert.equal(saved.query,'essential','Auth redirect needs an Essentiel URL');
+    assert.deepEqual(saved.intent,{planId:'fixture_only_b',seats:5,cadence:'yearly'},
+      'Only editable choices, never price or subscription, should be saved');
+    assert.match(await page.locator('[aria-label="Votre préférence de forfait"]').innerText(),/TEST FICTION B/);
+    assert.equal(await page.locator('#signupPasswordConfirm[required][minlength="8"]').count(),1);
+    // Validation must reject a mismatching confirmation before any account request.
+    await page.locator('#email').fill('fixture-only@example.invalid');
+    await page.locator('#password').fill('long-example-pass');
+    await page.locator('#signupPasswordConfirm').fill('a-different-pass');
+    const blockedBefore=blocked;
+    await page.locator('#authForm button[type="submit"]').click();
+    await page.locator('#authError').waitFor({state:'visible',timeout:10000});
+    assert.match(await page.locator('#authError').innerText(),/Les mots de passe ne correspondent pas/);
+    assert.equal(blocked,blockedBefore,'Invalid confirmation cannot start a remote signup');
+    assert.equal(await page.locator('#authForm').count(),1);
+    // Return through the UI, preserving the chosen seat count and annual cadence.
+    await page.locator('button[data-action="changeEdition"]').first().click();
+    await page.locator('.punch-public-bento .ess-pricing').waitFor({state:'visible',timeout:10000});
+    assert.equal(await page.locator('#ess-seats').inputValue(),'5');
+    assert.equal(await page.locator('[data-action="ess:yearly"]').getAttribute('aria-pressed'),'true');
+    // A reload restores only editable choices, never a paid plan.
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.locator('.punch-public-bento .ess-price').first().waitFor({state:'visible',timeout:15000});
+    assert.equal(await page.locator('#ess-seats').inputValue(),'5');
+    assert.equal(await page.locator('[data-action="ess:yearly"]').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('punch-selected-plan')),'fixture_only_b');
+    assert.equal(await page.locator('h3').filter({hasText:'TEST NEVER SHOW'}).count(),0);
     assert.ok(catalogReads>=1,'Expected a synthetic catalog GET for '+device);
     assert.deepEqual(errors,[], 'Browser exceptions: '+device);
     results.push({device,width,height,monthly,yearly,catalogReads,
-     blockedExternalRequests:blocked,signupVisible:true,pageErrors:errors});
-    console.log('BENTO SYNTHETIC CATALOG '+device+': 3 cards, monthly/yearly, signup and no overflow PASS');
+     blockedExternalRequests:blocked,signupVisible:true,planReminderVisible:true,
+     invalidPasswordRejected:true,priceControlsRestored:true,pageErrors:errors});
+    console.log('BENTO SYNTHETIC CATALOG '+device+': pricing, signup guard, return and reload PASS');
    }finally{await context.close()}
   }
  }finally{await browser.close()}
