@@ -123,8 +123,6 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
   assert.equal(original.getAttribute('aria-invalid'),'true');
   assert.match(live.textContent,/Indiquez un nombre entier/);
   assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,3);
-  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
-  assert.equal(ui.state.checkout,null,'Blank member input must not enter checkout');
   original.value='0';ui.input(original);
   assert.equal(original.getAttribute('aria-invalid'),'true');
   original.value='1e2';ui.input(original);
@@ -135,6 +133,11 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
   assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,0);
   assert.match(live.textContent,/5 membres/);
   assert.equal(window.document.getElementById('ess-seats'),original);
+  // A rejected forged action redraws the entire view. Exercise it after
+  // checking continuous typing, since the previous DOM handles become stale.
+  original.value='';ui.input(original);
+  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
+  assert.equal(ui.state.checkout,null,'Blank member input must not enter checkout');
   assert.equal(redraws,1,'Only one redraw comes from handled invalid checkout notification');
  }finally{await window.happyDOM.close();}
 });
