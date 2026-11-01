@@ -75,6 +75,27 @@ async function shot(page,device,edition,state,pageErrors,blockedCount) {
   console.log('Captured '+name+'; overflow '+measurements.layout.overflowPx+
     'px; small targets '+measurements.tapTargets.smallCount);
 }
+// Use real keyboard input on the public DOM, without submitting a form.
+// Synthetic secrets are cleared after each visibility round-trip.
+async function exercisePasswordToggle(page,id) {
+  const input=page.locator('#'+id);
+  const button=page.locator('button[data-action="togglePassword"][data-id="'+id+'"]');
+  await button.waitFor({state:'visible',timeout:10000});
+  const box=await button.boundingBox();
+  if(!box||box.width<44||box.height<44) throw Error('Password toggle below 44px: '+id);
+  const fake='FIXTURE-ONLY-'+id;
+  await input.fill(fake);
+  await button.focus();
+  await page.keyboard.press('Enter');
+  if(await input.getAttribute('type')!=='text'||await input.inputValue()!==fake||
+     await button.getAttribute('aria-pressed')!=='true')
+    throw Error('Reveal failed or edited secret was lost: '+id);
+  await page.keyboard.press('Enter');
+  if(await input.getAttribute('type')!=='password'||await input.inputValue()!==fake||
+     await button.getAttribute('aria-pressed')!=='false')
+    throw Error('Hide failed or edited secret was lost: '+id);
+  await input.fill('');
+}
 async function assertHeading(page,expected) {
   const heading=page.locator('#main h2').first();
   await heading.waitFor({state:'visible',timeout:10000});
@@ -115,6 +136,7 @@ async function assertHeading(page,expected) {
           if(!(await page.locator('#email[required]').count()) ||
              !(await page.locator('#password[required]').count()))
             throw new Error('Login required inputs missing');
+          await exercisePasswordToggle(page,'password');
           await shot(page,device,edition,'login',pageErrors,()=>blocked);
 
           await page.locator('button[data-action="authMode"]').first().click();
@@ -122,6 +144,10 @@ async function assertHeading(page,expected) {
           const password=page.locator('#password');
           if((await password.getAttribute('minlength'))!=='8')
             throw new Error('Signup password length check missing');
+          if(!(await page.locator('#signupPasswordConfirm[required][minlength="8"]').count()))
+            throw Error('Signup confirmation input missing: '+device+'/'+edition);
+          await exercisePasswordToggle(page,'password');
+          await exercisePasswordToggle(page,'signupPasswordConfirm');
           await shot(page,device,edition,'signup',pageErrors,()=>blocked);
 
           await page.locator('button[data-action="authMode"]').first().click();

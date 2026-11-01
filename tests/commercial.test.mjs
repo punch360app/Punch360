@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
-import {renderCommercialDetails} from '../web/live/commercial.js';
+import {renderCommercialDetails,estimatePublicPlanPrice} from '../web/live/commercial.js';
 const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const money=cents=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(cents/100);
 const plan={active:true,public_visible:true,title:'Essentiel',base_cents:1900,extra_seat_cents:300,included_seats:5,annual_discount:15,kiosk_limit:1,establishment_limit:1,features:[]};
@@ -23,4 +23,16 @@ test('SACATALOG-016 unlimited is represented explicitly without a fake seat coun
  assert.equal(rows.find(r=>r[0]==='Membres inclus')[1],'Illimité');
  assert.equal(rows.find(r=>r[0]==='Membre supplémentaire / mois')[1],'Aucun supplément');
  await window.happyDOM.close();
+});
+
+// The marketing cards and the signup reminder MUST use this same formula.
+test('Shared calculator covers seats, annual discounts and unlimited plans',()=>{
+ const p={...plan,active:true,public_visible:true,base_cents:1250,extra_seat_cents:200,included_seats:3,annual_discount:10};
+ assert.deepEqual(estimatePublicPlanPrice(p,5,'monthly'),{monthlyCents:1650,annualCents:17820,payableCents:1650});
+ assert.deepEqual(estimatePublicPlanPrice(p,5,'yearly'),{monthlyCents:1650,annualCents:17820,payableCents:17820});
+ assert.equal(estimatePublicPlanPrice({...p,included_seats_unlimited:true},500,'monthly').payableCents,1250);
+ for(const bad of [{...p,active:false},{...p,public_visible:false},{...p,annual_discount:110},{...p,base_cents:-1},{...p,extra_seat_cents:NaN}])
+  assert.equal(estimatePublicPlanPrice(bad,5,'monthly'),null);
+ for(const seats of [0,-1,100001,1.5])assert.equal(estimatePublicPlanPrice(p,seats,'monthly'),null);
+ assert.equal(estimatePublicPlanPrice(p,5,'weekly'),null);
 });

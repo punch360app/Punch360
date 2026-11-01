@@ -1,3 +1,21 @@
+/** One public-price calculator for the marketing cards and signup reminder.
+ * It accepts only well-formed catalog data and never creates an entitlement.
+ */
+export function estimatePublicPlanPrice(plan,seats,cadence){
+ if(!plan||plan.active!==true||plan.public_visible!==true||
+  !Number.isSafeInteger(seats)||seats<1||seats>100000||
+  !['monthly','yearly'].includes(cadence))return null;
+ const {base_cents:base,extra_seat_cents:extra,included_seats:included,
+  annual_discount:discount,included_seats_unlimited:unlimited}=plan;
+ if(!Number.isSafeInteger(base)||base<0||!Number.isSafeInteger(extra)||extra<0||
+  !Number.isSafeInteger(included)||included<0||
+  !Number.isInteger(discount)||discount<0||discount>100)return null;
+ const monthlyCents=base+(unlimited===true?0:Math.max(0,seats-included)*extra);
+ const annualCents=Math.round(monthlyCents*12*(100-discount)/100);
+ if(!Number.isSafeInteger(monthlyCents)||!Number.isSafeInteger(annualCents))return null;
+ return {monthlyCents,annualCents,payableCents:cadence==='yearly'?annualCents:monthlyCents};
+}
+
 /** Public comparison reads the same server catalog as the price cards. */
 export function renderCommercialDetails(plans,escape,money){
  const visible=plans.filter(p=>p.active&&p.public_visible);
