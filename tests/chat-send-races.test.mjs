@@ -22,14 +22,15 @@ function harness(){
   setAttribute(name,value){if(name==='aria-busy')this.busy=value;},
   removeAttribute(name){if(name==='aria-busy')this.busy=false;}
  };
+ let activeButton=button;
  const state={sendingMessage:false,chatId:'chat-1',section:'messages',user:{id:'person-1'}};
  const drafts=new Map();
  const context={
-  state,chatDrafts:drafts,document:{querySelector:()=>button},
+  state,chatDrafts:drafts,document:{querySelector:()=>activeButton},
   chatDraftKey:(companyId,chatId)=>companyId+':'+chatId,
   saveChatDraft:()=>drafts.set(tenant+':'+state.chatId,input.value),
   company:()=>tenant,
-  currentCompanyChat:chatId=>chatId==='chat-1',
+  currentCompanyChat:chatId=>chatId==='chat-1'||chatId==='chat-2',
   isEssential:()=>false,essentialMessagesAllowed:()=>true,
   $val:id=>id==='chatMessage'?input.value.trim():'',
   $:id=>id==='chatMessage'?input:id==='main'?main:null,
@@ -43,7 +44,7 @@ function harness(){
   toast:message=>toasts.push(message)
  };
  const api=runInNewContext(source+'\n({sendMessage})',context);
- return {api,state,input,main,button,drafts,sent,refreshed,inserts,errors,draws,toasts,switchCompany:id=>{tenant=id;}};
+ return {api,state,input,main,button,drafts,sent,refreshed,inserts,errors,draws,toasts,switchCompany:id=>{tenant=id;},replaceButton:()=>{button.isConnected=false;activeButton={...button,isConnected:true,disabled:true,busy:'true'};return activeButton;}};
 }
 
 test('An acknowledged message draws once and clears only the sent draft',async()=>{
@@ -181,4 +182,30 @@ test('A delayed refresh failure cannot alert after leaving the conversation',asy
  assert.deepEqual(h.toasts,[]);
  assert.deepEqual(h.draws,[]);
  assert.equal(h.state.sendingMessage,false);
+});
+
+
+test('A replacement composer is unlocked after a send finishes in a previous conversation',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ const nextButton=h.replaceButton();
+ h.state.chatId='chat-2';
+ h.sent.resolve({error:null});
+ await pending;
+ assert.equal(h.button.disabled,true,'the detached old button must not be touched');
+ assert.equal(nextButton.disabled,false,'new conversation must become usable');
+ assert.equal(nextButton.busy,false,'new button must not remain aria-busy');
+ assert.equal(h.state.sendingMessage,false);
+ assert.deepEqual(h.draws,[],'old send must not redraw new chat');
+ assert.equal(h.inserts.length,1);
+});
+
+test('A stale send must not unlock a composer without active chat authorization',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ const nextButton=h.replaceButton();
+ h.state.chatId='unauthorized-chat';
+ h.sent.resolve({error:null});
+ await pending;
+ assert.equal(nextButton.disabled,true,'unauthorized composer stays unavailable');
+ assert.equal(nextButton.busy,'true');
+ assert.deepEqual(h.draws,[]);
 });
