@@ -123,8 +123,9 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
   assert.equal(original.getAttribute('aria-invalid'),'true');
   assert.match(live.textContent,/Indiquez un nombre entier/);
   assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,3);
-  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
-  assert.equal(ui.state.checkout,null,'Blank member input must not enter checkout');
+  // Keep this sequence purely about input events: the input node, focus and
+  // live status must survive typing. A forced plan click triggers a full
+  // application redraw and belongs in a separate test with fresh DOM queries.
   original.value='0';ui.input(original);
   assert.equal(original.getAttribute('aria-invalid'),'true');
   original.value='1e2';ui.input(original);
@@ -135,8 +136,35 @@ test('Member-count input keeps its DOM node, cursor and focus while live prices 
   assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,0);
   assert.match(live.textContent,/5 membres/);
   assert.equal(window.document.getElementById('ess-seats'),original);
-  assert.equal(redraws,1,'Only one redraw comes from handled invalid checkout notification');
+  assert.equal(redraws,0,'Changing seat counts must update cards without replacing the form');
  }finally{await window.happyDOM.close();}
+});
+
+test('A forged selection with invalid seats is rejected after a full redraw',async()=>{
+ const window=new Window({url:'https://fixture.invalid/?edition=essential'});
+ let ui,redraws=0;const chosen=[],notifications=[];
+ try{
+  ui=createEssentialController({sb:{},document:window.document,escape,
+   redraw:()=>{redraws++;window.document.body.innerHTML=ui.renderPricing()},
+   notify:message=>notifications.push(message),onChoose:plan=>chosen.push(plan)});
+  ui.state.plans=fakePlans;
+  ui.state.checkout=null;
+  window.document.body.innerHTML=ui.renderPricing();
+  const input=window.document.getElementById('ess-seats');
+  input.value='';ui.input(input);
+  assert.equal(input.getAttribute('aria-invalid'),'true');
+  assert.equal(window.document.querySelectorAll('.ess-price button[data-action="ess:choose"]:disabled').length,3);
+  const before=window.document.getElementById('ess-seats-status');
+  assert.match(before.textContent,/Indiquez un nombre entier/);
+  // This is a forged handler event, not a user-operable disabled button.
+  await ui.handle({dataset:{action:'ess:choose',id:'fixture_only_b'}});
+  assert.equal(ui.state.checkout,null);
+  assert.deepEqual(chosen,[],'Invalid input must not enter onboarding');
+  assert.ok(notifications.some(message=>message.includes('nombre entier')));
+  assert.equal(redraws,1,'The rejected event follows the existing error redraw');
+  assert.notEqual(window.document.getElementById('ess-seats-status'),before,
+   'Never reuse a detached live-region node to assert current DOM state');
+ }finally{await window.happyDOM.close()}
 });
 
 test('Forged hidden, inactive, and missing public plan IDs cannot open signup',async()=>{
