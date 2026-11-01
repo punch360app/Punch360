@@ -18,10 +18,14 @@ function harness(){
  let tenant='company-A';
  const sent=deferred(),refreshed=deferred(),inserts=[],errors=[],draws=[];
  const input={value:'Bonjour'},main={scrollTop:0,scrollHeight:650};
+ const button={isConnected:true,disabled:false,busy:false,
+  setAttribute(name,value){if(name==='aria-busy')this.busy=value;},
+  removeAttribute(name){if(name==='aria-busy')this.busy=false;}
+ };
  const state={sendingMessage:false,chatId:'chat-1',section:'messages',user:{id:'person-1'}};
  const drafts=new Map();
  const context={
-  state,chatDrafts:drafts,
+  state,chatDrafts:drafts,document:{querySelector:()=>button},
   chatDraftKey:(companyId,chatId)=>companyId+':'+chatId,
   saveChatDraft:()=>drafts.set(tenant+':'+state.chatId,input.value),
   company:()=>tenant,
@@ -38,13 +42,15 @@ function harness(){
   error:err=>errors.push(err)
  };
  const api=runInNewContext(source+'\n({sendMessage})',context);
- return {api,state,input,main,drafts,sent,refreshed,inserts,errors,draws,switchCompany:id=>{tenant=id;}};
+ return {api,state,input,main,button,drafts,sent,refreshed,inserts,errors,draws,switchCompany:id=>{tenant=id;}};
 }
 
 test('An acknowledged message draws once and clears only the sent draft',async()=>{
  const h=harness();
  const first=h.api.sendMessage(),second=h.api.sendMessage();
  assert.equal(h.inserts.length,1,'concurrent taps must not duplicate insertion');
+ assert.equal(h.button.disabled,true,'send button must lock while request is pending');
+ assert.equal(h.button.busy,'true','pending request must be exposed as aria-busy');
  assert.equal(h.inserts[0].company_id,'company-A');
  assert.equal(h.inserts[0].conversation_id,'chat-1');
  h.sent.resolve({error:null});
@@ -102,5 +108,45 @@ test('An insertion failure retains the draft, unlocks the action and avoids redr
  assert.equal(h.state.sendingMessage,false);
  assert.equal(h.input.value,'Bonjour');
  assert.equal(h.drafts.get('company-A:chat-1'),'Bonjour');
+ assert.deepEqual(h.draws,[]);
+});
+
+test('Failed send restores button availability for a retry',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ assert.equal(h.button.disabled,true);
+ h.sent.resolve({error:{message:'network unavailable'}});
+ await pending;
+ assert.equal(h.button.disabled,false);
+ assert.equal(h.button.busy,false);
+ assert.equal(h.state.sendingMessage,false);
+ assert.equal(h.drafts.get('company-A:chat-1'),'Bonjour');
+});
+
+test('A failed send from the previous company never displays its error in the new company',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ h.switchCompany('company-B');
+ h.sent.resolve({error:{message:'private backend error from company-A'}});
+ await pending;
+ assert.deepEqual(h.errors,[]);
+ assert.deepEqual(h.draws,[]);
+ assert.equal(h.state.sendingMessage,false);
+});
+
+test('A failed send from a conversation left behind never alerts on another screen',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ h.state.section='home';
+ h.sent.resolve({error:{message:'late error'}});
+ await pending;
+ assert.deepEqual(h.errors,[]);
+ assert.deepEqual(h.draws,[]);
+});
+
+test('Replaced send button is not mutated after a navigation during delivery',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ h.button.isConnected=false;
+ h.state.section='home';
+ h.sent.resolve({error:null});
+ await pending;
+ assert.equal(h.button.disabled,true,'detached button should not be manipulated');
  assert.deepEqual(h.draws,[]);
 });
