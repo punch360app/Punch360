@@ -1,0 +1,68 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createPersonalThemeScope,themeGridColumns,themeGridItemWidth} from '../src/appearance/themeScope.js';
+test('A B A and unmount revoke old per-user preview/write/read tokens',()=>{
+ const scope=createPersonalThemeScope('alice'),one=scope.enter('alice');
+ assert.equal(scope.matches('alice'),true);
+ const other=scope.enter('bob');
+ assert.equal(scope.allows(one),false);
+ assert.equal(scope.allows(other),true);
+ scope.enter('alice');
+ assert.equal(scope.allows(one),false);
+ const cur=scope.current();scope.invalidate();
+ assert.equal(scope.allows(cur),false);
+ assert.equal(scope.matches('alice'),true);
+ assert.equal(scope.matches('bob'),false);
+});
+test('late cache and Supabase reads cannot override newer foreground request',async()=>{
+ const scope=createPersonalThemeScope('alice'),token=scope.enter('alice');
+ const old=scope.startRead(token);assert.ok(old);
+ const newer=scope.startRead(token);assert.ok(newer);
+ assert.equal(scope.allowsRead(old),false);
+ assert.equal(scope.allowsRead(newer),true);
+ let resolve;const deferred=new Promise(r=>resolve=r);
+ let writes=0;const pending=deferred.then(()=>{if(scope.allowsRead(newer))writes++});
+ scope.enter('bob');resolve('carbon');await pending;assert.equal(writes,0);
+});
+test('writing is exclusive and invalidates old loads before RPC',()=>{
+ const scope=createPersonalThemeScope('alice'),token=scope.enter('alice');
+ const read=scope.startRead(token);
+ assert.equal(scope.beginWrite(token),true);
+ assert.equal(scope.allowsRead(read),false);
+ assert.equal(scope.beginWrite(token),false);
+ assert.equal(scope.startRead(token),null);
+ assert.equal(scope.endWrite(token),true);
+ assert.equal(scope.beginWrite(token),true);
+ scope.enter('bob');
+ assert.equal(scope.endWrite(token),false);
+ assert.equal(scope.beginWrite(token),false);
+});
+test('responsive grid does not squeeze previews on narrow phone widths',()=>{
+ assert.equal(themeGridColumns(320),1);
+ assert.equal(themeGridColumns(360),2);
+ assert.equal(themeGridColumns(430),2);
+ assert.equal(themeGridColumns(800),2);
+ assert.equal(themeGridColumns(1024),3);
+ assert.equal(themeGridColumns(NaN),1);
+ assert.equal(themeGridItemWidth(1),'100%');
+ assert.equal(themeGridItemWidth(2),'48%');
+ assert.equal(themeGridItemWidth(3),'31%');
+});
+test('Expo appearance keeps cache per user, masks prior account and offers accessible controls',()=>{
+ const src=readFileSync(new URL('../src/appearance/AppearancePanel.tsx',import.meta.url),'utf8');
+ assert.match(src,/scope\.current\.matches\(user\)/);
+ assert.match(src,/scope\.current\.enter\(user\)/);
+ assert.match(src,/scope\.current\.invalidate\(\)/);
+ assert.match(src,/scope\.current\.startRead\(token\)/);
+ assert.match(src,/scope\.current\.allowsRead\(ticket\)/);
+ assert.match(src,/scope\.current\.beginWrite\(token\)/);
+ assert.match(src,/scope\.current\.endWrite\(token\)/);
+ assert.match(src,/AsyncStorage\.getItem\('punch-theme:'\+user\)/);
+ assert.match(src,/AsyncStorage\.setItem\('punch-theme:'\+user,id\)/);
+ assert.match(src,/onChangeText|onPress/);
+ assert.match(src,/minHeight:48/);
+ assert.match(src,/accessibilityState=\{\{selected/);
+ assert.match(src,/useWindowDimensions/);
+ assert.match(src,/accessibilityRole="alert"/);
+});
