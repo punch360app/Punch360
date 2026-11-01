@@ -1,3 +1,5 @@
+import {estimatePublicPlanPrice} from './commercial.js';
+
 // Public choice is a per-tab, untrusted reminder only. It never grants an entitlement
 // or substitutes for server-side catalog, contract, and payment verification.
 const KEY='punch-public-plan-intent-v1';
@@ -36,7 +38,11 @@ export function renderPublicPlanReminder(storage,plans,escape){
  if(!intent)return '';
  const current=(Array.isArray(plans)?plans:[]).find(plan=>plan.id===intent.planId&&plan.active&&plan.public_visible);
  const label=current?'<strong>'+escape(String(current.title||'Forfait à confirmer'))+'</strong>':'<strong>Forfait à revérifier</strong>';
+ const quote=current?estimatePublicPlanPrice(current,intent.seats,intent.cadence):null;
+ const estimate=quote?'<p>Estimation au catalogue actuel : <strong>'+
+  escape(new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(quote.payableCents/100))+
+  '</strong> / '+(intent.cadence==='yearly'?'an':'mois')+' avant taxes.</p>':'';
  const cadence=intent.cadence==='yearly'?'annuel':'mensuel';
  const seats=intent.seats+' membre'+(intent.seats>1?'s':'');
- return '<section class="notice" aria-label="Votre préférence de forfait"><p>Votre sélection Essentiel : '+label+' · '+seats+' · paiement '+cadence+'.</p><small>Choix conservé dans cet onglet à titre indicatif. Il ne crée aucun abonnement et ne fixe aucun tarif; le catalogue et le contrat devront être confirmés avant facturation.</small></section>';
+ return '<section class="notice" aria-label="Votre préférence de forfait"><p>Votre sélection Essentiel : '+label+' · '+seats+' · paiement '+cadence+'.</p>'+estimate+'<small>Choix conservé dans cet onglet à titre indicatif. Il ne crée aucun abonnement et ne fixe aucun tarif; le catalogue et le contrat devront être confirmés avant facturation.</small></section>';
 }

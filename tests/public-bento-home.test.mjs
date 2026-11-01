@@ -90,7 +90,7 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.equal(resolvePublicEdition('?edition=invalid',null),'essential');
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v60-bento/);
+ assert.match(sw,/punch-360-essential-v61-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{

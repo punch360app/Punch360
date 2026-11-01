@@ -73,3 +73,24 @@ test('Reopen the Essentiel price picker with the saved valid estimate',()=>{
  forgetPublicPlanIntent(storage);
  assert.equal(readPublicPlanEstimate(storage),null);
 });
+
+// The estimate is calculated from the current visible catalog, never stored
+// in sessionStorage. Changed catalog prices must update the visible estimate.
+test('Signup reminder uses current public pricing instead of any stored price',()=>{
+ const storage=store();
+ rememberPublicPlanIntent(storage,{planId:'fixture_basic',seats:7,cadence:'yearly'});
+ const current={id:'fixture_basic',title:'Équipe',active:true,public_visible:true,
+  base_cents:2300,included_seats:5,included_seats_unlimited:false,
+  extra_seat_cents:300,annual_discount:10};
+ const render=plan=>renderPublicPlanReminder(storage,[plan],escape);
+ let html=render(current);
+ assert.match(html,/Estimation au catalogue actuel/);
+ assert.match(html,/313,20/);
+ assert.match(html,/avant taxes/);
+ assert.doesNotMatch(html,/fournir.*paiement/i);
+ html=render({...current,base_cents:3300});
+ assert.match(html,/421,20/);
+ assert.doesNotMatch(html,/313,20/);
+ html=render({...current,active:false});
+ assert.doesNotMatch(html,/Estimation au catalogue actuel|421,20/);
+});
