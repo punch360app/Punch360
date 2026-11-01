@@ -9,14 +9,14 @@ assert.ok(match,'Load the actual message sending handler');
 const source=match[0].replace(/\n\/\/ A single client request at a time$/,'');
 
 function deferred(){
- let resolve;
- const promise=new Promise(r=>{resolve=r;});
- return {promise,resolve};
+ let resolve,reject;
+ const promise=new Promise((r,j)=>{resolve=r;reject=j;});
+ return {promise,resolve,reject};
 }
 
 function harness(){
  let tenant='company-A';
- const sent=deferred(),refreshed=deferred(),inserts=[],errors=[],draws=[];
+ const sent=deferred(),refreshed=deferred(),inserts=[],errors=[],draws=[],toasts=[];
  const input={value:'Bonjour'},main={scrollTop:0,scrollHeight:650};
  const button={isConnected:true,disabled:false,busy:false,
   setAttribute(name,value){if(name==='aria-busy')this.busy=value;},
@@ -39,10 +39,11 @@ function harness(){
   }},
   loadChat:async()=>refreshed.promise,
   draw:()=>draws.push('draw'),
-  error:err=>errors.push(err)
+  error:err=>errors.push(err),
+  toast:message=>toasts.push(message)
  };
  const api=runInNewContext(source+'\n({sendMessage})',context);
- return {api,state,input,main,button,drafts,sent,refreshed,inserts,errors,draws,switchCompany:id=>{tenant=id;}};
+ return {api,state,input,main,button,drafts,sent,refreshed,inserts,errors,draws,toasts,switchCompany:id=>{tenant=id;}};
 }
 
 test('An acknowledged message draws once and clears only the sent draft',async()=>{
@@ -149,4 +150,35 @@ test('Replaced send button is not mutated after a navigation during delivery',as
  await pending;
  assert.equal(h.button.disabled,true,'detached button should not be manipulated');
  assert.deepEqual(h.draws,[]);
+});
+
+
+test('A successful insert followed by a failed refresh is never reported as a failed send',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ h.sent.resolve({error:null});
+ await Promise.resolve();await Promise.resolve();
+ h.refreshed.reject(new Error('Read failed after successful write'));
+ await pending;
+ assert.equal(h.errors.length,0,'a sent message must not be shown as a failed send');
+ assert.equal(h.toasts.length,1);
+ assert.match(h.toasts[0],/Message envoyé/);
+ assert.equal(h.drafts.has('company-A:chat-1'),false);
+ assert.equal(h.input.value,'');
+ assert.equal(h.state.sendingMessage,false);
+ assert.equal(h.button.disabled,false);
+ assert.deepEqual(h.draws,[],'do not render stale messages after a failed refresh');
+ assert.equal(h.inserts.length,1,'no retry of an acknowledged write');
+});
+
+test('A delayed refresh failure cannot alert after leaving the conversation',async()=>{
+ const h=harness(),pending=h.api.sendMessage();
+ h.sent.resolve({error:null});
+ await Promise.resolve();await Promise.resolve();
+ h.state.section='home';
+ h.refreshed.reject(new Error('Old conversation read failed'));
+ await pending;
+ assert.deepEqual(h.errors,[]);
+ assert.deepEqual(h.toasts,[]);
+ assert.deepEqual(h.draws,[]);
+ assert.equal(h.state.sendingMessage,false);
 });
