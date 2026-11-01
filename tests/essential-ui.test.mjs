@@ -123,7 +123,7 @@ test('Super Admin mobile stylesheet collapses the sidebar on tablet and desktop-
 });
 
 
-function setupMfa({factors=[],verificationError=null,level='aal2',confirmRestart=()=>true}={}){
+function setupMfa({factors=[],verificationError=null,level='aal2',confirmRestart=()=>true,verificationGate=null,enrollGate=null}={}){
  const w=new Window(),calls=[];
  let liveLevel=level;
  const sb={
@@ -141,6 +141,7 @@ function setupMfa({factors=[],verificationError=null,level='aal2',confirmRestart
    },
    enroll:async({factorType,friendlyName})=>{
     calls.push('enroll:'+friendlyName);
+    if(enrollGate)await enrollGate;
     if(factors.some(x=>x.friendly_name===friendlyName))return{error:{message:'duplicate friendly name'}};
     assert.equal(factorType,'totp');
     factors.push({id:'new',factor_type:'totp',status:'unverified',friendly_name:friendlyName});
@@ -148,6 +149,7 @@ function setupMfa({factors=[],verificationError=null,level='aal2',confirmRestart
    },
    challengeAndVerify:async({factorId,code})=>{
     calls.push('verify:'+factorId);
+    if(verificationGate)await verificationGate;
     assert.equal(code,'123456');
     if(verificationError)return{error:{message:verificationError}};
     liveLevel='aal2';return{data:{}};
@@ -278,5 +280,68 @@ test('another user cannot inherit the previously open MFA setup',async()=>{
  assert.equal(ui.state.qr,null);
  assert.equal(ui.state.mfaSecret,null);
  assert.equal(ui.state.mfaMode,'pending');
+ await w.happyDOM.close();
+});
+
+
+function mfaDeferred(){
+ let resolve;
+ const promise=new Promise(r=>{resolve=r;});
+ return {promise,resolve};
+}
+async function untilMfaCall(calls,name){
+ for(let n=0;n<60&&!calls.includes(name);n++)await Promise.resolve();
+ assert.ok(calls.includes(name),'MFA action must start before changing identity');
+}
+test('late MFA verification from a previous user cannot open another user platform console',async()=>{
+ const gate=mfaDeferred();
+ const factor={id:'verified',status:'verified',factor_type:'totp',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[factor],level:'aal1',verificationGate:gate.promise});
+ await ui.load({id:'worker1'},null);
+ w.document.body.innerHTML=ui.renderPlatform();
+ w.document.getElementById('ess-mfa-code').value='123456';
+ const pending=ui.handle({dataset:{action:'ess:verify'}});
+ await untilMfaCall(calls,'verify:verified');
+ await ui.load({id:'worker2'},null);
+ assert.equal(ui.state.platformUser,'worker2');
+ assert.equal(ui.state.mfaRequired,true);
+ gate.resolve();
+ await pending;
+ assert.equal(ui.state.mfaRequired,true,'old verification cannot unlock new account');
+ assert.equal(ui.state.snapshot,null,'old account snapshot must remain absent');
+ assert.equal(calls.includes('verify:verified'),true);
+ await w.happyDOM.close();
+});
+test('logout during MFA verification ignores the late acknowledgement and clears busy state',async()=>{
+ const gate=mfaDeferred();
+ const factor={id:'verified',status:'verified',factor_type:'totp',friendly_name:'Console PUNCH'};
+ const {w,ui,calls}=setupMfa({factors:[factor],level:'aal1',verificationGate:gate.promise});
+ await ui.load({id:'worker1'},null);
+ w.document.body.innerHTML=ui.renderPlatform();
+ w.document.getElementById('ess-mfa-code').value='123456';
+ const pending=ui.handle({dataset:{action:'ess:verify'}});
+ await untilMfaCall(calls,'verify:verified');
+ ui.reset();gate.resolve();
+ await pending;
+ assert.equal(ui.state.platform,false);
+ assert.equal(ui.state.snapshot,null);
+ assert.equal(ui.state.mfaRequired,true);
+ assert.equal(ui.state.saving,false);
+ assert.equal(ui.state.platformUser,null);
+ await w.happyDOM.close();
+});
+test('late TOTP enrollment after an account switch cannot expose another account QR',async()=>{
+ const gate=mfaDeferred();
+ const {w,ui,calls}=setupMfa({factors:[],level:'aal1',enrollGate:gate.promise});
+ await ui.load({id:'worker1'},null);
+ const pending=ui.handle({dataset:{action:'ess:enroll'}});
+ await untilMfaCall(calls,'enroll:Console PUNCH');
+ await ui.load({id:'worker2'},null);
+ gate.resolve();await pending;
+ assert.equal(ui.state.platformUser,'worker2');
+ assert.equal(ui.state.qr,null);
+ assert.equal(ui.state.mfaSecret,null);
+ assert.equal(ui.state.factor,null);
+ assert.equal(ui.state.mfaRequired,true);
  await w.happyDOM.close();
 });
