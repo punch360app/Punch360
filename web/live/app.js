@@ -403,7 +403,13 @@ async function sendMessage(){
   if(company()===companyId&&state.user?.id===senderId&&state.section===section&&state.chatId===chatId&&currentCompanyChat(chatId))error(err);
  }finally{
   state.sendingMessage=false;
-  if(btn?.isConnected){btn.disabled=false;btn.removeAttribute('aria-busy');}
+  // A navigation may replace the composer while an earlier send is pending.
+  // Release the currently visible, authorized composer rather than a detached button.
+  const activeBtn=document.querySelector('button[data-action="sendMessage"]');
+  if(activeBtn?.isConnected&&state.section==='messages'&&state.chatId&&currentCompanyChat(state.chatId)&&(!isEssential()||essentialMessagesAllowed())){
+   activeBtn.disabled=false;
+   activeBtn.removeAttribute('aria-busy');
+  }
  }
 }
 // A single client request at a time avoids accidental duplicate groups on double-tap.
