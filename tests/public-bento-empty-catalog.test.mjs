@@ -19,7 +19,7 @@ test('Successful but empty public catalog shows an honest empty state and read-o
    return {order(column){
     assert.equal(column,'sort_order');
     calls++;
-    return Promise.resolve({data:[publicPlan],error:null});
+    return Promise.resolve({data:calls===1?[{...publicPlan,id:'hidden_fixture',active:false}]:[publicPlan],error:null});
    }};
   }};
  }};
@@ -30,9 +30,10 @@ test('Successful but empty public catalog shows an honest empty state and read-o
   assert.match(window.document.querySelector('.ess-pricing-status').textContent,/Chargement des tarifs/);
   assert.equal(window.document.querySelector('[data-action="ess:retry-public"]'),null);
 
-  // Backend returned successfully, but only inactive/hidden plans are present.
-  ui.state.plans=[{...publicPlan,id:'hidden_fixture',active:false}];
-  ui.state.publicPlansLoaded=true;
+  // Exercise the real public load path: a successful read with no visible plans.
+  await ui.load(null,null);
+  assert.equal(calls,1);
+  assert.equal(ui.state.publicPlansLoaded,true);
   window.document.body.innerHTML=ui.renderPricing();
   const status=window.document.querySelector('.ess-pricing-status');
   assert.equal(status.getAttribute('role'),'status');
@@ -44,7 +45,7 @@ test('Successful but empty public catalog shows an honest empty state and read-o
   assert.equal(retry.getAttribute('aria-label'),'Réessayer le chargement des forfaits');
 
   await ui.handle(retry);
-  assert.equal(calls,1,'Retry makes exactly one read of the public catalog');
+  assert.equal(calls,2,'Retry makes one additional read of the public catalog');
   assert.ok(draws>=2);
   assert.equal(window.document.querySelector('.ess-pricing-status'),null);
   assert.equal(window.document.querySelectorAll('.ess-price').length,1);
