@@ -28,10 +28,27 @@ function parseQueue(raw,time) {
  if(keys!=='createdAt,day,id,queuedAt')throw Error('Format de demande en attente non autorisé.');
  return x;
 }
+// Serialize queue reservations within the same app process. Otherwise two offline
+// completions can both observe 24/25 slots and write a 26th entry, making the
+// entire queue unreplayable. This does not replace the durable server request ID.
+const enqueueTails=new WeakMap();
+async function serializedEnqueue(storage,action){
+ const previous=enqueueTails.get(storage)||Promise.resolve();
+ let release;
+ const completed=new Promise(resolve=>{release=resolve;});
+ enqueueTails.set(storage,completed);
+ await previous;
+ try{return await action();}
+ finally{
+  if(enqueueTails.get(storage)===completed)enqueueTails.delete(storage);
+  release();
+ }
+}
 export async function queueOfflineMissionCompletion({storage,identity,day,uuid,now=Date.now}) {
  if(!DAY.test(String(day||'')))throw Error('Journée de mission invalide.');
  if(!storage||typeof storage.getItem!=='function'||typeof storage.setItem!=='function')
   throw Error('Stockage local indisponible.');
+ return serializedEnqueue(storage,async()=>{
  // Count only queued actions; ordinary completed online idempotency UUIDs are not queued.
  const queuedEntries=await listOfflineMissionCompletions({storage,identity,now});
  if(queuedEntries.length>=LIMIT&&!queuedEntries.some(x=>x.mission===identity.mission&&x.version===identity.version))
@@ -52,6 +69,7 @@ export async function queueOfflineMissionCompletion({storage,identity,day,uuid,n
  if(!checked||parseQueue(checked,time).id!==req.id)
   throw Error('File locale non confirmée; aucune fin enregistrée.');
  return {...req,day,queued:true};
+ });
 }
 export async function listOfflineMissionCompletions({storage,identity,now=Date.now}) {
  if(!storage||typeof storage.getAllKeys!=='function'||typeof storage.getItem!=='function')
@@ -69,7 +87,14 @@ export async function listOfflineMissionCompletions({storage,identity,now=Date.n
   const raw=await storage.getItem(key);
   if(raw==null)continue;
   let entry;try{entry=JSON.parse(raw)}catch{throw Error('File de mission locale illisible.');}
-  if(entry?.queuedAt===undefined)continue; // ordinary online idempotency records
+  if(entry?.queuedAt===undefined){
+   // Online request reservations contain only id/createdAt. A damaged queued
+   // record missing queuedAt must NEVER disappear silently from the pending list.
+   const keys=entry&&typeof entry==='object'&&!Array.isArray(entry)?Object.keys(entry).sort().join(','):'';
+   if(keys!=='createdAt,id'||!UUID.test(String(entry.id||''))||!Number.isSafeInteger(entry.createdAt))
+    throw Error('Enregistrement local de mission incomplet : vérification manuelle nécessaire.');
+   continue;
+  }
   const q=parseQueue(raw,now());
   results.push({key,id:q.id,day:q.day,mission:rest[0],version:Number(rest[1]),queuedAt:q.queuedAt});
   if(results.length>LIMIT)throw Error('File de missions trop volumineuse : assistance requise.');
