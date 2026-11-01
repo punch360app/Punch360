@@ -180,3 +180,6 @@
  .essential-public .ess-price .ess-btn,
  .essential-public .ess-market-details>summary{min-height:44px}
 }
+
+/* CORE-001: Plus / Pro show Messages as the fifth tab; Basic retains four. */
+.essential .nav.ess-five-tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
