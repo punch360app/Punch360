@@ -1,8 +1,16 @@
 # PUNCH 360° — État courant unique
 
-## Priorité actuelle — PUNCH-AUDIT-GLOBAL-20261028 (28 octobre 2026, À EXÉCUTER)
+## Reprise actuelle — 31 octobre 2026 : `@Boss` GOD MODE, livraisons sans audit bloquant
 
-Le propriétaire demande l'audit de chaque page, état et bouton, avec **responsive dès le départ**, puis corrections et protections durables avant les nouvelles fonctionnalités. Suivre le bloc en tête du [maître](prompt-board/MASTER_PROMPT_20261025.md), le [démarrage](prompt-board/WORK_START.md) et le [protocole UX/UI](prompt-board/UX_UI_AUTONOME_WORKFLOW.md).
+Décision propriétaire appliquée **dans la PR documentaire #260** : référence officielle `@Boss` et méthode du plugin, exécution du niveau GOD MODE lorsqu'il est explicitement demandé, MEDIUM par défaut pour les nouvelles missions sans niveau. Les audits UX/UI et responsive deviennent **continus et ciblés sur les parcours modifiés**, au lieu de retenir les fonctionnalités jusqu'à l'inventaire exhaustif. Toutes les exigences et protections Auth/MFA/RLS, temps/paie, Stripe et séparation des entreprises demeurent impératives. **Aucun progrès applicatif ni déploiement n'est prouvé par cette modification documentaire.**
+
+**Priorité réelle :** (1) corriger un P0 sécurité/temps critique démontré; (2) reprendre la refonte Bento 05 approuvée **dans les PR #217 de Julien et #261 empilée**, sans écraser ni fusionner sans autorisation, vérifier le catalogue réel et les cinq formats; (3) terminer le premier parcours utilisable J1 Essentiel, en réutilisant les modules déjà fusionnés; (4) poursuivre les fonctions indépendantes pendant les blocages de fournisseurs, staging ou appareils. Les PR #258/#259 restent distinctes; #260 ne fusionne pas les autres PR.
+
+**Règle anti-surplace :** pas de reprise documentaire répétitive, nouvelle mission Atelier, deuxième branche du même lot ou nouveau contrôle déjà vert et inchangé sans bénéfice produit concret. Un intégrateur et des experts ciblés; chaque livraison exige preuve code/CI/SHA/PR et publication vérifiée si autorisée.
+
+## Historique de priorité — PUNCH-AUDIT-GLOBAL-20261028 (28 octobre 2026, poursuite parallèle)
+
+Décision du 28 octobre : couverture de chaque page, état et bouton, avec **responsive dès le départ**. Depuis le 31 octobre, cette campagne continue en parallèle des fonctionnalités indépendantes. Suivre le bloc en tête du [maître](prompt-board/MASTER_PROMPT_20261025.md), le [démarrage](prompt-board/WORK_START.md) et le [protocole UX/UI](prompt-board/UX_UI_AUTONOME_WORKFLOW.md).
 
 **Organisation actualisée par la PR #226 :** un pilote intégrateur, six regards spécialisés en lecture seule : direction artistique, Design System/gardien de cohérence, UX/ergonomie/accessibilité, responsive, client/utilisateur et QA. **Prochaine action :** établir/reprendre ici la matrice page/état/rôle/format/objectif/défaut/priorité/correction/preuve/statut, relever la version servie et commencer les audits initiaux ; traiter d'abord les défauts critiques réels et les composants partagés.
 
