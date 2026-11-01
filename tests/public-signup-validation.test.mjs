@@ -13,7 +13,7 @@ test('Signup requires a second matching password before an authentication call',
 });
 
 test('Signup shows the confirmation field, preserves it across redraws and does not store it',()=>{
- assert.match(app,/signup\?formfield\('Confirmer le mot de passe','signupPasswordConfirm'/);
+ assert.match(app,/signup\?passwordField\('Confirmer le mot de passe','signupPasswordConfirm'/);
  assert.match(app,/validatePublicSignupPassword\(password,\$\('signupPasswordConfirm'\)\?\.value\)/);
  assert.match(app,/\['email','password','signupPasswordConfirm','companyName'/);
  assert.match(app,/if\(signupError\)return authMessage\(signupError,true\);state\.authBusy=true/);

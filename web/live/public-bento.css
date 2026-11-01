@@ -339,3 +339,9 @@ html.auth-screen:not(.essential-public) .punch-public-bento :is(button,summary):
   display:flex;flex-direction:column;justify-content:flex-start
  }
 }
+
+/* Auth: keyboard/touch visibility controls never replace the password field. */
+html.auth-screen .auth-password-row{display:flex;gap:8px;align-items:stretch;min-width:0;width:100%}
+html.auth-screen .auth-password-row>.field{flex:1;min-width:0;width:100%}
+html.auth-screen .auth-show-password{flex:0 0 auto;min-height:44px;min-width:88px;padding:8px 10px;background:#e9f1ed;color:#21483f;border:1px solid #9eb9ad;border-radius:10px;font:inherit;font-weight:650;cursor:pointer}
+html.auth-screen .auth-show-password:focus-visible{outline:3px solid #4c8875;outline-offset:2px}
