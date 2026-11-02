@@ -93,6 +93,46 @@ test('a fully unpaid day remains in daily detail with zero net time',()=>{
  assert.deepEqual(rows,[{dayStart:time(2),netMs:0,grossMs:3600000,unpaidMs:3600000}]);
 });
 
+test('browse an earlier local week without changing the real clock',()=>{
+ const earlier=time(-4,8),today=time(2,8);
+ const snapshot={sessions:[session('old',earlier,earlier+3600000),session('today',today,today+3600000)],
+  segments:[segment('old',earlier,earlier+3600000),segment('today',today,today+3600000)],breaks:[]};
+ const args={companyId,userId,...snapshot,now:time(2,12)};
+ assert.deepEqual(essentialMobileDailyHours({...args,weekAt:time(-4,12)}),[
+  {dayStart:time(-4),netMs:3600000,grossMs:3600000,unpaidMs:0}]);
+ assert.deepEqual(essentialMobileDailyHours(args),[
+  {dayStart:time(2),netMs:3600000,grossMs:3600000,unpaidMs:0}]);
+});
+
+test('week browsing clips a Sunday-night shift at the week boundary',()=>{
+ const start=time(1,22),end=time(2,2);
+ const args={companyId,userId,now:time(2,12),weekAt:time(1,12),
+  sessions:[session('night',start,end)],segments:[segment('night',start,end)],breaks:[]};
+ assert.deepEqual(essentialMobileDailyHours(args),[
+  {dayStart:time(1),netMs:7200000,grossMs:7200000,unpaidMs:0}]);
+ assert.deepEqual(essentialMobileDailyHours({...args,weekAt:time(2,12)}),[
+  {dayStart:time(2),netMs:7200000,grossMs:7200000,unpaidMs:0}]);
+});
+
+test('browsing cannot extend an old server snapshot into a later week',()=>{
+ const start=time(2,8),end=time(2,12);
+ assert.deepEqual(essentialMobileDailyHours({companyId,userId,
+  sessions:[session('later',start,end)],segments:[segment('later',start,end)],
+  breaks:[],weekAt:time(2,12),now:time(2,15),cutoff:time(1,23)}),[]);
+ assert.deepEqual(essentialMobileDailyHours({companyId,userId,
+  sessions:[],segments:[],breaks:[],now:time(2,12),weekAt:NaN}),[]);
+});
+
+test('native My Hours can browse scoped weeks without moving current home time',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(ui,/weekAt:viewWeekDate\\.getTime\\(\\)/);
+ assert.match(ui,/setWeekOffset\\(v=>Math\\.min\\(4,v\\+1\\)\\)/);
+ assert.match(ui,/setWeekOffset\\(v=>Math\\.max\\(0,v-1\\)\\)/);
+ assert.match(ui,/weekOffset===0\\?tr\\('thisWeek'\\)/);
+ assert.match(ui,/dailyHours\\.reduce\\(\\(sum,row\\)=>sum\\+row\\.netMs,0\\)/);
+ assert.match(ui,/Aucune journée dans le relevé chargé/);
+});
+
 test('sum of daily gross minus unpaid always equals sum of daily net',()=>{
  const start=time(3,22),end=time(4,2);
  const rows=daily({sessions:[session('night',start,end)],
