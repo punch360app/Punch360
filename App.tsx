@@ -110,7 +110,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
  }
  async function syncConstructionPunches(){
   const requestedFor=account.companyId+':'+account.userId;
-  if(syncInFlight.current||working||journalBlocked||localPending===0||
+  if(syncInFlight.current||punchActionInFlight.current||working||journalBlocked||localPending===0||
      journalViewScope!==requestedFor)return;
   syncInFlight.current=true;setSyncBusy(true);
   const revision=++punchReadRevision.current;
@@ -201,13 +201,24 @@ function Workspace({account}:{account:WorkspaceAccount}){
    if(working||punchActionInFlight.current||scopeRef.current!==requestedFor)return;
    punchActionInFlight.current=true;setWorking(true);
    ++punchReadRevision.current;
+   let recorded=false;
    try{
-    if(punchActive)await punchTransfer(account.companyId,j.id);
+    const result=punchActive?await punchTransfer(account.companyId,j.id):null;
+    recorded=!!punchActive;
     if(scopeRef.current!==requestedFor)return;
     setSelectedId(j.id);setPage('home');
-    if(punchActive)await refreshConstructionPunchState();
-   }catch(e:any){if(scopeRef.current===requestedFor)Alert.alert('Transfert impossible',e.message||String(e))}
-   finally{punchActionInFlight.current=false;setWorking(false);}
+    if(punchActive){
+     const applied=await refreshConstructionPunchState();
+     if(!applied||scopeRef.current!==requestedFor)return;
+     if(result?.queued)setMessage('Transfert enregistré sur cet appareil · envoi au retour du réseau.');
+     else if(result?.review_status==='pending')setMessage('Transfert reçu · validation du responsable requise.');
+    }
+   }catch(e:any){
+    if(scopeRef.current===requestedFor){
+     Alert.alert(recorded?'État du transfert à vérifier':'Transfert non confirmé',
+      recorded?'Transfert enregistré, mais le relevé ne peut pas être rechargé. Vérifiez Mes heures avant de transférer de nouveau.':e?.message||String(e));
+    }
+   }finally{punchActionInFlight.current=false;setWorking(false);}
   };
   if(punchActive)Alert.alert('Transférer mon punch',
    'Le temps de #'+current?.number+' se termine au même instant où commence celui de #'+j.number+'. Le compteur de la journée continue.',
@@ -286,11 +297,21 @@ async function refreshConstructionPunchState(){
     if(punchActionInFlight.current||scopeRef.current!==requestedFor)return;
     punchActionInFlight.current=true;setWorking(true);
     ++punchReadRevision.current;
-    try{if(punchActive)await punchOut(account.companyId);
-    else await punchIn(account.companyId,current.id);
-    if(scopeRef.current===requestedFor)await refreshConstructionPunchState();
-    }catch(e:any){if(scopeRef.current===requestedFor)Alert.alert('Punch non enregistré',e.message||String(e))}
-    finally{punchActionInFlight.current=false;setWorking(false)}
+    let recorded=false;
+    try{
+     const result=punchActive?await punchOut(account.companyId):await punchIn(account.companyId,current.id);
+     recorded=true;
+     if(scopeRef.current!==requestedFor)return;
+     const applied=await refreshConstructionPunchState();
+     if(!applied||scopeRef.current!==requestedFor)return;
+     if(result.queued)setMessage('Pointage enregistré sur cet appareil · envoi au retour du réseau.');
+     else if(result.review_status==='pending')setMessage('Pointage reçu · validation du responsable requise.');
+    }catch(e:any){
+     if(scopeRef.current===requestedFor){
+      Alert.alert(recorded?'État du pointage à vérifier':'Pointage non confirmé',
+       recorded?'Pointage enregistré, mais le relevé ne peut pas être rechargé. Vérifiez Mes heures avant de repointer.':e?.message||String(e));
+     }
+    }finally{punchActionInFlight.current=false;setWorking(false)}
    }}]);
  }
  function archivePunch(id:string){
