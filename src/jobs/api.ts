@@ -117,8 +117,16 @@ export function validatedJobDraft(companyId:string,number:string,name:string,add
   throw Error('Adresse du chantier invalide.');
  return {company_id:companyId,number:number.trim(),name:name.trim(),address:address.trim()};
 }
+const pendingJobCreation=new Set<string>();
 export async function createJob(companyId:string,number:string,name:string,address:string){
  const draft=validatedJobDraft(companyId,number,name,address);
+ // Prevent overlapping non-idempotent inserts, including two rapid taps on
+ // distinct job numbers in the same workspace. One click must finish first.
+ const requestScope=draft.company_id;
+ if(pendingJobCreation.has(requestScope))
+  throw Error('Création déjà en cours : attendez sa confirmation avant un nouvel essai.');
+ pendingJobCreation.add(requestScope);
+ try{
  // An old UI instance may still carry another company's form after sign-out.
  const origin=await getLocalIdentity();
  if(!origin?.id)throw Error('Compte non confirmé : aucun chantier créé.');
@@ -139,4 +147,5 @@ export async function createJob(companyId:string,number:string,name:string,addre
  if(typeof data?.id!=='string'||!data.id)
   throw Error('Réponse de création non confirmée. Vérifiez la liste des chantiers avant de réessayer, pour éviter un doublon.');
  return data.id;
+ }finally{pendingJobCreation.delete(requestScope)}
 }
