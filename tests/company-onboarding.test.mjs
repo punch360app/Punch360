@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createCompanyOnce,isCreatedCompanyVerified,validCreatedCompanyId,
- savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from '../web/live/company-onboarding.js';
+ savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation,recoverCreatedCompanyWorkspace} from '../web/live/company-onboarding.js';
 
 const user='10000000-0000-4000-8000-000000000001';
 const other='10000000-0000-4000-8000-000000000002';
@@ -73,13 +73,43 @@ test('pending creation receipt is per-tab and tied to user, not an entitlement',
  assert.equal(clearPendingCompanyCreation({removeItem(){throw Error('blocked')}}),false);
 });
 
+test('a severed create response can recover only one new verified boss workspace',()=>{
+ const baseline={previousIds:[other],edition:'essential'};
+ const pending={companyId:null,...baseline};
+ const candidate={...membership};
+ assert.deepEqual(recoverCreatedCompanyWorkspace(pending,user,[candidate]),candidate);
+ assert.equal(recoverCreatedCompanyWorkspace({companyId:company,...baseline},user,[candidate]),null,
+  'Known company ID must use exact confirmed membership, not recovery');
+ assert.equal(recoverCreatedCompanyWorkspace({...pending,previousIds:[company]},user,[candidate]),null,
+  'An old company is not evidence of a new company');
+ assert.equal(recoverCreatedCompanyWorkspace({...pending,previousIds:null},user,[candidate]),null);
+ assert.equal(recoverCreatedCompanyWorkspace({...pending,edition:'construction'},user,[candidate]),null);
+ assert.equal(recoverCreatedCompanyWorkspace(pending,user,[{...candidate,role:'employee'}]),null);
+ assert.equal(recoverCreatedCompanyWorkspace(pending,user,[{...candidate,userId:other}]),null);
+ assert.equal(recoverCreatedCompanyWorkspace(pending,user,[candidate,{...candidate,companyId:'30000000-0000-4000-8000-000000000003'}]),null,
+  'Two newly visible boss memberships are ambiguous');
+});
+
+test('session receipt round-trips only valid non-authoritative recovery context',()=>{
+ const tab=storage(),details={previousIds:[other],edition:'essential'};
+ assert.equal(savePendingCompanyCreation(tab,user,null,details),true);
+ assert.deepEqual(readPendingCompanyCreation(tab,user),{companyId:null,...details});
+ assert.equal(readPendingCompanyCreation(tab,other),null);
+ assert.equal(isCreatedCompanyVerified(company,user,{company_id:company},[]),false);
+ assert.equal(savePendingCompanyCreation(tab,user,null,{previousIds:[other,'forged'],edition:'essential'}),true);
+ assert.deepEqual(readPendingCompanyCreation(tab,user),{companyId:null},
+  'A forged baseline cannot trigger recovery');
+});
+
 test('public app guards repeat creation and checks the server membership',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/if\(state\.authBusy\|\|state\.pendingCompanyCreation\)return;/);
  assert.match(app,/accepted=await createCompanyOnce\(/);
- assert.match(app,/state\.pendingCompanyCreation=\{companyId:accepted\.companyId\}/);
+ assert.match(app,/state\.pendingCompanyCreation=\{companyId:accepted\.companyId,\.\.\.pendingContext\}/);
  assert.match(app,/isCreatedCompanyVerified\(pending\.companyId,state\.user\?\.id,state\.account,companyContext\.list\)/);
  assert.match(app,/verifyCreatedCompany/);
+ assert.match(app,/recoverCreatedCompanyWorkspace\(pending,state\.user\?\.id,companyContext\.list\)/);
+ assert.match(app,/previousIds:companyContext\.list\.map\(w=>w\.companyId\)/);
  assert.match(app,/if\(definiteError\)throw err;state\.pendingCompanyCreation=\{companyId:null\}/);
  assert.match(app,/readPendingCompanyCreation\(sessionStorage,state\.user\.id\)/);
 });
