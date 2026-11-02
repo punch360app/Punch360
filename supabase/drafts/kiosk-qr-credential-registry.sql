@@ -48,6 +48,7 @@ declare w public.company_workers; token text; now_at timestamptz:=clock_timestam
 begin
  if p_worker is null then raise exception using errcode='42501',message='Accès refusé';end if;
  select * into w from public.company_workers where id=p_worker for update;
+ now_at:=clock_timestamp(); -- refresh after any lock wait
  if not found or not private.can_administer(w.company_id) then
   raise exception using errcode='42501',message='Accès refusé';
  end if;
@@ -96,6 +97,7 @@ begin
  select * into challenge from private.kiosk_qr_enrollments
   where company_id=p_company and worker_id=w.id
    and token_hash=sha256(convert_to(p_enrollment,'UTF8')) for update;
+ now_at:=clock_timestamp(); -- expired while waiting remains expired
  if not found or challenge.consumed_at is not null or challenge.revoked_at is not null
     or challenge.expires_at<=now_at then
   raise exception using errcode='42501',message='Activation refusée';
@@ -120,6 +122,7 @@ begin
  if auth.uid() is null then raise exception using errcode='42501',message='Accès refusé';end if;
  select * into w from public.company_workers
   where company_id=p_company and auth_user_id=auth.uid() for update;
+ now_at:=clock_timestamp();
  if not found then raise exception using errcode='42501',message='Accès refusé';end if;
  update private.kiosk_qr_cards set revoked_at=now_at
   where company_id=w.company_id and worker_id=w.id and revoked_at is null;
@@ -135,6 +138,7 @@ returns void language plpgsql security definer set search_path='' as $$
 declare w public.company_workers; now_at timestamptz:=clock_timestamp();
 begin
  select * into w from public.company_workers where id=p_worker for update;
+ now_at:=clock_timestamp();
  if not found or not private.can_administer(w.company_id) then
   raise exception using errcode='42501',message='Accès refusé';
  end if;
@@ -171,6 +175,41 @@ revoke all on function private.revoke_kiosk_qr_on_worker_change() from public,an
 create trigger revoke_kiosk_qr_on_worker_change
  after update of status,can_kiosk_punch,personal_access,auth_user_id,role,company_id
  on public.company_workers for each row execute function private.revoke_kiosk_qr_on_worker_change();
+
+-- Membership suspension or removal revokes credentials even when a
+-- separate worker-sync trigger does not run. Both triggers are idempotent.
+create function private.revoke_kiosk_qr_on_membership_change()
+returns trigger language plpgsql security definer set search_path='' as $
+declare v_revoke boolean:=false;
+begin
+ if tg_op='DELETE' then
+  v_revoke:=true;
+ elsif tg_op='UPDATE' then
+  v_revoke:=new.status is distinct from old.status
+    or new.role is distinct from old.role
+    or new.user_id is distinct from old.user_id
+    or new.company_id is distinct from old.company_id;
+ end if;
+ if v_revoke then
+  update private.kiosk_qr_cards set revoked_at=clock_timestamp()
+   where company_id=old.company_id and enrolled_user_id=old.user_id
+    and revoked_at is null;
+  update private.kiosk_qr_enrollments set revoked_at=clock_timestamp()
+   where company_id=old.company_id
+    and worker_id in (
+     select w.id from public.company_workers w
+      where w.company_id=old.company_id and w.auth_user_id=old.user_id
+    ) and consumed_at is null and revoked_at is null;
+ end if;
+ if tg_op='DELETE' then return old;end if;
+ return new;
+end $;
+revoke all on function private.revoke_kiosk_qr_on_membership_change()
+ from public,anon,authenticated;
+create trigger revoke_kiosk_qr_on_membership_change
+ after update of status,role,user_id,company_id or delete
+ on public.company_members for each row
+ execute function private.revoke_kiosk_qr_on_membership_change();
 
 -- Explicit grants: public SECURITY DEFINER functions must not be executable
 -- by PUBLIC/anon. Never grant table SELECT/INSERT/UPDATE/DELETE to API roles.
