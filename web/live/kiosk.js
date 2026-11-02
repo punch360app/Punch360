@@ -12,7 +12,7 @@ const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const state={device:null,person:null,number:'',pin:'',mode:'identify',notice:'',busy:false,pending:null,offlineIdentity:null,provisional:false,queued:0,qrOpen:false};let timer;let generation=0;
 const qrLabel=key=>kioskQrText(locale.code,key);
 const qrCamera=createKioskQrCamera({mediaDevices:navigator.mediaDevices,BarcodeDetector:globalThis.BarcodeDetector,
- notify:reason=>{if(!state.qrOpen)return;state.qrOpen=false;state.notice=qrLabel(reason);draw();}});
+ notify:reason=>{if(!state.qrOpen)return;state.qrOpen=false;state.notice=qrLabel(reason);arm();draw();}});
 const field=(label,id,type='text',extra='')=>`<label>${label}<input id="${id}" type="${type}" autocomplete="off" ${extra}></label>`;
 // The app only shows a limited, translated error vocabulary. Raw provider errors stay hidden.
 const kioskError=key=>{const err=Error(tr(key));err.kioskKey=key;return err};
@@ -82,8 +82,8 @@ async function identify(){const number=root.querySelector('#number')?.value.trim
  if(state.mode==='enroll'){if(pin!==root.querySelector('#pinConfirm')?.value)throw Error('Les NIP ne correspondent pas.');await request({...params,action:'enroll',enrollment:root.querySelector('#enrollment')?.value.trim()});clearPerson('pinConfigured');return;}
  const revision=generation;let person;if(!navigator.onLine){const identity=await offline.unlock(number,pin,state.device.device_id);if(revision!==generation)return;state.offlineIdentity=identity;state.provisional=true;person=identity.person}else {person=await request({...params,action:'identify'});if(revision!==generation)return;await offline.sync(state.device,offlineRequest).catch(()=>[]);const queued=(await offline.list().catch(()=>[])).some(x=>x.number===number&&!['approved','rejected'].includes(x.state));try{let identity;if(queued){identity=await offline.unlock(number,pin,state.device.device_id);if(!identity.person.active)identity=await refreshOffline(number,pin)}else identity=await refreshOffline(number,pin);if(revision!==generation)return;state.offlineIdentity=identity;person.break_policy=identity.person.break_policy;if(queued){person=identity.person;state.provisional=true}}catch{if(queued)throw Error('Observations provisoires en attente : connexion et réconciliation requises');}}if(revision!==generation||document.visibilityState==='hidden')return;if(person.idle_seconds)state.device.idle_seconds=person.idle_seconds;state.number=number;state.pin=pin;state.person=person;state.notice='';draw();arm();}
 root.addEventListener('click',async ev=>{const button=ev.target.closest('button');if(!button||state.busy)return;const key=button.dataset.key,action=button.dataset.action;
- if(action==='scan-qr'){if(!navigator.onLine||!state.device||state.person||state.mode!=='identify')return;state.qrOpen=true;state.notice='';draw();return;}
- if(action==='close-qr'){state.qrOpen=false;qrCamera.stop();draw();return;}
+ if(action==='scan-qr'){if(!navigator.onLine||!state.device||state.person||state.mode!=='identify')return;clearTimeout(timer);state.qrOpen=true;state.notice='';draw();return;}
+ if(action==='close-qr'){state.qrOpen=false;qrCamera.stop();arm();draw();return;}
  if(key&&key!=='OK'){arm();const pin=root.querySelector('#pin');if(pin)pin.value=key==='C'?'':(pin.value+key).slice(0,12);return;}
  state.busy=true;showKioskProcessing(root,tr('processing'));try{
   if(action==='pair'){const code=root.querySelector('#pairCode').value.trim();const device=await request({action:'pair',code});await storage('set',device);state.device=device;state.notice=tr('pairSuccess');}
