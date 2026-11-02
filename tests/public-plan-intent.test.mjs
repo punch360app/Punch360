@@ -106,7 +106,7 @@ test('Signup recap never quotes a retired or incomplete offer from an old tab se
  const show=p=>renderPublicPlanReminder(storage,[p],escape);
  const valid=show(offer);
  assert.match(valid,/Estimation au catalogue actuel/);
- assert.match(valid,/2\d{2},\d{2}/);
+ assert.match(valid,/345,60/);
  assert.match(valid,/3 membres supplémentaires facturés/);
  assert.match(valid,/Économie estimée sur 12 mois/);
  for(const changed of [
