@@ -33,7 +33,16 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
  }catch{/* Network probe failure: consult scoped offline cache. */}
  if(offline){const fallback=await cached();if(fallback)return fallback;
   throw Error('Chantiers hors ligne indisponibles : reconnectez cet appareil pour les charger');}
- const {data,error}=await supabase.from('jobs').select('id,company_id,number,name,address,latitude,longitude,photo_url,active').eq('company_id',companyId).eq('active',true).order('number');
+ // A request can throw before Supabase returns {error} when connectivity
+ // drops after the network probe. Keep the last identity-scoped snapshot.
+ let jobsResponse;
+ try{
+  jobsResponse=await supabase.from('jobs').select('id,company_id,number,name,address,latitude,longitude,photo_url,active').eq('company_id',companyId).eq('active',true).order('number');
+ }catch(error){
+  const fallback=await cached();if(fallback)return fallback;
+  throw error;
+ }
+ const {data,error}=jobsResponse;
  if(error||!Array.isArray(data)){
   const fallback=await cached();if(fallback)return fallback;
   throw error||Error('Relevé chantiers incomplet : synchronisation non confirmée');
@@ -53,7 +62,14 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
  }
  const user=identity;
  if(!user)throw Error('Session expirée');
- const {data:assignments,error:aError}=await supabase.from('job_assignments').select('job_id,planned_start').eq('company_id',companyId).eq('user_id',user.id).eq('active',true);
+ let assignmentResponse;
+ try{
+  assignmentResponse=await supabase.from('job_assignments').select('job_id,planned_start').eq('company_id',companyId).eq('user_id',user.id).eq('active',true);
+ }catch(error){
+  const fallback=await cached();if(fallback)return fallback;
+  throw error;
+ }
+ const {data:assignments,error:aError}=assignmentResponse;
  if(aError||!Array.isArray(assignments)||assignments.some(a=>!a||
   typeof a.job_id!=='string'||!a.job_id||
   (a.planned_start!==null&&(typeof a.planned_start!=='string'||
@@ -62,7 +78,13 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
   throw aError||Error('Affectations incomplètes : synchronisation non confirmée');
  }
  const map=new Map<string,string|null>(assignments.map(a=>[a.job_id,a.planned_start]));
- const shifts=await supabase.from('scheduled_shifts').select('job_id,starts_at').eq('company_id',companyId).eq('user_id',user.id).is('cancelled_at',null).gt('starts_at',new Date().toISOString()).order('starts_at');
+ let shifts;
+ try{
+  shifts=await supabase.from('scheduled_shifts').select('job_id,starts_at').eq('company_id',companyId).eq('user_id',user.id).is('cancelled_at',null).gt('starts_at',new Date().toISOString()).order('starts_at');
+ }catch(error){
+  const fallback=await cached();if(fallback)return fallback;
+  throw error;
+ }
  if(shifts.error||!Array.isArray(shifts.data)||shifts.data.some(shift=>!shift||
   typeof shift.job_id!=='string'||!shift.job_id||
   typeof shift.starts_at!=='string'||!Number.isFinite(Date.parse(shift.starts_at)))){
