@@ -52,7 +52,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
     typeof s.started_at==='string'&&Number.isFinite(Date.parse(s.started_at)))&&
    (cached.breaks||[]).every(b=>b&&typeof b.session_id==='string'&&
     typeof b.started_at==='string'&&Number.isFinite(Date.parse(b.started_at)));
-  if(!valid){
+  if(!valid||!cached){
    snapshotUnverified=true;
    return overlay({sessions:[],segments:[],breaks:[],active:null,lastJobId:null},'cache');
   }
