@@ -457,7 +457,7 @@ function myRequestsTimeline(limit=8){
    snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections}),
   breakView:breakCorrectionInbox({companyId,userId,role:state.account?.role,
    source:essentialUI.breakCorrections.state}),
-  missingView:employeeMissingDaysSummary({companyId,userId,source:essentialUI.missingDays.state}),
+  missingView:employeeMissingDaysSummary({companyId,userId,source:essentialUI.missingDays.state,limit}),
   leaveView:essentialLeaveView({companyId,userId,loaded:state.leavesLoaded,requests:state.leaves})
  });
 }

@@ -9,17 +9,19 @@ export function missingDayPayload(company,form){
  return {p_company:company,p_worker:form.worker,p_job:form.job,p_start:start,p_end:end,p_breaks:breaks,p_reason:form.reason.trim()};
 }
 /** Read-only employee summary. This does not turn a pending request into approved time. */
-export function employeeMissingDaysSummary({companyId,userId,source}={}){
+export function employeeMissingDaysSummary({companyId,userId,source,limit=8}={}){
  const empty={ready:false,requests:[]};
  if(!companyId||!userId||source?.company!==companyId||source.user!==userId||
     source.loaded!==true||!Array.isArray(source.workers)||!Array.isArray(source.requests))return empty;
  const workers=new Set(source.workers.filter(w=>w?.auth_user_id===userId&&typeof w.id==='string').map(w=>w.id));
  const labels={pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'};
+ // The compact summary stays short; the full requests page can show 100.
+ const max=Number.isSafeInteger(limit)?Math.min(100,Math.max(0,limit)):8;
  const rows=source.requests.filter(r=>r?.company_id===companyId&&workers.has(r.worker_id)&&
   typeof r.id==='string'&&Object.hasOwn(labels,r.status)&&
   typeof r.starts_at==='string'&&Number.isFinite(Date.parse(r.starts_at)))
   .sort((a,b)=>Date.parse(b.created_at||b.starts_at)-Date.parse(a.created_at||a.starts_at))
-  .slice(0,8).map(r=>({id:r.id,startsAt:r.starts_at,endsAt:r.ends_at,createdAt:r.created_at,
+  .slice(0,max).map(r=>({id:r.id,startsAt:r.starts_at,endsAt:r.ends_at,createdAt:r.created_at,
    status:r.status,label:labels[r.status]}));
  return {ready:true,requests:rows};
 }

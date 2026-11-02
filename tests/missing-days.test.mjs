@@ -23,6 +23,29 @@ test('My Hours shows only the selected company and authenticated worker requests
   {companyId:'company',userId:'user',source:{...source,workers:[]}}
  ]){const result=employeeMissingDaysSummary(mismatch);assert.equal(result.requests.length,0);}
 });
+test('all requests can display more than eight scoped missing-day requests',()=>{
+ const base={id:'request-0',company_id:'company',worker_id:'mine',status:'pending',
+  starts_at:'2026-10-27T12:00:00Z',ends_at:'2026-10-27T20:00:00Z'};
+ const own=Array.from({length:20},(_,i)=>({...base,id:'request-'+i,
+  created_at:new Date(Date.parse('2026-10-28T12:00:00Z')+i*60000).toISOString()}));
+ const source={company:'company',user:'user',loaded:true,
+  workers:[{id:'mine',auth_user_id:'user'},{id:'colleague',auth_user_id:'someone-else'}],
+  requests:[...own,{...base,id:'foreign-worker',worker_id:'colleague'},
+   {...base,id:'foreign-company',company_id:'another'}]};
+ const opts={companyId:'company',userId:'user',source};
+ assert.equal(employeeMissingDaysSummary(opts).requests.length,8);
+ const all=employeeMissingDaysSummary({...opts,limit:100});
+ assert.equal(all.ready,true);assert.equal(all.requests.length,20);
+ assert.equal(all.requests[0].id,'request-19');
+ assert.equal(all.requests[19].id,'request-0');
+ assert.doesNotMatch(JSON.stringify(all),/foreign-worker|foreign-company/);
+ assert.equal(employeeMissingDaysSummary({...opts,limit:0}).requests.length,0);
+ assert.equal(employeeMissingDaysSummary({...opts,limit:NaN}).requests.length,8);
+ assert.equal(employeeMissingDaysSummary({...opts,limit:1000}).requests.length,20);
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.ok(app.includes('const tracking=myRequestsTimeline(100)'));
+ assert.ok(app.includes('missingView:employeeMissingDaysSummary({companyId,userId,source:essentialUI.missingDays.state,limit})'));
+});
 test('employee missing-day inbox is queried by worker id and reset on account change',async()=>{
  const filters=[];const sb={from:name=>{const q={data:[],error:null};
   q.select=()=>q;q.eq=(k,v)=>{filters.push([name,k,v]);return q};
@@ -39,7 +62,7 @@ test('My Hours links to missing-day workflow without treating requests as payabl
  const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
  const hours=app.slice(begin,end);
  assert.match(app,/import \{employeeMissingDaysSummary,managerMissingDayApprovalSummary\} from '\.\/missing-days\.js'/);
- assert.match(app,/missingView:employeeMissingDaysSummary\(\{companyId,userId,source:essentialUI\.missingDays\.state\}/);
+ assert.match(app,/missingView:employeeMissingDaysSummary\(\{companyId,userId,source:essentialUI\.missingDays\.state,limit\}/);
  assert.match(hours,/myRequestsTimeline\(\)/);
  assert.match(hours,/data-id="missingDays"/);
  assert.match(hours,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
