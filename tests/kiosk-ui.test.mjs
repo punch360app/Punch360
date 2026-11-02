@@ -6,7 +6,8 @@ const original=await readFile(new URL('../web/live/kiosk.js',import.meta.url),'u
 const kioskLocaleSource=(await readFile(new URL('../web/live/kiosk-locale.js',import.meta.url),'utf8')).replace(/^export /gm,'');
 const kioskKeyboardSource=(await readFile(new URL('../web/live/kiosk-keyboard.js',import.meta.url),'utf8')).replace(/^export /gm,'');
 const kioskProcessingSource=(await readFile(new URL('../web/live/kiosk-processing.js',import.meta.url),'utf8')).replace(/^export /gm,'');
-const src="const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error('No cached identity')},sync:async()=>[]});\n"+kioskLocaleSource+'\n'+kioskKeyboardSource+'\n'+kioskProcessingSource+'\n'+original.replace(/^import .*;\n/gm,'');
+const kioskQrSource=(await readFile(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+const src="const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error('No cached identity')},sync:async()=>[]});\n"+kioskLocaleSource+'\n'+kioskKeyboardSource+'\n'+kioskProcessingSource+'\n'+kioskQrSource+'\n'+original.replace(/^import .*;\n/gm,'');
 const wait=()=>new Promise(r=>setTimeout(r,25));
 test('kiosk hides PIN, retries one immutable event after ambiguous network failure and clears personal state',async()=>{
  const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});w.document.body.innerHTML='<main id="kiosk"></main>';const calls=[];let fail=true;
@@ -48,5 +49,66 @@ test('kiosk makes verification visible and disables controls until the server re
  assert.match(w.document.body.textContent,/Bonjour, Alexandre/);
  assert.ok([...w.document.querySelectorAll('button')].some(el=>!el.disabled));
  assert.equal(w.document.querySelector('#pin'),null,'PIN field hidden after identification');
+ await w.happyDOM.close();
+});
+
+
+test('employee QR camera remains a non-authenticating preview and recovers PIN fallback',async()=>{
+ const w=new Window({url:'https://punch.test/kiosk.html',
+  settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
+ w.document.body.innerHTML='<main id="kiosk"></main>';
+ const calls=[];
+ w.fetch=async(_url,options)=>{calls.push(JSON.parse(options.body));throw Error('A QR preview must not call the server')};
+ w.eval(src.slice(0,src.indexOf('(async()=>{try{state.device='))+
+  `state.device={device_id:'synthetic-tablet',token:'limited',company_name:'Fictive',name:'Réception'};draw();window.__qrUi={state};`);
+ assert.ok(w.document.querySelector('#pin'),'Employee PIN fallback stays available on a paired kiosk');
+ assert.ok(w.document.querySelector('[data-action="scan-qr"]'),'QR button must be presented on a paired tablet');
+ w.document.querySelector('[data-action="scan-qr"]').click();
+ await wait();
+ assert.equal(w.__qrUi.state.qrOpen,false,'Unsupported QR camera closes the preview');
+ assert.ok(w.document.querySelector('#pin'),'PIN is still available after failed QR scanning');
+ assert.equal(w.document.querySelector('video'),null,'Video is removed after an unsupported scan');
+ assert.match(w.document.body.textContent,/ne prend pas en charge la lecture QR/);
+ assert.equal(calls.length,0,'No authentication or punch request may be sent for QR preview');
+ assert.equal(w.document.querySelector('#pin').type,'password');
+ w.dispatchEvent(new w.Event('pagehide'));
+ assert.equal(w.__qrUi.state.pin,'');
+ await w.happyDOM.close();
+});
+
+
+test('employee QR scanner releases tablet camera when closing preview',async()=>{
+ const w=new Window({url:'https://punch.test/kiosk.html',
+  settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
+ w.document.body.innerHTML='<main id="kiosk"></main>';
+ const track={stops:0,stop(){this.stops++}};
+ const stream={getTracks(){return [track]}};
+ const requests=[];
+ Object.defineProperty(w.navigator,'mediaDevices',{configurable:true,value:{
+  async getUserMedia(constraints){requests.push(constraints);return stream}
+ }});
+ Object.defineProperty(w.HTMLMediaElement.prototype,'srcObject',{configurable:true,writable:true,value:null});
+ Object.defineProperty(w.HTMLMediaElement.prototype,'play',{configurable:true,value:async()=>{}});
+ Object.defineProperty(w.HTMLMediaElement.prototype,'pause',{configurable:true,value:()=>{}});
+ w.BarcodeDetector=class{constructor(options){this.formats=options.formats}async detect(){return []}};
+ const calls=[];
+ w.fetch=async(_url,options)=>{calls.push(JSON.parse(options.body));throw Error('QR scan must not request a punch')};
+ w.eval(src.slice(0,src.indexOf('(async()=>{try{state.device='))+
+  `state.device={device_id:'synthetic-tablet',token:'limited',company_name:'Fictive',name:'Réception'};draw();window.__qrUi={state};`);
+ w.document.querySelector('[data-action="scan-qr"]').click();
+ await wait();
+ assert.equal(w.__qrUi.state.qrOpen,true,'Preview must remain open; reason: '+w.__qrUi.state.notice+'; requests: '+requests.length+'; detector: '+w.eval('typeof globalThis.BarcodeDetector'));
+ assert.ok(w.document.querySelector('#kiosk-qr-video'),'Uses tablet camera instead of asking employee to scan');
+ assert.equal(requests.length,1,'Camera permission requested once');
+ assert.equal(requests[0].audio,false,'Microphone is never requested');
+ assert.equal(requests[0].video.facingMode.ideal,'environment','Back camera preferred');
+ assert.equal(track.stops,0,'Camera stays available while preview is visible');
+ w.document.querySelector('[data-action="close-qr"]').click();
+ await wait();
+ assert.equal(w.__qrUi.state.qrOpen,false);
+ assert.equal(track.stops,1,'Physical video track is stopped when preview closes');
+ assert.equal(w.document.querySelector('#kiosk-qr-video'),null);
+ assert.ok(w.document.querySelector('#pin'),'Existing employee PIN fallback is restored');
+ assert.equal(calls.length,0,'No scanner action can record a punch or submit QR contents');
  await w.happyDOM.close();
 });

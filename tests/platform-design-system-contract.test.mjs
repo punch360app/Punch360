@@ -49,6 +49,7 @@ test('Support PUNCH reuses the approved sage and responsive form/button contract
  assert.match(source,/role="status"/);
  assert.match(source,/role="alert"/);
  assert.match(index,/support\.css\?v=support-1/);
- assert.match(sw,/punch-360-essential-v50/);
+ const cacheVersion=Number(sw.match(/const CACHE='punch-360-essential-v(\d+)';/)?.[1]);
+ assert.ok(Number.isSafeInteger(cacheVersion)&&cacheVersion>=50,'PWA cache version must not roll back below Support');
  assert.match(sw,/\.\/support\.css\?v=support-1/);
 });

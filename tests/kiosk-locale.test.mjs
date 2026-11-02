@@ -19,10 +19,11 @@ test('kiosk has 10 nonempty translations for every action, including clock in/ou
 test('changing kiosk language never persists or clears private PIN and resets to French after session',async()=>{
  const kiosk=(await readFile(new URL('../web/live/kiosk.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'');
  const lang=(await readFile(new URL('../web/live/kiosk-locale.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+ const qr=(await readFile(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8')).replace(/^export /gm,'');
  const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
  w.document.body.innerHTML='<main id="kiosk"></main>';
  const offlineMock='const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error("no private grant")},sync:async()=>[]});';
- w.eval(offlineMock+'\n'+lang+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+`state.device={device_id:'test',token:'not-persisted',company_name:'Atelier',name:'Entrée'};draw();window.__clear=clearPerson;`);
+ w.eval(offlineMock+'\n'+lang+'\n'+qr+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+`state.device={device_id:'test',token:'not-persisted',company_name:'Atelier',name:'Entrée'};draw();window.__clear=clearPerson;`);
  w.document.querySelector('#number').value='EMP-023';
  w.document.querySelector('#pin').value='829471';
  const choice=w.document.querySelector('#kiosk-language');

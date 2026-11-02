@@ -10,3 +10,12 @@
 .kiosk-content h1,.kiosk-actions button,.kiosk-link{overflow-wrap:anywhere}
 @media(max-width:650px){#kiosk header{flex-wrap:wrap;align-items:flex-start}#kiosk header>div{min-width:0;max-width:100%;margin-left:auto}#kiosk .kiosk-language select{max-width:100%}}
 @media(max-width:650px){.kiosk-language select{max-width:135px}.kiosk-language{min-width:105px}#kiosk header>div{gap:3px}#kiosk{padding:12px 12px max(12px,env(safe-area-inset-bottom))}.kiosk-actions{margin:14px 0;gap:8px}.kiosk-actions button{padding:10px 8px;min-height:60px;font-size:13px}}
+
+/* Employee-presented QR camera preview: not a server-authenticated punch. */
+.kiosk-qr-offer{margin:16px auto;border:1px solid #E1E8DB;background:#f4f7f0;border-radius:14px;padding:10px 15px;max-width:550px}
+.kiosk-qr-offer p{font-size:13px;margin:4px 0 12px}
+.kiosk-qr-panel{margin:6px auto 15px;display:grid;gap:12px;max-width:550px}
+.kiosk-qr-panel video{display:block;width:100%;height:clamp(220px,40vh,380px);object-fit:cover;border-radius:16px;border:3px solid #779574;background:#142318}
+.kiosk-qr-panel .kiosk-qr-status{margin:0;font-size:14px}
+.kiosk-scan-btn{width:100%;max-width:470px}
+@media(max-width:650px){.kiosk-qr-panel video{height:clamp(180px,33vh,300px)}.kiosk-qr-panel{gap:7px}}

@@ -1,0 +1,59 @@
+name: PUNCH QR isolated PostgreSQL
+# Disposable PostgreSQL 17 service: never connects to real Supabase projects,
+# never reads production secrets, and never deploys/migrates real data.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/kiosk-qr-isolated-sql.yml'
+      - 'tests/kiosk-qr-isolated-*.sql'
+      - 'supabase/drafts/kiosk-qr-credential-registry.sql'
+      - 'supabase/drafts/kiosk-qr-execute.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: punch-kiosk-qr-sql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  qr-postgres:
+    name: QR drafts on disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: punch_qr_isolated
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local_fixture_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d punch_qr_isolated"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: punch_qr_isolated
+      PGUSER: postgres
+      PGPASSWORD: local_fixture_only
+      PGOPTIONS: '-c client_min_messages=warning'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Execute QR draft SQL in a disposable database
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/kiosk-qr-isolated-fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/drafts/kiosk-qr-credential-registry.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/drafts/kiosk-qr-execute.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/kiosk-qr-isolated-integration.sql
+      - name: Confirm harness rolled back synthetic records
+        run: |
+          set -euo pipefail
+          count=$(psql -X -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM private.isolated_kiosk_receipts;")
+          test "$count" = "0"
+          echo "PASS: synthetic receipts rolled back; disposable PostgreSQL job ends"

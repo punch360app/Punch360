@@ -21,10 +21,11 @@ test('kiosk incident catalog is complete in 10 languages and does not fall back 
 test('server and offline errors are translated without leaking backend descriptions',async()=>{
  const kiosk=(await readFile(new URL('../web/live/kiosk.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'');
  const localeScript=(await readFile(new URL('../web/live/kiosk-locale.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+ const qr=(await readFile(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8')).replace(/^export /gm,'');
  const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
  w.document.body.innerHTML='<main id="kiosk"></main>';
  const offlineMock='const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error("offline")},sync:async()=>[]});';
- w.eval(offlineMock+'\n'+localeScript+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+'\nwindow.__api={request,offlineRequest,localizedError,locale};');
+ w.eval(offlineMock+'\n'+localeScript+'\n'+qr+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+'\nwindow.__api={request,offlineRequest,localizedError,locale};');
  for(const language of KIOSK_LANGUAGES){
   w.__api.locale.select(language.code);
   w.fetch=async()=>({json:async()=>({ok:false,error:'DEVICE_DENIED',internal:'private server stack trace'})});

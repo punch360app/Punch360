@@ -22,10 +22,11 @@ test('all ten kiosk languages cover live session status and break policies',()=>
 test('kiosk active view translates policy, pending queue, provisional status and respects safe reset',async()=>{
  const kiosk=(await readFile(new URL('../web/live/kiosk.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'');
  const lang=(await readFile(new URL('../web/live/kiosk-locale.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+ const qr=(await readFile(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8')).replace(/^export /gm,'');
  const w=new Window({url:'https://punch.test/kiosk.html',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
  w.document.body.innerHTML='<main id="kiosk"></main>';
  const mock='const createKioskOffline=()=>({list:async()=>[],prune:async()=>{},forget:async()=>{},remember:async()=>{},unlock:async()=>{throw Error("no grant")},sync:async()=>[]});';
- w.eval(mock+'\n'+lang+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+`
+ w.eval(mock+'\n'+lang+'\n'+qr+'\n'+kiosk.slice(0,kiosk.indexOf('(async()=>{try{state.device='))+`
 state.device={device_id:'test',token:'not-stored',company_name:'Test',name:'Accueil'};
 state.person={name:'Pat',active:true,paused:false,started_at:'2026-10-26T11:00:00Z',break_policy:{paid_mode:'paid'}};
 state.queued=2;locale.select('en');draw();window.__screen={state,locale,draw,clearPerson};`);
