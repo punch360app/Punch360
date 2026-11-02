@@ -1,4 +1,5 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
+import {parseKioskQrEnvelope} from './qr-contract.js';
 const origin='https://punch360app.github.io';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'content-type, apikey','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const reply=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
@@ -9,6 +10,14 @@ Deno.serve(async(req:Request)=>{
  if(req.headers.get('origin')&&req.headers.get('origin')!==origin)return reply(403,{ok:false,error:'ORIGIN_DENIED'});
  try{
   if(Number(req.headers.get('content-length'))>4096)return reply(413,{ok:false});const raw=await req.text();if(raw.length>4096)return reply(413,{ok:false});const p=JSON.parse(raw);
+  // QR cards are deliberately NOT an authentication path yet: there is no
+  // revocable company/phone enrollment registry or atomic QR punch RPC.
+  // Reject before even constructing the privileged database client. The
+  // strict parser does not confer authorization or touch any personal data.
+  if(p?.action==='qr_identify'||p?.action==='qr_execute'){
+   if(!parseKioskQrEnvelope(p).ok)return reply(400,{ok:false,error:'INVALID_REQUEST'});
+   return reply(403,{ok:false,error:'OPERATION_REFUSED'});
+  }
   const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
   let result;
   if(p.action==='pair'){
