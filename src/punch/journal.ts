@@ -3,7 +3,7 @@ import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import {supabase} from '../lib/supabase';
-import {PunchJournal} from '../../web/live/journal.js';
+import {PunchJournal,hasUnsafePunchJournalEntries} from '../../web/live/journal.js';
 const journals=new Map<string,PunchJournal>();
 export async function getPunchJournal(company:string){
  const identity=await getLocalIdentity();
@@ -15,4 +15,11 @@ export async function getPunchJournal(company:string){
   finally{clearTimeout(timeout)}
  }}));return journals.get(key)!;
 }
-export async function journalSummary(company:string){const events=await (await getPunchJournal(company)).read();return {pending:events.filter(e=>e.status==='pending').length,conflicts:events.filter(e=>e.status==='conflict').length};}
+export async function journalSummary(company:string){
+ const j=await getPunchJournal(company);
+ let events;
+ try{events=await j.read()}catch{return {pending:0,conflicts:0,blocked:true}}
+ if(hasUnsafePunchJournalEntries(events,j.company,j.user))return {pending:0,conflicts:0,blocked:true};
+ return {pending:events.filter(e=>e.status==='pending').length,
+  conflicts:events.filter(e=>e.status==='conflict').length,blocked:false};
+}

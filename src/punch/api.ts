@@ -8,13 +8,29 @@ import * as Location from 'expo-location';
 import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
 export type PunchSegment={id:string;session_id:string;company_id:string;job_id:string;started_at:string;ended_at:string|null};
-export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean};
-export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null};
+export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean;company_id?:string;user_id?:string};
+export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean};
 export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
- const journal=await getPunchJournal(companyId);await journal.flush();
+ const journal=await getPunchJournal(companyId);
+ // A blocked local queue must not prevent official hours from loading.
+ let journalBlocked=false;
+ try{await journal.flush()}catch{journalBlocked=true}
  const cacheKey='punch-state:'+user.id+':'+companyId;
- const overlay=async(state:PunchState)=>projectPendingPunches(state,await journal.read(),{company:companyId,user:user.id}) as PunchState;
+ const overlay=async(state:PunchState)=>{
+  // Prevent cross-company hours from legacy mixed offline snapshots.
+  const ownSessions=(state.sessions||[]).filter(s=>s.company_id===companyId&&s.user_id===user.id);
+  const ids=new Set(ownSessions.map(s=>s.id));
+  const ownSegments=(state.segments||[]).filter(s=>s.company_id===companyId&&ids.has(s.session_id));
+  const ownBreaks=(state.breaks||[]).filter(b=>ids.has(b.session_id)&&
+   (b.company_id==null||b.company_id===companyId)&&
+   (b.user_id==null||b.user_id===user.id));
+  const own={...state,sessions:ownSessions,segments:ownSegments,breaks:ownBreaks};
+  let events=[];
+  if(!journalBlocked)try{events=await journal.read()}catch{journalBlocked=true}
+  return {...projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id}),
+   localJournalBlocked:journalBlocked} as PunchState;
+ };
  const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null});}
  const {data:sessions,error}=await supabase.from('punch_sessions')
   .select('id,company_id,user_id,started_at,ended_at')
