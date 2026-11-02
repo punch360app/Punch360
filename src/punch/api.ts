@@ -2,7 +2,7 @@ import * as Network from 'expo-network';
 import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getPunchJournal} from './journal';
-import {projectPendingPunches,hasUnsafePunchJournalEntries} from '../../web/live/journal.js';
+import {projectPendingPunches,hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from '../../web/live/journal.js';
 import type {LocalPunchEvent} from '../../web/live/journal.js';
 import {netSegmentMilliseconds} from '../../web/live/essential-hours-export.js';
 import * as Location from 'expo-location';
@@ -171,7 +171,7 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
  const fix=await Promise.race([Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High}),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('GPS indisponible')),6000))]);latitude=fix.coords.latitude;longitude=fix.coords.longitude;accuracy=fix.coords.accuracy;
  }}catch{/* A missing fix must never erase worked time; server flags it for review. */}
  const journal=await getPunchJournal(companyId);
- const event=await journal.append(action,jobId,latitude===null?null:{latitude,longitude:longitude!,accuracy},occurredAt,paid,offline);
+ const event=await journal.append(action,jobId,normalizeFreshPunchFix(latitude===null?null:{latitude,longitude:longitude!,accuracy}),occurredAt,paid,offline);
  // The append was persisted before network. A failed flush may still leave
  // a valid pending or already acknowledged event; inspect that exact event.
  let events:LocalPunchEvent[]|null=null;

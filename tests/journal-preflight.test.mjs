@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {PunchJournal,hasUnsafePunchJournalEntries} from '../web/live/journal.js';
+import {PunchJournal,hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from '../web/live/journal.js';
 
 const good=(id,status='pending')=>({id,company:'company-A',user:'employee-A',
  action:'in',occurredAt:'2026-11-02T11:00:00Z',job:'site-A',fix:null,
@@ -316,4 +316,31 @@ test('valid coordinates at boundaries and unavailable GPS remain accepted',async
   {latitude:0,longitude:0,accuracy:0},'2026-11-02T12:00:00Z');
  assert.equal((await h.journal.flush()).pending,0);
  assert.deepEqual(sent,[{latitude:0,longitude:0,accuracy:0}]);
+});
+
+test('fresh inaccurate or impossible device GPS degrades to missing for review, not data loss',()=>{
+ for(const sample of [
+  {latitude:91,longitude:-71,accuracy:8},
+  {latitude:46,longitude:181,accuracy:8},
+  {latitude:46,longitude:-71,accuracy:-4},
+  {latitude:NaN,longitude:-71,accuracy:8},
+  {latitude:'46',longitude:-71,accuracy:8},
+  {}
+ ])assert.equal(normalizeFreshPunchFix(sample),null);
+ assert.equal(normalizeFreshPunchFix(null),null);
+ const original={latitude:46.82,longitude:-71.24,accuracy:12.4,secret:'not-a-fix'};
+ const sanitized=normalizeFreshPunchFix(original);
+ assert.deepEqual(sanitized,{latitude:46.82,longitude:-71.24,accuracy:12.4});
+ assert.notEqual(sanitized,original,'Device-provided objects must not be persisted unchanged');
+ assert.deepEqual(normalizeFreshPunchFix({latitude:0,longitude:0,accuracy:undefined}),
+  {latitude:0,longitude:0,accuracy:null});
+ const stored={...good('bad-stored'),fix:{latitude:91,longitude:0,accuracy:4}};
+ assert.equal(hasUnsafePunchJournalEntries([stored],'company-A','employee-A'),true,
+  'Stored corrupt GPS remains quarantined, not silently repaired');
+});
+test('both Web and Expo sanitize newly acquired GPS before durable journal append',()=>{
+ const expo=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
+ const web=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(expo,/journal\.append\(action,jobId,normalizeFreshPunchFix\(/);
+ assert.match(web,/fix=normalizeFreshPunchFix\(action\.startsWith\('break_'\)\?null:await freshPunchFix\(\)\)/);
 });

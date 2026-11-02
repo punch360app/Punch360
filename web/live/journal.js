@@ -15,6 +15,14 @@ function validPunchFix(fix){
   (accuracy==null||(typeof accuracy==='number'&&
    Number.isFinite(accuracy)&&accuracy>=0));
 }
+/** Never let a failed device GPS sample block recording worked time.
+ * New samples are normalized to no GPS for server review; stored malformed
+ * events are still quarantined by hasUnsafePunchJournalEntries.
+ */
+export function normalizeFreshPunchFix(fix){
+ if(fix==null||!validPunchFix(fix))return null;
+ return {latitude:fix.latitude,longitude:fix.longitude,accuracy:fix.accuracy??null};
+}
 export function hasUnsafePunchJournalEntries(events,company,user){
  if(!Array.isArray(events)||typeof company!=='string'||!company||
   typeof user!=='string'||!user)return true;

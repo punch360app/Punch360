@@ -9,3 +9,5 @@ export function projectPendingPunches<T extends {sessions:any[];segments:any[]}>
 
 /** Safeguard before append or flush; preserves unverified local events unchanged. */
 export function hasUnsafePunchJournalEntries(events:unknown,company:string,user:string):boolean;
+/** Invalid newly captured GPS data is treated as missing, never persisted. */
+export function normalizeFreshPunchFix(fix:unknown):LocalPunchEvent['fix'];

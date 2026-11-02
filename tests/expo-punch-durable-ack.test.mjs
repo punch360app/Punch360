@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {hasUnsafePunchJournalEntries} from '../web/live/journal.js';
+import {hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from '../web/live/journal.js';
 const api=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
 const a=api.indexOf('async function punchWithLocation('),b=api.indexOf('export const punchIn=',a);
 assert.ok(a>0&&b>a);
@@ -14,22 +14,22 @@ const source=api.slice(a,b)
  .replace('longitude!','longitude')
  .replace('let events:LocalPunchEvent[]|null=null;','let events=null;')
  .replaceAll(' as LocationCheckResult','');
-function fixture({flush='pending',read='pending',noAppend=false,bad=false}={}){
- const sent=[],row={id:'E1',company:'A',user:'U',action:'in',job:'J',fix:null,
+function fixture({flush='pending',read='pending',noAppend=false,bad=false,gpsFix=null}={}){
+ const sent=[];let appendedFix;const row={id:'E1',company:'A',user:'U',action:'in',job:'J',fix:null,
   occurredAt:'2026-11-02T12:00:00Z',previous:null,status:'pending',offline:true};
  const response={sync_status:'synced',session_id:'S',review_status:'pending'};
  const stored=status=>({...row,status,...(status==='synced'?{result:response}:
   status==='conflict'?{result:{message:'Validation'}}:{})});
  const journal={company:'A',user:'U',
-  append:async()=>{sent.push('append');if(noAppend)throw Error('échec stockage');return row},
+  append:async(action,job,fix)=>{appendedFix=fix;sent.push('append');if(noAppend)throw Error('échec stockage');return row},
   flush:async()=>{sent.push('flush');if(flush==='throw')throw Error('réseau');return {events:flush==='missing'?[]:[stored(flush)]}},
   read:async()=>{sent.push('read');if(read==='throw')throw Error('illisible');
    return read==='missing'?[]:[bad?{...stored(read),company:'B'}:stored(read)]}
  };
- const go=new Function('Network','Location','getPunchJournal','hasUnsafePunchJournalEntries',source+'\nreturn punchWithLocation;')(
+ const go=new Function('Network','Location','getPunchJournal','hasUnsafePunchJournalEntries','normalizeFreshPunchFix',source+'\nreturn punchWithLocation;')(
   {getNetworkStateAsync:async()=>({isConnected:false,isInternetReachable:false})},
-  {requestForegroundPermissionsAsync:async()=>({status:'denied'})},async()=>journal,hasUnsafePunchJournalEntries);
- return {sent,run:()=>go('A','in','J')};
+  {Accuracy:{High:1},requestForegroundPermissionsAsync:async()=>({status:gpsFix?'granted':'denied'}),getCurrentPositionAsync:async()=>({coords:gpsFix})},async()=>journal,hasUnsafePunchJournalEntries,normalizeFreshPunchFix);
+ return {sent,run:()=>go('A','in','J'),capturedFix:()=>appendedFix};
 }
 test('durably appended event survives failed flush and reports local pending',async()=>{
  const h=fixture({flush:'throw'}),r=await h.run();
@@ -65,4 +65,23 @@ test('status resolution uses event ID plus company/user preflight',()=>{
  assert.match(api,/hasUnsafePunchJournalEntries\(events,journal\.company,journal\.user\)/);
  assert.match(api,/const saved=events\.find\(e=>e\.id===event\.id\)/);
  assert.match(api,/if\(saved\.status==='pending'\)/);
+});
+
+test('Expo preserves the punch when native GPS is malformed and records missing GPS for review',async()=>{
+ for(const sample of [
+  {latitude:95,longitude:-71,accuracy:15},
+  {latitude:46,longitude:-71,accuracy:-2},
+  {latitude:46,longitude:Infinity,accuracy:5}
+ ]){
+  const f=fixture({gpsFix:sample}),r=await f.run();
+  assert.equal(r.queued,true);
+  assert.equal(f.capturedFix(),null);
+  assert.deepEqual(f.sent,['append','flush']);
+ }
+});
+test('Expo records only valid normalized GPS coordinates without leaking extra device fields',async()=>{
+ const f=fixture({gpsFix:{latitude:46.81,longitude:-71.22,accuracy:9,private:'not-stored'}});
+ const result=await f.run();
+ assert.equal(result.queued,true);
+ assert.deepEqual(f.capturedFix(),{latitude:46.81,longitude:-71.22,accuracy:9});
 });
