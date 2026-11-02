@@ -30,3 +30,18 @@ export function validateEssentialLeaveRequest({view,companyId,userId,type,from,t
   return {ok:false,message:'Le commentaire ne peut dépasser 1 000 caractères.'};
  return {ok:true,companyId,userId,type,from:start,to:end,reason:reason.trim()||null};
 }
+
+/**
+ * Only server-read, pending requests in the current company are candidates for
+ * manager review. The database RPC still authorizes and records the decision.
+ */
+export function essentialLeaveApprovalView({companyId,manager=false,loaded=false,requests=[]}={}){
+ const ready=loaded===true&&manager===true&&typeof companyId==='string'&&companyId.length>0&&Array.isArray(requests);
+ if(!ready)return {ready:false,requests:[]};
+ const valid=request=>request?.company_id===companyId&&request.status==='pending'&&
+  typeof request.id==='string'&&request.id.length>0&&
+  typeof request.user_id==='string'&&request.user_id.length>0&&
+  dateValue(request.begins_on)!==null&&dateValue(request.ends_on)!==null&&
+  request.ends_on>=request.begins_on;
+ return {ready:true,requests:requests.filter(valid).sort((a,b)=>a.begins_on.localeCompare(b.begins_on))};
+}
