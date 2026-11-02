@@ -6,14 +6,14 @@ const start=source.indexOf('async function syncConstructionPunches(){');
 const end=source.indexOf('useEffect(()=>{refresh();',start);
 assert.ok(start>=0&&end>start,'Construction retry handler missing');
 const code=source.slice(start,end).replace('catch(e:any)','catch(e)');
-function harness({pending=2,conflicts=1,blocked=false,connected=true,changed=false,
+function harness({pending=2,conflicts=1,remainingPending=pending,source='server',blocked=false,connected=true,changed=false,
  throwNetwork=false,throwLoad=false,busy=false,working=false,scope='A:U'}={}){
  const calls=[],messages=[],flags={locked:false};
  const req={companyId:'A',userId:'U'},scopeRef={current:scope};
  const syncInFlight={get current(){return flags.locked},set current(v){flags.locked=v}};
  const punchActionInFlight={current:false};
  const punchReadRevision={current:0};
- const punch={sessions:[],segments:[],active:null,readSource:'server',hasLocalProjection:pending>0,localJournalBlocked:blocked};
+ const punch={sessions:[],segments:[],active:null,readSource:source,hasLocalProjection:remainingPending>0,localJournalBlocked:blocked};
  const set=(name,value)=>calls.push([name,value]);
  const retry=new Function('account','syncInFlight','punchActionInFlight','punchReadRevision','working','journalBlocked','localPending','journalViewScope',
   'setSyncBusy','Network','scopeRef','setMessage','loadPunchState','journalSummary','setJournalBlocked',
@@ -25,7 +25,7 @@ function harness({pending=2,conflicts=1,blocked=false,connected=true,changed=fal
   {getNetworkStateAsync:async()=>{set('network',true);if(throwNetwork)throw Error('network');return {isConnected:connected,isInternetReachable:connected}}},
   scopeRef,x=>messages.push(x),
   async()=>{set('load',true);if(throwLoad)throw Error('server');if(changed)scopeRef.current='B:U';return punch},
-  async()=>{set('summary',true);return {pending,conflicts,blocked,pendingItems:[{label:'Entrée',occurredAt:'2026-11-02T10:00:00Z'}],conflictItems:[{label:'Sortie',occurredAt:null}]}},
+  async()=>{set('summary',true);return {pending:remainingPending,conflicts,blocked,pendingItems:[{label:'Entrée',occurredAt:'2026-11-02T10:00:00Z'}],conflictItems:[{label:'Sortie',occurredAt:null}]}},
   x=>set('blocked',x),x=>set('pending',x),x=>set('conflicts',x),
   x=>set('pendingItems',x),x=>set('conflictItems',x),x=>set('scope',x),
   x=>set('source',x),x=>set('projection',x),x=>set('sessions',x),
@@ -91,4 +91,16 @@ test('Construction refresh protects company switching and displays source of hou
  assert.match(refresh,/setJournalViewScope\(requestedFor\)/);
  assert.match(refresh,/setHoursReadSource\(punch\.readSource\|\|null\)/);
  assert.match(source,/Dernier relevé sauvegardé sur cet appareil/);
+});
+
+test('Construction retry never treats a cached attendance snapshot as a confirmed server reread',async()=>{
+ const cached=harness({pending:2,remainingPending:0,conflicts:0,source:'cache'});
+ await cached.retry();
+ assert.equal(cached.calls.filter(x=>x[0]==='load').length,1);
+ assert.match(cached.messages.at(-1),/synchronisation non confirmée/i);
+ assert.doesNotMatch(cached.messages.at(-1),/Vérifiez les heures officielles sur le serveur/);
+ assert.deepEqual(cached.calls.filter(x=>x[0]==='source'),[['source','cache']]);
+ const verified=harness({pending:2,remainingPending:0,conflicts:0,source:'server'});
+ await verified.retry();
+ assert.match(verified.messages.at(-1),/Aucun pointage local en attente/);
 });
