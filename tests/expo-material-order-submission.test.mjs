@@ -5,7 +5,8 @@ import ts from 'typescript';
 
 const source=readFileSync(new URL('../src/orders/materialOrders.ts',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.tsx',import.meta.url),'utf8');
-const compiled=ts.transpileModule(source,{compilerOptions:{
+const orderCode=source.slice(source.indexOf('export function validatedMaterialOrderDraft('));
+const compiled=ts.transpileModule(orderCode,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
 }}).outputText;
 const job=(id='job-A',company_id='tenant-A')=>({id,company_id,number:'314',name:'Chantier',
