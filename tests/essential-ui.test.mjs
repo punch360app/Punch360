@@ -443,7 +443,7 @@ test('Bento rejects selection of an offer with a valid price but unverified righ
   assert.equal(card.querySelector('[data-action="ess:choose"]').disabled,true);
   // Even a forged/stale action must be refused by the controller.
   await ui.handle({dataset:{action:'ess:choose',id:'unknown-terms'}});
-  assert.equal(ui.state.checkout,null);
+  assert.equal(ui.state.checkout,undefined);
   ui.state.plans[0]={...plan,id:'unknown-terms',kiosk_limit:3,features:['punch']};
   w.document.body.innerHTML=ui.renderPricing();
   assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
