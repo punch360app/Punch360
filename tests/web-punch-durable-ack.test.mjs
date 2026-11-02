@@ -17,9 +17,11 @@ function harness({online=false,send=async()=>({sync_status:'synced',review_statu
   uuid:()=>String(++id),storage,send:async event=>{sent.push(event.id);
    if(!onLine)throw Error('Offline');return send(event)}});
  const exposed=Object.create(journal);
- if(flushThrows)exposed.flush=async()=>{throw Error('Refresh unavailable')};
- if(hideEvent){exposed.flush=async()=>({events:[]});exposed.read=async()=>[]}
+ if(flushThrows){exposed.flush=async()=>{throw Error('Refresh unavailable')};
+  exposed.inspect=async()=>{throw Error('Inspection unavailable')}};
+ if(hideEvent){exposed.flush=async()=>({events:[]});exposed.inspect=async()=>({events:[]});exposed.read=async()=>[]}
  if(readThrows){exposed.flush=async()=>{throw Error('Refresh unavailable')};
+  exposed.inspect=async()=>{throw Error('Inspection unavailable')};
   // Append must first read and persist successfully. Simulate a storage
   // read failure only during the subsequent status recovery.
   let reads=0;
@@ -40,12 +42,12 @@ test('offline Web PUNCH IN is durable pending and replays same ID after reconnec
  const pending=await h.journal.read();
  assert.equal(pending.length,1);
  assert.equal(pending[0].status,'pending');
- assert.deepEqual(h.sent,['1']);
+ assert.deepEqual(h.sent,[],'Offline capture must not attempt network upload');
  h.setOnline(true);
  const synced=await h.journal.flush();
  assert.equal(synced.pending,0);
  assert.equal(synced.events[0].status,'synced');
- assert.deepEqual(h.sent,['1','1']);
+ assert.deepEqual(h.sent,['1'],'Reconnect sends the original durable ID once');
 });
 test('Web only claims synchronized status after a persisted server acknowledgement',async()=>{
  const h=harness({online:true,send:async()=>({sync_status:'synced',review_status:'pending',session_id:'session-A'})});
@@ -55,7 +57,7 @@ test('Web only claims synchronized status after a persisted server acknowledgeme
  assert.equal(r.session_id,'session-A');
  assert.deepEqual((await h.journal.read()).map(e=>e.status),['synced']);
 });
-test('Web recovers a pending event from durable storage when flush throws',async()=>{
+test('Web recovers a pending event from durable storage when offline inspection throws',async()=>{
  const h=harness({flushThrows:true});
  assert.deepEqual(await h.run(),{queued:true,review_status:'local'});
  assert.equal((await h.journal.read())[0].status,'pending');
