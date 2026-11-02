@@ -96,3 +96,25 @@ test('Web reports a contaminated journal instead of claiming sync; Expo uses sha
  assert.match(app,/Journal local à vérifier : aucun pointage envoyé/);
  assert.match(expo,/import \{PunchJournal,hasUnsafePunchJournalEntries\} from '\.\.\/\.\.\/web\/live\/journal.js'/);
 });
+
+test('duplicate local event IDs block all sends and appends without losing recovery bytes',async()=>{
+ const sent=[],first=good('same-id'),second={...good('same-id'),action:'out',previous:'same-id'};
+ const h=setup([first,second],async e=>{sent.push(e.id);return {sync_status:'synced'}});
+ const before=h.memory.get(h.key);
+ assert.equal(hasUnsafePunchJournalEntries([first,second],'company-A','employee-A'),true);
+ await assert.rejects(h.journal.flush(),/aucun envoi effectué/);
+ await assert.rejects(h.journal.append('break_start'),/aucune nouvelle opération ajoutée/);
+ assert.deepEqual(sent,[],'A duplicate id must never be sent as two different actions');
+ assert.equal(h.memory.get(h.key),before,'Do not silently discard or mutate corrupted events');
+ assert.deepEqual((await h.journal.pending()).map(e=>e.action),['in','out']);
+});
+
+test('duplicate local IDs are invalid across pending, synced and conflict status',async()=>{
+ for(const status of ['pending','synced','conflict']){
+  const h=setup([good('same-id','synced'),{...good('same-id',status),action:'out'}]);
+  assert.equal(hasUnsafePunchJournalEntries(await h.journal.read(),'company-A','employee-A'),true,status);
+  await assert.rejects(h.journal.flush(),/aucun envoi effectué/);
+ }
+ const valid=[good('first-id','synced'),{...good('second-id'),action:'out',previous:'first-id'}];
+ assert.equal(hasUnsafePunchJournalEntries(valid,'company-A','employee-A'),false);
+});
