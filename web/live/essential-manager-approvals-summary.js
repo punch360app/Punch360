@@ -13,9 +13,14 @@ export function essentialManagerApprovalsSummary({
  if(!authorized)return {authorized:false,complete:false,total:null,sections:[]};
  const validPending=(view,rows,owns)=>{
   if(view?.ready!==true||!Array.isArray(rows))return unavailable;
-  return {ready:true,count:rows.filter(r=>r?.status==='pending'&&
-   typeof r.id==='string'&&r.id.length>0&&
-   owns(r)).length};
+  // A retried or combined inbox can repeat the same server request.
+  // Count distinct verified IDs, never repeated rows or rejected identities.
+  const ids=new Set();
+  for(const r of rows){
+   if(r?.status!=='pending'||typeof r.id!=='string'||!r.id||!owns(r))continue;
+   ids.add(r.id);
+  }
+  return {ready:true,count:ids.size};
  };
  const sections=[
   {kind:'corrections',title:'Corrections d’heures',
