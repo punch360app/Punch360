@@ -47,7 +47,7 @@ test('Essentiel leave flow uses server identity, request validation and separate
  assert.match(app,/sb\.auth\.getUser\(\)/);
  assert.match(app,/company_id:companyId,user_id:userId,leave_type:checked\.type/);
  assert.match(app,/state\.leavesLoaded=!calls\[4\]\.error/);
- assert.match(app,/function essentialApprovals\(\)\{if\(!manager\(\)\)/);
+ assert.match(app,/function essentialApprovals\(\)\{\s*if\(!manager\(\)\)/);
  assert.match(app,/if\(state\.sub==='approvals'\)return manager\(\)\?essentialApprovals\(\)/);
  assert.match(app,/let refreshAttempted=false/);
  assert.match(app,/if\(refreshAttempted&&sameIdentity\(\)&&state\.section==='sub'&&state\.sub==='leave'\)draw\(\)/);
