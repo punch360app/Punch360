@@ -14,6 +14,7 @@ export async function createCompanyOnce(rpc,name,edition){
  if(!['essential','construction'].includes(edition))throw Error('Édition de compagnie invalide.');
  const result=await rpc('create_company_for_edition',{p_name:normalized,p_edition:edition});
  if(result?.error)throw result.error;
+ if(!result||!Object.hasOwn(result,'data'))throw Error('Réponse du serveur absente; statut de création à vérifier.');
  // Once the server acknowledges success, even an unexpected response shape
  // must never send the user back to a creation button.
  return {accepted:true,companyId:validCreatedCompanyId(result?.data)?result.data:null};
