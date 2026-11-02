@@ -87,6 +87,7 @@ test('employee QR scanner releases tablet camera when closing preview',async()=>
  Object.defineProperty(w.navigator,'mediaDevices',{configurable:true,value:{
   async getUserMedia(constraints){requests.push(constraints);return stream}
  }});
+ Object.defineProperty(w.HTMLMediaElement.prototype,'srcObject',{configurable:true,writable:true,value:null});
  Object.defineProperty(w.HTMLMediaElement.prototype,'play',{configurable:true,value:async()=>{}});
  Object.defineProperty(w.HTMLMediaElement.prototype,'pause',{configurable:true,value:()=>{}});
  w.BarcodeDetector=class{constructor(options){this.formats=options.formats}async detect(){return []}};
@@ -96,7 +97,7 @@ test('employee QR scanner releases tablet camera when closing preview',async()=>
   `state.device={device_id:'synthetic-tablet',token:'limited',company_name:'Fictive',name:'Réception'};draw();window.__qrUi={state};`);
  w.document.querySelector('[data-action="scan-qr"]').click();
  await wait();
- assert.equal(w.__qrUi.state.qrOpen,true,'Preview remains open while the camera is active');
+ assert.equal(w.__qrUi.state.qrOpen,true,'Preview must remain open; reason: '+w.__qrUi.state.notice+'; requests: '+requests.length+'; detector: '+w.eval('typeof globalThis.BarcodeDetector'));
  assert.ok(w.document.querySelector('#kiosk-qr-video'),'Uses tablet camera instead of asking employee to scan');
  assert.equal(requests.length,1,'Camera permission requested once');
  assert.equal(requests[0].audio,false,'Microphone is never requested');
