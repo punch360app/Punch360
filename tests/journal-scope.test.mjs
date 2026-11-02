@@ -303,3 +303,64 @@ test('a fresh OUT after completed pauses and transfers still closes the shift',(
  assert.equal(result.segments.find(s=>s.id==='later').ended_at,'2026-11-01T12:00:00Z');
  assert.equal(result.breaks[0].ended_at,'2026-11-01T10:30:00Z');
 });
+
+test('active shift chooses its latest verified job even when server segments arrive oldest first',()=>{
+ const current={sessions:[own],segments:[
+  {...base.segments[1],ended_at:'2026-11-01T11:00:00Z'},
+  {id:'current-job',company_id:'tenant-A',session_id:own.id,job_id:'latest-site',
+   started_at:'2026-11-01T11:00:00Z',ended_at:null}
+ ],breaks:[]};
+ const projected=projectPendingPunches(current,[],{company:'tenant-A',user:'employee-A'});
+ assert.equal(projected.active?.id,own.id);
+ assert.equal(projected.lastJobId,'latest-site');
+});
+
+test('a pending transfer takes precedence over unsorted confirmed job segments',()=>{
+ const current={sessions:[own],segments:[
+  {...base.segments[1],ended_at:null,started_at:'2026-11-01T10:00:00Z'}
+ ],breaks:[]};
+ const transfer={...event('transfer','next','pending-new-site'),occurredAt:'2026-11-01T12:00:00Z'};
+ const projected=projectPendingPunches(current,[transfer],{company:'tenant-A',user:'employee-A'});
+ assert.equal(projected.lastJobId,'pending-new-site');
+ assert.equal(projected.segments.find(s=>s.id==='local-next').job_id,'pending-new-site');
+});
+
+test('after shift close last job comes from latest own historic segment not array order',()=>{
+ const a={id:'earlier',company_id:'tenant-A',user_id:'employee-A',
+  started_at:'2026-10-31T08:00:00Z',ended_at:'2026-10-31T12:00:00Z'};
+ const b={...own,ended_at:'2026-11-01T12:00:00Z'};
+ const current={sessions:[a,b],segments:[
+  {id:'historical',company_id:'tenant-A',session_id:a.id,job_id:'old-site',
+   started_at:a.started_at,ended_at:a.ended_at},
+  {id:'latest',company_id:'tenant-A',session_id:b.id,job_id:'new-site',
+   started_at:'2026-11-01T10:00:00Z',ended_at:b.ended_at},
+  {id:'other-user',company_id:'tenant-A',user_id:'other-user',
+   session_id:b.id,job_id:'wrong-site',started_at:'2026-11-02T10:00:00Z'}
+ ],breaks:[]};
+ const projected=projectPendingPunches(current,[],{company:'tenant-A',user:'employee-A'});
+ assert.equal(projected.active,null);
+ assert.equal(projected.lastJobId,'new-site');
+});
+
+test('active shift without an own segment cannot silently reuse a previous shift job',()=>{
+ const old={id:'closed',company_id:'tenant-A',user_id:'employee-A',
+  started_at:'2026-10-31T08:00:00Z',ended_at:'2026-10-31T12:00:00Z'};
+ const current={sessions:[old,own],segments:[
+  {id:'historical',company_id:'tenant-A',session_id:old.id,job_id:'wrong-fallback',
+   started_at:old.started_at,ended_at:old.ended_at},
+  {id:'foreign',company_id:'tenant-B',session_id:own.id,job_id:'foreign-site',
+   started_at:'2026-11-01T11:00:00Z'}
+ ],breaks:[]};
+ const projected=projectPendingPunches(current,[],{company:'tenant-A',user:'employee-A'});
+ assert.equal(projected.active?.id,own.id);
+ assert.equal(projected.lastJobId,null);
+});
+
+test('equal segment start times prefer the open job instead of a closed one',()=>{
+ const current={sessions:[own],segments:[
+  {...base.segments[1],ended_at:'2026-11-01T12:00:00Z'},
+  {id:'open-second',company_id:'tenant-A',session_id:own.id,
+   job_id:'open-site',started_at:own.started_at,ended_at:null}
+ ],breaks:[]};
+ assert.equal(projectPendingPunches(current,[],{company:'tenant-A',user:'employee-A'}).lastJobId,'open-site');
+});

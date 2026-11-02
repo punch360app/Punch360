@@ -96,8 +96,19 @@ export function projectPendingPunches(snapshot,events,scope=null){
  // Do not display or reuse another tenant's job from a mixed old cache.
  const ownSessionIds=owner?new Set(sessions.filter(s=>
   s.company_id===owner.company&&s.user_id===owner.user).map(s=>s.id)):null;
- const lastSegment=owner?segments.find(s=>
+ // Server order and legacy offline cache order are not guaranteed.
+ // Pick the actual most recent job for this worker, preferring the currently
+ // active shift. Never fall back to an older shift if the active one has no
+ // verifiable segment (a different job could be selected for PUNCH IN).
+ const ownSegments=owner?segments.filter(s=>
   s.company_id===owner.company&&ownSessionIds.has(s.session_id)&&
-  (s.user_id==null||s.user_id===owner.user)):segments[0];
+  (s.user_id==null||s.user_id===owner.user)&&
+  typeof s.job_id==='string'&&!!s.job_id.trim()):[];
+ const currentSegments=active?ownSegments.filter(s=>s.session_id===active.id):ownSegments;
+ const lastSegment=owner?currentSegments.reduce((latest,s)=>{
+  const at=Date.parse(s.started_at),previous=Date.parse(latest?.started_at);
+  return !latest||(Number.isFinite(at)&&(!Number.isFinite(previous)||at>previous))||
+   (at===previous&&s.ended_at==null&&latest.ended_at!=null)?s:latest;
+ },null):segments[0];
  return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null};
 }
