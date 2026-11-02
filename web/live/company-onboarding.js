@@ -27,20 +27,48 @@ export function isCreatedCompanyVerified(companyId,userId,account,verifiedWorksp
 }
 
 const KEY='punch-company-creation-pending-v1';
-// Session-scoped recovery is a UX flag only: a stored UUID never grants rights.
-export function savePendingCompanyCreation(storage,userId,companyId){
+const editions=new Set(['essential','construction']);
+function safePreviousIds(ids){
+ return Array.isArray(ids)&&ids.length<=100&&ids.every(validCreatedCompanyId)
+  ?[...new Set(ids)]:null;
+}
+function safeContext(value){
+ const previousIds=safePreviousIds(value?.previousIds);
+ return previousIds&&editions.has(value?.edition)
+  ?{previousIds,edition:value.edition}:{};
+}
+// Session-scoped recovery is an untrusted hint only; it never grants access.
+export function savePendingCompanyCreation(storage,userId,companyId,context={}){
  if(!validCreatedCompanyId(userId))return false;
- try{storage.setItem(KEY,JSON.stringify({userId,companyId:validCreatedCompanyId(companyId)?companyId:null}));return true}
- catch{return false}
+ try{storage.setItem(KEY,JSON.stringify({
+  userId,companyId:validCreatedCompanyId(companyId)?companyId:null,
+  ...safeContext(context)
+ }));return true}catch{return false}
 }
 export function readPendingCompanyCreation(storage,userId){
  if(!validCreatedCompanyId(userId))return null;
- try{const raw=JSON.parse(storage.getItem(KEY)||'null');
-  return raw?.userId===userId&&
-   (raw.companyId===null||validCreatedCompanyId(raw.companyId))
-   ?{companyId:raw.companyId}:null;
+ try{
+  const raw=JSON.parse(storage.getItem(KEY)||'null');
+  if(raw?.userId!==userId||
+   !(raw.companyId===null||validCreatedCompanyId(raw.companyId)))return null;
+  return {companyId:raw.companyId,...safeContext(raw)};
  }catch{return null}
 }
 export function clearPendingCompanyCreation(storage){
  try{storage.removeItem(KEY);return true}catch{return false}
+}
+/** Recovery is permitted only if EXACTLY ONE newly visible, active,
+ * RLS-verified boss workspace matches the requested edition. Neither a
+ * browser receipt nor a guessed company ID may authorize a membership.
+ */
+export function recoverCreatedCompanyWorkspace(pending,userId,verifiedWorkspaces){
+ if(!pending||pending.companyId!==null||!validCreatedCompanyId(userId)||
+  !Array.isArray(verifiedWorkspaces))return null;
+ const previousIds=safePreviousIds(pending.previousIds);
+ if(!previousIds||!editions.has(pending.edition))return null;
+ const known=new Set(previousIds);
+ const newlyVerified=verifiedWorkspaces.filter(w=>w?.userId===userId&&
+  validCreatedCompanyId(w.companyId)&&!known.has(w.companyId)&&
+  w.role==='boss'&&w.edition===pending.edition);
+ return newlyVerified.length===1?newlyVerified[0]:null;
 }
