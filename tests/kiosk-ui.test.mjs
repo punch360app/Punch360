@@ -51,3 +51,27 @@ test('kiosk makes verification visible and disables controls until the server re
  assert.equal(w.document.querySelector('#pin'),null,'PIN field hidden after identification');
  await w.happyDOM.close();
 });
+
+
+test('employee QR camera remains a non-authenticating preview and recovers PIN fallback',async()=>{
+ const w=new Window({url:'https://punch.test/kiosk.html',
+  settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
+ w.document.body.innerHTML='<main id="kiosk"></main>';
+ const calls=[];
+ w.fetch=async(_url,options)=>{calls.push(JSON.parse(options.body));throw Error('A QR preview must not call the server')};
+ w.eval(src.slice(0,src.indexOf('(async()=>{try{state.device='))+
+  `state.device={device_id:'synthetic-tablet',token:'limited',company_name:'Fictive',name:'Réception'};draw();window.__qrUi={state};`);
+ assert.ok(w.document.querySelector('#pin'),'Employee PIN fallback stays available on a paired kiosk');
+ assert.ok(w.document.querySelector('[data-action="scan-qr"]'),'QR button must be presented on a paired tablet');
+ w.document.querySelector('[data-action="scan-qr"]').click();
+ await wait();
+ assert.equal(w.__qrUi.state.qrOpen,false,'Unsupported QR camera closes the preview');
+ assert.ok(w.document.querySelector('#pin'),'PIN is still available after failed QR scanning');
+ assert.equal(w.document.querySelector('video'),null,'Video is removed after an unsupported scan');
+ assert.match(w.document.body.textContent,/ne prend pas en charge la lecture QR/);
+ assert.equal(calls.length,0,'No authentication or punch request may be sent for QR preview');
+ assert.equal(w.document.querySelector('#pin').type,'password');
+ w.dispatchEvent(new w.Event('pagehide'));
+ assert.equal(w.__qrUi.state.pin,'');
+ await w.happyDOM.close();
+});
