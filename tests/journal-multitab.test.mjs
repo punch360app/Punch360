@@ -66,6 +66,8 @@ test('native Expo persists the offline state and shares the same append signatur
  const native=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
  const declaration=readFileSync(new URL('../web/live/journal.d.ts',import.meta.url),'utf8');
  assert.match(native,/offline=network\.isConnected===false\|\|network\.isInternetReachable===false/);
+ assert.ok(native.indexOf('offline=network.isConnected')<native.indexOf('Location.requestForegroundPermissionsAsync()'),
+  'offline status is captured before waiting for the GPS permission/fix');
  assert.match(native,/catch\{offline=true;\}/);
  assert.match(native,/journal\.append\(action,jobId,[\s\S]*?,occurredAt,paid,offline\)/);
  assert.match(declaration,/occurredAt\?:string,paid\?:boolean,offline\?:boolean/);
