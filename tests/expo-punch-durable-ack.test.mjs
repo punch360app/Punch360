@@ -14,21 +14,23 @@ const source=api.slice(a,b)
  .replace('longitude!','longitude')
  .replace('let events:LocalPunchEvent[]|null=null;','let events=null;')
  .replaceAll(' as LocationCheckResult','');
-function fixture({flush='pending',read='pending',noAppend=false,bad=false,gpsFix=null}={}){
+function fixture({flush='pending',read='pending',noAppend=false,bad=false,gpsFix=null,
+ journalUser='U',serverAckStatus='synced'}={}){
  const sent=[];let appendedFix;const row={id:'E1',company:'A',user:'U',action:'in',job:'J',fix:null,
   occurredAt:'2026-11-02T12:00:00Z',previous:null,status:'pending',offline:true};
- const response={sync_status:'synced',session_id:'S',review_status:'pending'};
+ const response={sync_status:serverAckStatus,session_id:'S',review_status:'pending'};
  const stored=status=>({...row,status,...(status==='synced'?{result:response}:
   status==='conflict'?{result:{message:'Validation'}}:{})});
- const journal={company:'A',user:'U',
+ const journal={company:'A',user:journalUser,
   append:async(action,job,fix)=>{appendedFix=fix;sent.push('append');if(noAppend)throw Error('échec stockage');return row},
   flush:async()=>{sent.push('flush');if(flush==='throw')throw Error('réseau');return {events:flush==='missing'?[]:[stored(flush)]}},
   read:async()=>{sent.push('read');if(read==='throw')throw Error('illisible');
    return read==='missing'?[]:[bad?{...stored(read),company:'B'}:stored(read)]}
  };
- const go=new Function('Network','Location','getPunchJournal','hasUnsafePunchJournalEntries','normalizeFreshPunchFix',source+'\nreturn punchWithLocation;')(
+ const go=new Function('Network','Location','getPunchJournal','hasUnsafePunchJournalEntries','normalizeFreshPunchFix','getLocalIdentity',source+'\nreturn punchWithLocation;')(
   {getNetworkStateAsync:async()=>({isConnected:false,isInternetReachable:false})},
-  {Accuracy:{High:1},requestForegroundPermissionsAsync:async()=>({status:gpsFix?'granted':'denied'}),getCurrentPositionAsync:async()=>({coords:gpsFix})},async()=>journal,hasUnsafePunchJournalEntries,normalizeFreshPunchFix);
+  {Accuracy:{High:1},requestForegroundPermissionsAsync:async()=>({status:gpsFix?'granted':'denied'}),getCurrentPositionAsync:async()=>({coords:gpsFix})},async()=>journal,hasUnsafePunchJournalEntries,normalizeFreshPunchFix,
+  async()=>({id:'U'}));
  return {sent,run:()=>go('A','in','J'),capturedFix:()=>appendedFix};
 }
 test('durably appended event survives failed flush and reports local pending',async()=>{
@@ -84,4 +86,20 @@ test('Expo records only valid normalized GPS coordinates without leaking extra d
  const result=await f.run();
  assert.equal(result.queued,true);
  assert.deepEqual(f.capturedFix(),{latitude:46.81,longitude:-71.22,accuracy:9});
+});
+
+test('native PUNCH will not append a punch into a different employee journal after identity switch',async()=>{
+ const h=fixture({journalUser:'other-employee'});
+ await assert.rejects(h.run(),/Compte changé pendant la capture/);
+ assert.deepEqual(h.sent,[],'A changed identity must never append or flush');
+});
+test('Expo rejects a saved synced flag with a contradictory server ACK status',async()=>{
+ const h=fixture({flush:'synced',serverAckStatus:'conflict'});
+ await assert.rejects(h.run(),/Accusé serveur du pointage indisponible/);
+ assert.deepEqual(h.sent,['append','flush']);
+});
+test('Expo pins capture identity and checks the server ACK before presenting confirmation',()=>{
+ assert.match(api,/const originUserId=\(await getLocalIdentity\(\)\)\.id/);
+ assert.match(api,/journal\.company!==companyId\|\|journal\.user!==originUserId/);
+ assert.match(api,/saved\.result\.sync_status!=='synced'/);
 });

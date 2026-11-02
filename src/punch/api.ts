@@ -159,6 +159,9 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{
  const occurredAt=new Date().toISOString();
+ // Pin the requesting identity BEFORE GPS/network awaits. A login switch
+ // during the permission prompt must not append into another user's journal.
+ const originUserId=(await getLocalIdentity()).id;
  // Persist the network state at the point of capture, before a reconnect
  // can make an offline event appear to be an ordinary online punch.
  let offline=false;
@@ -171,6 +174,8 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
  const fix=await Promise.race([Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High}),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('GPS indisponible')),6000))]);latitude=fix.coords.latitude;longitude=fix.coords.longitude;accuracy=fix.coords.accuracy;
  }}catch{/* A missing fix must never erase worked time; server flags it for review. */}
  const journal=await getPunchJournal(companyId);
+ if(journal.company!==companyId||journal.user!==originUserId)
+  throw Error('Compte changé pendant la capture : aucun pointage ajouté. Reconnectez-vous pour vérifier votre entreprise.');
  const event=await journal.append(action,jobId,normalizeFreshPunchFix(latitude===null?null:{latitude,longitude:longitude!,accuracy}),occurredAt,paid,offline);
  // The append was persisted before network. A failed flush may still leave
  // a valid pending or already acknowledged event; inspect that exact event.
@@ -189,7 +194,7 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
   throw Error('Conflit de pointage conservé pour vérification : '+(saved.result?.message||'contactez votre responsable.'));
  if(saved.status==='pending')
   return {queued:true,review_status:'local'} as LocationCheckResult;
- if(saved.status!=='synced'||!saved.result)
+ if(saved.status!=='synced'||!saved.result||saved.result.sync_status!=='synced')
   throw Error('Accusé serveur du pointage indisponible : vérifiez Mes heures avant de repointer.');
  return {...saved.result,queued:false,review_status:saved.result.review_status} as LocationCheckResult;
 }
