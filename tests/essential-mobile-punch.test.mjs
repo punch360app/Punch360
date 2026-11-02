@@ -210,7 +210,8 @@ test('Expo Essentiel recovers from corrupt channel cache without hiding hours or
  const to=native.indexOf('if(offline){',from);
  assert.ok(from>=0&&to>from,'Guarded channel and network loader must be present');
  const body=native.slice(from,to).replace('let cached:any=null;','let cached=null;');
- const read=new Function('AsyncStorage','Network','cacheKey',body+'return {cached,validCache,offline}');
+ const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+ const read=new AsyncFunction('AsyncStorage','Network','cacheKey',body+'return {cached,validCache,offline}');
  const run=async(raw,{readError=false,networkError=false,connected=true}={})=>
   read({getItem:async()=>{if(readError)throw Error('storage unavailable');return raw}},
    {getNetworkStateAsync:async()=>{if(networkError)throw Error('no network state');
