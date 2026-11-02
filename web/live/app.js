@@ -539,7 +539,8 @@ function essentialPunchSyncPanel(){
  const entries=(items)=>items.slice(-5).map(item=>
   '<li>'+e(item.label)+' · '+(item.occurredAt?e(when(item.occurredAt)):'heure indisponible')+'</li>').join('');
  return '<section class="ess-panel" role="status" aria-label="Synchronisation des pointages"><b>Pointages enregistrés sur cet appareil</b>'+
-  (blocked?'<p>Journal local non vérifiable : la synchronisation et les nouveaux pointages sur cet appareil sont bloqués. Aucun événement local n\'a été effacé. Contactez votre responsable pour une vérification; les heures serveur restent consultables.</p>':'')+
+  (blocked?'<p>Journal local non vérifiable : la synchronisation et les nouveaux pointages sur cet appareil sont bloqués. Aucun événement local n\'a été effacé. Contactez votre responsable pour une vérification; les heures serveur restent consultables.</p>'+
+   (!pending.length&&!conflicts.length&&state.section!=='hours'?button('Consulter Mes heures','navigate','full','data-id="hours"'):''):'')+
   (pending.length?'<p>'+pending.length+' événement(s) en attente de transmission. Ces pointages ne sont pas confirmés et ne figurent pas dans le relevé officiel.</p><ul>'+entries(pending)+'</ul>'+
     (pending.length>5?'<p class="small muted">Et '+(pending.length-5)+' autre(s) événement(s) en attente.</p>':'')+
     (blocked?(state.section==='hours'||conflicts.length?'':button('Consulter Mes heures','navigate','full','data-id="hours"')):
