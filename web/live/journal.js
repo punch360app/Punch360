@@ -71,6 +71,13 @@ export class PunchJournal {
    }catch(err){event.offline=true;event.error=String(err?.message||err);await this.storage.set(this.key,JSON.stringify(queue));break;}
   }return {sent,events:queue,pending:queue.filter(e=>e.status==='pending').length};}).finally(()=>{this.flushing=null});return this.flushing;
  }
+ /** Inspect saved punches without uploading, changing statuses or rewriting local data. */
+ async inspect(){return this.exclusive(async()=>{
+  const events=await this.read();
+  if(hasUnsafePunchJournalEntries(events,this.company,this.user))
+   throw Error('Journal local non vérifiable : aucun envoi effectué.');
+  return {sent:0,events,pending:events.filter(e=>e.status==='pending').length};
+ });}
  async pending(){return (await this.read()).filter(e=>e?.status==='pending');}
 }
 export function projectPendingPunches(snapshot,events,scope=null){
