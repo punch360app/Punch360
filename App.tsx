@@ -116,6 +116,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':
     local.pending?'Pointages locaux non confirmés · '+local.pending+' en attente sur ce téléphone':
     local.conflicts?local.conflicts+' conflit(s) transmis à l’administration':
+    punch.cacheWriteFailed?'Relevé serveur reçu · copie hors ligne indisponible sur cet appareil.':
     punch.readSource==='cache'?'Dernier relevé sauvegardé sur cet appareil · à vérifier':
     punch.readSource==='server'?'Dernier relevé serveur · heures sujettes à validation':
     result?.message||account.companyName);
@@ -161,6 +162,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
     local.pending&&local.conflicts?local.pending+' pointage(s) en attente et '+local.conflicts+' conflit(s) à vérifier.':
     local.pending?local.pending+' pointage(s) encore en attente de transmission.':
     local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
+    punch.cacheWriteFailed?'Aucun pointage en attente · copie hors ligne indisponible sur cet appareil.':
     'Aucun pointage local en attente. Vérifiez les heures officielles sur le serveur.');
   }catch(e:any){
    if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Synchronisation non confirmée : '+(e?.message||String(e)));
@@ -266,6 +268,7 @@ async function refreshConstructionPunchState(){
   setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':
    local.pending?'Pointages locaux enregistrés · '+local.pending+' en attente de transmission.':
    local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
+   punch.cacheWriteFailed?'Relevé serveur reçu · copie hors ligne indisponible sur cet appareil.':
    punch.readSource==='cache'?'Relevé local à vérifier · synchronisation non confirmée.':
    'Relevé reçu du serveur · heures sujettes à validation.');
   return true;

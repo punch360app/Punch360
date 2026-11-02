@@ -9,7 +9,7 @@ const journal=readFileSync(new URL('../src/punch/journal.ts',import.meta.url),'u
 const a=native.indexOf('export async function loadPunchState('),b=native.indexOf('export type LocationCheckResult=',a);
 assert.ok(a>=0&&b>a,'Expo loader not found');
 const source=native.slice(a,b).replace('export async function loadPunchState(companyId:string):Promise<PunchState>{','async function loadPunchState(companyId){')
- .replace("const overlay=async(state:PunchState,readSource:'server'|'cache')=>",'const overlay=async(state,readSource)=>')
+ .replace("const overlay=async(state:PunchState,readSource:'server'|'cache',cacheWriteFailed=false)=>",'const overlay=async(state,readSource,cacheWriteFailed=false)=>')
  .replace('let events:LocalPunchEvent[]=[];','let events=[];')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
@@ -141,6 +141,7 @@ test('Expo hours and home clearly label cache, projected time and server origin 
 test('online official hours survive device cache write failure',async()=>{
  const h=fixture({offline:false,writeFail:true}),state=await h.load('A');
  assert.equal(state.readSource,'server');
+ assert.equal(state.cacheWriteFailed,true);
  assert.deepEqual(state.sessions.map(s=>s.id),['own']);
  assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
  assert.equal(h.calls.db,3);
@@ -149,5 +150,16 @@ test('online empty punch session result survives device cache write failure',asy
  const h=fixture({offline:false,writeFail:true,emptyServer:true}),state=await h.load('A');
  assert.equal(state.readSource,'server');
  assert.deepEqual(state.sessions,[]);assert.equal(state.active,null);
+ assert.equal(state.cacheWriteFailed,true);
  assert.equal(h.calls.db,1);
+});
+
+test('successful server and offline reads do not report failed snapshot writes',async()=>{
+ assert.equal((await fixture({offline:false}).load('A')).cacheWriteFailed,false);
+ assert.equal((await fixture({offline:true}).load('A')).cacheWriteFailed,false);
+});
+test('Construction and Essential warn when a verified snapshot cannot be cached',()=>{
+ assert.match(native,/cacheWriteFailed\?:boolean/);
+ assert.match(app,/cacheWriteFailed\?'Relevé serveur reçu · copie hors ligne indisponible/);
+ assert.match(essential,/cacheWriteFailed\?'Relevé serveur · copie hors ligne indisponible/);
 });

@@ -101,6 +101,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=(punch.breaks||[]).some(b=>!b.ended_at);
  // Local projections and offline snapshots are never payroll-approved hours.
  const hoursOrigin=punch.localJournalBlocked?'Journal local à vérifier':
+  punch.cacheWriteFailed?'Relevé serveur · copie hors ligne indisponible sur cet appareil':
   punch.readSource==='cache'?'Dernier relevé sauvegardé sur cet appareil':
   punch.hasLocalProjection?'Relevé serveur + pointages locaux en attente':
   punch.readSource==='server'?'Dernier relevé reçu du serveur':'Relevé non vérifié';
