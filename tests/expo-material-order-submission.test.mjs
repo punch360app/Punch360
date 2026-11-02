@@ -21,7 +21,7 @@ function deferred(){
 function fixture({online=true,unknown=false,probeThrows=false,origin=['worker-A'],
  verified='worker-A',authError=null,insertError=null,
  response={data:{id:'order-314'},error:null},transportThrows=false,hold=false,
- jobResult={data:{id:'job-A',company_id:'tenant-A',active:true},error:null},
+ jobResult=undefined,
  jobThrows=false,holdJob=false}={}){
  const holdGate=deferred(),jobGate=deferred();
  let probes=0,identityReads=0,verifiedReads=0,inserts=0,jobReads=0;
@@ -40,13 +40,16 @@ function fixture({online=true,unknown=false,probeThrows=false,origin=['worker-A'
   from:table=>{
    if(table==='jobs'){
     jobReads++;
+    const filters={};
     const query={
      select:fields=>{assert.equal(fields,'id,company_id,active');return query},
-     eq:()=>query,
+     eq:(column,value)=>{filters[column]=value;return query},
      maybeSingle:async()=>{
       if(holdJob)await jobGate.promise;
       if(jobThrows)throw Error('Job lookup failed');
-      return jobResult;
+      return jobResult===undefined?{data:{
+       id:filters.id,company_id:filters.company_id,active:filters.active
+      },error:null}:jobResult;
      }
     };
     return query;
