@@ -3,7 +3,7 @@ import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {supabase} from '../lib/supabase';
 import {Job} from './catalog';
-export type JobLoad={jobs:Job[];demo:boolean;message:string};
+export type JobLoad={jobs:Job[];demo:boolean;message:string;readSource?:'cache'|'server'};
 // Cached jobs are advisory, but must never reveal an old or foreign tenant's job.
 // Reject a mixed legacy cache as a whole and preserve its bytes for recovery.
 export function scopedJobCache(value:unknown,companyId:string):JobLoad|null{
@@ -16,7 +16,7 @@ export function scopedJobCache(value:unknown,companyId:string):JobLoad|null{
   (job.latitude!==null&&(!Number.isFinite(job.latitude)||Math.abs(job.latitude)>90))||
   (job.longitude!==null&&(!Number.isFinite(job.longitude)||Math.abs(job.longitude)>180))||
   (job.photo_url!==null&&typeof job.photo_url!=='string')))return null;
- return {jobs:snapshot.jobs,demo:false,message:typeof snapshot.message==='string'?snapshot.message:''};
+ return {jobs:snapshot.jobs,demo:false,message:typeof snapshot.message==='string'?snapshot.message:'',readSource:'cache'};
 }
 export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
  const identity=await getLocalIdentity();
@@ -49,7 +49,7 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
   latitude:j.latitude,longitude:j.longitude,photo_url:j.photo_url,
   assigned_to_me:map.has(j.id),planned_start:map.get(j.id)||null
  }));
- const result={jobs,demo:false,message:jobs.length===0?'Aucun chantier. Le boss peut ajouter la première job.':''};await AsyncStorage.setItem(key,JSON.stringify(result));return result;
+ const result:JobLoad={jobs,demo:false,message:jobs.length===0?'Aucun chantier. Le boss peut ajouter la première job.':'',readSource:'server'};await AsyncStorage.setItem(key,JSON.stringify(result));return result;
 }
 export async function createJob(companyId:string,number:string,name:string,address:string){
  const {data,error}=await supabase.from('jobs')

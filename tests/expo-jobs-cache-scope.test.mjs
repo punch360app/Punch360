@@ -11,7 +11,8 @@ const scopedJobCache=new Function(sanitizer+'return scopedJobCache;')();
 const loader=source.slice(two,end)
  .replace('export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{','async function listMyCompanyJobs(companyId){')
  .replace('new Map<string,string|null>','new Map')
- .replace('const jobs:Job[]=','const jobs=');
+ .replace('const jobs:Job[]=','const jobs=')
+ .replace('const result:JobLoad=','const result=');
 const job=(company='A')=>({id:'J1',company_id:company,number:'214',name:'Job',address:'Québec',
  latitude:46.8,longitude:-71.2,photo_url:null,assigned_to_me:true,planned_start:null});
 const valid=()=>({jobs:[job()],demo:false,message:''});
@@ -78,4 +79,19 @@ test('offline cache key uses both authenticated user and active company',()=>{
  assert.match(source,/const key='punch-jobs:'\+identity\.id\+':'\+companyId/);
  assert.match(source,/raw\?scopedJobCache\(JSON\.parse\(raw\),companyId\):null/);
  assert.doesNotMatch(source,/if\(cached\)return JSON\.parse\(cached\)/);
+});
+
+test('offline catalog explicitly labels cache rather than a fresh server snapshot',async()=>{
+ assert.equal((await fixture().run()).readSource,'cache');
+});
+test('online catalog explicitly marks server origin and stores it',async()=>{
+ const h=fixture({online:true}),result=await h.run();
+ assert.equal(result.readSource,'server');
+ assert.equal(JSON.parse(h.store.get('punch-jobs:U:A')).readSource,'server');
+});
+test('online fallback after API error cannot pretend catalog is fresh',async()=>{
+ assert.equal((await fixture({online:true,jobsError:true}).run()).readSource,'cache');
+});
+test('legacy cache marked server must still be labeled as cached when reused',()=>{
+ assert.equal(scopedJobCache({...valid(),readSource:'server'},'A').readSource,'cache');
 });
