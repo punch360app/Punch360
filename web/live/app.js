@@ -5,6 +5,7 @@ import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
+import {employeeMissingDaysSummary} from './missing-days.js';
 import {essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView} from './essential-correction.js';
 import {essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView} from './essential-leave.js';
 import {sessionIdChunks,netSegmentMilliseconds} from './essential-hours-export.js';
@@ -400,6 +401,14 @@ function essentialSchedule(){return essentialUI.planning.renderSchedule();}
 function legacyEssentialSchedule(){return heading('Horaire','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Personne</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début','shiftStart','','datetime-local')+formfield('Fin','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Planifier','scheduleShift','gold full')):'')+state.shifts.map(x=>card('<b>'+when(x.starts_at)+' → '+when(x.ends_at)+'</b><p class="muted">'+e(x.note||'Votre quart planifié')+'</p>'+(manager()?button('Annuler','cancelShift','',`data-id="${e(x.id)}"`):''))).join('');}
 
 function essentialHours(){
+ const forgotten=employeeMissingDaysSummary({companyId:company(),userId:state.user?.id,
+  source:essentialUI.missingDays.state});
+ const forgottenRows=forgotten.ready?(forgotten.requests.length?forgotten.requests.map(r=>
+  '<div class="hoursitem"><div class="grow"><b>'+e(when(r.startsAt))+
+  ' → '+e(when(r.endsAt))+'</b><small>Demande de journée oubliée · '+e(r.label)+
+  '</small></div></div>').join(''):
+  '<p class="small muted">Aucune demande de journée oubliée pour votre dossier.</p>'):
+  '<p class="small muted">Historique des demandes indisponible. Actualisez une fois connecté.</p>';
  const view=essentialHoursView({companyId:company(),userId:state.user?.id,
   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,
   projectedSessions:state.sessions,projectedSegments:state.segments,
@@ -415,6 +424,9 @@ function essentialHours(){
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+essentialPunchSyncPanel()+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
   '<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
+  '<div class="ess-panel"><b>Journée entièrement oubliée</b><p class="small muted">Une journée complète manque? Vous pouvez en demander l’ajout. Une demande en attente ne constitue pas des heures confirmées.</p>'+
+  button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+
+  '<b>Suivi de mes demandes</b>'+forgottenRows+'</div>'+
   button('Demander une correction','subpage','full','data-id="essentialCorrection"');
 }
 function essentialCorrectionPage(){
