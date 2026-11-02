@@ -27,6 +27,14 @@ export function isPublicPlanOfferComplete(plan){
   Array.isArray(plan.features) && plan.features.every(feature=>typeof feature==='string');
 }
 
+/** A public quote is displayable only when the full offer is verified.
+ * The pricing arithmetic remains pure, but a commercial promise also needs
+ * known quotas and entitlements. Cards, comparisons and signup share this gate.
+ */
+export function quotePublicPlanOffer(plan,seats,cadence){
+ return isPublicPlanOfferComplete(plan)?estimatePublicPlanPrice(plan,seats,cadence):null;
+}
+
 /** Marketing highlights are derived from explicit catalog feature flags.
  * Never advertise an entitlement that the current offer does not declare.
  * Whitelist labels so unknown future catalog flags are not shown as promises.
@@ -59,7 +67,7 @@ export function renderCommercialDetails(plans,escape,money,{seats=null,cadence='
  const priceLabel=validCount?'Tarif estimé · '+seats+' membre'+(seats>1?'s':'')+
   (cadence==='yearly'?' · paiement annuel':' · paiement mensuel'):
   'Tarif estimé · nombre de membres à confirmer';
- const quote=plan=>validCount?estimatePublicPlanPrice(plan,seats,cadence):null;
+ const quote=plan=>validCount?quotePublicPlanOffer(plan,seats,cadence):null;
  // Keep the breakdown derived from exactly the same catalog quote as the
  // public cards. For annual payments, subtract the discounted base after
  // rounding so base + supplement always reconciles to the displayed total.
