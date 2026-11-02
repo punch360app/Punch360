@@ -27,7 +27,7 @@ function harness({pending=0,conflicts=0,blocked=false,summaryBlocked=false,conne
  const punchReadRevision={current:0};
  let resolveLoad;
  const fn=new Function('busy','punchActionInFlight','syncInFlight','journalBlocked',
-  'punchReadRevision','setBusy','setNotice','Network','loadPunchState','journalSummary',
+  'punchReadRevision','setBusy','setNotice','Network','loadPunchState','journalSummary','pending',
   'account','visitContext','setPunch','setJournalBlocked','setPending','setConflicts',
   'setPendingItems','setConflictItems','essentialManualPunchSyncNotice',
   code+'\nreturn syncLocalPunches;')(
@@ -40,7 +40,7 @@ function harness({pending=0,conflicts=0,blocked=false,summaryBlocked=false,conne
     if(switched)visitContext.current='B:U';
     return {localJournalBlocked:blocked,readSource,cacheWriteFailed}},
    async()=>{calls.summary++;return {pending,conflicts,blocked:summaryBlocked,pendingItems:[],conflictItems:[]}},
-   account,visitContext,
+   pending,account,visitContext,
    value=>setCalls.push(['punch',value]),value=>setCalls.push(['journalBlocked',value]),
    value=>setCalls.push(['pending',value]),value=>setCalls.push(['conflicts',value]),
    value=>setCalls.push(['pendingItems',value]),value=>setCalls.push(['conflictItems',value]),
