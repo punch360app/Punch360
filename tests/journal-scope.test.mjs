@@ -247,3 +247,59 @@ test('chronological shift, pause and OUT continue to project normally at exact b
  assert.equal(result.breaks[0].started_at,'2026-11-01T10:00:00Z');
  assert.equal(result.breaks[0].ended_at,'2026-11-01T10:30:00Z');
 });
+
+test('a clock-skewed OUT cannot close a shift before a previously completed pause',()=>{
+ const snapshot={sessions:[own],segments:[base.segments[1]],breaks:[
+  {id:'completed-pause',company_id:'tenant-A',user_id:'employee-A',session_id:own.id,
+   started_at:'2026-11-01T10:45:00Z',ended_at:'2026-11-01T11:15:00Z',is_paid:false}
+ ]};
+ const out={...event('out','backdated-out'),occurredAt:'2026-11-01T10:30:00Z'};
+ const result=projectPendingPunches(snapshot,[out],{company:'tenant-A',user:'employee-A'});
+ assert.equal(result.active?.id,own.id);
+ assert.equal(result.sessions[0].ended_at,null);
+ assert.equal(result.segments[0].ended_at,null);
+ assert.equal(result.breaks[0].ended_at,'2026-11-01T11:15:00Z');
+});
+
+test('backdated transfer and break start cannot predate an already closed pause',()=>{
+ const snapshot={sessions:[own],segments:[base.segments[1]],breaks:[
+  {id:'completed-pause',company_id:'tenant-A',user_id:'employee-A',session_id:own.id,
+   started_at:'2026-11-01T10:30:00Z',ended_at:'2026-11-01T11:00:00Z'}
+ ]};
+ for(const action of ['transfer','break_start']){
+  const old={...event(action,'clock-rollback','new-site'),occurredAt:'2026-11-01T10:45:00Z'};
+  const projected=projectPendingPunches(snapshot,[old],{company:'tenant-A',user:'employee-A'});
+  assert.equal(projected.segments.find(s=>s.id==='own-segment').ended_at,null,action);
+  assert.equal(projected.segments.some(s=>s.id==='local-clock-rollback'),false,action);
+  assert.equal(projected.breaks.length,1,action);
+  assert.equal(projected.active?.id,own.id,action);
+ }
+});
+
+test('a new break cannot predate the end of an earlier job segment',()=>{
+ const snapshot={sessions:[own],segments:[
+  {...base.segments[1],ended_at:'2026-11-01T11:00:00Z'},
+  {id:'next-job',company_id:'tenant-A',session_id:own.id,job_id:'next-site',
+   started_at:'2026-11-01T11:00:00Z',ended_at:null}
+ ],breaks:[]};
+ const old={...event('break_start','early-break'),occurredAt:'2026-11-01T10:45:00Z'};
+ const projected=projectPendingPunches(snapshot,[old],{company:'tenant-A',user:'employee-A'});
+ assert.deepEqual(projected.breaks,[]);
+ assert.equal(projected.active?.id,own.id);
+ assert.equal(projected.segments.find(s=>s.id==='next-job').ended_at,null);
+});
+
+test('a fresh OUT after completed pauses and transfers still closes the shift',()=>{
+ const snapshot={sessions:[own],segments:[
+  {...base.segments[1],ended_at:'2026-11-01T11:00:00Z'},
+  {id:'later',company_id:'tenant-A',session_id:own.id,job_id:'later-site',
+   started_at:'2026-11-01T11:00:00Z',ended_at:null}
+ ],breaks:[{id:'closed',company_id:'tenant-A',user_id:'employee-A',session_id:own.id,
+  started_at:'2026-11-01T10:00:00Z',ended_at:'2026-11-01T10:30:00Z'}]};
+ const out={...event('out','valid-out'),occurredAt:'2026-11-01T12:00:00Z'};
+ const result=projectPendingPunches(snapshot,[out],{company:'tenant-A',user:'employee-A'});
+ assert.equal(result.active,null);
+ assert.equal(result.sessions[0].ended_at,'2026-11-01T12:00:00Z');
+ assert.equal(result.segments.find(s=>s.id==='later').ended_at,'2026-11-01T12:00:00Z');
+ assert.equal(result.breaks[0].ended_at,'2026-11-01T10:30:00Z');
+});
