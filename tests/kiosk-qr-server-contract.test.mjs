@@ -40,89 +40,21 @@ test('QR only, empty code, fake number, or wrong device credentials cannot pass 
  assert.deepEqual(parseKioskQrEnvelope([]),{ok:false});
  assert.deepEqual(parseKioskQrEnvelope('P360C1.'+'b'.repeat(64)),{ok:false});
 });
-test('QR card and kiosk token use the exact canonical lowercase format accepted by SQL',()=>{
+test('QR and kiosk tokens must be canonical lowercase across HTTP and SQL',()=>{
  const input=valid();
- const variants=[
+ const variations=[
   {...input,cardCode:'p360c1.'+'b'.repeat(64)},
   {...input,cardCode:'P360C1.'+'B'.repeat(64)},
   {...input,cardCode:'P360C1.'+'b'.repeat(63)+'B'},
   {...input,token:'A'.repeat(64)},
   {...input,token:'a'.repeat(63)+'A'}
  ];
- for(const variant of variants)
+ for(const variant of variations)
   assert.deepEqual(parseKioskQrEnvelope(variant),{ok:false});
  assert.deepEqual(parseKioskQrEnvelope(input),{ok:true,operation:'identify'});
  const draft=readFileSync(new URL('../supabase/drafts/kiosk-qr-execute.sql',import.meta.url),'utf8');
- assert.match(draft,/p_card !~ '\^P360C1\\\.\[0-9a-f\]\{64\}\
- for(const attribute of ['workerId','companyId','siteId','role','userId','isAdmin','verified','authorized','force','offline','allowRevoked','qrHash','expectedVersion'])
-  assert.deepEqual(parseKioskQrEnvelope({...valid(),[attribute]:true}),{ok:false},attribute);
- const req={...valid(),action:'qr_execute',eventId:uuid2,eventAction:'in'};
- assert.deepEqual(parseKioskQrEnvelope({...req,companyId:uuid}),{ok:false});
-});
-test('trusted decision refuses absent evidence and false or truthy nonboolean proofs',()=>{
- assert.equal(checkKioskQrTrustedPreconditions(null),false);
- assert.equal(checkKioskQrTrustedPreconditions({}),false);
- assert.equal(checkKioskQrTrustedPreconditions([]),false);
- assert.equal(checkKioskQrTrustedPreconditions(checked()),true);
- for(const key of Object.keys(checked())){
-  for(const bad of [false,undefined,'true',1,null]){
-   const v=checked();v[key]=bad;
-   assert.equal(checkKioskQrTrustedPreconditions(v),false,`Expected refusal for ${key}=${bad}`);
-  }
- }
-});
-test('a copied credential with revoked phone, foreign company or PIN failure never passes preflight',()=>{
- for(const property of ['phoneEnrollmentActive','cardNotRevoked','cardBoundToCompany','workerBelongsToCompany','independentPinMatched','deviceNotRevoked','deviceTokenMatched']){
-  const proof=checked();proof[property]=false;
-  assert.equal(checkKioskQrTrustedPreconditions(proof),false,property);
- }
-});
-test('legacy kiosk Edge Function cannot accept or execute QR authorization before database transaction is implemented',()=>{
- const server=readFileSync(new URL('../supabase/functions/essential-kiosk/index.ts',import.meta.url),'utf8');
- assert.match(server,/\['identify','enroll','in','out','break_start','break_start_paid','break_end'\]\.includes\(p\.action\)/);
- assert.match(server,/parseKioskQrEnvelope\(p\)\.ok/);
- assert.match(server,/return reply\(403,\{ok:false,error:'OPERATION_REFUSED'\}\);/);
- assert.ok(server.indexOf("parseKioskQrEnvelope(p).ok")<server.indexOf("const client=createClient("),"QR must be rejected before privileged RPC");
- assert.doesNotMatch(server,/rpc\(['"]kiosk_qr_execute['"]/);
- const camera=readFileSync(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8');
- assert.doesNotMatch(camera,/(?:fetch\(|\.rpc\(|localStorage|sessionStorage|console\.log|sendBeacon)/);
-});
-/);
- assert.match(draft,/p_token !~ '\^\[0-9a-f\]\{64\}\
- for(const attribute of ['workerId','companyId','siteId','role','userId','isAdmin','verified','authorized','force','offline','allowRevoked','qrHash','expectedVersion'])
-  assert.deepEqual(parseKioskQrEnvelope({...valid(),[attribute]:true}),{ok:false},attribute);
- const req={...valid(),action:'qr_execute',eventId:uuid2,eventAction:'in'};
- assert.deepEqual(parseKioskQrEnvelope({...req,companyId:uuid}),{ok:false});
-});
-test('trusted decision refuses absent evidence and false or truthy nonboolean proofs',()=>{
- assert.equal(checkKioskQrTrustedPreconditions(null),false);
- assert.equal(checkKioskQrTrustedPreconditions({}),false);
- assert.equal(checkKioskQrTrustedPreconditions([]),false);
- assert.equal(checkKioskQrTrustedPreconditions(checked()),true);
- for(const key of Object.keys(checked())){
-  for(const bad of [false,undefined,'true',1,null]){
-   const v=checked();v[key]=bad;
-   assert.equal(checkKioskQrTrustedPreconditions(v),false,`Expected refusal for ${key}=${bad}`);
-  }
- }
-});
-test('a copied credential with revoked phone, foreign company or PIN failure never passes preflight',()=>{
- for(const property of ['phoneEnrollmentActive','cardNotRevoked','cardBoundToCompany','workerBelongsToCompany','independentPinMatched','deviceNotRevoked','deviceTokenMatched']){
-  const proof=checked();proof[property]=false;
-  assert.equal(checkKioskQrTrustedPreconditions(proof),false,property);
- }
-});
-test('legacy kiosk Edge Function cannot accept or execute QR authorization before database transaction is implemented',()=>{
- const server=readFileSync(new URL('../supabase/functions/essential-kiosk/index.ts',import.meta.url),'utf8');
- assert.match(server,/\['identify','enroll','in','out','break_start','break_start_paid','break_end'\]\.includes\(p\.action\)/);
- assert.match(server,/parseKioskQrEnvelope\(p\)\.ok/);
- assert.match(server,/return reply\(403,\{ok:false,error:'OPERATION_REFUSED'\}\);/);
- assert.ok(server.indexOf("parseKioskQrEnvelope(p).ok")<server.indexOf("const client=createClient("),"QR must be rejected before privileged RPC");
- assert.doesNotMatch(server,/rpc\(['"]kiosk_qr_execute['"]/);
- const camera=readFileSync(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8');
- assert.doesNotMatch(camera,/(?:fetch\(|\.rpc\(|localStorage|sessionStorage|console\.log|sendBeacon)/);
-});
-/);
+ assert.ok(draft.includes(String.raw`p_card !~ '^P360C1\.[0-9a-f]{64}$'`));
+ assert.ok(draft.includes(String.raw`p_token !~ '^[0-9a-f]{64}$'`));
 });
 test('client cannot smuggle tenant, employee, site, authority or bypass flags into the QR request',()=>{
  for(const attribute of ['workerId','companyId','siteId','role','userId','isAdmin','verified','authorized','force','offline','allowRevoked','qrHash','expectedVersion'])
