@@ -5,3 +5,6 @@ export class PunchJournal {
  flush():Promise<{sent:number;events:LocalPunchEvent[];pending:number}>;pending():Promise<LocalPunchEvent[]>;
 }
 export function projectPendingPunches<T extends {sessions:any[];segments:any[]}>(snapshot:T,events:LocalPunchEvent[],scope?:{company:string;user:string}|null):T & {breaks:any[];active:any;lastJobId:string|null};
+
+/** Safeguard before append or flush; preserves unverified local events unchanged. */
+export function hasUnsafePunchJournalEntries(events:unknown,company:string,user:string):boolean;

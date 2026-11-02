@@ -25,7 +25,7 @@ import {createEssentialLocale,ESSENTIAL_LANGUAGES} from './essential-locale.js';
 import {listVerifiedWorkspaces,chooseVerifiedWorkspace} from './company-workspaces.js';
 import {createBossHandoffController} from './boss-handoff.js';
 import {isRestrictedManagement,canUseRestrictedManagement} from './restricted-management.js';
-import {PunchJournal,projectPendingPunches} from './journal.js';
+import {PunchJournal,projectPendingPunches,hasUnsafePunchJournalEntries} from './journal.js';
 import {currentOpenPunchBreak} from './active-punch-break.js';
 import {localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent} from './punch-sync-state.js';
 import {createClient} from './vendor/supabase.js';
@@ -1110,6 +1110,9 @@ if(a==='togglePassword'){togglePublicPasswordVisibility(document,id,el);return;}
  // leave a stale in-memory list claiming everything was synchronized.
  const events=await punchJournal().read();
  if(!member()||company()!==companyId||state.user?.id!==userId)return;
+ if(hasUnsafePunchJournalEntries(events,companyId,userId)){
+  toast('Journal local à vérifier : aucun pointage envoyé. Contactez votre responsable.');return;
+ }
  state.localPunchEvents=events;
  const {pending,conflicts}=localPunchSyncState(events,companyId,userId);
  state.localPending=pending.length;
