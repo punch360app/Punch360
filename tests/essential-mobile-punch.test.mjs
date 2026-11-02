@@ -191,3 +191,16 @@ test('Expo Essentiel does not reuse legacy unscoped channel permissions after up
  assert.match(native,/JSON\.stringify\(\{version:2,job,allowed,checkedAt:Date\.now\(\)\}\)/);
  assert.match(native,/if\(channel\.error\)\{if\(validCache\)\{setSiteJob\(cached\.job\);setMobileAllowed\(cached\.allowed\)\}else\{setSiteJob\(null\);setMobileAllowed\(false\)\}/);
 });
+
+test('Expo Essentiel requires an active worker with explicit mobile permissions',()=>{
+ assert.match(native,/\.select\('id,status,can_mobile_punch,personal_access,location_id'\)/);
+ assert.match(native,/const allowed=channel\.data\.status==='active'&&channel\.data\.can_mobile_punch===true&&channel\.data\.personal_access===true/);
+ for(const candidate of [
+  {...worker,status:'disabled'}, {...worker,status:'inactive'},
+  {...worker,can_mobile_punch:'true'}, {...worker,personal_access:'true'},
+  {...worker,personal_access:null}, {...worker,status:undefined}
+ ]){
+  assert.equal(canUseEssentialMobilePunch('A','u',candidate),false);
+ }
+ assert.equal(canUseEssentialMobilePunch('A','u',worker),true);
+});
