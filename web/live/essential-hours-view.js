@@ -60,3 +60,42 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  return {ready:true,confirmedSessions,confirmedDays,confirmedWeekMs,projectedWeekMs,
   pending,hasPending:pending>0};
 }
+
+/**
+ * Personal J1 adjustment tracking. Inputs are independently scoped server
+ * views; a partial read must not be described as an empty confirmed inbox.
+ * Review statuses are decisions on requests, never an approval of payroll.
+ */
+export function employeeHoursRequestTimeline({companyId,userId,correctionView,breakView,missingView}={}){
+ const empty={complete:false,pendingCount:0,items:[],unavailable:[]};
+ if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId)return empty;
+ const allowed=new Set(['pending','approved','rejected','cancelled']);
+ const sources=[
+  {kind:'heures',title:'Correction d’heures',view:correctionView,
+   rows:correctionView?.requests,belongs:r=>r?.requested_by===userId&&
+    (r.company_id==null||r.company_id===companyId),date:r=>r.created_at},
+  {kind:'pauses',title:'Correction de pause',view:breakView,
+   rows:breakView?.requests,belongs:r=>r?.requested_by===userId&&
+    r.company_id===companyId,date:r=>r.created_at},
+  {kind:'journée',title:'Journée oubliée',view:missingView,
+   rows:missingView?.requests,belongs:r=>typeof r?.startsAt==='string',
+   date:r=>r.createdAt||r.startsAt}
+ ];
+ const unavailable=[],found=[];
+ for(const source of sources){
+  if(source.view?.ready!==true||!Array.isArray(source.rows)){
+   unavailable.push(source.title);continue;
+  }
+  for(const row of source.rows){
+   if(!source.belongs(row)||!allowed.has(row.status)||typeof row.id!=='string'||!row.id)continue;
+   const at=source.date(row),when=typeof at==='string'&&Number.isFinite(Date.parse(at))?at:null;
+   found.push({key:source.kind+':'+row.id,title:source.title,status:row.status,
+    label:({pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'})[row.status],
+    at:when});
+  }
+ }
+ found.sort((a,b)=>(b.at?Date.parse(b.at):0)-(a.at?Date.parse(a.at):0));
+ return {complete:unavailable.length===0,
+  pendingCount:found.filter(r=>r.status==='pending').length,
+  items:found.slice(0,8),unavailable};
+}
