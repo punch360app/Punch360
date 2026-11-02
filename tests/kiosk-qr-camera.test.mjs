@@ -132,3 +132,56 @@ test('closing camera invalidates old watchdog without touching replacement sessi
  assert.deepEqual(k.notices,['expired']);
  assert.equal(k.tracks[0].stops,2);
 });
+
+test('tablet camera hardware-ended event closes every track and reports neutral fallback',async()=>{
+ const listeners=new Set(),notices=[];
+ const tracks=[
+  {stops:0,stop(){this.stops++},addEventListener(type,fn){if(type==='ended')listeners.add(fn)},removeEventListener(type,fn){if(type==='ended')listeners.delete(fn)}},
+  {stops:0,stop(){this.stops++}}
+ ];
+ const media={getTracks:()=>tracks};
+ const video={srcObject:null,async play(){},pause(){}};
+ const camera=createKioskQrCamera({
+  mediaDevices:{getUserMedia:async()=>media},
+  BarcodeDetector:class{async detect(){return []}},
+  notify:key=>notices.push(key),
+  schedule:()=>1,cancel(){},
+  expire:()=>2,cancelExpire(){}
+ });
+ assert.equal(await camera.start(video),true);
+ assert.equal(camera.active,true);
+ assert.equal(listeners.size,1);
+ for(const listener of [...listeners])listener();
+ assert.equal(camera.active,false);
+ assert.equal(video.srcObject,null);
+ assert.deepEqual(tracks.map(x=>x.stops),[1,1]);
+ assert.deepEqual(notices,['camera']);
+ assert.equal(listeners.size,0,'ended handlers must be removed on stop');
+});
+
+test('old track-ended callback cannot stop a replacement camera session',async()=>{
+ const streams=[],oldListeners=[],notices=[];
+ const mediaDevices={async getUserMedia(){
+  const handlers=new Set();
+  const track={stops:0,stop(){this.stops++},addEventListener(_,fn){handlers.add(fn)},removeEventListener(_,fn){handlers.delete(fn)}};
+  const stream={track,handlers,getTracks:()=>[track]};streams.push(stream);return stream;
+ }};
+ const camera=createKioskQrCamera({
+  mediaDevices,BarcodeDetector:class{async detect(){return []}},
+  schedule:()=>1,cancel(){},expire:()=>2,cancelExpire(){},
+  notify:key=>notices.push(key)
+ });
+ const video={srcObject:null,async play(){},pause(){}};
+ assert.equal(await camera.start(video),true);
+ oldListeners.push(...streams[0].handlers);
+ camera.stop();
+ assert.equal(streams[0].handlers.size,0);
+ assert.equal(await camera.start(video),true);
+ for(const callback of oldListeners)callback();
+ assert.equal(camera.active,true);
+ assert.equal(streams[1].track.stops,0);
+ assert.deepEqual(notices,[]);
+ camera.stop();
+ assert.equal(streams[1].handlers.size,0);
+ assert.equal(streams[1].track.stops,1);
+});
