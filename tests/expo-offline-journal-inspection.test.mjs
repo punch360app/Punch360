@@ -19,11 +19,11 @@ function nativeFunction(start,end,name,dependencies){
 }
 function fixture({connectivity='offline',damaged=false}={}){
  const company='tenant-A',user='worker-A',job='site-A';
- let network=connectivity,queries=0,writes=0,reads=0;
+ let network=connectivity,queries=0,writes=0,reads=0,sequence=0;
  const sent=[],values=new Map();
  const storage={get:async key=>{reads++;return values.get(key)||null},
   set:async(key,value)=>{writes++;values.set(key,value)}};
- const journal=new PunchJournal({company,user,storage,uuid:()=> 'event-1',
+ const journal=new PunchJournal({company,user,storage,uuid:()=> 'event-'+(++sequence),
   send:async event=>{sent.push(event.id);return {sync_status:'synced',review_status:'pending'}}});
  const snapshot={sessions:[{id:'shift-1',company_id:company,user_id:user,
   started_at:'2026-11-02T08:00:00Z',ended_at:null}],
