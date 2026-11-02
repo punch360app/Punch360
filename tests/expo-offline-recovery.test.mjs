@@ -12,6 +12,7 @@ const source=native.slice(a,b).replace('export async function loadPunchState(com
  .replace("const overlay=async(state:PunchState,readSource:'server'|'cache',cacheWriteFailed=false)=>",'const overlay=async(state,readSource,cacheWriteFailed=false)=>')
  .replace('let events:LocalPunchEvent[]=[];','let events=[];')
  .replace('let cached:PunchState|null=null;','let cached=null;')
+ .replaceAll('(row:Record<string,unknown>|null)=>','(row)=>')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
  .replace('const sorted=(segments||[]) as PunchSegment[];','const sorted=segments||[];')
