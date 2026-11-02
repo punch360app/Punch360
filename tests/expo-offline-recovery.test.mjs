@@ -10,6 +10,7 @@ const a=native.indexOf('export async function loadPunchState('),b=native.indexOf
 assert.ok(a>=0&&b>a,'Expo loader not found');
 const source=native.slice(a,b).replace('export async function loadPunchState(companyId:string):Promise<PunchState>{','async function loadPunchState(companyId){')
  .replace('const overlay=async(state:PunchState)=>','const overlay=async(state)=>')
+ .replace('let events:LocalPunchEvent[]=[];','let events=[];')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
  .replace('const sorted=(segments||[]) as PunchSegment[];','const sorted=segments||[];');
@@ -19,13 +20,13 @@ const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false}={}){
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false}={}){
  const store=new Map([['punch-state:U:A',JSON.stringify(cached)]]),calls={send:0,read:0,db:0};
  const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
  const j={flush:async()=>{calls.send++;if(flushFail)throw Error('Journal non vérifiable')},
   read:async()=>{calls.read++;if(readFail)throw Error('Journal illisible');return offlineEvents}};
  const storage={getItem:async key=>store.get(key)||null,setItem:async(k,v)=>store.set(k,v)};
- const network={getNetworkStateAsync:async()=>({isConnected:!offline,isInternetReachable:!offline})};
+ const network={getNetworkStateAsync:async()=>{if(networkStateFail)throw Error('Network status unavailable');return {isConnected:!offline,isInternetReachable:!offline}}};
  const supabase={from:table=>{
   const result=table==='punch_sessions'?{data:[own],error:dbFail?Error('offline'):null}:
    table==='punch_segments'?{data:[cached.segments[1]],error:null}:
@@ -83,4 +84,22 @@ test('Journal summary and two mobile screens explicitly surface blocked status',
  assert.match(journal,/catch\{return \{pending:0,conflicts:0,blocked:true\}\}/);
  assert.match(essential,/updated\.localJournalBlocked\|\|summary\.blocked/);
  assert.match(app,/const blocked=!!punch\.localJournalBlocked\|\|local\.blocked/);
+});
+
+test('Expo network-state failure retains worker-scoped cached hours without server requests',async()=>{
+ const h=fixture({networkStateFail:true,flushFail:true}),state=await h.load('A');
+ assert.equal(state.localJournalBlocked,true);
+ assert.deepEqual(state.sessions.map(s=>s.id),['own']);
+ assert.equal(state.lastJobId,'my-site');
+ assert.equal(h.calls.db,0);
+});
+test('Expo network-state failure still projects valid local OUT when journal is healthy',async()=>{
+ const h=fixture({networkStateFail:true}),state=await h.load('A');
+ assert.equal(state.localJournalBlocked,false);
+ assert.equal(state.sessions[0].ended_at,'2026-11-02T12:00:00Z');
+ assert.equal(h.calls.db,0);
+});
+test('TypeScript local journal events must be typed rather than implicitly any',()=>{
+ assert.match(native,/import type \{LocalPunchEvent\} from '\.\.\/\.\.\/web\/live\/journal.js'/);
+ assert.match(native,/let events:LocalPunchEvent\[\]=\[\];/);
 });

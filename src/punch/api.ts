@@ -3,6 +3,7 @@ import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getPunchJournal} from './journal';
 import {projectPendingPunches} from '../../web/live/journal.js';
+import type {LocalPunchEvent} from '../../web/live/journal.js';
 import {netSegmentMilliseconds} from '../../web/live/essential-hours-export.js';
 import * as Location from 'expo-location';
 import {supabase} from '../lib/supabase';
@@ -26,12 +27,19 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
    (b.company_id==null||b.company_id===companyId)&&
    (b.user_id==null||b.user_id===user.id));
   const own={...state,sessions:ownSessions,segments:ownSegments,breaks:ownBreaks};
-  let events=[];
+  let events:LocalPunchEvent[]=[];
   if(!journalBlocked)try{events=await journal.read()}catch{journalBlocked=true}
   return {...projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id}),
    localJournalBlocked:journalBlocked} as PunchState;
  };
- const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null});}
+ // If Expo cannot read network state, retain access to the last locally
+ // saved, identity-scoped snapshot instead of hiding the worker's hours.
+ let networkAvailable=false;
+ try{
+  const network=await Network.getNetworkStateAsync();
+  networkAvailable=network.isConnected!==false&&network.isInternetReachable!==false;
+ }catch{/* The cached snapshot is the safe fallback on network-state failure. */}
+ if(!networkAvailable){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null});}
  const {data:sessions,error}=await supabase.from('punch_sessions')
   .select('id,company_id,user_id,started_at,ended_at')
   .eq('company_id',companyId).eq('user_id',user.id)
