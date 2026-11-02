@@ -652,8 +652,8 @@ function essentialHours(){
    e(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}))+
    '</b><small>Brut '+mins(row.grossMs)+' · Pause non payée '+mins(row.unpaidMs)+'</small></div>'+
    '<strong>'+mins(row.netMs)+' net</strong></div>').join('')+'</div>':'';
- const history=view.ready&&view.confirmedWeekDays.length?view.confirmedWeekDays.slice(0,80).map(({session:s,netMs,open})=>
-  card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours · durée provisoire')+'</p><strong>'+mins(netMs)+' net'+(open?' · dernier relevé serveur':'')+'</strong>')).join(''):
+ const history=view.ready&&view.confirmedWeekDays.length?view.confirmedWeekDays.slice(0,80).map(({netMs,rangeStart,rangeEnd,rangeEndIsFinal})=>
+  card('<b>'+new Date(rangeStart).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(rangeStart)+' → '+when(rangeEnd)+(rangeEndIsFinal?'':' · limite du relevé ou de la semaine')+'</p><strong>'+mins(netMs)+' net'+(rangeEndIsFinal?'':' · période bornée')+'</strong>')).join(''):
   '<p class="small muted">'+(view.ready?'Aucune journée enregistrée pour cette semaine dans le relevé serveur.':'Historique serveur indisponible.')+'</p>';
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+essentialPunchSyncPanel()+weekNav+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
