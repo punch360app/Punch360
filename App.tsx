@@ -15,7 +15,7 @@ import {journalSummary} from './src/punch/journal';
 import {MorePortal} from './src/hr/MorePortal';
 import {MessagesScreen} from './src/messages/MessagesScreen';
 import {supabase} from './src/lib/supabase';
-import {loadPunchState,punchIn,punchOut,punchTransfer,archiveSegment,restoreSegment,loadArchives,hoursFor,PunchSession,PunchSegment} from './src/punch/api';
+import {loadPunchState,punchIn,punchOut,punchTransfer,archiveSegment,restoreSegment,loadArchives,hoursFor,PunchSession,PunchSegment,PunchBreak} from './src/punch/api';
 
 const C={bg:'#08131C',panel:'#0E202B',panel2:'#122934',stroke:'#30454E',text:'#FFFFFF',muted:'#A5B9C5',gold:'#FFBF40',mint:'#21E2B0',red:'#EF4B4B'};
 type Page='home'|'jobs'|'detail'|'hours'|'orders'|'messages'|'more'|'alerts';
@@ -61,6 +61,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const [segments,setSegments]=useState<Segment[]>([]);
  const [serverSegments,setServerSegments]=useState<PunchSegment[]>([]);
  const [sessions,setSessions]=useState<PunchSession[]>([]);
+ const [serverBreaks,setServerBreaks]=useState<PunchBreak[]>([]);
  const [working,setWorking]=useState(false);
  const [jobNumber,setJobNumber]=useState('');
  const [jobName,setJobName]=useState('');
@@ -92,7 +93,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
     punch.readSource==='cache'?'Dernier relevé sauvegardé sur cet appareil · à vérifier':
     punch.readSource==='server'?'Dernier relevé serveur · heures sujettes à validation':
     result.message||account.companyName);
-   setSessions(punch.sessions);setServerSegments(punch.segments);
+   setSessions(punch.sessions);setServerSegments(punch.segments);setServerBreaks(punch.breaks||[]);
    setSegments(punch.segments.map(s=>({id:s.id,jobId:s.job_id,start:Date.parse(s.started_at),end:s.ended_at?Date.parse(s.ended_at):null})));
    setArchived(archives);
    const openSegment=punch.segments.find(s=>s.session_id===punch.active?.id&&s.ended_at===null);
@@ -123,7 +124,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    setPendingItems(local.pendingItems);setConflictItems(local.conflictItems);
    setJournalViewScope(requestedFor);
    setHoursReadSource(punch.readSource||null);setHoursProjected(!!punch.hasLocalProjection);
-   setSessions(punch.sessions);setServerSegments(punch.segments);
+   setSessions(punch.sessions);setServerSegments(punch.segments);setServerBreaks(punch.breaks||[]);
    setSegments(punch.segments.map(s=>({id:s.id,jobId:s.job_id,start:Date.parse(s.started_at),
     end:s.ended_at?Date.parse(s.ended_at):null})));
    setPunchActive(!!punch.active);setStartMs(punch.active?Date.parse(punch.active.started_at):null);
@@ -146,8 +147,8 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const yearBegin=new Date(today.getFullYear(),0,1).getTime();
  const weekday=(today.getDay()+6)%7;
  const weekBegin=new Date(today.getFullYear(),today.getMonth(),today.getDate()-weekday).getTime();
- const weekDuration=hoursFor(serverSegments,now,weekBegin,now);
- const annualDuration=hoursFor(serverSegments,now,yearBegin,now);
+ const weekDuration=hoursFor(serverSegments,now,weekBegin,now,serverBreaks);
+ const annualDuration=hoursFor(serverSegments,now,yearBegin,now,serverBreaks);
  const formatHours=(duration:number)=>{
   const mins=Math.floor(duration/60000);
   return Math.floor(mins/60)+' h '+String(mins%60).padStart(2,'0');
@@ -223,7 +224,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
  function DetailScreen(){if(!detail)return <View/>;const relevant=segments.filter(s=>s.jobId===detail.id&&(showArchived?archived.includes(s.id):!archived.includes(s.id)));return <View style={{flex:1,paddingHorizontal:14}}><Header back={()=>setPage('jobs')} title={'Job #'+detail.number}/><ScrollView contentContainerStyle={{gap:12,paddingBottom:22}}><Card><View style={styles.row}><JobIcon job={detail}/><View style={{flex:1,gap:5}}><T bold size={19}>{detail.name}</T><T size={12} color={C.muted}>{detail.address}</T></View></View><View style={[styles.row,{marginTop:12}]}><Action icon="navigate" label="Waze" onPress={()=>waze(detail)}/><Action icon="map" label="Google Maps" onPress={()=>mapLink(detail)}/></View></Card><View style={styles.row}><Card style={{flex:1}}><Icon name="document-text" size={21}/><T bold>Plans et documents</T><T size={11} color={C.muted}>{detail.plan_count!==undefined?detail.plan_count+' fichiers':'Documents liés à la job'}</T></Card><Card style={{flex:1}}><Icon name="cart" size={21}/><T bold>Commandes</T><T size={11} color={C.muted}>{detail.open_order_count!==undefined?detail.open_order_count+' en cours':'Historique par chantier'}</T></Card></View><Action icon="swap-horizontal" label={punchActive?'Transférer mon punch ici':'Sélectionner cette job'} onPress={()=>switchTo(detail)}/><Card><View style={styles.row}><T bold style={{flex:1}}>Punchs de cette job</T><Pressable onPress={()=>setShowArchived(v=>!v)}><T color={C.gold} size={12}>{showArchived?'Actifs':'Archives'}</T></Pressable></View>{relevant.length===0?<T color={C.muted} style={{marginTop:13}}>Aucun punch {showArchived?'archivé':'enregistré sur cette job'}.</T>:relevant.map(s=><View key={s.id} style={[styles.row,{paddingVertical:11,borderTopColor:C.stroke,borderTopWidth:1,marginTop:8}]}><Icon name="time-outline" color={C.mint}/><View style={{flex:1}}><T size={12}>{new Date(s.start).toLocaleString('fr-CA')}</T><T size={11} color={C.muted}>{s.end?'Terminé':'En cours'}</T></View><Pressable onPress={()=>showArchived?unarchive(s.id):archivePunch(s.id)} style={{padding:7}}><Icon name={showArchived?'arrow-undo':'ellipsis-vertical'} color={C.text}/></Pressable></View>)}</Card></ScrollView></View>}
  function HoursScreen(){const scoped=journalViewScope===currentScope;
  return <View style={{flex:1,paddingHorizontal:14,gap:10}}><Header title="Mes heures"/>
- <View style={styles.row}><Card style={{flex:1}}><T size={11} color={C.muted}>Cette semaine</T><T size={22} bold>{formatHours(weekDuration)}</T></Card><Card style={{flex:1}}><T size={11} color={C.muted}>Cette année</T><T size={22} bold>{formatHours(annualDuration)}</T></Card></View>
+ <View style={styles.row}><Card style={{flex:1}}><T size={11} color={C.muted}>Cette semaine</T><T size={22} bold>{scoped?formatHours(weekDuration):'—'}</T></Card><Card style={{flex:1}}><T size={11} color={C.muted}>Cette année</T><T size={22} bold>{scoped?formatHours(annualDuration):'—'}</T></Card></View>
  <T size={11} color={C.muted}>{!scoped?'Relevé en cours de vérification':
   journalBlocked?'Journal local bloqué · relevé à vérifier':
   hoursReadSource==='cache'?'Dernier relevé sauvegardé sur cet appareil':
@@ -253,7 +254,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    <T size={13} bold color={C.mint}>{syncBusy?'Synchronisation…':'Synchroniser maintenant'}</T>
   </Pressable>:null}
  </View>:null}
- {sessions.length===0?<T color={C.muted}>Aucune heure enregistrée.</T>:sessions.map(s=><Pressable key={s.id} style={{padding:10,borderRadius:10,backgroundColor:C.panel2}} onPress={()=>{const segment=serverSegments.find(z=>z.session_id===s.id);const job=jobs.find(z=>z.id===segment?.job_id);if(job)openDetail(job)}}><View style={styles.row}><Icon name="time" color={s.ended_at?C.gold:C.mint}/><View style={{flex:1}}><T size={13} bold>{new Date(s.started_at).toLocaleDateString('fr-CA')}</T><T size={11} color={C.muted}>{new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})} — {s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'}</T></View><T size={12} bold>{formatHours(Math.max(0,(s.ended_at?Date.parse(s.ended_at):now)-Date.parse(s.started_at)))}</T><Icon name="chevron-forward" color={C.muted}/></View></Pressable>)}</ScrollView></Card></View>}
+ {!scoped?<T color={C.muted}>Relevé du compte en cours de chargement.</T>:sessions.length===0?<T color={C.muted}>Aucune heure enregistrée.</T>:sessions.map(s=><Pressable key={s.id} style={{padding:10,borderRadius:10,backgroundColor:C.panel2}} onPress={()=>{const segment=serverSegments.find(z=>z.session_id===s.id);const job=jobs.find(z=>z.id===segment?.job_id);if(job)openDetail(job)}}><View style={styles.row}><Icon name="time" color={s.ended_at?C.gold:C.mint}/><View style={{flex:1}}><T size={13} bold>{new Date(s.started_at).toLocaleDateString('fr-CA')}</T><T size={11} color={C.muted}>{new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})} — {s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'}</T></View><T size={12} bold>{formatHours(hoursFor(serverSegments.filter(seg=>seg.session_id===s.id),now,Date.parse(s.started_at),s.ended_at?Date.parse(s.ended_at):now,serverBreaks))}</T><Icon name="chevron-forward" color={C.muted}/></View></Pressable>)}</ScrollView></Card></View>}
  function OrdersScreen(){return <View style={{flex:1,paddingHorizontal:14,gap:12}}><Header title="Commande"/><Card><T size={15} bold>Nouvelle demande de matériel</T><T color={C.muted} size={12}>Job : {current?('#'+current.number+' — '+current.name):'Sélectionner une job'}</T><TextInput placeholder="Décrire le matériel, les quantités…" multiline value={orderNote} onChangeText={setOrderNote} placeholderTextColor={C.muted} style={{minHeight:85,backgroundColor:C.panel2,borderRadius:10,color:C.text,padding:12,marginVertical:11,textAlignVertical:'top'}}/><Action icon="send" label="Envoyer à l’administration" onPress={async()=>{if(!current||!orderNote.trim()){Alert.alert('Information manquante','Choisis une job et décris le matériel.');return;}try{const {error}=await supabase.from('material_orders').insert({company_id:account.companyId,job_id:current.id,created_by:account.userId,note:orderNote.trim()});if(error)throw error;setOrderNote('');await refresh();Alert.alert('Commande envoyée','La demande est enregistrée pour cette job.');}catch(e:any){Alert.alert('Commande non envoyée',e.message)}}}/></Card><Card style={{flex:1}}><T size={16} bold>Historique des commandes</T><ScrollView contentContainerStyle={{gap:9,paddingTop:10}}>{orders.length===0?<T size={12} color={C.muted}>Aucune commande.</T>:orders.map(o=><View key={o.id} style={{padding:10,backgroundColor:C.panel2,borderRadius:9}}><View style={styles.row}><T size={12} bold>#{jobs.find(j=>j.id===o.job_id)?.number||'Job'}</T><T size={10} color={C.gold}>{o.status}</T><T size={10} color={C.muted}>{new Date(o.created_at).toLocaleDateString('fr-CA')}</T></View><T size={12} color={C.muted}>{o.note||'Matériel'}</T></View>)}</ScrollView></Card></View>}
  function MoreScreen(){return <View style={{flex:1,paddingHorizontal:14,gap:10}}><Header title="Plus"/><Card><T size={16} bold>{account.companyName}</T><T size={12} color={C.muted}>Mon rôle : {account.role} · Abonnement : {account.billingStatus}</T></Card>{account.role==='boss'||account.role==='admin'?<Card><T size={15} bold>Créer une job</T>{[{v:jobNumber,set:setJobNumber,h:'Numéro de job'},{v:jobName,set:setJobName,h:'Nom du chantier'},{v:jobAddress,set:setJobAddress,h:'Adresse ou emplacement'}].map(f=><TextInput key={f.h} style={{height:40,backgroundColor:C.panel2,color:C.text,borderRadius:8,paddingHorizontal:9,marginTop:7}} value={f.v} onChangeText={f.set} placeholder={f.h} placeholderTextColor={C.muted}/>)}<View style={{marginTop:9}}><Action icon="add" label="Ajouter le chantier" onPress={async()=>{if(!jobNumber.trim()||!jobName.trim()){Alert.alert('Champs requis','Numéro et nom du chantier.');return;}try{await createJob(account.companyId,jobNumber,jobName,jobAddress);setJobNumber('');setJobName('');setJobAddress('');await refresh();Alert.alert('Job ajoutée','Le chantier apparaît dans Toutes les jobs.');}catch(e:any){Alert.alert('Erreur',e.message)}}}/></View></Card>:null}<Card style={{gap:8}}><T size={14} bold>Mon espace</T><T size={12} color={C.muted}>Mon horaire · Congés et absences · Carte CCQ · Contacts d’urgence · Langues · Thème</T><T size={11} color={C.gold}>Ces modules sont prévus dans la prochaine phase.</T></Card><Action icon="log-out" label="Se déconnecter" onPress={()=>supabase.auth.signOut()}/></View>}
  function SimplePage({title,icon,lines}:{title:string;icon:any;lines:string[]}){return <View style={{flex:1,paddingHorizontal:14,gap:16}}><Header title={title}/><Card style={{alignItems:'center',padding:24,gap:15}}><Icon name={icon} size={46}/><T size={17} bold>{title}</T>{lines.map((l,i)=><T key={i} color={C.muted} style={{textAlign:'center'}}>{l}</T>)}</Card></View>}

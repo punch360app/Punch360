@@ -16,7 +16,7 @@ function harness({pending=2,conflicts=1,blocked=false,connected=true,changed=fal
  const retry=new Function('account','syncInFlight','working','journalBlocked','localPending','journalViewScope',
   'setSyncBusy','Network','scopeRef','setMessage','loadPunchState','journalSummary','setJournalBlocked',
   'setLocalPending','setLocalConflicts','setPendingItems','setConflictItems','setJournalViewScope',
-  'setHoursReadSource','setHoursProjected','setSessions','setServerSegments','setSegments',
+  'setHoursReadSource','setHoursProjected','setSessions','setServerSegments','setServerBreaks','setSegments',
   'setPunchActive','setStartMs',code+'\nreturn syncConstructionPunches;')(
   req,syncInFlight,working,blocked,pending,scope,
   x=>set('syncBusy',x),
@@ -27,7 +27,7 @@ function harness({pending=2,conflicts=1,blocked=false,connected=true,changed=fal
   x=>set('blocked',x),x=>set('pending',x),x=>set('conflicts',x),
   x=>set('pendingItems',x),x=>set('conflictItems',x),x=>set('scope',x),
   x=>set('source',x),x=>set('projection',x),x=>set('sessions',x),
-  x=>set('segments',x),x=>set('segmentRows',x),x=>set('active',x),x=>set('start',x)
+  x=>set('segments',x),x=>set('breaks',x),x=>set('segmentRows',x),x=>set('active',x),x=>set('start',x)
  );
  return {retry,calls,messages,flags};
 }
