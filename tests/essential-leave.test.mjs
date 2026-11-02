@@ -94,6 +94,6 @@ test('PWA version includes the new leave module and updated app.js',()=>{
  const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
  assert.match(html,/app\.js\?v=essential-76-bento/);
  assert.match(sw,/app\.js\?v=essential-76-bento/);
- assert.match(sw,/punch-360-essential-v84-bento/);
+ assert.match(sw,/punch-360-essential-v85-bento/);
  assert.match(sw,/'\.\/essential-leave\.js'/);
 });
