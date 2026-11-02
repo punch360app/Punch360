@@ -20,7 +20,7 @@ export const kioskQrText=(language,key)=>(kioskQrCopy[language]||kioskQrCopy.en)
 // formats). This is only a local protocol-shape check, NOT authentication.
 // Even a correctly shaped QR must never expose its content or trigger a punch.
 const looksLikeEmployeeCard=code=>code?.format==='qr_code'
- && typeof code.rawValue==='string' && /^P360C1\\.[0-9a-f]{64}$/.test(code.rawValue);
+ && typeof code.rawValue==='string' && /^P360C1\.[0-9a-f]{64}$/.test(code.rawValue);
 
 // Never expose the raw QR text via callbacks; recognizing a QR is NOT an identity check.
 export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedule=callback=>setTimeout(callback,180),cancel=clearTimeout,expire=callback=>setTimeout(callback,30000),cancelExpire=clearTimeout,now=()=>Date.now()}={}){
