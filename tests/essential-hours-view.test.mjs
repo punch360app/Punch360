@@ -110,5 +110,5 @@ test('Essentiel hours UI does not export projected local events as the server CS
  assert.match(app,/Number\.isFinite\(data\.serverPunchFetchedAt\)/);
  assert.match(app,/DERNIER RELEVÉ SERVEUR REÇU/);
  assert.match(app,/une lecture réseau incomplète peuvent manquer/);
- assert.match(app,/if\(!manager\(\)\|\|state\.section==='hours'\)q=q\.eq\('punch_sessions\.user_id',state\.user\.id\)/);
+ assert.match(app,/if\(scope\.ownOnly\)q=q\.eq\('punch_sessions\.user_id',scope\.userId\)/);
 });
