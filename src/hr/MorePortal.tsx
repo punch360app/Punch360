@@ -39,6 +39,9 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  const accountScope=account.companyId+':'+account.userId;
  const accountScopeRef=useRef(accountScope);
  accountScopeRef.current=accountScope;
+ const personalReadRevision=useRef(0);
+ const [loadedPersonalScope,setLoadedPersonalScope]=useState('');
+ const [personalReadError,setPersonalReadError]=useState('');
  const [leaves,setLeaves]=useState<Leave[]>([]);
  const [number,setNumber]=useState('');
  const [jobName,setJobName]=useState('');
@@ -46,6 +49,11 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  const manager=account.role==='admin'||account.role==='boss';
  const restricted=['restricted','cancelled'].includes(account.billingStatus);
  async function reload(){
+  const requestedScope=accountScope;
+  if(accountScopeRef.current!==requestedScope)return;
+  const revision=++personalReadRevision.current;
+  setLoadedPersonalScope('');
+  setPersonalReadError('');
   try{
    const [p,c,k,l]=await Promise.all([
     supabase.from('employee_profiles').select('full_name,phone').eq('user_id',account.userId).maybeSingle(),
@@ -53,13 +61,32 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
     supabase.from('employee_credentials').select('id,credential_type,expires_on,trade').eq('user_id',account.userId),
     supabase.from('leave_requests').select('id,leave_type,begins_on,ends_on,status').eq('company_id',account.companyId).eq('user_id',account.userId).order('created_at',{ascending:false})
    ]);
-   if(p.data){setFullName(p.data.full_name||'');setPhone(p.data.phone||'');}
-   if(!c.error)setContacts((c.data||[]) as Contact[]);
-   if(!k.error)setCredentials(k.data||[]);
-   if(!l.error)setLeaves((l.data||[]) as Leave[]);
-  }catch{}
+   if(accountScopeRef.current!==requestedScope||personalReadRevision.current!==revision)return;
+   if(p.error||c.error||k.error||l.error||
+      (p.data!=null&&(typeof p.data!=='object'||Array.isArray(p.data)))||
+      !Array.isArray(c.data)||!Array.isArray(k.data)||!Array.isArray(l.data))
+    throw Error('Renseignements personnels non confirmés. Réessayez.');
+   // Publish one coherent identity-scoped snapshot, never a partial response.
+   setFullName(p.data?.full_name||'');setPhone(p.data?.phone||'');
+   setContacts(c.data as Contact[]);
+   setCredentials(k.data);
+   setLeaves(l.data as Leave[]);
+   setLoadedPersonalScope(requestedScope);
+  }catch{
+   if(accountScopeRef.current===requestedScope&&personalReadRevision.current===revision)
+    setPersonalReadError('Renseignements indisponibles. Vérifiez la connexion et réessayez.');
+  }
  }
- useEffect(()=>{reload()},[account.userId,account.companyId]);
+ useEffect(()=>{
+  // A reused portal must not display another employee's private data.
+  ++personalReadRevision.current;
+  setLoadedPersonalScope('');setPersonalReadError('');
+  setFullName('');setPhone('');setContacts([]);setCredentials([]);setLeaves([]);
+  setContactName('');setContactPhone('');setContactRelation('');setContactPriority(1);
+  setFrom('');setTo('');setReason('');
+  void reload();
+  return()=>{++personalReadRevision.current};
+ },[accountScope]);
  const notify=(title:string,e:any)=>Alert.alert(title,e?.message||String(e));
  async function saveProfile(){
   const {error}=await supabase.from('employee_profiles').upsert({user_id:account.userId,full_name:fullName.trim(),phone:phone.trim()},{onConflict:'user_id'});
@@ -104,10 +131,13 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
   try{await onRefresh();Alert.alert('Chantier créé');}
   catch{Alert.alert('Chantier créé','Le serveur a confirmé la création, mais la liste n’a pas pu être actualisée. Actualisez avant de créer un autre chantier.');}
  }
- const open=(next:Section)=>{setSection(next);reload()};
+ const open=(next:Section)=>{setSection(next);if(['profile','emergency','credentials','leave'].includes(next))void reload()};
  return <View style={{flex:1,paddingHorizontal:14,paddingBottom:8,gap:10}}>
   <View style={s.header}><Pressable onPress={()=>section==='menu'?undefined:setSection('menu')}><Ionicons name={section==='menu'?'grid-outline':'arrow-back'} size={23} color={C.gold}/></Pressable><Text style={s.title}>{section==='menu'?'Plus':section==='profile'?'Mon profil':section==='emergency'?'Contacts d’urgence':section==='credentials'?'Compétences et cartes':section==='leave'?'Mes congés et absences':section==='teams'?'Mes équipes':section==='schedule'?'Horaire':section==='documents'?'Plans et documents':section==='invite'?'Invitations':section==='geofence'?'Punch GPS et alertes':section==='workforce'?'Heures et approbations':'Administration'}</Text></View>
-  {section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
+  {['profile','emergency','credentials','leave'].includes(section)&&loadedPersonalScope!==accountScope?
+   <Card><Txt color={personalReadError?'#FE8F8F':C.muted}>{personalReadError||'Chargement des renseignements de ce compte…'}</Txt>
+   {personalReadError?<Btn label="Réessayer le chargement" onPress={()=>{void reload()}}/>:null}</Card>:
+  section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
    <Card><Txt bold>{account.companyName}</Txt><Txt small color={C.muted}>{account.email} · {account.role}</Txt><Txt small color={restricted?'#FE8F8F':C.mint}>Abonnement : {account.billingStatus}</Txt></Card>
    <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{([
     ['person-outline','Mon profil','profile'],
