@@ -97,8 +97,8 @@ test('confirmed restore immediately removes hidden item offline, preserving othe
 });
 test('server rejection never changes the cached archive preference',async()=>{
  const f=fixture({cached:[segB],mutationError:{message:'Access denied'}});
- await assert.rejects(f.archiveSegment(segA),/Access denied/);
- await assert.rejects(f.restoreSegment(segB),/Access denied/);
+ await assert.rejects(f.archiveSegment(segA),error=>error?.message==='Access denied');
+ await assert.rejects(f.restoreSegment(segB),error=>error?.message==='Access denied');
  f.setOnline(false);
  assert.deepEqual(await f.loadArchives(),[segB]);
  assert.equal(f.calls.write,0);
