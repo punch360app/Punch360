@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {PunchJournal,projectPendingPunches} from '../web/live/journal.js';
 
 const own={id:'own-session',company_id:'tenant-A',user_id:'employee-A',
@@ -54,4 +55,12 @@ test('a newly created offline punch marks offline before the first send, includi
  assert.equal((await j.read())[0].offline,true);
  await j.flush();
  assert.equal((await j.read())[0].offline,true);
+});
+
+test('web punch selectors and journal append are scoped to authenticated identity',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/function currentSession\(\)\{const c=company\(\),u=state\.user\?\.id/);
+ assert.match(app,/state\.sessions\.find\(s=>s\.company_id===c&&s\.user_id===u&&!s\.ended_at\)/);
+ assert.match(app,/state\.segments\.find\(s=>s\.company_id===company\(\)&&s\.session_id===active\.id&&!s\.ended_at\)/);
+ assert.match(app,/journal\.append\(action,job,fix,at,paid,!navigator\.onLine\)/);
 });
