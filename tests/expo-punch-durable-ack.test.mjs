@@ -15,7 +15,7 @@ const source=api.slice(a,b)
  .replace('let events:LocalPunchEvent[]|null=null;','let events=null;')
  .replaceAll(' as LocationCheckResult','');
 function fixture({flush='pending',read='pending',noAppend=false,bad=false,gpsFix=null,
- journalUser='U',serverAckStatus='synced'}={}){
+ journalUser='U',serverAckStatus='synced',offline=false}={}){
  const sent=[];let appendedFix;const row={id:'E1',company:'A',user:'U',action:'in',job:'J',fix:null,
   occurredAt:'2026-11-02T12:00:00Z',previous:null,status:'pending',offline:true};
  const response={sync_status:serverAckStatus,session_id:'S',review_status:'pending'};
@@ -24,15 +24,23 @@ function fixture({flush='pending',read='pending',noAppend=false,bad=false,gpsFix
  const journal={company:'A',user:journalUser,
   append:async(action,job,fix)=>{appendedFix=fix;sent.push('append');if(noAppend)throw Error('échec stockage');return row},
   flush:async()=>{sent.push('flush');if(flush==='throw')throw Error('réseau');return {events:flush==='missing'?[]:[stored(flush)]}},
+  inspect:async()=>{sent.push('inspect');return {sent:0,events:[stored('pending')],pending:1}},
   read:async()=>{sent.push('read');if(read==='throw')throw Error('illisible');
    return read==='missing'?[]:[bad?{...stored(read),company:'B'}:stored(read)]}
  };
  const go=new Function('Network','Location','getPunchJournal','hasUnsafePunchJournalEntries','normalizeFreshPunchFix','getLocalIdentity',source+'\nreturn punchWithLocation;')(
-  {getNetworkStateAsync:async()=>({isConnected:false,isInternetReachable:false})},
+  {getNetworkStateAsync:async()=>({isConnected:!offline,isInternetReachable:!offline})},
   {Accuracy:{High:1},requestForegroundPermissionsAsync:async()=>({status:gpsFix?'granted':'denied'}),getCurrentPositionAsync:async()=>({coords:gpsFix})},async()=>journal,hasUnsafePunchJournalEntries,normalizeFreshPunchFix,
   async()=>({id:'U'}));
  return {sent,run:()=>go('A','in','J'),capturedFix:()=>appendedFix};
 }
+test('offline capture only inspects durable pointage and does not attempt flush',async()=>{
+ const h=fixture({offline:true});
+ const result=await h.run();
+ assert.equal(result.queued,true);
+ assert.equal(result.review_status,'local');
+ assert.deepEqual(h.sent,['append','inspect']);
+});
 test('durably appended event survives failed flush and reports local pending',async()=>{
  const h=fixture({flush:'throw'}),r=await h.run();
  assert.equal(r.queued,true);assert.equal(r.review_status,'local');
