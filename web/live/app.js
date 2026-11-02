@@ -402,7 +402,7 @@ async function locatedPunch(action,job,paid=false){if(isEssential()&&!essentialM
  // event; never invent a successful acknowledgement from an empty response.
  const event=await journal.append(action,job,fix,at,paid,!navigator.onLine);
  let events=null;
- try{events=(await journal.flush()).events}catch{/* Recover saved event below. */}
+ try{events=(await (navigator.onLine?journal.flush():journal.inspect())).events}catch{/* Recover saved event below. */}
  if(!Array.isArray(events)||!events.some(e=>e?.id===event.id)){
   try{events=await journal.read()}catch{
    throw Error('Pointage enregistré localement, mais journal illisible : vérifiez Mes heures avant de repointer.');
@@ -770,10 +770,11 @@ function renderMap(){if(state.section!=='jobs')return;const map=$('geoMap');if(!
 let punchLoadRevision=0;
 async function loadData(){if(!member())return;
  const companyId=company(),userId=state.user?.id,revision=++punchLoadRevision,journal=punchJournal();
+ const onlineAtStart=navigator.onLine===true;
  const scopeCurrent=()=>revision===punchLoadRevision&&member()&&company()===companyId&&state.user?.id===userId;
  // A blocked local journal must not prevent reading official server hours.
  let flushed=null,journalBlocked=false;
- try{flushed=await journal.flush()}catch{journalBlocked=true}
+ try{flushed=await (onlineAtStart?journal.flush():journal.inspect())}catch{journalBlocked=true}
  if(!scopeCurrent())return;
  state.localJournalBlocked=journalBlocked?{companyId,userId}:null;
  if(journalBlocked){state.localPunchEvents=[];state.localPending=0;}
@@ -784,7 +785,7 @@ async function loadData(){if(!member())return;
   state.localPunchEvents=flushed.events;
   state.localPending=syncState.pending.length;
  }
- if(!navigator.onLine){
+ if(!onlineAtStart){
   state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
   state.correctionApprovalsLoaded=false;state.correctionApprovals=[];
   if(journalBlocked){
@@ -793,8 +794,9 @@ async function loadData(){if(!member())return;
    state.sessions=safe.sessions;state.segments=safe.segments;state.breaks=safe.breaks;
    return;
   }
-   const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;
-  const view=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});
+   const events=flushed.events;
+  const snapshot=state.serverPunchCompany===companyId?state.serverPunch:{sessions:[],segments:[],breaks:[]};
+  const view=projectPendingPunches(snapshot,events,{company:companyId,user:userId});
   state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=localPunchSyncState(events,companyId,userId).pending.length;state.localPunchEvents=events;
   const ownSession=currentSession(),ownSegment=ownSession?state.segments.find(s=>s.company_id===companyId&&s.session_id===ownSession.id&&!s.ended_at):null;
   state.selected=ownSegment?.job_id||state.selected;
