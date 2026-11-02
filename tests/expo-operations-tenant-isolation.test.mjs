@@ -133,3 +133,15 @@ test('panel hides stale private rows until exact user and company finish loading
  const ast=ts.createSourceFile('OperationsPanel.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0);
 });
+
+test('a loading error offers a scoped retry without showing old company data',()=>{
+ const start=source.indexOf(' if(loadedScope!==scope)return <View');
+ const end=source.indexOf(' return <ScrollView keyboardShouldPersistTaps',start);
+ assert.ok(start>=0&&end>start);
+ const loading=source.slice(start,end);
+ assert.match(loading,/Réessayer le chargement/);
+ assert.match(loading,/const requestedScope=scope/);
+ assert.match(loading,/if\(scopeRef\.current===requestedScope\)setError/);
+ assert.match(loading,/void load\(\)\.catch/);
+ assert.doesNotMatch(loading,/setLoadedScope\(scope\)/);
+});
