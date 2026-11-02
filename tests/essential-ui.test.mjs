@@ -202,6 +202,84 @@ test('Bento discards cached public prices and pending catalog requests after res
  }finally{await w.happyDOM.close();}
 });
 
+test('public catalog reload after signout restores prices without tenant calls',async()=>{
+ const w=new Window(),calls=[];
+ const sb={from(table){calls.push(table);assert.equal(table,'essential_plans');
+  return {select(){return {order(){return Promise.resolve({data:[{...plan}],error:null})}}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  ui.state.plans=[{...plan,title:'Ancien tarif'}];
+  ui.state.checkout='Ancien tarif';
+  ui.reset();
+  assert.deepEqual(ui.state.plans,[]);
+  await ui.refreshPublicCatalog();
+  assert.deepEqual(calls,['essential_plans']);
+  assert.equal(ui.state.plans.length,1);
+  assert.equal(ui.state.plans[0].title,plan.title);
+  assert.equal(ui.state.checkout,null);
+  assert.equal(ui.state.loading,false);
+  assert.equal(ui.state.error,'');
+  assert.equal(ui.state.platform,false);
+  assert.deepEqual(ui.state.workers,[]);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelectorAll('[data-action="ess:choose"]').length,1);
+ }finally{await w.happyDOM.close();}
+});
+
+test('public catalog refresh hides stale prices, rejects old replies, supports retry',async()=>{
+ const w=new Window();const resolvers=[];
+ let fail=false,calls=0;
+ const sb={from(table){assert.equal(table,'essential_plans');calls++;
+  return {select(){return {order(){if(fail)return Promise.reject(Error('Network offline'));
+   return new Promise(resolve=>resolvers.push(resolve))}}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  ui.state.plans=[{...plan,title:'Prix périmé'}];
+  const first=ui.refreshPublicCatalog();
+  assert.equal(ui.state.loading,true);
+  assert.deepEqual(ui.state.plans,[],'stale selectable prices are cleared while loading');
+  await ui.refreshPublicCatalog();
+  assert.equal(calls,1,'the same public request is deduplicated');
+  ui.reset();
+  const newer=ui.refreshPublicCatalog();
+  assert.equal(calls,2);
+  resolvers[0]({data:[{...plan,title:'Ancien retour'}],error:null});
+  await first;
+  assert.equal(ui.state.loading,true,'late older request cannot stop new loading');
+  assert.deepEqual(ui.state.plans,[]);
+  resolvers[1]({data:[{...plan,title:'Nouveau tarif'}],error:null});
+  await newer;
+  assert.equal(ui.state.loading,false);
+  assert.equal(ui.state.plans[0].title,'Nouveau tarif');
+
+  fail=true;
+  await ui.refreshPublicCatalog();
+  assert.deepEqual(ui.state.plans,[]);
+  assert.match(ui.state.error,/Network offline/);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+  assert.ok(w.document.querySelector('[data-action="ess:retry-public"]'),
+   'the public visitor can retry instead of seeing a blank page');
+  fail=false;
+  const retry=ui.handle({dataset:{action:'ess:retry-public'}});
+  resolvers[2]({data:[{...plan}],error:null});
+  await retry;
+  assert.equal(ui.state.plans.length,1);
+  assert.equal(ui.state.error,'');
+  assert.equal(calls,4);
+ }finally{await w.happyDOM.close();}
+});
+
+test('signout callback schedules public-only refresh outside auth event',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/function restoreAnonymousPricingAfterSignout\(\)/);
+ assert.match(app,/setTimeout\(\(\)=>\{if\(!state\.user\)void essentialUI\.refreshPublicCatalog\(\)\},0\)/);
+ assert.match(app,/draw\(\);restoreAnonymousPricingAfterSignout\(\)\}else if\(event==='SIGNED_IN'\)/);
+});
+
 test('late personnel responses cannot repopulate private state after signout',async()=>{const w=new Window();let release;const pending=new Promise(resolve=>{release=resolve});const sb={rpc:async()=>({data:false}),from(table){const q={select(){return q},eq(){return q},order(){return table==='company_workers'?pending:Promise.resolve({data:[plan]})}};return q;}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});const loading=ui.load({id:'old-user'},{company_id:'tenant',role:'employee',companies:{product_edition:'essential'}});await new Promise(r=>setTimeout(r,0));ui.reset();release({data:[{id:'private-worker',auth_user_id:'old-user',first_name:'Private'}]});await loading;assert.equal(ui.state.worker,null);assert.deepEqual(ui.state.workers,[]);assert.equal(ui.state.platform,false);await w.happyDOM.close();});
 test('kiosk navigation uses a static public URL without pairing secrets',async()=>{const {w,ui}=setup();ui.state.devices=[{id:'device',name:'Reception',paired_at:null,revoked_at:null}];ui.state.pairCode='secret-code';w.document.body.innerHTML=ui.renderKiosks();const links=[...w.document.querySelectorAll('a')].filter(a=>a.textContent==='Ouvrir la pointeuse');assert.equal(links.length,1);assert.equal(links[0].getAttribute('href'),'https://punch360app.github.io/Punch360/kiosk.html');assert.equal(new URL(links[0].href).search,'');assert.equal(new URL(links[0].href).hash,'');assert.ok(w.document.querySelector('[data-action="ess:copy-kiosk-link"]'));await w.happyDOM.close();});
 
