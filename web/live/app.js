@@ -5,7 +5,7 @@ import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
-import {sessionIdChunks} from './essential-hours-export.js';
+import {sessionIdChunks,netSegmentMilliseconds} from './essential-hours-export.js';
 import {hoursExportScope,createHoursCsv} from './hours-csv.js';
 import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
@@ -96,7 +96,17 @@ function currentSession(){const c=company(),u=state.user?.id;return c&&u?
  state.sessions.find(s=>s.company_id===c&&s.user_id===u&&!s.ended_at)||null:null}
 function activeSegment(){const active=currentSession();return active?
  state.segments.find(s=>s.company_id===company()&&s.session_id===active.id&&!s.ended_at)||null:null}
-function totals(from){const gross=state.segments.reduce((sum,s)=>sum+Math.max(0,Math.min(s.ended_at?Date.parse(s.ended_at):state.time,state.time)-Math.max(Date.parse(s.started_at),from)),0);const pauses=state.breaks.filter(b=>!b.is_paid).reduce((sum,b)=>sum+Math.max(0,Math.min(b.ended_at?Date.parse(b.ended_at):state.time,state.time)-Math.max(Date.parse(b.started_at),from)),0);return Math.max(0,gross-pauses)}
+function totals(from){
+ const companyId=company(),userId=state.user?.id,sessionIds=new Set(state.sessions.filter(s=>
+  s.company_id===companyId&&s.user_id===userId).map(s=>s.id));
+ const breaks=new Map();
+ for(const pause of state.breaks){
+  if(!sessionIds.has(pause.session_id)||(pause.company_id&&pause.company_id!==companyId))continue;
+  const items=breaks.get(pause.session_id)||[];items.push(pause);breaks.set(pause.session_id,items);
+ }
+ return state.segments.filter(s=>sessionIds.has(s.session_id)&&s.company_id===companyId)
+  .reduce((sum,segment)=>sum+netSegmentMilliseconds(segment,breaks.get(segment.session_id)||[],from,state.time),0);
+}
 function clockTotals(){const d=new Date(state.time),mon=(d.getDay()+6)%7;const week=new Date(d.getFullYear(),d.getMonth(),d.getDate()-mon).getTime(),yr=new Date(d.getFullYear(),0,1).getTime();return{week:totals(week),year:totals(yr)}}
 function nextJob(){const planned=state.shifts.filter(s=>s.user_id===state.user.id&&Date.parse(s.starts_at)>Date.now()&&s.job_id!==state.selected).map(s=>getJob(s.job_id)).find(Boolean);if(planned)return planned;const today=new Date().toISOString().slice(0,10);return state.assignments.filter(a=>a.planned_start>today&&a.job_id!==state.selected).sort((a,b)=>a.planned_start.localeCompare(b.planned_start)).map(a=>getJob(a.job_id)).find(Boolean)}
 function jobTile(j,label,upcoming=false){return '<div class="card jobtile" data-action="openJobs"><div class="between" style="margin-bottom:7px"><b style="font-size:13px">'+label+'</b><span class="pill '+(upcoming||!currentSession()?'':'green')+'">'+(upcoming?'À venir':currentSession()?'En cours':'Sélectionnée')+'</span></div><div class="body"><img src="'+e(j.photo_url||img)+'" alt="Photo chantier"/><div class="grow"><div class="jobname">#'+e(j.number)+' — '+e(j.name)+'</div><div class="jobaddr">'+e(j.address)+'</div><div class="small muted">'+(upcoming?'Prochaine affectation':'Plans, commandes, punchs')+'</div></div><button class="iconbutton" style="width:32px;height:32px" data-action="maps" data-id="'+j.id+'" aria-label="Itinéraire">➤</button></div></div>'}
