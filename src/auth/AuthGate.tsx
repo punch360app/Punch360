@@ -53,7 +53,10 @@ export function AuthGate({children}:{children:(account:WorkspaceAccount)=>React.
   const offlineAllowed=()=>mayRestoreCachedWorkspace(revision,authRevision.current,explicitlySignedOut.current);
   setError('');
   try{
-   const network=await Network.getNetworkStateAsync();
+   // Failure to probe Expo connectivity is not proof of offline status.
+   // Use server-verified Auth only; a cached workspace remains locked.
+   const network=await Network.getNetworkStateAsync().catch(()=>
+    ({isConnected:true,isInternetReachable:true}));
    if(!current())return;
    if(network.isConnected===false||network.isInternetReachable===false){
     if(!offlineAllowed()){
