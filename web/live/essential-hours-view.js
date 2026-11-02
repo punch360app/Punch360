@@ -16,14 +16,15 @@ function netMilliseconds(segments,breaks,from,until){
  return Math.max(0,gross-unpaid);
 }
 export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
- projectedSessions=[],projectedSegments=[],projectedBreaks=[],pendingCount=0,now=Date.now()}={}){
+ projectedSessions=[],projectedSegments=[],projectedBreaks=[],pendingCount=0,now=Date.now(),snapshotFetchedAt=null}={}){
  const ready=typeof companyId==='string'&&companyId.length>0&&
   typeof userId==='string'&&userId.length>0&&snapshotCompanyId===companyId&&
   Array.isArray(snapshot?.sessions)&&Array.isArray(snapshot?.segments)&&
   Array.isArray(snapshot?.breaks)&&Number.isFinite(now);
- if(!ready)return {ready:false,confirmedSessions:[],confirmedWeekMs:0,projectedWeekMs:null,
+ if(!ready)return {ready:false,confirmedSessions:[],confirmedDays:[],confirmedWeekMs:0,projectedWeekMs:null,
   pending:0,hasPending:false};
- const d=new Date(now),monday=new Date(d.getFullYear(),d.getMonth(),d.getDate()-(d.getDay()+6)%7).getTime();
+ const cutoff=Number.isFinite(snapshotFetchedAt)&&snapshotFetchedAt>0?Math.min(now,snapshotFetchedAt):now;
+ const d=new Date(cutoff),monday=new Date(d.getFullYear(),d.getMonth(),d.getDate()-(d.getDay()+6)%7).getTime();
  const confirmedSessions=snapshot.sessions.filter(s=>s?.company_id===companyId&&
   s.user_id===userId&&validDate(s.started_at)!==null&&
   (s.ended_at==null||(validDate(s.ended_at)!==null&&validDate(s.ended_at)>=validDate(s.started_at))))
@@ -33,7 +34,15 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   (!s.company_id||s.company_id===companyId));
  const confirmedBreaks=snapshot.breaks.filter(s=>approvedIds.has(s.session_id)&&
   (!s.company_id||s.company_id===companyId));
- const confirmedWeekMs=netMilliseconds(confirmedSegments,confirmedBreaks,monday,now);
+ const confirmedWeekMs=netMilliseconds(confirmedSegments,confirmedBreaks,monday,cutoff);
+ const confirmedDays=confirmedSessions.map(session=>{
+  const parts=confirmedSegments.filter(segment=>segment.session_id===session.id);
+  const pauses=confirmedBreaks.filter(pause=>pause.session_id===session.id);
+  const from=validDate(session.started_at);
+  const until=session.ended_at==null?cutoff:Math.min(cutoff,validDate(session.ended_at));
+  return {session,netMs:until!==null&&from!==null&&until>=from?
+   netMilliseconds(parts,pauses,from,until):0,open:session.ended_at==null};
+ });
  const pending=Number.isSafeInteger(pendingCount)&&pendingCount>0?pendingCount:0;
  let projectedWeekMs=null;
  if(pending&&Array.isArray(projectedSessions)&&Array.isArray(projectedSegments)&&Array.isArray(projectedBreaks)){
@@ -44,6 +53,6 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
    projectedBreaks.filter(s=>projectedIds.has(s.session_id)&&(!s.company_id||s.company_id===companyId)),
    monday,now);
  }
- return {ready:true,confirmedSessions,confirmedWeekMs,projectedWeekMs,
+ return {ready:true,confirmedSessions,confirmedDays,confirmedWeekMs,projectedWeekMs,
   pending,hasPending:pending>0};
 }
