@@ -38,7 +38,7 @@ test('My Hours links to missing-day workflow without treating requests as payabl
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
  const hours=app.slice(begin,end);
- assert.match(app,/import \{employeeMissingDaysSummary\} from '\.\/missing-days\.js'/);
+ assert.match(app,/import \{employeeMissingDaysSummary,managerMissingDayApprovalSummary\} from '\.\/missing-days\.js'/);
  assert.match(hours,/employeeMissingDaysSummary\(\{companyId:company\(\),userId:state\.user\?\.id/);
  assert.match(hours,/data-id="missingDays"/);
  assert.match(hours,/Une demande en attente ne constitue pas des heures confirmées/);
