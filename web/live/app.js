@@ -7,6 +7,7 @@ import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKiosk
 import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
 import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
+import {createCompanyOnce,isCreatedCompanyVerified,savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from './company-onboarding.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -29,7 +30,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={pendingCompanyCreation:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -73,7 +74,7 @@ else if(mode==='reset'||mode==='confirmation')body='<h2>'+(mode==='reset'?'Mot d
 else if(mode==='recovery')body='<h2>Nouveau mot de passe</h2><form id="recoveryForm">'+passwordField('Nouveau mot de passe','newPassword','new-password','minlength="8" required')+passwordField('Confirmer le mot de passe','confirmPassword','new-password','required')+'<button class="btn gold full" type="submit" '+disabled+'>Enregistrer</button></form>';
 else if(mode==='invite')body='<h2>Rejoindre mon équipe</h2>'+formfield('Code d’invitation','inviteToken',sessionStorage.getItem('punch-invite')||'')+button('Rejoindre','acceptInvitation','gold full',disabled);
 else if(state.user&&sessionStorage.getItem('punch-worker-invite'))body='<h2>Activer mon espace</h2><p>Connecté avec '+e(state.user.email)+'. Le courriel ou téléphone doit correspondre au destinataire invité.</p>'+button('Activer mon dossier salarié','activateWorker','gold full')+button('Utiliser un autre compte','logout','text-link');
-else body='<h2>Votre espace</h2><p>'+e(state.user.email)+'</p><div class="setup-edition"><strong>'+ (state.creationEdition==='essential'?'PUNCH Essentiel':'PUNCH Construction')+'</strong>'+button('Changer','changeEdition','text-link')+'</div>'+planHint+(planHint?button('Modifier mon forfait','changeEdition','text-link'):'')+formfield('Nom de l’entreprise','companyName')+button('Créer mon espace','createCompany','gold full',disabled)+button('J’ai reçu une invitation','openInvite','text-link')+button('Se déconnecter','logout','text-link');
+else body='<h2>Votre espace</h2><p>'+e(state.user.email)+'</p><div class="setup-edition"><strong>'+ (state.creationEdition==='essential'?'PUNCH Essentiel':'PUNCH Construction')+'</strong>'+button('Changer','changeEdition','text-link')+'</div>'+planHint+(planHint?button('Modifier mon forfait','changeEdition','text-link'):'')+(state.pendingCompanyCreation?'<p class="notice" role="status">La création de l’entreprise a été acceptée. Vérifiez l’accès avant toute nouvelle création.</p>'+button('Vérifier mon accès','verifyCreatedCompany','gold full',disabled):formfield('Nom de l’entreprise','companyName')+button('Créer mon espace','createCompany','gold full',disabled))+button('J’ai reçu une invitation','openInvite','text-link')+button('Se déconnecter','logout','text-link');
 return '<div class="authwrap auth-step auth-step-'+mode+'">'+body+'<div id="authError" class="notice danger" role="alert" '+(!state.authError?'hidden':'')+'>'+e(state.authError)+'</div><div id="authNotice" class="notice" role="status" '+(!state.authNotice?'hidden':'')+'>'+e(state.authNotice)+'</div></div>'}
 function authMessage(message,isError=false){state.authError=isError?message:'';state.authNotice=isError?'':message;for(const [id,text] of [['authError',state.authError],['authNotice',state.authNotice]]){const n=$(id);if(n){n.textContent=text;n.hidden=!text}}}
 function authFailure(err){const code=err?.code||'';if(code==='email_not_confirmed'){state.authMode='confirmation';draw()}const text=err?.message||'';const messages={invalid_credentials:'Courriel ou mot de passe incorrect. Si tu viens de t’inscrire, confirme ton courriel.',email_not_confirmed:'Confirme ton courriel avant de te connecter. Tu peux renvoyer le lien avec le bouton.',user_already_exists:'Ce compte existe déjà. Connecte-toi ou utilise « Mot de passe oublié ».',over_email_send_rate_limit:'Trop de courriels demandés. Patiente quelques minutes avant de réessayer.',email_address_not_authorized:'L’envoi de courriels est limité par la configuration du serveur. Le service de courriel doit être configuré.',signup_disabled:'Les inscriptions sont désactivées sur le serveur.',weak_password:'Choisis un mot de passe plus robuste (au moins 8 caractères).'};authMessage(messages[code]||(/fetch|network|abort/i.test(text)?'Connexion impossible. Vérifie ton réseau et réessaie.':text||'Impossible de terminer cette action.'),true)}
@@ -285,7 +286,7 @@ if(state.chatId&&!currentCompanyChat(state.chatId)){state.chatLoadRevision++;sta
 async function reload({quiet=false}={}){if(state.busy)return;state.busy=true;if(!quiet)toast('Synchronisation…');try{await loadData();if(isEssential()){await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);}else personalMissions.reset();if(state.chatId)await loadChat(state.chatId)}catch(err){error(err)}finally{state.busy=false;draw();renderMap()}}
 async function initialize(){try{const cached=JSON.parse(localStorage.getItem('punch-local-user')||'null');if(!navigator.onLine&&cached){state.user=cached;const selected=localStorage.getItem('punch-last-company:'+cached.id);
  state.account=selected?JSON.parse(localStorage.getItem('punch-account:'+cached.id+':'+selected)||'null'):null;
- companyContext.list=[];companyContext.choosing=false;restoreOfflineSnapshot();if(isEssential())await essentialUI.appearance.load(cached.id);if(member())await loadData();draw();return;}const {data,error:err}=await sb.auth.getSession();if(err&&!cached)throw err;state.user=data.session?.user||(err?cached:null);if(state.user)localStorage.setItem('punch-local-user',JSON.stringify({id:state.user.id,email:state.user.email}));await lookupAccount();if(companyContext.choosing){draw();return;}if(state.account)restoreOfflineSnapshot();await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);if(isEssential()&&!manager()&&essentialUI.appearance.state.ready&&!essentialUI.appearance.state.hasPreference){state.section='sub';state.sub='appearance';}if(member())await loadData();draw();renderMap()}catch(err){state.error=err.message;draw();error(err)}}
+ companyContext.list=[];companyContext.choosing=false;restoreOfflineSnapshot();if(isEssential())await essentialUI.appearance.load(cached.id);if(member())await loadData();draw();return;}const {data,error:err}=await sb.auth.getSession();if(err&&!cached)throw err;state.user=data.session?.user||(err?cached:null);if(state.user){localStorage.setItem('punch-local-user',JSON.stringify({id:state.user.id,email:state.user.email}));if(!state.pendingCompanyCreation)state.pendingCompanyCreation=readPendingCompanyCreation(sessionStorage,state.user.id);}await lookupAccount();if(companyContext.choosing){draw();return;}if(state.account)restoreOfflineSnapshot();await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);if(isEssential()&&!manager()&&essentialUI.appearance.state.ready&&!essentialUI.appearance.state.hasPreference){state.section='sub';state.sub='appearance';}if(member())await loadData();draw();renderMap()}catch(err){state.error=err.message;draw();error(err)}}
 async function lookupAccount(){
  state.account=null;companyContext.list=[];companyContext.choosing=false;
  if(!state.user)return;
@@ -490,9 +491,45 @@ function restoreAnonymousPricingAfterSignout(){
  // callback. The isolated public load never restores private tenant state.
  setTimeout(()=>{if(!state.user)void essentialUI.refreshPublicCatalog()},0);
 }
-async function createCompany(){if(state.authBusy)return;const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);state.authBusy=true;draw();try{const r=await sb.rpc('create_company_for_edition',{p_name:n,p_edition:state.creationEdition});if(r.error)throw r.error;clearPublicPlanSelection();await initialize();toast('Ton espace PUNCH est prêt')}catch(err){authFailure(err)}finally{state.authBusy=false;draw()}}
+// The server returns the UUID of an already-created company. A failed
+// UI refresh must never issue another create RPC or claim the space is ready.
+async function confirmCreatedWorkspace(){
+ const pending=state.pendingCompanyCreation;
+ if(!pending)return;
+ if(pending.companyId&&state.user?.id){
+  try{localStorage.setItem('punch-last-company:'+state.user.id,pending.companyId)}catch{}
+ }
+ await initialize();
+ if(isCreatedCompanyVerified(pending.companyId,state.user?.id,state.account,companyContext.list)){
+  state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);
+  authMessage('');toast('Ton espace PUNCH est prêt');return;
+ }
+ authMessage('Entreprise créée sur le serveur, mais l’accès n’est pas encore vérifié. Utilisez « Vérifier mon accès » sans créer une deuxième entreprise.',true);
+}
+async function verifyCreatedCompany(){
+ if(state.authBusy||!state.pendingCompanyCreation)return;
+ state.authBusy=true;authMessage('');draw();
+ try{await confirmCreatedWorkspace()}
+ catch{authMessage('La création est enregistrée, mais son accès n’a pas pu être vérifié. Réessayez la vérification, pas la création.',true)}
+ finally{state.authBusy=false;draw()}
+}
+async function createCompany(){
+ if(state.authBusy||state.pendingCompanyCreation)return;
+ const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);
+ state.authBusy=true;authMessage('');draw();
+ try{
+  const accepted=await createCompanyOnce((name,params)=>sb.rpc(name,params),n,state.creationEdition);
+  state.pendingCompanyCreation={companyId:accepted.companyId};
+  savePendingCompanyCreation(sessionStorage,state.user?.id,accepted.companyId);
+  clearPublicPlanSelection();
+  await confirmCreatedWorkspace();
+ }catch(err){
+  if(state.pendingCompanyCreation)authMessage('Entreprise créée sur le serveur, mais la vérification de l’accès a échoué. Utilisez « Vérifier mon accès » sans relancer la création.',true);
+  else authFailure(err);
+ }finally{state.authBusy=false;draw()}
+}
 
-async function logOut(){chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');await sb.auth.signOut();clearPublicPlanSelection();state.user=null;state.account=null;state.confirmationEmail='';state.authMode='welcome';state.section='home';state.chatId=null;draw();restoreAnonymousPricingAfterSignout()}
+async function logOut(){chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);localStorage.removeItem('punch-local-user');await sb.auth.signOut();clearPublicPlanSelection();state.user=null;state.account=null;state.confirmationEmail='';state.authMode='welcome';state.section='home';state.chatId=null;draw();restoreAnonymousPricingAfterSignout()}
 function tick(){state.time=Date.now();const t=$('liveTimer'),cs=currentSession();if(t)t.textContent=isEssential()?elapsed(essentialToday()):elapsed(cs?state.time-Date.parse(cs.started_at):0);const w=$('weekTotal'),y=$('yearTotal');if(w||y){const tot=clockTotals();if(w)w.textContent=mins(tot.week);if(y)y.textContent=mins(tot.year)}if($('topclock'))$('topclock').textContent=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})}
 document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-action]');if(!el)return;const a=el.dataset.action,id=el.dataset.id;try{
 if(isEssential()&&!essentialMessagesAllowed()&&['chat','sendMessage','newGroup','createGroup','privateChat'].includes(a)){toast('Messages non autorisés pour ce forfait.');return;}
@@ -596,6 +633,7 @@ else if(a==='logout')await logOut();
  else if(a==='selectCompany')await switchCompany(id);
 else if(a==='resetPassword')await resetPassword();
 else if(a==='createCompany')await createCompany();
+else if(a==='verifyCreatedCompany')await verifyCreatedCompany();
 else if(a==='chooseEdition'){if(!isPublicEdition(id))return;state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection();try{localStorage.setItem('punch-creation-edition',id)}catch{}const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
 else if(a==='pausePaid')await doPause(true);
 else if(a==='pause')await doPause();
@@ -633,7 +671,7 @@ else if(a==='privateChat')await privateChat();
 document.addEventListener('change',ev=>{if(ev.target?.id==='essential-language'&&isEssential()){locale.select(ev.target.value);draw();return;}essentialUI.planning.input(ev.target);essentialUI.billing.input(ev.target);});
 document.addEventListener('submit',ev=>{if(ev.target?.id==='recoveryForm'){ev.preventDefault();savePassword();return}if(ev.target?.id==='authForm'){ev.preventDefault();login(state.authMode)}});
 document.addEventListener('input',ev=>{if(ev.target?.id==='chatMessage')saveChatDraft();essentialUI.input(ev.target);bossHandoff.input(ev.target);if(ev.target?.id==='jobSearch'){state.search=ev.target.value;const current=ev.target.selectionStart;const newHtml=jobsPage();const m=$('main');if(m){const y=m.scrollTop;m.innerHTML=newHtml;m.scrollTop=y;const inp=$('jobSearch');inp?.focus();try{inp?.setSelectionRange(current,current)}catch{}}renderMap()}});
-sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){state.recovery=true;setTimeout(draw,0)}else if(event==='SIGNED_OUT'){chatDrafts.clear();state.chatLoadRevision++;state.chatId=null;state.messages=[];state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');clearPublicPlanSelection();state.confirmationEmail='';state.user=null;state.account=null;state.section='home';draw();restoreAnonymousPricingAfterSignout()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
+sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){state.recovery=true;setTimeout(draw,0)}else if(event==='SIGNED_OUT'){chatDrafts.clear();state.chatLoadRevision++;state.chatId=null;state.messages=[];state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);localStorage.removeItem('punch-local-user');clearPublicPlanSelection();state.confirmationEmail='';state.user=null;state.account=null;state.section='home';draw();restoreAnonymousPricingAfterSignout()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
 initialize().then(()=>showOAuthCallbackError());loadProviders();setInterval(tick,1000);setInterval(async()=>{if(state.section!=='messages'||!state.chatId||!member()||state.busy||document.visibilityState!=='visible')return;const id=state.chatId,previous=state.messages.at(-1)?.id;try{await loadChat(id);if(state.section==='messages'&&state.chatId===id&&state.messages.at(-1)?.id!==previous)draw()}catch{}},10000);
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(console.warn);
