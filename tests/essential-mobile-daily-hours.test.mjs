@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,essentialMobileDailyComparison,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../web/live/essential-hours-view.js';
 
 const companyId='A',userId='U';
 const time=(day,hour=0,minute=0)=>new Date(2026,10,day,hour,minute).getTime();
@@ -268,4 +268,41 @@ test('native My Hours displays snapshot age without asserting a time for unverif
  assert.match(ui,/readSource:punch\.readSource,snapshotFetchedAt:punch\.snapshotFetchedAt,now/);
  const hourPage=ui.slice(ui.indexOf("page==='hours'?"),ui.indexOf("page==='schedule'?"));
  assert.match(hourPage,/snapshotLabel\?txt\(snapshotLabel/);
+});
+
+test('daily comparison keeps distinct baseline and local estimates sorted by civil day',()=>{
+ const earlier=time(2),later=time(3);
+ const local=[{dayStart:earlier,netMs:5,grossMs:6,unpaidMs:1},
+  {dayStart:later,netMs:8,grossMs:8,unpaidMs:0}];
+ const base=[{dayStart:earlier,netMs:7,grossMs:8,unpaidMs:1},
+  {dayStart:later,netMs:6,grossMs:7,unpaidMs:1}];
+ const result=essentialMobileDailyComparison({projectedDays:local,baselineDays:base});
+ assert.deepEqual(result.map(row=>[row.dayStart,row.baselineNetMs,row.deltaMs]),
+  [[later,6,2],[earlier,7,-2]]);
+ assert.deepEqual(result.map(row=>row.netMs),[8,5]);
+ assert.deepEqual(local.map(row=>row.netMs),[5,8],'Comparison must not mutate the original rows');
+ assert.deepEqual(base.map(row=>row.netMs),[7,6]);
+});
+test('daily comparison includes days present on only one side and rejects malformed values',()=>{
+ const earlier=time(2),later=time(3);
+ const valid={dayStart:earlier,netMs:2,grossMs:3,unpaidMs:1};
+ const invalid={dayStart:later,netMs:NaN,grossMs:3,unpaidMs:0};
+ const result=essentialMobileDailyComparison({projectedDays:[valid,invalid],
+  baselineDays:[{dayStart:later,netMs:4,grossMs:4,unpaidMs:0}]});
+ assert.deepEqual(result,[
+  {dayStart:later,netMs:0,grossMs:0,unpaidMs:0,baselineNetMs:4,deltaMs:-4},
+  {dayStart:earlier,netMs:2,grossMs:3,unpaidMs:1,baselineNetMs:0,deltaMs:2}
+ ]);
+ assert.deepEqual(essentialMobileDailyComparison({projectedDays:'invalid',baselineDays:null}),[]);
+});
+test('native My Hours compares personal daily rows without labeling offline events as approved',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(ui,/comparedDailyHours=essentialMobileDailyComparison/);
+ assert.match(ui,/projectedDays:dailyHours,baselineDays:comparePendingHours\?baselineDailyHours:\[\]/);
+ const page=ui.slice(ui.indexOf("page==='hours'?"),ui.indexOf("page==='schedule'?"));
+ assert.match(page,/comparedDailyHours\.map\(row/);
+ assert.match(page,/Dernier relevé : '\+hm\(row\.baselineNetMs\)/);
+ assert.match(page,/Écart local : /);
+ assert.match(page,/comparePendingHours\?txt/);
+ assert.match(page,/Non approuvé/);
 });

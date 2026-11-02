@@ -101,6 +101,32 @@ export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],com
  return rows;
 }
 
+/** Reconcile each displayed civil day against a separate attendance
+ * snapshot. An absent row means zero hours, not a server-confirmed punch.
+ * The original inputs are never mutated, including across week boundaries.
+ * @param {{
+ *  projectedDays?:Array<{dayStart:number,netMs:number,grossMs:number,unpaidMs:number}>,
+ *  baselineDays?:Array<{dayStart:number,netMs:number,grossMs:number,unpaidMs:number}>
+ * }} [options]
+ * @returns {Array<{dayStart:number,netMs:number,grossMs:number,unpaidMs:number,baselineNetMs:number,deltaMs:number}>}
+ */
+export function essentialMobileDailyComparison({projectedDays=[],baselineDays=[]}={}){
+ const validRow=row=>row&&Number.isFinite(row.dayStart)&&row.dayStart>=0&&
+  Number.isFinite(row.netMs)&&row.netMs>=0&&Number.isFinite(row.grossMs)&&
+  row.grossMs>=0&&Number.isFinite(row.unpaidMs)&&row.unpaidMs>=0;
+ const projected=new Map((Array.isArray(projectedDays)?projectedDays:[])
+  .filter(validRow).map(row=>[row.dayStart,row]));
+ const baseline=new Map((Array.isArray(baselineDays)?baselineDays:[])
+  .filter(validRow).map(row=>[row.dayStart,row]));
+ const keys=new Set([...projected.keys(),...baseline.keys()]);
+ return [...keys].sort((a,b)=>b-a).map(dayStart=>{
+  const local=projected.get(dayStart),reference=baseline.get(dayStart);
+  const netMs=local?.netMs??0,baselineNetMs=reference?.netMs??0;
+  return {dayStart,netMs,grossMs:local?.grossMs??0,
+   unpaidMs:local?.unpaidMs??0,baselineNetMs,deltaMs:netMs-baselineNetMs};
+ });
+}
+
 /** An employee can refresh a cached hours snapshot even without pending punches.
  * Unknown or blocked journal state must not bypass local journal protections.
  * @param {{readSource?:'server'|'cache',pending?:number,blocked?:boolean}} [options]

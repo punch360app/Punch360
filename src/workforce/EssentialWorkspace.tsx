@@ -17,7 +17,7 @@ import type {WorkspaceAccount} from '../auth/AuthGate';
 import {loadPunchState,punchIn,punchOut,punchBreak,hoursFor,PunchState} from '../punch/api';
 import {personalUpcomingClientVisit} from '../../web/live/personal-client-visit.js';
 import {essentialWorkerPunchJobId} from '../../web/live/essential-mobile-punch.js';
-import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,essentialMobileDailyComparison,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../../web/live/essential-hours-view.js';
 import {PersonalMissionCard} from './MissionsPanel';
 import {navigationProviders,navigationUrl,navigationDestination,navigationPreferenceKey,chooseNavigationPreference,writeNavigationPreference} from '../../web/live/navigation-choices.js';
 import {journalSummary} from '../punch/journal';
@@ -196,6 +196,9 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
    cutoff:baselineLimit.until,weekAt:viewWeekDate.getTime()
   }):[];
  const comparePendingHours=!!punch.hasLocalProjection&&!punch.snapshotUnverified&&!!punch.baselineSnapshot;
+ const comparedDailyHours=essentialMobileDailyComparison({
+  projectedDays:dailyHours,baselineDays:comparePendingHours?baselineDailyHours:[]
+ });
  const baselineWeekMs=hoursFor(baselineSegments,baselineLimit.until,week,baselineLimit.until,punch.baselineSnapshot?.breaks||[]);
  const offerCachedRefresh=shouldOfferEssentialCachedRefresh({readSource:punch.readSource,pending,blocked:journalBlocked});
  const snapshotLabel=punch.snapshotUnverified?null:essentialMobileSnapshotLabel({readSource:punch.readSource,snapshotFetchedAt:punch.snapshotFetchedAt,now});
@@ -391,15 +394,18 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   {txt(busy?'Synchronisation…':'Synchroniser maintenant',{color:Z.sage,fontWeight:'700'})}
  </Pressable>:null}
  </View>:null}<ScrollView contentContainerStyle={{gap:9}}>
- {dailyHours.length?<View style={[styles.card,{gap:9}]}>
+ {comparedDailyHours.length?<View style={[styles.card,{gap:9}]}>
   {txt('Détail quotidien · temps indicatif',{fontWeight:'700',fontSize:13})}
-  {dailyHours.map(row=><View key={row.dayStart} style={{paddingVertical:4,gap:3}}>
+  {comparedDailyHours.map(row=><View key={row.dayStart} style={{paddingVertical:4,gap:3}}>
    <View style={{flexDirection:'row',justifyContent:'space-between'}}>
     {txt(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}),{fontSize:12,color:Z.muted})}
     {txt(hm(row.netMs)+' net',{fontSize:12,fontWeight:'600',color:Z.sage})}
    </View>
    {txt('Brut '+hm(row.grossMs)+' · Pause non payée '+hm(row.unpaidMs),
     {fontSize:10,color:Z.muted})}
+   {comparePendingHours?txt('Dernier relevé : '+hm(row.baselineNetMs)+
+    ' net · Écart local : '+(row.deltaMs<0?'-':'+')+hm(Math.abs(row.deltaMs)),
+    {fontSize:10,color:Z.muted}):null}
   </View>)}
   {txt('Inclut les pointages locaux en attente, le cas échéant. Non approuvé.',{fontSize:10,color:Z.muted})}
  </View>:<View style={styles.card}>{txt('Aucune journée dans le relevé chargé pour cette semaine.',{fontSize:12,color:Z.muted})}</View>}
