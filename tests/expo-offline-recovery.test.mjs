@@ -32,6 +32,9 @@ function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,netwo
  if(rawCache!==null)store.set('punch-state:U:A',rawCache===undefined?JSON.stringify(cached):rawCache);
  const offlineEvents=pendingEvents??[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
  const j={flush:async()=>{calls.send++;if(flushFail)throw Error('Journal non vérifiable')},
+  // Offline reads validate the persisted queue without network I/O or writes.
+  inspect:async()=>{if(flushFail||readFail)throw Error('Journal non vérifiable');
+   return {sent:0,events:offlineEvents,pending:offlineEvents.filter(e=>e.status==='pending').length}},
   read:async()=>{calls.read++;if(readFail)throw Error('Journal illisible');return offlineEvents}};
  const storage={getItem:async key=>store.get(key)||null,setItem:async(k,v)=>{if(writeFail)throw Error('cache saturé');store.set(k,v)}};
  const network={getNetworkStateAsync:async()=>{if(networkStateFail)throw Error('Network status unavailable');return {isConnected:!offline,isInternetReachable:!offline}}};
