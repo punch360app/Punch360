@@ -68,6 +68,21 @@ test('summary keeps server conflicts, local pending and unverifiable snapshots d
  assert.equal(localPunchStatusSummary({...args,events:[{...own,company:'other-company',status:'conflict'}]}).kind,'server');
 });
 
+test('blocked local journal takes priority over last server snapshot without exposing other users',()=>{
+ const args={events:[],companyId:'business-A',userId:'worker-A',
+  snapshotCompanyId:'business-A',snapshotFetchedAt:Date.parse('2026-11-02T10:00:00Z')};
+ const blocked={kind:'blocked',label:'Journal local à vérifier'};
+ assert.deepEqual(localPunchStatusSummary({...args,journalBlocked:true}),blocked);
+ assert.deepEqual(localPunchStatusSummary({...args,events:[own],journalBlocked:true}),blocked);
+ assert.deepEqual(localPunchStatusSummary({...args,events:[{...own,status:'conflict'}],journalBlocked:true}),blocked);
+ assert.deepEqual(localPunchStatusSummary({...args,journalBlocked:false}),
+  {kind:'server',label:'Dernier relevé serveur'});
+ assert.equal(localPunchStatusSummary({...args,userId:null,journalBlocked:true}).kind,'server');
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const home=app.slice(app.indexOf('function essentialHome(){'),app.indexOf('function essentialSchedule()',app.indexOf('function essentialHome(){')));
+ assert.match(home,/journalBlocked:state\\.localJournalBlocked\\?\\.companyId===company\\(\\)&&state\\.localJournalBlocked\\?\\.userId===state\\.user\\?\\.id/);
+ assert.match(app,/Journal local non vérifiable : la synchronisation et les nouveaux pointages/);
+});
 test('manual resynchronization checks the persisted journal after retry and does not claim payroll confirmation',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent\} from '\.\/punch-sync-state\.js'/);
