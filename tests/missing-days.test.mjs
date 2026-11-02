@@ -83,7 +83,7 @@ test('manager approval summary is company and reviewer scoped, without self-appr
   workers:[{id:'worker-a',auth_user_id:'employee-a',first_name:'Alex',last_name:'Nord'},
            {id:'manager-worker',auth_user_id:'manager',first_name:'Owner'},
            {id:'worker-b',auth_user_id:'employee-b'}],
-  requests:[row,{...row,id:'other-company',company_id:'another'},
+  pendingRequests:[row,{...row,id:'other-company',company_id:'another'},
    {...row,id:'self',worker_id:'manager-worker',requested_by:'employee-b'},
    {...row,id:'requester-self',requested_by:'manager'},
    {...row,id:'unknown-worker',worker_id:'unknown'},
@@ -96,11 +96,11 @@ test('manager approval summary is company and reviewer scoped, without self-appr
  assert.doesNotMatch(JSON.stringify(actual),/another|unknown|Owner|employee-a|employee-b/);
 });
 test('manager queue fails closed after account, role or network snapshot changes',()=>{
- const source={company:'company',user:'manager',role:'boss',loaded:true,workers:[],requests:[]};
+ const source={company:'company',user:'manager',role:'boss',loaded:true,workers:[],requests:[],pendingRequests:[]};
  for(const changes of [{companyId:'another'}, {reviewerId:'different'},
   {source:{...source,role:'employee'}},
   {source:{...source,loaded:false}},
-  {source:{...source,requests:null}}]){
+  {source:{...source,requests:null,pendingRequests:null}}]){
   const actual=managerMissingDayApprovalSummary({companyId:'company',reviewerId:'manager',source,...changes});
   assert.deepEqual(actual,{ready:false,count:0,requests:[]});
  }
@@ -204,4 +204,51 @@ test('a failed refresh hides formerly loaded requests and disables unverified su
  assert.match(ui.render(),/Historique non vérifié/);
  assert.match(ui.render(),/missing:submit[^>]*disabled/);
  assert.doesNotMatch(ui.render(),/missing:refresh[^>]*disabled/);
+});
+
+test('manager reads pending missing-day inbox independently from the 100 latest history rows',async()=>{
+ const reads=[];
+ const pending={id:'older-pending',company_id:'company',worker_id:'worker',requested_by:'employee',
+  status:'pending',starts_at:'2026-10-02T08:00:00Z',ends_at:'2026-10-02T16:00:00Z',breaks:[],reason:'Still unresolved'};
+ const archived=Array.from({length:100},(_,i)=>({...pending,id:'archived-'+i,status:'approved'}));
+ const sb={from:tableName=>{
+  const filters=[],q={error:null};let result=null;
+  q.select=()=>q;q.eq=(field,value)=>{filters.push([field,value]);return q};
+  q.order=()=>q;q.limit=limit=>{
+   if(tableName==='jobs')q.data=[{id:'job',name:'Site'}];
+   else q.data=filters.some(([field,value])=>field==='status'&&value==='pending')?[pending]:archived;
+   reads.push({table:tableName,filters:filters.slice(),limit});
+   return q;
+  };
+  return q;
+ }};
+ const ui=createMissingDaysController({sb,redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'boss'},'manager',[{id:'worker',auth_user_id:'employee',first_name:'Alex'}]);
+ assert.equal(ui.state.requests.length,100);
+ assert.equal(ui.state.pendingRequests.length,1);
+ const approval=managerMissingDayApprovalSummary({companyId:'company',reviewerId:'manager',source:ui.state});
+ assert.equal(approval.ready,true);assert.equal(approval.count,1);
+ assert.equal(approval.requests[0].id,'older-pending');
+ assert.ok(reads.some(read=>read.table==='essential_missing_days'&&read.limit===200&&
+  read.filters.some(([field,value])=>field==='status'&&value==='pending')&&
+  read.filters.some(([field,value])=>field==='company_id'&&value==='company')));
+ assert.match(ui.render(),/Still unresolved/);
+});
+test('manager pending inbox fails closed if its separate server query fails',async()=>{
+ const sb={from:name=>{
+  const filters=[],q={data:[],error:null};
+  q.select=()=>q;q.eq=(key,value)=>{filters.push([key,value]);return q};
+  q.order=()=>q;q.limit=()=>{
+   if(name==='essential_missing_days'&&filters.some(([key,value])=>key==='status'&&value==='pending'))
+    q.error=Error('Pending queue unavailable');
+   return q;
+  };
+  return q;
+ }};
+ const ui=createMissingDaysController({sb,redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'boss'},'manager',[{id:'worker',auth_user_id:'employee'}]);
+ assert.equal(ui.state.loaded,false);
+ assert.match(ui.state.error,/Pending queue unavailable/);
+ assert.equal(managerMissingDayApprovalSummary({companyId:'company',reviewerId:'manager',source:ui.state}).ready,false);
+ assert.doesNotMatch(ui.render(),/missing:approve[^>]*data-id="old"/);
 });
