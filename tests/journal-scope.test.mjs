@@ -64,3 +64,21 @@ test('web punch selectors and journal append are scoped to authenticated identit
  assert.match(app,/state\.segments\.find\(s=>s\.company_id===company\(\)&&s\.session_id===active\.id&&!s\.ended_at\)/);
  assert.match(app,/journal\.append\(action,job,fix,at,paid,!navigator\.onLine\)/);
 });
+
+test('an offline event cannot inherit another company last selected job',()=>{
+ const projected=projectPendingPunches(base,[event('out','ev-last')]);
+ assert.equal(projected.lastJobId,'my-site');
+});
+
+test('same session ID in a contaminated cache cannot close foreign breaks or segments',()=>{
+ const foreignSegment={id:'foreign-collision',session_id:own.id,company_id:'tenant-B',
+  job_id:'foreign-site',started_at:'2026-11-01T11:00:00Z',ended_at:null};
+ const foreignPause={id:'foreign-break',session_id:own.id,company_id:'tenant-B',
+  user_id:'employee-B',started_at:'2026-11-01T11:30:00Z',ended_at:null,is_paid:false};
+ const snapshot={sessions:base.sessions,
+  segments:[foreignSegment,...base.segments],breaks:[foreignPause]};
+ const projected=projectPendingPunches(snapshot,[event('out','ev-out')]);
+ assert.equal(projected.segments.find(x=>x.id==='foreign-collision').ended_at,null);
+ assert.equal(projected.breaks.find(x=>x.id==='foreign-break').ended_at,null);
+ assert.equal(projected.segments.find(x=>x.id==='own-segment').ended_at,'2026-11-01T12:00:00Z');
+});
