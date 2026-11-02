@@ -11,9 +11,12 @@ export function isDefinitiveRpcRejection(error){
  // Auth/network/transport/5xx are never evidence of a rejected transaction.
  if((Number.isFinite(status)&&status>=500)||
    ['AuthRetryableFetchError','FunctionsFetchError','TypeError','AbortError'].includes(error.name))return false;
- // SQLSTATE 5-character codes; P0001 is explicit RAISE EXCEPTION.
- // PostgREST PGRST codes are structured 4xx responses.
- if(/^[A-Z0-9]{5}$/.test(code))return true;
- if(/^PGRST\d{3}$/.test(code))return true;
+ // Explicit SQL errors known to reject and roll back the transaction.
+ // Do NOT classify connection errors (SQLSTATE 08xxx), cancellations or
+ // server restarts as definitive, even when they have a 5-character code.
+ if(new Set(['P0001','23505','23503','23502','23514','42501',
+  '22P02','22023','22001','22003','40001','40P01']).has(code))return true;
+ // PostgREST 4xx protocol/argument rejection, never a 5xx/unknown response.
+ if(/^PGRST\d{3}$/.test(code)&&status>=400&&status<500)return true;
  return false;
 }
