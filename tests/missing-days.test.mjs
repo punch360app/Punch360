@@ -168,3 +168,40 @@ test('manager forgotten-day form hides a foreign company even if the response is
  ];
  const html=ui.render();assert.match(html,/Allowed/);assert.doesNotMatch(html,/PRIVATE OTHER TENANT/);
 });
+
+test('account change during hashing never submits a forgotten day to the former company',async()=>{
+ let releaseHash,notifyHash;
+ const hashing=new Promise(resolve=>{releaseHash=resolve});
+ const started=new Promise(resolve=>{notifyHash=resolve});
+ let rpcCalls=0;
+ const holdCrypto={randomUUID:()=>'durable-request',subtle:{digest:async()=>{
+  notifyHash();return hashing;
+ }}};
+ const ui=createMissingDaysController({sb:{from:table,rpc:async()=>{rpcCalls++;return {data:'ok'}}},
+  redraw(){},escape,crypto:holdCrypto,storage:store()});
+ await ui.load({company_id:'company',role:'employee'},'user',[{id:'worker',auth_user_id:'user'}]);
+ ui.state.form={...form};
+ const pending=ui.handle({dataset:{action:'missing:submit'}});
+ await started;ui.reset();releaseHash(new Uint8Array(32).buffer);await pending;
+ assert.equal(rpcCalls,0);assert.equal(ui.state.user,null);assert.equal(ui.state.company,null);
+});
+
+test('a failed refresh hides formerly loaded requests and disables unverified submissions',async()=>{
+ let shouldFail=false;
+ const sb={from:name=>{
+  const q={data:name==='jobs'?[{id:'job',name:'Site'}]:[],error:null};
+  q.select=()=>q;q.eq=()=>q;q.order=()=>q;
+  q.limit=()=>{if(name==='essential_missing_days'&&shouldFail)q.error=Error('offline');return q;};
+  return q;
+ }};
+ const ui=createMissingDaysController({sb,redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'employee'},'user',[{id:'worker',auth_user_id:'user',first_name:'Alex'}]);
+ ui.state.requests=[{id:'old',company_id:'company',worker_id:'worker',requested_by:'user',status:'pending',
+  starts_at:'2026-10-01T08:00:00Z',ends_at:'2026-10-01T16:00:00Z',reason:'STALE OLD RECORD',breaks:[]}];
+ shouldFail=true;await ui.handle({dataset:{action:'missing:refresh'}});
+ assert.equal(ui.state.loaded,false);
+ assert.doesNotMatch(ui.render(),/STALE OLD RECORD/);
+ assert.match(ui.render(),/Historique non vérifié/);
+ assert.match(ui.render(),/missing:submit[^>]*disabled/);
+ assert.doesNotMatch(ui.render(),/missing:refresh[^>]*disabled/);
+});
