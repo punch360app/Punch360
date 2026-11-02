@@ -107,3 +107,45 @@ test('offline IN, pause and OUT survive restart, reconnect in order and reconcil
  await restored.flush();
  assert.deepEqual(acknowledgments,['1','2','3','4'],'Never replay acknowledged events');
 });
+
+
+test('a server receipt for another event never acknowledges or drops the saved punch',async()=>{
+ for(const receipt of [
+  {sync_status:'synced',event_id:'another-event'},
+  {sync_status:'conflict',event_id:'another-event',message:'Not our event'},
+  {sync_status:'synced',event_id:null}
+ ]){
+  const received=[],{journal}=fixture(async event=>{
+   received.push(event.id);return receipt;
+  });
+  const event=await journal.append('in','job-A',null,'2026-11-02T08:00:00Z',false,true);
+  const result=await journal.flush();
+  assert.equal(result.sent,0,'No unrelated server receipt can acknowledge this event');
+  assert.equal(result.pending,1,'Original event stays queued');
+  const saved=(await journal.read())[0];
+  assert.equal(saved.id,event.id,'Idempotency UUID must be preserved');
+  assert.equal(saved.status,'pending');
+  assert.equal(saved.offline,true);
+  assert.match(saved.error,/Accusé serveur invalide/);
+  assert.deepEqual(received,[event.id]);
+ }
+});
+
+test('a valid matching receipt replays the exact same event, including legacy breaks without event_id',async()=>{
+ let response={sync_status:'synced',event_id:'other'},calls=[];
+ const {journal}=fixture(async event=>{calls.push(event.id);return response;});
+ const recorded=await journal.append('in','job-A',null,'2026-11-02T08:00:00Z');
+ await journal.flush();
+ response={sync_status:'synced',event_id:recorded.id};
+ const accepted=await journal.flush();
+ assert.equal(accepted.pending,0);
+ assert.deepEqual(calls,[recorded.id,recorded.id]);
+ assert.equal((await journal.read())[0].result.event_id,recorded.id);
+ await journal.append('break_start',null,null,'2026-11-02T12:00:00Z');
+ response={sync_status:'synced',session_id:'server-session'};
+ const legacy=await journal.flush();
+ assert.equal(legacy.pending,0,'Existing break RPCs do not return event_id');
+ assert.equal((await journal.read())[1].status,'synced');
+ await journal.flush();
+ assert.deepEqual(calls,[recorded.id,recorded.id,'2'],'No acknowledged replay');
+});
