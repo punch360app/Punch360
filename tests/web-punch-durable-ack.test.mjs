@@ -9,8 +9,8 @@ const end=app.indexOf("window.addEventListener('online'",begin);
 assert.ok(begin>0&&end>begin,'Web punch function must exist');
 const source=app.slice(begin,end);
 function harness({online=false,send=async()=>({sync_status:'synced',review_status:'pending'}),
- flushThrows=false,hideEvent=false,readThrows=false}={}){
- let onLine=online,id=0;
+ flushThrows=false,hideEvent=false,readThrows=false,gpsFix=async()=>null}={}){
+ let onLine=online,id=0,companyId='company-A',userId='worker-A';
  const memory=new Map(),sent=[];
  const storage={get:async k=>memory.get(k)||null,set:async(k,v)=>memory.set(k,v)};
  const journal=new PunchJournal({company:'company-A',user:'worker-A',
@@ -26,11 +26,13 @@ function harness({online=false,send=async()=>({sync_status:'synced',review_statu
   exposed.read=async()=>++reads===1?journal.read():Promise.reject(Error('Unreadable'))}
  const go=new Function('isEssential','essentialMobilePunchAllowed','freshPunchFix',
   'normalizeFreshPunchFix','punchJournal','navigator','hasUnsafePunchJournalEntries',
-  source+'\nreturn locatedPunch;')(
-  ()=>true,()=>true,async()=>null,normalizeFreshPunchFix,
-  ()=>exposed,{get onLine(){return onLine}},hasUnsafePunchJournalEntries);
+  'company','state','member',source+'\nreturn locatedPunch;')(
+  ()=>true,()=>true,gpsFix,normalizeFreshPunchFix,
+  ()=>exposed,{get onLine(){return onLine}},hasUnsafePunchJournalEntries,
+  ()=>companyId,{user:{get id(){return userId}}},()=>true);
  return {run:(action='in',job='site-A')=>go(action,job),
-  journal,memory,sent,setOnline:value=>{onLine=value}};
+  journal,memory,sent,setOnline:value=>{onLine=value},
+  setScope:(nextCompany,nextUser)=>{companyId=nextCompany;userId=nextUser}};
 }
 test('offline Web PUNCH IN is durable pending and replays same ID after reconnect',async()=>{
  const h=harness(),r=await h.run();
@@ -86,4 +88,38 @@ test('Web pause and transfer messages use this event, never another pending even
  assert.match(app,/result\.review_status==='local'\?'Transfert conservé sur cet appareil/);
  assert.match(app,/catch\(err\)\{error\(err\);return\}finally\{state\.busy=false\}\}state\.selected=id/);
  assert.doesNotMatch(app,/toast\(state\.localPending\?'Pause conservée/);
+});
+
+test('changing company while GPS permission is pending never creates a punch in either account',async()=>{
+ let resolveFix;
+ const gpsFix=()=>new Promise(resolve=>{resolveFix=resolve});
+ const h=harness({online:true,gpsFix});
+ const running=h.run();
+ assert.equal(typeof resolveFix,'function');
+ h.setScope('company-B','worker-B');
+ resolveFix({latitude:46.8,longitude:-71.2,accuracy:4});
+ await assert.rejects(running,/Compte ou entreprise changé pendant la capture/);
+ assert.deepEqual(await h.journal.read(),[]);
+ assert.deepEqual(h.sent,[]);
+});
+test('workspace switch after durable append hides old-company result without losing the punch',async()=>{
+ let started,complete;
+ const submitted=new Promise(resolve=>{started=resolve});
+ const h=harness({online:true,send:async()=>{
+  started();return new Promise(resolve=>{complete=resolve});
+ }});
+ const running=h.run();
+ await submitted;
+ h.setScope('company-B','worker-B');
+ complete({sync_status:'synced',review_status:'pending'});
+ await assert.rejects(running,/Compte ou entreprise changé : pointage conservé/);
+ assert.equal((await h.journal.read()).length,1);
+ assert.equal((await h.journal.read())[0].status,'synced');
+ assert.deepEqual(h.sent,['1']);
+});
+test('Web punch confirmation describes device capture and never claims GPS was inside radius',()=>{
+ const punch=app.slice(app.indexOf('async function doPunch()'),app.indexOf('async function selectJob('));
+ assert.match(punch,/Heure captée sur cet appareil, soumise à vérification du serveur/);
+ assert.match(punch,/Punch transmis au serveur — heures sujettes à validation/);
+ assert.doesNotMatch(punch,/Horodatage serveur|position dans le rayon/);
 });
