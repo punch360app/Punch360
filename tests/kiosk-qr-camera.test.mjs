@@ -76,6 +76,55 @@ test('decoder error stops the camera without retaining QR credentials',async()=>
  assert.equal(k.camera.active,false);
  assert.deepEqual(k.notices,[]);
 });
+test('privacy deadline expires even while tablet camera permission remains pending',async()=>{
+ let resolvePermission;
+ const permission=new Promise(resolve=>{resolvePermission=resolve});
+ const k=kit({permission:()=>permission});
+ const opening=k.camera.start(k.video);
+ assert.equal(k.expiryQueue.length,1,'deadline must be armed before permission resolves');
+ k.expireNow();
+ assert.equal(k.camera.active,false);
+ assert.deepEqual(k.notices,['expired']);
+ resolvePermission({getTracks:()=>k.tracks});
+ assert.equal(await opening,false);
+ assert.equal(k.tracks[0].stops,1,'late camera access must be released');
+ assert.equal(k.video.srcObject,null);
+ assert.deepEqual(k.notices,['expired'],'no second notification after late permission');
+});
+
+test('privacy deadline shuts off an acquired camera if video playback hangs',async()=>{
+ let resolvePlayback,enteredPlayback;
+ const playback=new Promise(resolve=>{resolvePlayback=resolve});
+ const entered=new Promise(resolve=>{enteredPlayback=resolve});
+ const k=kit();
+ k.video.play=()=>{enteredPlayback();return playback};
+ const opening=k.camera.start(k.video);
+ await entered;
+ assert.equal(k.video.srcObject!==null,true);
+ assert.equal(k.camera.active,false,'camera is not ready before playback');
+ k.expireNow();
+ assert.equal(k.video.srcObject,null);
+ assert.equal(k.tracks[0].stops,1);
+ assert.deepEqual(k.notices,['expired']);
+ resolvePlayback();
+ assert.equal(await opening,false);
+ assert.equal(k.camera.active,false);
+ assert.deepEqual(k.notices,['expired']);
+});
+
+test('permission rejection clears pending watchdog and reports camera error only',async()=>{
+ let rejectPermission;
+ const permission=new Promise((_,reject)=>{rejectPermission=reject});
+ const k=kit({permission:()=>permission});
+ const opening=k.camera.start(k.video);
+ assert.equal(k.expiryQueue.length,1);
+ rejectPermission(Error('permission denied'));
+ assert.equal(await opening,false);
+ k.expireNow();
+ assert.deepEqual(k.notices,['camera']);
+ assert.equal(k.camera.active,false);
+});
+
 test('after 30 seconds camera turns off with a neutral timeout',async()=>{
  let now=0;
  const k=kit({clock:()=>now});
