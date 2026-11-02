@@ -48,6 +48,12 @@ test('bad name and edition never invoke the creation RPC',async()=>{
  await assert.rejects(createCompanyOnce(async()=>({error:denial}),'Valid','essential'),denial);
 });
 
+test('missing server response stays ambiguous and must not become a successful creation',async()=>{
+ for(const reply of [null,undefined,{}, {error:null}]){
+  await assert.rejects(createCompanyOnce(async()=>reply,'Test','essential'),
+   /Réponse du serveur absente/);
+ }
+});
 test('an accepted response with unrecognized ID stays accepted but unverified',async()=>{
  const result=await createCompanyOnce(async()=>({data:{id:company}}),'Test','construction');
  assert.deepEqual(result,{accepted:true,companyId:null});
@@ -74,5 +80,6 @@ test('public app guards repeat creation and checks the server membership',()=>{
  assert.match(app,/state\.pendingCompanyCreation=\{companyId:accepted\.companyId\}/);
  assert.match(app,/isCreatedCompanyVerified\(pending\.companyId,state\.user\?\.id,state\.account,companyContext\.list\)/);
  assert.match(app,/verifyCreatedCompany/);
+ assert.match(app,/if\(definiteError\)throw err;state\.pendingCompanyCreation=\{companyId:null\}/);
  assert.match(app,/readPendingCompanyCreation\(sessionStorage,state\.user\.id\)/);
 });
