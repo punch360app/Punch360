@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {localPunchSyncState} from '../web/live/punch-sync-state.js';
+import {localPunchSyncState,localPunchStatusSummary} from '../web/live/punch-sync-state.js';
 
 const own={id:'evt-a',company:'business-A',user:'worker-A',status:'pending',
  action:'in',occurredAt:'2026-11-01T10:00:00Z',fix:{latitude:47,longitude:-71},
@@ -54,4 +54,29 @@ test('employee UI shares a scoped journal status on home and hours, with manual 
  assert.match(app,/if\(a==='syncPendingPunches'\)/);
  assert.match(app,/state\.localPunchEvents=events/);
  assert.match(app,/state\.localPunchEvents=\[\]/);
+});
+
+test('summary keeps server conflicts, local pending and unverifiable snapshots distinct',()=>{
+ const args={events:[],companyId:'business-A',userId:'worker-A',
+  snapshotCompanyId:'business-A',snapshotFetchedAt:Date.parse('2026-11-02T10:00:00Z')};
+ assert.deepEqual(localPunchStatusSummary(args),{kind:'server',label:'Dernier relevé serveur'});
+ assert.deepEqual(localPunchStatusSummary({...args,snapshotCompanyId:'business-B'}),{kind:'unverified',label:'Relevé à vérifier'});
+ assert.deepEqual(localPunchStatusSummary({...args,snapshotFetchedAt:null}),{kind:'unverified',label:'Relevé à vérifier'});
+ assert.deepEqual(localPunchStatusSummary({...args,events:[own]}),{kind:'pending',label:'En attente d’envoi'});
+ assert.deepEqual(localPunchStatusSummary({...args,events:[{...own,status:'conflict'}]}),{kind:'conflict',label:'Conflit à vérifier'});
+ assert.deepEqual(localPunchStatusSummary({...args,events:[own,{...own,id:'another',status:'conflict'}]}),{kind:'mixed',label:'En attente et conflit à vérifier'});
+ assert.equal(localPunchStatusSummary({...args,events:[{...own,company:'other-company',status:'conflict'}]}).kind,'server');
+});
+
+test('manual resynchronization checks the persisted journal after retry and does not claim payroll confirmation',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary\} from '\.\/punch-sync-state\.js'/);
+ assert.match(app,/function essentialHome\(\)\{const punchStatus=localPunchStatusSummary\(/);
+ assert.match(app,/e\(punchStatus\.label\)/);
+ assert.doesNotMatch(app,/state\.localPending\?'Sauvegardé ici':tr\('synchronized'\)/);
+ assert.match(app,/const events=await punchJournal\(\)\.read\(\)/);
+ assert.match(app,/state\.localPunchEvents=events/);
+ assert.match(app,/state\.localPending=pending\.length/);
+ assert.match(app,/pending\.length&&conflicts\.length/);
+ assert.match(app,/Vérifiez le relevé serveur avant de considérer vos heures confirmées/);
 });
