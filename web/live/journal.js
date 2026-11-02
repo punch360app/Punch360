@@ -3,15 +3,23 @@
 const JOURNAL_ACTIONS=new Set(['in','out','transfer','break_start','break_end']);
 const JOURNAL_STATUSES=new Set(['pending','synced','conflict']);
 export function hasUnsafePunchJournalEntries(events,company,user){
- return !Array.isArray(events)||typeof company!=='string'||!company||
-  typeof user!=='string'||!user||events.some(event=>
-   !event||typeof event!=='object'||event.company!==company||
+ if(!Array.isArray(events)||typeof company!=='string'||!company||
+  typeof user!=='string'||!user)return true;
+ // A duplicated id is ambiguous for server idempotency and local ACK lookup.
+ // Preserve the entire queue for recovery; never upload or silently rewrite it.
+ const seen=new Set();
+ return events.some(event=>{
+  if(!event||typeof event!=='object'||event.company!==company||
    event.user!==user||typeof event.id!=='string'||!event.id||
    !JOURNAL_ACTIONS.has(event.action)||!JOURNAL_STATUSES.has(event.status)||
    typeof event.occurredAt!=='string'||!Number.isFinite(Date.parse(event.occurredAt))||
    (event.previous!=null&&(typeof event.previous!=='string'||!event.previous))||
    (event.paid!=null&&typeof event.paid!=='boolean')||
-   (event.offline!=null&&typeof event.offline!=='boolean'));
+   (event.offline!=null&&typeof event.offline!=='boolean')||
+   seen.has(event.id))return true;
+  seen.add(event.id);
+  return false;
+ });
 }
 export class PunchJournal {
  constructor({storage,send,uuid,company,user,withLock}){this.storage=storage;this.send=send;this.uuid=uuid;this.company=company;this.user=user;this.key=`punch-journal-v1:${user}:${company}`;this.withLock=withLock||((fn)=>fn());this.serial=Promise.resolve();this.flushing=null;}
