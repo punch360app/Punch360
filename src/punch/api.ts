@@ -204,11 +204,35 @@ export const punchIn=(companyId:string,jobId:string)=>punchWithLocation(companyI
 export const punchOut=(companyId:string)=>punchWithLocation(companyId,'out');
 export const punchBreak=(companyId:string,resume:boolean,paid=false)=>punchWithLocation(companyId,resume?'break_end':'break_start',undefined,paid);
 export const punchTransfer=(companyId:string,jobId:string)=>punchWithLocation(companyId,'transfer',jobId);
+// Server-confirmed archive actions must remain visible if Internet drops
+// before the next refresh. Serialize writes for the same worker and prevent
+// a previously started archive fetch from undoing a newer local mutation.
+const archiveRevisions=new Map<string,number>();
+const archiveWrites=new Map<string,Promise<void>>();
+async function reflectArchivePreference(userId:string,segmentId:string,archived:boolean){
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ if(!uuid.test(userId)||!uuid.test(segmentId))return;
+ const key='punch-archives:'+userId;
+ archiveRevisions.set(key,(archiveRevisions.get(key)||0)+1);
+ const previous=archiveWrites.get(key)||Promise.resolve();
+ const next=previous.catch(()=>{}).then(async()=>{
+  const raw=await AsyncStorage.getItem(key);
+  let ids:unknown=raw?JSON.parse(raw):[];
+  // Preserve damaged bytes intact. A later valid server read can recover them.
+  if(!Array.isArray(ids)||!ids.every(id=>typeof id==='string'&&uuid.test(id)))return;
+  const unique=new Set(ids as string[]);
+  if(archived)unique.add(segmentId);else unique.delete(segmentId);
+  await AsyncStorage.setItem(key,JSON.stringify([...unique]));
+ }).catch(()=>{/* A failed cache write must not turn a successful server action into an error. */});
+ archiveWrites.set(key,next);
+ await next;
+}
 export async function archiveSegment(segmentId:string){
  const {data:{user}}=await supabase.auth.getUser();
  if(!user)throw Error('Utilisateur non connecté');
  const {error}=await supabase.from('punch_archive_preferences').insert({user_id:user.id,segment_id:segmentId});
  if(error && error.code!=='23505')throw error;
+ await reflectArchivePreference(user.id,segmentId,true);
 }
 export async function restoreSegment(segmentId:string){
  const {data:{user}}=await supabase.auth.getUser();
@@ -216,6 +240,7 @@ export async function restoreSegment(segmentId:string){
  const {error}=await supabase.from('punch_archive_preferences')
   .delete().eq('user_id',user.id).eq('segment_id',segmentId);
  if(error)throw error;
+ await reflectArchivePreference(user.id,segmentId,false);
 }
 export async function loadArchives():Promise<string[]>{
  const user=await getLocalIdentity();
@@ -239,6 +264,7 @@ export async function loadArchives():Promise<string[]>{
   online=network.isConnected===true&&network.isInternetReachable===true;
  }catch{/* Use only locally scoped preferences. */}
  if(!online)return cached();
+ const requestRevision=archiveRevisions.get(key)||0;
  let data,error;
  try{
   ({data,error}=await supabase.from('punch_archive_preferences')
@@ -247,6 +273,9 @@ export async function loadArchives():Promise<string[]>{
  if(error||!Array.isArray(data)||!data.every(row=>row&&validIds([row.segment_id])))
   return cached();
  const ids=Array.from(new Set(data.map(row=>row.segment_id as string)));
+ // A mutation completed while this request was in flight: its local result
+ // takes precedence over the stale response from before that mutation.
+ if(requestRevision!==(archiveRevisions.get(key)||0))return cached();
  // A valid server response stays available even if device storage is full.
  try{await AsyncStorage.setItem(key,JSON.stringify(ids))}catch{}
  return ids;
