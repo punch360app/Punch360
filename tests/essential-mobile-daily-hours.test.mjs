@@ -74,3 +74,11 @@ test('native hours displays the same scoped daily calculation as provisional tim
  assert.match(ui,/Détail quotidien · temps indicatif/);
  assert.match(ui,/Inclut les pointages locaux en attente, le cas échéant\. Non approuvé/);
 });
+
+test('a shift crossing the Sunday-to-Monday week boundary counts only Monday net hours',()=>{
+ const start=time(1,22),end=time(2,2);
+ const rows=daily({sessions:[session('boundary',start,end)],
+  segments:[segment('boundary',start,end)],
+  breaks:[pause('boundary',time(1,23,30),time(2,0,30))]},time(2,8));
+ assert.deepEqual(rows,[{dayStart:time(2),netMs:90*60000}]);
+});

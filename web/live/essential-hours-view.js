@@ -20,6 +20,17 @@ function netMilliseconds(segments,breaks,from,until){
 /** Day-by-day native estimates: one scoped segment source and one break engine.
  * These rows may contain pending local events; they are not payroll approvals.
  * Use local civil midnights instead of fixed 24h intervals across DST.
+ *
+ * Explicit JSDoc keeps TypeScript from inferring never[] for the default
+ * empty arrays when this shared JS function is imported by native Expo.
+ * @param {{
+ *   sessions?: Array<{id:string,company_id:string,user_id:string|null}>,
+ *   segments?: Array<{session_id:string,company_id:string,user_id?:string|null,started_at:string,ended_at:string|null}>,
+ *   breaks?: Array<{session_id:string,company_id?:string|null,user_id?:string|null,started_at:string,ended_at:string|null,is_paid?:boolean}>,
+ *   companyId?: string,
+ *   userId?: string,
+ *   now?: number
+ * }} [options]
  */
 export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now()}={}){
  if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
