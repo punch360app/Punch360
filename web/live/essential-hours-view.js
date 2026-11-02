@@ -217,12 +217,19 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  // boundaries as the weekly total. Clipping each segment (rather than the
  // session start date) includes overnight work spanning two weeks, without
  // exposing hours worked in adjacent weeks.
- const confirmedWeekDays=weekUntil>monday?confirmedDays.map(({session,open})=>{
+ const confirmedWeekDays=weekUntil>monday?confirmedDays.map(({session})=>{
   const parts=confirmedSegments.filter(segment=>segment.session_id===session.id);
   const grossMs=netMilliseconds(parts,[],monday,weekUntil);
   if(grossMs<=0)return null;
   const pauses=confirmedBreaks.filter(pause=>pause.session_id===session.id);
-  return {session,netMs:netMilliseconds(parts,pauses,monday,weekUntil),open};
+  // The history row must describe only the selected week, including
+  // overnight shifts crossing Monday and cached open sessions. These are
+  // display boundaries, not fabricated PUNCH IN / PUNCH OUT events.
+  const startMs=Math.max(monday,validDate(session.started_at));
+  const endMs=Math.min(weekUntil,session.ended_at==null?weekUntil:validDate(session.ended_at));
+  return {session,netMs:netMilliseconds(parts,pauses,monday,weekUntil),
+   rangeStart:new Date(startMs).toISOString(),rangeEnd:new Date(endMs).toISOString(),
+   rangeEndIsFinal:session.ended_at!=null&&validDate(session.ended_at)<=weekUntil};
  }).filter(Boolean):[];
  const pending=Number.isSafeInteger(pendingCount)&&pendingCount>0?pendingCount:0;
  let projectedWeekMs=null;
