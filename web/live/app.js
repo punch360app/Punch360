@@ -521,12 +521,12 @@ function essentialHours(){
    e(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}))+
    '</b><small>Brut '+mins(row.grossMs)+' · Pause non payée '+mins(row.unpaidMs)+'</small></div>'+
    '<strong>'+mins(row.netMs)+' net</strong></div>').join('')+'</div>':'';
- const history=view.ready&&view.confirmedDays.length?view.confirmedDays.slice(0,80).map(({session:s,netMs,open})=>
+ const history=view.ready&&view.confirmedWeekDays.length?view.confirmedWeekDays.slice(0,80).map(({session:s,netMs,open})=>
   card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours · durée provisoire')+'</p><strong>'+mins(netMs)+' net'+(open?' · dernier relevé serveur':'')+'</strong>')).join(''):
-  '<p class="small muted">'+(view.ready?'Aucune journée enregistrée sur le serveur.':'Historique serveur indisponible.')+'</p>';
+  '<p class="small muted">'+(view.ready?'Aucune journée enregistrée pour cette semaine dans le relevé serveur.':'Historique serveur indisponible.')+'</p>';
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+essentialPunchSyncPanel()+weekNav+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
-  daily+'<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
+  daily+'<div class="ess-panel"><b>Historique des journées · serveur · semaine sélectionnée</b>'+history+'</div>'+
   '<div class="ess-panel"><b>Mes demandes et absences · dernier relevé reçu</b>'+
   '<p class="small muted">'+tracking.pendingCount+' demande(s) en attente parmi les données vérifiées. Une demande approuvée ne confirme pas, à elle seule, votre paie.</p>'+
   trackingNotice+(trackingRows||'<p class="small muted">'+(tracking.complete?
