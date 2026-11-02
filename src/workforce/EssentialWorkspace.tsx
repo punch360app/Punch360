@@ -81,14 +81,15 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   const requestedFor=account.companyId+':'+account.userId;
   const cacheKey='essential-punch-channel:'+account.companyId+':'+account.userId;
   const raw=await AsyncStorage.getItem(cacheKey);const cached=raw?JSON.parse(raw):null;
-  const validCache=cached&&Date.now()-cached.checkedAt<86400000;
+  const validCache=cached?.version===2&&Number.isFinite(cached.checkedAt)&&
+    cached.checkedAt<=Date.now()&&Date.now()-cached.checkedAt<86400000;
   const network=await Network.getNetworkStateAsync();
   if(network.isConnected===false||network.isInternetReachable===false){
-   if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
+   if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
    if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
   }else{
    const channel=await supabase.from('company_workers').select('id,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();
-   if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
+   if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false)}if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
    else if(channel.data){if(visitContext.current===requestedFor)setMissionWorker({key:requestedFor,id:channel.data.id});let assignedLocation=null;
     if(channel.data.location_id){
      const site=await supabase.from('essential_locations')
@@ -104,7 +105,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
     const job=essentialWorkerPunchJobId(account.companyId,channel.data,
      assignedLocation?[assignedLocation]:[],account.defaultJobId);
     const allowed=channel.data.can_mobile_punch&&channel.data.personal_access;setSiteJob(job);setMobileAllowed(allowed);
-    await AsyncStorage.setItem(cacheKey,JSON.stringify({job,allowed,checkedAt:Date.now()})).catch(()=>{});
+    await AsyncStorage.setItem(cacheKey,JSON.stringify({version:2,job,allowed,checkedAt:Date.now()})).catch(()=>{});
     try{
      const anchor=Date.now();
      const result=await supabase.rpc('list_essential_assigned_client_sites',{
