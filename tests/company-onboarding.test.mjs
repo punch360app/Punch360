@@ -106,7 +106,7 @@ test('public app guards repeat creation and checks the server membership',()=>{
  assert.match(app,/if\(state\.authBusy\|\|state\.pendingCompanyCreation\)return;/);
  assert.match(app,/accepted=await createCompanyOnce\(/);
  assert.match(app,/state\.pendingCompanyCreation=\{companyId:accepted\.companyId,\.\.\.pendingContext\}/);
- assert.match(app,/isCreatedCompanyVerified\(pending\.companyId,state\.user\?\.id,state\.account,companyContext\.list\)/);
+ assert.match(app,/isCreatedCompanyVerified\(createdCompanyId,state\.user\?\.id,state\.account,companyContext\.list\)/);
  assert.match(app,/verifyCreatedCompany/);
  assert.match(app,/recoverCreatedCompanyWorkspace\(pending,state\.user\?\.id,companyContext\.list\)/);
  assert.match(app,/previousIds:companyContext\.list\.map\(w=>w\.companyId\)/);
