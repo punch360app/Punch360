@@ -16,6 +16,39 @@ function netMilliseconds(segments,breaks,from,until){
  return segments.reduce((total,segment)=>
   total+netSegmentMilliseconds(segment,bySession.get(segment.session_id)||[],from,until),0);
 }
+
+/** Day-by-day native estimates: one scoped segment source and one break engine.
+ * These rows may contain pending local events; they are not payroll approvals.
+ * Use local civil midnights instead of fixed 24h intervals across DST.
+ */
+export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now()}={}){
+ if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
+  !Number.isFinite(now)||!Array.isArray(sessions)||!Array.isArray(segments)||
+  !Array.isArray(breaks))return [];
+ const ids=new Set(sessions.filter(s=>s?.company_id===companyId&&s.user_id===userId&&
+  typeof s.id==='string'&&s.id).map(s=>s.id));
+ const parts=segments.filter(s=>s&&ids.has(s.session_id)&&s.company_id===companyId&&
+  (s.user_id==null||s.user_id===userId));
+ const pauses=new Map();
+ for(const b of breaks)if(b&&ids.has(b.session_id)&&
+  (b.company_id==null||b.company_id===companyId)&&
+  (b.user_id==null||b.user_id===userId)){
+  const list=pauses.get(b.session_id)||[];list.push(b);pauses.set(b.session_id,list);
+ }
+ const today=new Date(now),week=new Date(today.getFullYear(),today.getMonth(),
+  today.getDate()-(today.getDay()+6)%7);
+ const rows=[];
+ for(let n=0;n<7;n++){
+  const dayStart=new Date(week.getFullYear(),week.getMonth(),week.getDate()+n).getTime();
+  if(dayStart>now)break;
+  const until=Math.min(now,new Date(week.getFullYear(),week.getMonth(),week.getDate()+n+1).getTime());
+  const netMs=parts.reduce((sum,s)=>sum+
+   netSegmentMilliseconds(s,pauses.get(s.session_id)||[],dayStart,until),0);
+  if(netMs>0)rows.unshift({dayStart,netMs});
+ }
+ return rows;
+}
+
 export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  projectedSessions=[],projectedSegments=[],projectedBreaks=[],pendingCount=0,now=Date.now(),snapshotFetchedAt=null}={}){
  const ready=typeof companyId==='string'&&companyId.length>0&&
