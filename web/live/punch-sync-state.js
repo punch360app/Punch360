@@ -6,13 +6,18 @@ const LABELS=Object.freeze({
  in:'Entrée',out:'Sortie',transfer:'Changement de chantier',
  break_start:'Début de pause',break_end:'Fin de pause'
 });
+export function isOwnPunchJournalEvent(event,companyId,userId){
+ return typeof companyId==='string'&&companyId.length>0&&
+  typeof userId==='string'&&userId.length>0&&
+  event?.company===companyId&&event.user===userId&&
+  typeof event.id==='string'&&event.id.length>0;
+}
 export function localPunchSyncState(events,companyId,userId){
  const pending=[],conflicts=[];
  if(!Array.isArray(events)||typeof companyId!=='string'||!companyId||
     typeof userId!=='string'||!userId)return {pending,conflicts};
  for(const event of events){
-  if(!event||event.company!==companyId||event.user!==userId||
-     typeof event.id!=='string'||!event.id)continue;
+  if(!isOwnPunchJournalEvent(event,companyId,userId))continue;
   if(event.status!=='pending'&&event.status!=='conflict')continue;
   // Never surface raw GPS fixes, server responses or cached job information.
   const record={
