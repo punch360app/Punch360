@@ -76,7 +76,8 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const [showArchived,setShowArchived]=useState(false);
  async function refresh(){
   const requestedFor=account.companyId+':'+account.userId;
-  if(punchActionInFlight.current)return;
+  // Explicit synchronization owns its confirmation; do not let a timer preempt it.
+  if(punchActionInFlight.current||syncInFlight.current)return;
   const revision=++punchReadRevision.current;
   try{
    // Jobs, archives and orders must never prevent an available punch

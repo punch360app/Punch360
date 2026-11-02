@@ -10,22 +10,22 @@ const snapshot={sessions,segments:[{id:'X',session_id:'S1',job_id:'J1',started_a
 function fixture({failJobs=false,failArchives=false,failOrders=false,failPunch=false,networkError=false,
  changed=false}={}){
  const calls=[],messages=[],account={companyId:'A',userId:'U',companyName:'Compagnie A'};
- const scopeRef={current:'A:U'},punchReadRevision={current:0},punchActionInFlight={current:false};
+ const scopeRef={current:'A:U'},punchReadRevision={current:0},punchActionInFlight={current:false},syncInFlight={current:false};
  const set=(k,v)=>calls.push([k,v]);
- const fn=new Function('account','scopeRef','punchActionInFlight','punchReadRevision',
+ const fn=new Function('account','scopeRef','punchActionInFlight','syncInFlight','punchReadRevision',
   'Network','listMyCompanyJobs','loadPunchState','loadArchives','supabase','journalSummary',
-  'setJobs','setDemo','setLocalPending','setLocalConflicts','setPendingItems','setConflictItems',
+  'setJobs','setDemo','setJobsReadSource','setLocalPending','setLocalConflicts','setPendingItems','setConflictItems',
   'setJournalViewScope','setJournalBlocked','setMessage','setHoursReadSource','setHoursProjected',
   'setSessions','setServerSegments','setServerBreaks','setSegments','setArchived','setSelectedId',
   'setPunchActive','setStartMs','setOrders',source+'\nreturn refresh;')(
-  account,scopeRef,punchActionInFlight,punchReadRevision,
+  account,scopeRef,punchActionInFlight,syncInFlight,punchReadRevision,
   {getNetworkStateAsync:async()=>{if(networkError)throw Error('Unknown network');return {isConnected:true,isInternetReachable:true}}},
   async()=>{if(failJobs)throw Error('no jobs');return {jobs:[{id:'J1',name:'Chantier'}],message:''}},
   async()=>{if(failPunch)throw Error('no hours');if(changed)scopeRef.current='B:V';return snapshot;},
   async()=>{if(failArchives)throw Error('no archives');return []},
   {from:()=>({select:()=>({eq:()=>({order:()=>({limit:async()=>{if(failOrders)throw Error('no orders');return {data:[],error:null}}})})})})},
   async()=>({pending:2,conflicts:0,blocked:false,pendingItems:[],conflictItems:[]}),
-  x=>set('jobs',x),x=>set('demo',x),x=>set('pending',x),x=>set('conflicts',x),x=>set('pendingItems',x),
+  x=>set('jobs',x),x=>set('demo',x),x=>set('jobSource',x),x=>set('pending',x),x=>set('conflicts',x),x=>set('pendingItems',x),
   x=>set('conflictItems',x),x=>set('scope',x),x=>set('blocked',x),x=>messages.push(x),
   x=>set('source',x),x=>set('projected',x),x=>set('sessions',x),x=>set('segments',x),x=>set('breaks',x),
   x=>set('segmentRows',x),x=>set('archives',x),fn=>set('selection',typeof fn==='function'?fn(''):fn),
@@ -76,4 +76,10 @@ test('background failure paths preserve monotonic revision and account validatio
  assert.match(source,/Promise\.allSettled\(/);
  assert.match(source,/if\(!punch\)\{[\s\S]*?setJournalViewScope\(''\)/);
  assert.match(source,/setJournalViewScope\(requestedFor\);\s*const blocked=/);
+});
+
+test('job lookup failure marks catalog as cached but keeps scoped hours accessible',async()=>{
+ const h=fixture({failJobs:true});await h.run();
+ assert.equal(h.calls.find(x=>x[0]==='jobSource')[1],'cache');
+ assert.equal(h.calls.find(x=>x[0]==='sessions')[1][0].id,'S1');
 });
