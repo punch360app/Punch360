@@ -3,8 +3,10 @@
 // credential lookup, independent PIN verification and event locks are NOT
 // implemented here. See docs/KIOSK_QR_SERVER_CONTRACT.md before integration.
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const DEVICE_SECRET=/^[0-9a-f]{64}$/i;
-const CARD=/^P360C1\.[0-9a-f]{64}$/i;
+// The registry and the SQL verifier store canonical lowercase hex. Do not
+// accept alternate spellings of the same credential across API boundaries.
+const DEVICE_SECRET=/^[0-9a-f]{64}$/;
+const CARD=/^P360C1\.[0-9a-f]{64}$/;
 const PIN=/^[0-9]{6,12}$/;
 const PUNCH_ACTIONS=new Set(['in','out','break_start','break_start_paid','break_end']);
 const IDENTIFY_KEYS=new Set(['action','deviceId','token','cardCode','pin']);
