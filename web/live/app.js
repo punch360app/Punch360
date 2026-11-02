@@ -11,6 +11,7 @@ import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
 import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
 import {createCompanyOnce,isCreatedCompanyVerified,recoverCreatedCompanyWorkspace,savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from './company-onboarding.js';
+import {isDefinitiveRpcRejection} from './rpc-rejection.js';
 import {acceptWorkerInviteOnce,validWorkerInviteToken,isWorkerActivationVerified,recoverWorkerActivation,savePendingWorkerActivation,readPendingWorkerActivation,clearPendingWorkerActivation} from './worker-onboarding.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
@@ -597,7 +598,7 @@ async function createCompany(){
  state.authBusy=true;authMessage('');draw();
  try{
   let definiteError=false,accepted;
-  try{accepted=await createCompanyOnce(async(name,params)=>{const r=await sb.rpc(name,params);if(r?.error)definiteError=true;return r;},n,state.creationEdition)}
+  try{accepted=await createCompanyOnce(async(name,params)=>{const r=await sb.rpc(name,params);if(r?.error)definiteError=isDefinitiveRpcRejection(r.error);return r;},n,state.creationEdition)}
   catch(err){if(definiteError)throw err;state.pendingCompanyCreation={companyId:null,...pendingContext};savePendingCompanyCreation(sessionStorage,state.user?.id,null,pendingContext);authMessage('Réponse du serveur incertaine. Vérifiez vos accès avant toute nouvelle création.',true);return;}
   state.pendingCompanyCreation={companyId:accepted.companyId,...pendingContext};
   savePendingCompanyCreation(sessionStorage,state.user?.id,accepted.companyId,pendingContext);
@@ -653,7 +654,7 @@ async function activateWorker(){
   try{
    accepted=await acceptWorkerInviteOnce(async(name,args)=>{
     const response=await sb.rpc(name,args);
-    if(response?.error)rejected=true;
+    if(response?.error)rejected=isDefinitiveRpcRejection(response.error);
     return response;
    },token);
   }catch(err){
