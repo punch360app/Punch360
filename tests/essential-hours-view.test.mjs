@@ -33,6 +33,40 @@ test('the employee sees only current-company server sessions and net weekly time
  assert.equal(view.hasPending,false);
 });
 
+test('foreign-user segments cannot inflate weekly server or projected personal time',()=>{
+ const personal={id:'shared-id',company_id:company,user_id:user,
+  started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T11:00:00Z'};
+ const ownSegment={session_id:personal.id,company_id:company,user_id:user,
+  started_at:personal.started_at,ended_at:personal.ended_at};
+ // A contaminated offline snapshot can reuse a session id across users.
+ const otherSegment={...ownSegment,user_id:'another-user',
+  started_at:'2026-11-04T11:00:00Z',ended_at:'2026-11-04T12:00:00Z'};
+ const snapshot={sessions:[personal],segments:[ownSegment,otherSegment],breaks:[]};
+ const view=essentialHoursView({...fixture,snapshot,pendingCount:1,
+  projectedSessions:snapshot.sessions,projectedSegments:snapshot.segments,projectedBreaks:[]});
+ assert.equal(view.confirmedWeekMs,3600000);
+ assert.equal(view.confirmedDaily[0].netMs,3600000);
+ assert.equal(view.confirmedWeekDays[0].netMs,3600000);
+ assert.equal(view.projectedWeekMs,3600000);
+});
+
+test('foreign-user breaks cannot deduct hours from a personal weekly report',()=>{
+ const personal={id:'shared-break-id',company_id:company,user_id:user,
+  started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T11:00:00Z'};
+ const segment={session_id:personal.id,company_id:company,user_id:user,
+  started_at:personal.started_at,ended_at:personal.ended_at};
+ const foreignPause={session_id:personal.id,company_id:company,user_id:'another-user',
+  is_paid:false,started_at:personal.started_at,ended_at:personal.ended_at};
+ const snapshot={sessions:[personal],segments:[segment],breaks:[foreignPause]};
+ const view=essentialHoursView({...fixture,snapshot,pendingCount:1,
+  projectedSessions:snapshot.sessions,projectedSegments:snapshot.segments,
+  projectedBreaks:snapshot.breaks});
+ assert.equal(view.confirmedWeekMs,3600000);
+ assert.equal(view.confirmedDaily[0].unpaidMs,0);
+ assert.equal(view.confirmedWeekDays[0].netMs,3600000);
+ assert.equal(view.projectedWeekMs,3600000);
+});
+
 test('pending journal time is visibly separate from server-sourced time',()=>{
  const local={id:'local-1',company_id:company,user_id:user,started_at:'2026-11-04T13:00:00Z',ended_at:'2026-11-04T14:00:00Z'};
  const view=essentialHoursView({...fixture,pendingCount:1,projectedSessions:[...sessions,local],
