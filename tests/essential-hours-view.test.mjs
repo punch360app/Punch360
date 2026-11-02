@@ -80,5 +80,10 @@ test('Essentiel hours UI does not export projected local events as the server CS
  assert.match(app,/view\.confirmedSessions\.slice\(0,80\)/);
  assert.match(app,/événement\(s\) conservé\(s\) sur cet appareil/);
  assert.match(app,/Exporter le relevé serveur CSV/);
+ assert.match(app,/!calls\[2\]\.error&&!calls\[21\]\.error&&!errors\.some\(x=>x\.startsWith\('segments:'\)\)/);
+ assert.match(app,/serverPunchFetchedAt=Date\.now\(\)/);
+ assert.match(app,/Number\.isFinite\(data\.serverPunchFetchedAt\)/);
+ assert.match(app,/DERNIER RELEVÉ SERVEUR REÇU/);
+ assert.match(app,/une lecture réseau incomplète peuvent manquer/);
  assert.match(app,/if\(!manager\(\)\|\|state\.section==='hours'\)q=q\.eq\('punch_sessions\.user_id',state\.user\.id\)/);
 });
