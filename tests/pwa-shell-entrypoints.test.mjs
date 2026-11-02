@@ -6,7 +6,7 @@ const root=new URL('../web/live/',import.meta.url);
 const worker=readFileSync(new URL('sw.js',root),'utf8');
 const precacheList=worker.match(/\bconst FILES\s*=\s*\[([\s\S]*?)\];/);
 assert.ok(precacheList,'Expected the installed service worker FILES list');
-const cached=new Set([...precacheList[1].matchAll(/(['"])(\.\/[^'"]+)\1/g)]
+const cached=new Set([...precacheList[1].matchAll(/(['"])(\.\/[^'"]*)\1/g)]
  .map(match=>new URL(match[2],root).href));
 
 function checkPrecached(reference,base,label){
