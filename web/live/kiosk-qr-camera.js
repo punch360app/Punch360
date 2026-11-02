@@ -17,13 +17,14 @@ export const kioskQrCopy=Object.freeze({
 export const kioskQrText=(language,key)=>(kioskQrCopy[language]||kioskQrCopy.en)[key]||kioskQrCopy.en[key]||'';
 
 // Never expose the raw QR text via callbacks; recognizing a QR is NOT an identity check.
-export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedule=callback=>setTimeout(callback,180),cancel=clearTimeout,now=()=>Date.now()}={}){
- let generation=0,stream=null,video=null,detector=null,timer=null,active=false;
+export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedule=callback=>setTimeout(callback,180),cancel=clearTimeout,expire=callback=>setTimeout(callback,30000),cancelExpire=clearTimeout,now=()=>Date.now()}={}){
+ let generation=0,stream=null,video=null,detector=null,timer=null,expirationTimer=null,active=false;
  let started=0;
  const stopTracks=media=>{for(const track of media?.getTracks?.()||[])try{track.stop()}catch{}};
  function stop(){
   generation++;active=false;
   if(timer!==null){cancel(timer);timer=null;}
+  if(expirationTimer!==null){cancelExpire(expirationTimer);expirationTimer=null;}
   const oldVideo=video,oldStream=stream;video=null;stream=null;detector=null;
   try{oldVideo?.pause?.()}catch{}
   if(oldVideo)try{oldVideo.srcObject=null}catch{}
@@ -45,6 +46,9 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
    await video.play?.();
    if(token!==generation)return false;
    started=now();active=true;
+   // Independent privacy watchdog: a stalled BarcodeDetector.detect() must
+   // never leave the shared tablet camera running indefinitely.
+   expirationTimer=expire(()=>{if(token!==generation||!active)return;stop();notify?.('expired');});
    const scan=async()=>{
     if(!active||token!==generation)return;
     if(now()-started>=30000){stop();notify?.('expired');return;}
