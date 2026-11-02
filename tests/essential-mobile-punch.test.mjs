@@ -211,11 +211,11 @@ test('Expo Essentiel recovers from corrupt channel cache without hiding hours or
  assert.ok(from>=0&&to>from,'Guarded channel and network loader must be present');
  const body=native.slice(from,to).replace('let cached:any=null;','let cached=null;');
  const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
- const read=new AsyncFunction('AsyncStorage','Network','cacheKey',body+'return {cached,validCache,offline}');
+ const read=new AsyncFunction('AsyncStorage','Network','cacheKey','current',body+'return {cached,validCache,offline}');
  const run=async(raw,{readError=false,networkError=false,connected=true}={})=>
   read({getItem:async()=>{if(readError)throw Error('storage unavailable');return raw}},
    {getNetworkStateAsync:async()=>{if(networkError)throw Error('no network state');
-    return {isConnected:connected,isInternetReachable:connected}}},'essential-punch-channel:A:u');
+    return {isConnected:connected,isInternetReachable:connected}}},'essential-punch-channel:A:u',()=>true);
  for(const raw of ['{bad-json','null','{}',JSON.stringify({version:1,job:'job-A',allowed:true,checkedAt:Date.now()}),
   JSON.stringify({version:2,job:'job-A',allowed:'true',checkedAt:Date.now()}),
   JSON.stringify({version:2,job:'job-A',allowed:true,checkedAt:Date.now()+60000}),
