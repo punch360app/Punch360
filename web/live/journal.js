@@ -66,7 +66,9 @@ export class PunchJournal {
  async flush(){
   if(this.flushing)return this.flushing;
   this.flushing=this.exclusive(async()=>{const queue=await this.read();if(hasUnsafePunchJournalEntries(queue,this.company,this.user))throw Error('Journal local non vérifiable : aucun envoi effectué.');let sent=0;for(const event of queue){if(event.status!=='pending')continue;
-   try{const result=await this.send(event);if(!['synced','conflict'].includes(result?.sync_status))throw Error('Accusé serveur invalide');event.status=result.sync_status;event.result=result;sent++;await this.storage.set(this.key,JSON.stringify(queue));
+   try{const result=await this.send(event);if(!['synced','conflict'].includes(result?.sync_status)||
+    (Object.prototype.hasOwnProperty.call(result,'event_id')&&result.event_id!==event.id))
+     throw Error('Accusé serveur invalide ou lié à un autre événement');event.status=result.sync_status;event.result=result;sent++;await this.storage.set(this.key,JSON.stringify(queue));
     // Server records dependent conflicts without applying them to official time.
    }catch(err){event.offline=true;event.error=String(err?.message||err);await this.storage.set(this.key,JSON.stringify(queue));break;}
   }return {sent,events:queue,pending:queue.filter(e=>e.status==='pending').length};}).finally(()=>{this.flushing=null});return this.flushing;
