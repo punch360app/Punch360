@@ -47,7 +47,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .order('started_at',{ascending:false}).limit(500);
  if(error){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached),'cache');throw error;}
  const list=sessions as PunchSession[]||[];
- if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};await AsyncStorage.setItem(cacheKey,JSON.stringify(empty));return overlay(empty,'server');}
+ if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};try{await AsyncStorage.setItem(cacheKey,JSON.stringify(empty))}catch{/* Do not hide verified server state. */}return overlay(empty,'server');}
  const {data:segments,error:segmentsError}=await supabase.from('punch_segments')
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
@@ -55,7 +55,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  if(segmentsError){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached),'cache');throw segmentsError;}
  const sorted=(segments||[]) as PunchSegment[];
  const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached),'cache');throw breakResult.error;}
- const snapshot={breaks:breakResult.data||[],sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot));return overlay(snapshot,'server');
+ const snapshot={breaks:breakResult.data||[],sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{/* Do not hide verified server state. */}return overlay(snapshot,'server');
 }
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{

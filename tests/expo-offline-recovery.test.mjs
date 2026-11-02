@@ -20,15 +20,15 @@ const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false}={}){
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false}={}){
  const store=new Map([['punch-state:U:A',JSON.stringify(cached)]]),calls={send:0,read:0,db:0};
  const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
  const j={flush:async()=>{calls.send++;if(flushFail)throw Error('Journal non vérifiable')},
   read:async()=>{calls.read++;if(readFail)throw Error('Journal illisible');return offlineEvents}};
- const storage={getItem:async key=>store.get(key)||null,setItem:async(k,v)=>store.set(k,v)};
+ const storage={getItem:async key=>store.get(key)||null,setItem:async(k,v)=>{if(writeFail)throw Error('cache saturé');store.set(k,v)}};
  const network={getNetworkStateAsync:async()=>{if(networkStateFail)throw Error('Network status unavailable');return {isConnected:!offline,isInternetReachable:!offline}}};
  const supabase={from:table=>{
-  const result=table==='punch_sessions'?{data:[own],error:dbFail?Error('offline'):null}:
+  const result=table==='punch_sessions'?{data:emptyServer?[]:[own],error:dbFail?Error('offline'):null}:
    table==='punch_segments'?{data:[cached.segments[1]],error:null}:
    {data:[],error:breakFail?Error('Breaks unavailable'):null};
   const q={select:()=>q,eq:()=>q,in:()=>q,order:()=>q,limit:()=>q,
@@ -136,4 +136,18 @@ test('Expo hours and home clearly label cache, projected time and server origin 
  assert.match(essential,/Total indicatif · les heures restent sujettes à validation/);
  assert.match(essential,/punch\.readSource==='cache'\?'Copie locale'/);
  assert.match(app,/punch\.readSource==='server'\?'Dernier relevé serveur · heures sujettes à validation'/);
+});
+
+test('online official hours survive device cache write failure',async()=>{
+ const h=fixture({offline:false,writeFail:true}),state=await h.load('A');
+ assert.equal(state.readSource,'server');
+ assert.deepEqual(state.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+ assert.equal(h.calls.db,3);
+});
+test('online empty punch session result survives device cache write failure',async()=>{
+ const h=fixture({offline:false,writeFail:true,emptyServer:true}),state=await h.load('A');
+ assert.equal(state.readSource,'server');
+ assert.deepEqual(state.sessions,[]);assert.equal(state.active,null);
+ assert.equal(h.calls.db,1);
 });

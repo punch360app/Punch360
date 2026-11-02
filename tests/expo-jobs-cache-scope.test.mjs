@@ -17,12 +17,12 @@ const job=(company='A')=>({id:'J1',company_id:company,number:'214',name:'Job',ad
  latitude:46.8,longitude:-71.2,photo_url:null,assigned_to_me:true,planned_start:null});
 const valid=()=>({jobs:[job()],demo:false,message:''});
 function fixture({online=false,networkError=false,cache=valid(),serverJobs=[job()],
- jobsError=false,assignError=false}={}){
+ jobsError=false,assignError=false,writeFail=false}={}){
  const calls=[],store=new Map();
  if(cache!==null)store.set('punch-jobs:U:A',JSON.stringify(cache));
  const AsyncStorage={
   getItem:async key=>{calls.push(['get',key]);return store.get(key)||null},
-  setItem:async(key,value)=>{calls.push(['set',key]);store.set(key,value)}
+  setItem:async(key,value)=>{calls.push(['set',key]);if(writeFail)throw Error('stockage saturé');store.set(key,value)}
  };
  const query={select:()=>query,eq:()=>query,order:()=>Promise.resolve({data:serverJobs,error:jobsError?Error('server jobs'):null}),
   then:(ok,err)=>Promise.resolve({data:[],error:null}).then(ok,err)};
@@ -94,4 +94,17 @@ test('online fallback after API error cannot pretend catalog is fresh',async()=>
 });
 test('legacy cache marked server must still be labeled as cached when reused',()=>{
  assert.equal(scopedJobCache({...valid(),readSource:'server'},'A').readSource,'cache');
+});
+
+test('live catalog remains available when local storage refuses the cache update',async()=>{
+ const h=fixture({online:true,writeFail:true,cache:null}),result=await h.run();
+ assert.equal(result.readSource,'server');assert.equal(result.jobs[0].id,'J1');
+ assert.match(result.message,/Sauvegarde hors ligne indisponible/);
+ assert.equal(h.calls.filter(c=>c[0]==='set').length,1);
+});
+test('failed cache update keeps previous snapshot untouched and warns about offline storage',async()=>{
+ const h=fixture({online:true,writeFail:true}),result=await h.run();
+ assert.equal(result.readSource,'server');
+ assert.equal(JSON.parse(h.store.get('punch-jobs:U:A')).readSource,undefined);
+ assert.match(result.message,/Sauvegarde hors ligne indisponible/);
 });

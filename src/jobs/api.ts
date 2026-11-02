@@ -49,7 +49,11 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
   latitude:j.latitude,longitude:j.longitude,photo_url:j.photo_url,
   assigned_to_me:map.has(j.id),planned_start:map.get(j.id)||null
  }));
- const result:JobLoad={jobs,demo:false,message:jobs.length===0?'Aucun chantier. Le boss peut ajouter la première job.':'',readSource:'server'};await AsyncStorage.setItem(key,JSON.stringify(result));return result;
+ const result:JobLoad={jobs,demo:false,message:jobs.length===0?'Aucun chantier. Le boss peut ajouter la première job.':'',readSource:'server'};
+ // A full or read-only local cache must never hide freshly fetched server jobs.
+ try{await AsyncStorage.setItem(key,JSON.stringify(result))}
+ catch{result.message=[result.message,'Sauvegarde hors ligne indisponible sur cet appareil.'].filter(Boolean).join(' ');}
+ return result;
 }
 export async function createJob(companyId:string,number:string,name:string,address:string){
  const {data,error}=await supabase.from('jobs')
