@@ -24,15 +24,24 @@ export function projectPendingPunches(snapshot,events){
   const active=sessions.find(s=>!s.ended_at&&
    (s.company_id==null||s.company_id===event.company)&&
    (s.user_id==null||s.user_id===event.user));
+  const ownsRecord=record=>record?.session_id===active?.id&&
+   (record.company_id==null||record.company_id===event.company)&&
+   (record.user_id==null||record.user_id===event.user);
   if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
   if(event.action==='break_start'&&active)breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});
-  if(event.action==='break_end'&&active)for(const pause of breaks)if(pause.session_id===active.id&&!pause.ended_at)pause.ended_at=event.occurredAt;
-  if(event.action==='out'&&active){for(const pause of breaks)if(pause.session_id===active.id&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(seg.session_id===active.id&&!seg.ended_at)seg.ended_at=event.occurredAt;}
-  if(event.action==='transfer'&&active){for(const seg of segments)if(seg.session_id===active.id&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
+  if(event.action==='break_end'&&active)for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;
+  if(event.action==='out'&&active){for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;}
+  if(event.action==='transfer'&&active){for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
  }
  const pending=events.filter(e=>e.status==='pending'),latest=pending.at(-1);
  const active=sessions.find(s=>!s.ended_at&&(!latest||
   (s.company_id==null||s.company_id===latest.company)&&
   (s.user_id==null||s.user_id===latest.user)))||null;
- return {sessions,segments,breaks,active,lastJobId:segments[0]?.job_id||null};
+ // A pending local event supplies the identity for the last selected job.
+ // Do not display or reuse another tenant's job from a mixed old cache.
+ const ownSessionIds=latest?new Set(sessions.filter(s=>
+  s.company_id===latest.company&&s.user_id===latest.user).map(s=>s.id)):null;
+ const lastSegment=latest?segments.find(s=>
+  s.company_id===latest.company&&ownSessionIds.has(s.session_id)):segments[0];
+ return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null};
 }
