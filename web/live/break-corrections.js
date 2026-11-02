@@ -73,9 +73,47 @@ export function createBreakCorrectionsController({sb,redraw,escape:e,document:do
   return `<h2>Corrections de pauses</h2>${s.error?`<p role="alert">${e(s.error)}</p>`:''}<p>Les heures officielles restent inchangées jusqu’à l’approbation par une autre personne.</p><section class="ess-panel"><h3>Ajouter ou corriger une pause</h3><label class="ess-field">Journée terminée<select id="breakfix-session"><option value="">Choisir une journée</option>${sessions.map(x=>`<option value="${e(x.id)}" ${f.session===x.id?'selected':''}>${e(name(x))} · ${e(new Date(x.started_at).toLocaleString('fr-CA'))}</option>`).join('')}</select></label><label class="ess-field">Pause<select id="breakfix-breakId"><option value="">Ajouter une pause oubliée</option>${breaks.filter(b=>b.session_id===f.session&&b.ended_at).map(b=>`<option value="${e(b.id)}" ${f.breakId===b.id?'selected':''}>${e(new Date(b.started_at).toLocaleTimeString('fr-CA'))} → ${e(new Date(b.ended_at).toLocaleTimeString('fr-CA'))} · ${b.is_paid?'Payée':'Non payée'}</option>`).join('')}</select></label>${[['start','Début avec fuseau'],['end','Fin avec fuseau'],['reason','Motif']].map(([id,label])=>`<label class="ess-field">${label}<input id="breakfix-${id}" value="${e(f[id])}" ${id==='reason'?'maxlength="1000"':'placeholder="2026-10-20T12:00:00-04:00"'}></label>`).join('')}<label class="ess-check"><input type="checkbox" id="breakfix-paid" ${f.paid?'checked':''}>Pause payée</label>${button('Soumettre la demande','submit')}</section><section class="ess-panel"><h3>Historique des demandes</h3><p>100 demandes récentes et demandes en attente · 100 journées terminées proposées.</p>${!scoped.ready?'<p role="status">Historique non vérifié. Actualisez vos demandes.</p>':''}${requests.map(r=>`<article class="ess-person"><div><b>${e(r.reason)}</b><small>${e(({pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'})[r.status])}</small><small>Avant : ${r.original_break?e(new Date(r.original_break.started_at).toLocaleString('fr-CA'))+' → '+e(new Date(r.original_break.ended_at).toLocaleTimeString('fr-CA'))+' · '+(r.original_break.is_paid?'Payée':'Non payée'):'Aucune pause'}</small><small>Demande : ${e(new Date(r.requested_start).toLocaleString('fr-CA'))} → ${e(new Date(r.requested_end).toLocaleTimeString('fr-CA'))} · ${r.requested_paid?'Payée':'Non payée'}</small>${r.review_note?'<small>'+e(r.review_note)+'</small>':''}</div>${r.status==='pending'?(r.requested_by===s.user?button('Annuler','cancel',r.id):manager()?button('Approuver','approve',r.id)+button('Refuser','reject',r.id):''):''}</article>`).join('')||'<p>Aucune demande.</p>'}</section>${button('Actualiser','refresh')}`;}
  function input(el){if(!el.id?.startsWith('breakfix-'))return;const id=el.id.slice(9);if(!(id in s.form))return;s.form[id]=id==='paid'?el.checked:el.value;if(id==='session'){Object.assign(s.form,{breakId:'',start:'',end:'',paid:false});redraw()}else if(id==='breakId'){const b=s.breaks.find(b=>b.id===el.value);Object.assign(s.form,{start:b?.started_at||'',end:b?.ended_at||'',paid:b?.is_paid||false});redraw()}}
  async function handle(el){if(!el.dataset.action?.startsWith('breakfix:'))return false;if(s.busy)return true;const n=generation,action=el.dataset.action.slice(9),companyId=s.company,userId=s.user;s.busy=true;s.error='';try{
-  if(action==='submit'){const payload=breakCorrectionPayload(s.form);await durableLedgerRequest({storage:{get:k=>storage.getItem(k),set:(k,v)=>storage.setItem(k,v),remove:k=>storage.removeItem(k)},key:'punch-break-request:'+s.company+':'+s.user,payload,uuid:()=>crypto.randomUUID(),digest:async v=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)))].map(b=>b.toString(16).padStart(2,'0')).join(''),send:async args=>{const r=await sb.rpc('request_essential_break_correction',args);if(r.error)throw r.error;return r.data}});if(n===generation)s.form=empty();}
-  else if(action==='cancel'){const r=await sb.rpc('cancel_essential_break_correction',{p_request:el.dataset.id});if(r.error)throw r.error;}
-  else if(action==='approve'||action==='reject'){const note=globalThis.prompt('Motif de décision (3 caractères minimum)');if(!note)return true;if(note.trim().length<3)throw Error('Motif requis');const r=await sb.rpc('review_essential_break_correction',{p_request:el.dataset.id,p_approve:action==='approve',p_note:note.trim()});if(r.error)throw r.error;}
+  if(action==='submit'){
+   if(!s.loaded||!companyId||!userId)throw Error('Journées non vérifiées. Actualisez avant de soumettre.');
+   const session=s.sessions.find(x=>x?.id===s.form.session);
+   if(!session||!manager()&&session.user_id!==userId)
+    throw Error('Journée indisponible pour ce compte.');
+   if(s.form.breakId&&!s.breaks.some(b=>b?.id===s.form.breakId&&b.session_id===session.id&&b.ended_at))
+    throw Error('Pause indisponible pour cette journée.');
+   const payload=breakCorrectionPayload(s.form);
+   await durableLedgerRequest({storage:{get:k=>storage.getItem(k),set:(k,v)=>storage.setItem(k,v),remove:k=>storage.removeItem(k)},
+    key:'punch-break-request:'+companyId+':'+userId,payload,uuid:()=>crypto.randomUUID(),
+    digest:async v=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)))]
+     .map(b=>b.toString(16).padStart(2,'0')).join(''),
+    send:async args=>{
+     if(n!==generation||s.company!==companyId||s.user!==userId||!s.loaded)
+      throw Error('Compte modifié pendant la demande. Aucun envoi effectué.');
+     const r=await sb.rpc('request_essential_break_correction',args);
+     if(r.error)throw r.error;return r.data;
+    }});
+   if(n===generation)s.form=empty();
+  }else if(['cancel','approve','reject'].includes(action)){
+   const scoped=breakCorrectionInbox({companyId,userId,role:s.role,source:s});
+   if(!scoped.ready)throw Error('Demandes non vérifiées. Actualisez.');
+   const request=scoped.requests.find(r=>r.id===el.dataset.id&&r.status==='pending');
+   if(!request)throw Error('Demande indisponible ou déjà traitée pour ce compte.');
+   if(action==='cancel'){
+    if(request.requested_by!==userId)throw Error('Annulation non autorisée.');
+    const r=await sb.rpc('cancel_essential_break_correction',{p_request:request.id});
+    if(r.error)throw r.error;
+   }else{
+    if(!manager()||request.requested_by===userId)
+     throw Error('Approbation de cette demande non autorisée.');
+    const note=globalThis.prompt?.('Motif de décision (3 caractères minimum)');
+    if(!note)return true;
+    if(note.trim().length<3)throw Error('Motif requis');
+    if(n!==generation||s.company!==companyId||s.user!==userId||!s.loaded)
+     throw Error('Compte modifié. Décision non envoyée.');
+    const r=await sb.rpc('review_essential_break_correction',{
+     p_request:request.id,p_approve:action==='approve',p_note:note.trim()});
+    if(r.error)throw r.error;
+   }
+  }
   if(n===generation)await refresh();
  }catch(err){if(n===generation)s.error=err.message;}finally{if(n===generation){s.busy=false;redraw()}}return true;}
  return {state:s,load,reset,render,input,handle};
