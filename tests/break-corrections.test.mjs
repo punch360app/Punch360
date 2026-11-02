@@ -99,5 +99,5 @@ test('failed manager pending inbox read shows no verified prior HR data',async()
  assert.equal(ui.state.loaded,false);
  assert.match(ui.state.error,/Pending inbox offline/);
  assert.match(ui.render(),/Historique non vérifié/);
- assert.doesNotMatch(ui.render(),/breakfix:submit[^>]*data-id=""[^>]*>/);
+ assert.match(ui.render(),/breakfix:submit[^>]*data-id=""[^>]*disabled/);
 });
