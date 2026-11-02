@@ -48,6 +48,30 @@ test('Bento rejects previously cached offers when the catalog refresh fails and 
  }finally{await w.happyDOM.close();}
 });
 
+test('Bento ignores a late superseded catalog response to keep the newest offers',async()=>{
+ const w=new Window(),pending=[];
+ const sb={from(table){
+  assert.equal(table,'essential_plans');
+  return {select(){return {order:()=>new Promise(resolve=>pending.push(resolve))}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  const first=ui.handle({dataset:{action:'ess:refresh'}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(pending.length,1);
+  const newer=ui.handle({dataset:{action:'ess:refresh'}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(pending.length,2);
+  pending[1]({data:[{...plan,title:'Tarif récent'}],error:null});
+  await newer;
+  assert.equal(ui.state.plans[0].title,'Tarif récent');
+  pending[0]({data:[{...plan,title:'Tarif périmé'}],error:null});
+  await first;
+  assert.equal(ui.state.plans[0].title,'Tarif récent',
+   'older requests must not reintroduce outdated prices into the public offer');
+ }finally{await w.happyDOM.close();}
+});
+
 test('Bento selection reads restored seat input even without input events',async()=>{
  const w=new Window();let chosenSeats=null;
  const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,
