@@ -5,7 +5,7 @@ import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
-import {employeeMissingDaysSummary} from './missing-days.js';
+import {employeeMissingDaysSummary,managerMissingDayApprovalSummary} from './missing-days.js';
 import {essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView} from './essential-correction.js';
 import {essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView} from './essential-leave.js';
 import {sessionIdChunks,netSegmentMilliseconds} from './essential-hours-export.js';
@@ -471,6 +471,13 @@ function essentialLeavePage(){
 function essentialMore(){const items=[['profile',tr('profile')],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
 function essentialApprovals(){
  if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');
+ const missing=managerMissingDayApprovalSummary({companyId:company(),reviewerId:state.user?.id,
+  source:essentialUI.missingDays.state});
+ const missingRows=missing.ready?(missing.requests.length?missing.requests.map(r=>
+  '<div class="group"><b>'+e(r.workerName)+'</b><p class="small">'+e(when(r.startsAt))+
+  ' → '+(r.endsAt?e(when(r.endsAt)):'Fin à vérifier')+'</p></div>').join(''):
+  '<p class="small muted">Aucune journée oubliée à examiner dans les demandes chargées.</p>'):
+  '<p class="ess-notice" role="status">Demandes de journées oubliées non vérifiées. Actualisez votre compte.</p>';
  const view=essentialLeaveApprovalView({companyId:company(),manager:manager(),loaded:state.leaveApprovalsLoaded,requests:state.leaveApprovals,reviewerId:state.user?.id});
  const canReview=view.ready&&navigator.onLine&&!state.leaveReviewSubmitting;
  const correctionView=essentialCorrectionApprovalView({companyId:company(),reviewerId:state.user?.id,
@@ -502,6 +509,10 @@ function essentialApprovals(){
     (correctionView.ready?correctionRows:'')+button('Actualiser les corrections','refresh','full'))+
   card('<b>Congés à approuver</b>'+(notice?'<p class="ess-notice" role="status">'+e(notice)+'</p>':'')+
     (view.ready?leaveRows:'')+button('Actualiser les demandes','refresh','full'))+
+  card('<b>Journées entièrement oubliées à examiner</b>'+
+    (missing.ready?'<p class="small muted">'+missing.count+' demande(s) examinable(s) parmi les dernières demandes chargées. Les heures restent non confirmées avant décision serveur.</p>':'')+
+    missingRows+
+    button('Ouvrir les journées oubliées','subpage','full','data-id="missingDays"'))+
   card('<b>Fermer une semaine</b>'+formfield('Lundi de la semaine','payrollWeek','','date')+
     button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));
 }
