@@ -264,3 +264,56 @@ test('an offline append writes the exact predecessor of the last persisted event
  assert.equal(hasUnsafePunchJournalEntries(await h.journal.read(),
   'company-A','employee-A'),false);
 });
+
+test('invalid saved GPS fixes quarantine all punches before RPC and preserve bytes',async()=>{
+ const invalid=[
+  {latitude:91,longitude:-71,accuracy:5},
+  {latitude:-91,longitude:-71,accuracy:5},
+  {latitude:46,longitude:181,accuracy:5},
+  {latitude:46,longitude:-181,accuracy:5},
+  {latitude:NaN,longitude:-71,accuracy:5},
+  {latitude:46,longitude:-71,accuracy:Infinity},
+  {latitude:46,longitude:-71,accuracy:-1},
+  {latitude:'46',longitude:-71,accuracy:5},
+  {latitude:46,longitude:null,accuracy:5},
+  '46,-71',[],{}
+ ];
+ for(const fix of invalid){
+  const row={...good('invalid-gps'),fix},sent=[];
+  const h=setup([row],async e=>{sent.push(e.id);return {sync_status:'synced'};});
+  const bytes=h.memory.get(h.key);
+  assert.equal(hasUnsafePunchJournalEntries([row],'company-A','employee-A'),true);
+  await assert.rejects(h.journal.flush(),/aucun envoi effectué/);
+  await assert.rejects(h.journal.append('out'),/aucune nouvelle opération ajoutée/);
+  assert.deepEqual(sent,[]);
+  assert.equal(h.memory.get(h.key),bytes);
+ }
+});
+test('bad newly acquired coordinates cannot corrupt a clean journal',async()=>{
+ const h=setup([]),bytes=h.memory.get(h.key);
+ h.journal.uuid=()=> 'fresh-id';
+ await assert.rejects(h.journal.append('in','job-1',
+  {latitude:92,longitude:-71,accuracy:10},'2026-11-02T12:00:00Z'),
+  /aucun ajout enregistré/);
+ assert.equal(h.memory.get(h.key),bytes);
+ assert.deepEqual(await h.journal.read(),[]);
+});
+test('valid coordinates at boundaries and unavailable GPS remain accepted',async()=>{
+ const fixes=[null,undefined,
+  {latitude:0,longitude:0,accuracy:null},
+  {latitude:-90,longitude:-180,accuracy:0},
+  {latitude:90,longitude:180,accuracy:5},
+  {latitude:46.85,longitude:-71.25,accuracy:12.3}];
+ for(const fix of fixes){
+  assert.equal(hasUnsafePunchJournalEntries([{...good('valid-gps'),fix}],
+   'company-A','employee-A'),false);
+ }
+ const sent=[],h=setup([],async event=>{
+  sent.push(event.fix);return {sync_status:'synced'};
+ });
+ h.journal.uuid=()=> 'valid-id';
+ await h.journal.append('in','job-1',
+  {latitude:0,longitude:0,accuracy:0},'2026-11-02T12:00:00Z');
+ assert.equal((await h.journal.flush()).pending,0);
+ assert.deepEqual(sent,[{latitude:0,longitude:0,accuracy:0}]);
+});

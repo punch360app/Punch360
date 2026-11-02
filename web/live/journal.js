@@ -2,6 +2,19 @@
 // A contaminated local journal must be preserved for recovery, never uploaded.
 const JOURNAL_ACTIONS=new Set(['in','out','transfer','break_start','break_end']);
 const JOURNAL_STATUSES=new Set(['pending','synced','conflict']);
+// Persisted GPS is untrusted input on restart. Missing GPS is allowed
+// for server review, but impossible coordinates may never be uploaded.
+function validPunchFix(fix){
+ if(fix==null)return true;
+ if(typeof fix!=='object'||Array.isArray(fix))return false;
+ const {latitude,longitude,accuracy}=fix;
+ return typeof latitude==='number'&&Number.isFinite(latitude)&&
+  latitude>=-90&&latitude<=90&&
+  typeof longitude==='number'&&Number.isFinite(longitude)&&
+  longitude>=-180&&longitude<=180&&
+  (accuracy==null||(typeof accuracy==='number'&&
+   Number.isFinite(accuracy)&&accuracy>=0));
+}
 export function hasUnsafePunchJournalEntries(events,company,user){
  if(!Array.isArray(events)||typeof company!=='string'||!company||
   typeof user!=='string'||!user)return true;
@@ -24,6 +37,7 @@ export function hasUnsafePunchJournalEntries(events,company,user){
    (event.previous!=null&&(typeof event.previous!=='string'||!event.previous))||
    (event.paid!=null&&typeof event.paid!=='boolean')||
    (event.offline!=null&&typeof event.offline!=='boolean')||
+   !validPunchFix(event.fix)||
    seen.has(event.id))return true;
   seen.add(event.id);
   return false;
