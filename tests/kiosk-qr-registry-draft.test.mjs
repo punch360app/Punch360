@@ -52,7 +52,7 @@ test('sensitive functions use explicit scoped checks and are not granted to publ
  assert.match(activate,/consumed_at is not null or challenge\.revoked_at is not null/);
  assert.match(activate,/challenge\.expires_at<=now_at/);
  assert.match(self,/auth_user_id=auth\.uid\(\)/);
- assert.match(admin,/private\.can_administer\(w\.company_id\)/);
+ assert.match(admin,/private\.is_manager\(w\.company_id\)/);
  for(const name of ['create_worker_qr_enrollment','activate_my_kiosk_qr_card','revoke_my_kiosk_qr_card','revoke_worker_kiosk_qr_card']){
   assert.match(sql,new RegExp('revoke all on function public\\.'+name+'\\('));
  }
@@ -108,7 +108,7 @@ test('QR status views report flags without leaking token hash, challenge or inst
  assert.match(employee,/kiosk_qr_cards/);
  assert.match(employee,/revoked_at is null and expires_at>now\(\)/);
  assert.match(employee,/'active',found/);
- assert.match(manager,/private\.can_administer\(p_company\)/);
+ assert.match(manager,/private\.is_manager\(p_company\)/);
  assert.match(manager,/w\.company_id=p_company/);
  assert.match(manager,/k\.enrolled_user_id=w\.auth_user_id/);
  assert.match(manager,/'worker_id',w\.id/);
@@ -124,4 +124,21 @@ test('QR status views report flags without leaking token hash, challenge or inst
  assert.ok(acceptance.includes('Card secret exposed in own status'));
  assert.ok(acceptance.includes('Manager status leaked card secret'));
  assert.ok(acceptance.includes('Revoked card still reported active'));
+});
+
+test('SQL draft functions have balanced PostgreSQL dollar-delimiters',()=>{
+ const namedStart=(sql.match(/as \$qr_body\$/g)||[]).length;
+ const namedEnd=(sql.match(/end \$qr_body\$;/g)||[]).length;
+ assert.ok(namedStart===3 && namedEnd===3,'Named function delimiters must balance');
+ assert.doesNotMatch(sql,/as \$(?!\$|[a-zA-Z_])/);
+ assert.doesNotMatch(sql,/end \$(?!\$|[a-zA-Z_]);/);
+});
+test('QR credential revocation remains available under restricted company billing',()=>{
+ const issue=fn('create_worker_qr_enrollment');
+ const revoke=fn('revoke_worker_kiosk_qr_card');
+ const status=fn('list_kiosk_qr_card_status');
+ assert.match(issue,/private\.can_administer\(w\.company_id\)/);
+ assert.match(revoke,/private\.is_manager\(w\.company_id\)/);
+ assert.match(status,/private\.is_manager\(p_company\)/);
+ assert.doesNotMatch(revoke,/private\.can_administer/);
 });
