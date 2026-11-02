@@ -147,6 +147,30 @@ export function shouldOfferEssentialCachedRefresh({readSource,pending,blocked}={
  return readSource==='cache'&&pending===0&&blocked===false;
 }
 
+/** Limit displayed server and pending segments to their parent punch shift.
+ * Never rewrite the original source; it may be needed for recovery.
+ */
+function boundedHourSegments(segments,sessions,companyId,userId){
+ const byId=new Map(sessions.filter(s=>s?.company_id===companyId&&s.user_id===userId&&
+  typeof s.id==='string'&&s.id&&validDate(s.started_at)!==null&&
+  (s.ended_at==null||(validDate(s.ended_at)!==null&&
+   validDate(s.ended_at)>=validDate(s.started_at)))).map(s=>[s.id,s]));
+ return segments.filter(s=>s&&byId.has(s.session_id)&&
+  (s.company_id==null||s.company_id===companyId)&&
+  (s.user_id==null||s.user_id===userId)).flatMap(segment=>{
+  const session=byId.get(segment.session_id);
+  const start=validDate(segment.started_at),shiftStart=validDate(session.started_at);
+  const end=segment.ended_at==null?Infinity:validDate(segment.ended_at);
+  const shiftEnd=session.ended_at==null?Infinity:validDate(session.ended_at);
+  if(start===null||shiftStart===null||end===null||shiftEnd===null||end<start)return [];
+  const from=Math.max(start,shiftStart),until=Math.min(end,shiftEnd);
+  if(until<=from)return [];
+  if(from===start&&until===end)return [segment];
+  return [{...segment,started_at:new Date(from).toISOString(),
+   ended_at:Number.isFinite(until)?new Date(until).toISOString():null}];
+ });
+}
+
 export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  projectedSessions=[],projectedSegments=[],projectedBreaks=[],pendingCount=0,now=Date.now(),snapshotFetchedAt=null,weekOffset=0}={}){
  const ready=typeof companyId==='string'&&companyId.length>0&&
@@ -171,9 +195,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   (s.ended_at==null||(validDate(s.ended_at)!==null&&validDate(s.ended_at)>=validDate(s.started_at))))
   .sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
  const approvedIds=new Set(confirmedSessions.map(s=>s.id));
- const confirmedSegments=snapshot.segments.filter(s=>approvedIds.has(s.session_id)&&
-  (!s.company_id||s.company_id===companyId)&&
-  (s.user_id==null||s.user_id===userId));
+ const confirmedSegments=boundedHourSegments(snapshot.segments,confirmedSessions,companyId,userId);
  const confirmedBreaks=snapshot.breaks.filter(s=>approvedIds.has(s.session_id)&&
   (!s.company_id||s.company_id===companyId)&&
   (s.user_id==null||s.user_id===userId));
@@ -208,9 +230,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   const projectedIds=new Set(projectedSessions.filter(s=>
    s?.company_id===companyId&&s.user_id===userId).map(s=>s.id));
   projectedWeekMs=netMilliseconds(
-   projectedSegments.filter(s=>projectedIds.has(s.session_id)&&
-    (!s.company_id||s.company_id===companyId)&&
-    (s.user_id==null||s.user_id===userId)),
+   boundedHourSegments(projectedSegments,projectedSessions,companyId,userId),
    projectedBreaks.filter(s=>projectedIds.has(s.session_id)&&
     (!s.company_id||s.company_id===companyId)&&
     (s.user_id==null||s.user_id===userId)),

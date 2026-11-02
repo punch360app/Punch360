@@ -445,3 +445,47 @@ test('cross-account or unscoped missing-day summary cannot contaminate My Hours'
   assert.doesNotMatch(JSON.stringify(result),/stale-foreign/);
  }
 });
+
+test('Web clips server segments to verified PUNCH IN and OUT before calculating week/day',()=>{
+ const shift={id:'bounded',company_id:company,user_id:user,
+  started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T12:00:00Z'};
+ const segment={session_id:shift.id,company_id:company,
+  started_at:'2026-11-04T08:00:00Z',ended_at:'2026-11-04T15:00:00Z'};
+ const snapshot={sessions:[shift],segments:[segment],breaks:[]};
+ const result=essentialHoursView({...fixture,snapshot});
+ assert.equal(result.confirmedWeekMs,2*3600000);
+ assert.equal(result.confirmedDaily[0].grossMs,2*3600000);
+ assert.equal(result.confirmedWeekDays[0].netMs,2*3600000);
+ assert.equal(result.confirmedDays[0].netMs,2*3600000);
+ assert.equal(snapshot.segments[0].started_at,'2026-11-04T08:00:00Z');
+ assert.equal(snapshot.segments[0].ended_at,'2026-11-04T15:00:00Z');
+});
+test('Web excludes outside-session or malformed segments without dropping valid work',()=>{
+ const shift={id:'bounded',company_id:company,user_id:user,
+  started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T12:00:00Z'};
+ const segment=(id,start,end)=>({id,session_id:shift.id,company_id:company,started_at:start,ended_at:end});
+ const snapshot={sessions:[shift],segments:[
+  segment('early','2026-11-04T07:00:00Z','2026-11-04T08:00:00Z'),
+  segment('late','2026-11-04T13:00:00Z','2026-11-04T14:00:00Z'),
+  segment('bad','not-a-time','2026-11-04T11:00:00Z'),
+  segment('good','2026-11-04T10:30:00Z','2026-11-04T11:30:00Z')
+ ],breaks:[]};
+ const result=essentialHoursView({...fixture,snapshot});
+ assert.equal(result.confirmedWeekMs,3600000);
+ assert.equal(result.confirmedDaily[0].netMs,3600000);
+ assert.equal(snapshot.segments.length,4);
+});
+test('Web pending estimate uses the same bounds and never includes another tenant',()=>{
+ const shift={id:'pending',company_id:company,user_id:user,
+  started_at:'2026-11-04T09:00:00Z',ended_at:'2026-11-04T11:00:00Z'};
+ const segment={session_id:'pending',company_id:company,
+  started_at:'2026-11-04T05:00:00Z',ended_at:'2026-11-04T14:00:00Z'};
+ const foreign={...shift,id:'foreign',company_id:'other-tenant'};
+ const result=essentialHoursView({...fixture,snapshot:{sessions:[],segments:[],breaks:[]},
+  pendingCount:1,projectedSessions:[shift,foreign],projectedSegments:[
+   segment,{...segment,session_id:'foreign',company_id:'other-tenant'}],projectedBreaks:[]});
+ assert.equal(result.confirmedWeekMs,0);
+ assert.equal(result.projectedWeekMs,2*3600000);
+ assert.equal(result.hasPending,true);
+ assert.equal(segment.started_at,'2026-11-04T05:00:00Z');
+});
