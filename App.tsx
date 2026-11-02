@@ -422,7 +422,7 @@ async function refreshConstructionPunchState(){
   try{
    createdId=await submitMaterialOrder({
     companyId:account.companyId,userId:account.userId,jobId:current?.id||'',
-    note:orderNote,jobs
+    note:orderNote,jobs,stillCurrent:()=>scopeRef.current===requestedScope
    });
   }catch(error:any){
    if(scopeRef.current===requestedScope)
