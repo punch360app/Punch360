@@ -8,7 +8,7 @@ const acceptance=readFileSync(new URL('../supabase/drafts/kiosk-qr-credential-ac
 const fn=name=>{
  const beginning=sql.indexOf('create function public.'+name+'(');
  assert.ok(beginning>=0,'Expected staged function '+name);
- const closes=/end (?:\\$\\$|\\$qr_body\\$);/g;
+ const closes=/end (?:\$\$|\$qr_body\$);/g;
  closes.lastIndex=beginning;
  const match=closes.exec(sql);
  assert.ok(match&&match.index>beginning,'Missing function close: '+name);
