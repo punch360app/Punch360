@@ -18,7 +18,8 @@ export function lastConfirmedKioskPunch(companyId,snapshotCompanyId,userId,snaps
  if(typeof companyId!=='string'||!companyId||companyId!==snapshotCompanyId||
     typeof userId!=='string'||!userId||!Array.isArray(snapshot?.sessions))return null;
  const sessions=snapshot.sessions.filter(s=>
-  s?.user_id===userId&&typeof s.started_at==='string'&&Number.isFinite(Date.parse(s.started_at))&&
+  s?.company_id===companyId&&s.user_id===userId&&
+  typeof s.started_at==='string'&&Number.isFinite(Date.parse(s.started_at))&&
   (s.ended_at==null||(typeof s.ended_at==='string'&&Number.isFinite(Date.parse(s.ended_at))&&
     Date.parse(s.ended_at)>=Date.parse(s.started_at))));
  if(!sessions.length)return null;
@@ -53,7 +54,9 @@ export function resolveEssentialMobilePunchAction(companyId,userId,activeSession
    activeSession.ended_at!=null||!Array.isArray(segments))return null;
   const matching=segments.filter(segment=>
    segment?.session_id===activeSession.id&&segment.company_id===companyId&&
-   segment.ended_at==null&&typeof segment.job_id==='string'&&segment.job_id.length>0);
+   segment.ended_at==null&&
+   (segment.user_id==null||segment.user_id===userId)&&
+   typeof segment.job_id==='string'&&segment.job_id.length>0);
   return matching.length===1?{action:'out',jobId:null}:null;
  }
  const workplace=resolveEssentialPunchJob(companyId,assignedJobId,jobs);
@@ -68,7 +71,12 @@ export function firstEssentialPunchGuidance(companyId,userId,worker,snapshotComp
  if(!canUseEssentialMobilePunch(companyId,userId,worker)||
   snapshotCompanyId!==companyId||!Array.isArray(snapshot?.sessions)||
   !Number.isSafeInteger(pendingCount)||pendingCount!==0)return null;
- if(snapshot.sessions.some(session=>session?.user_id===userId))return null;
+ // A conflicting same-user session from another company is not evidence
+ // of a first punch in this company. Do not trust a mixed saved snapshot.
+ if(snapshot.sessions.some(session=>session?.user_id===userId&&
+  session.company_id!==companyId))return null;
+ if(snapshot.sessions.some(session=>session?.company_id===companyId&&
+  session.user_id===userId))return null;
  return workplace?'ready':'missing-workplace';
 }
 
