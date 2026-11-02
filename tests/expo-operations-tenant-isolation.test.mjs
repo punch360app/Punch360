@@ -28,11 +28,9 @@ function fixture(){
  const pending=new Map();
  const supabase={from:table=>{
   assert.ok(tableNames.includes(table));
+  const request=pending.get(table);assert.ok(request,'Missing response gate '+table);
   const query={select:()=>query,eq:()=>query,is:()=>query,order:()=>query,
-   then:(accept,reject)=>{
-    const request=pending.get(table);assert.ok(request,'Missing response gate '+table);
-    return request.promise.then(accept,reject);
-   }};
+   then:(accept,reject)=>request.promise.then(accept,reject)};
   return query;
  }};
  function create(account){
@@ -49,7 +47,7 @@ function fixture(){
    pending.set(table,pendingRead);
   }
   const release=()=>{for(const [table,gate] of map){
-   gate.resolve({data:data?.[table]??[{id:table+'-'+value}],error:problem?.[table]||null});
+   gate.resolve({data:data&&Object.prototype.hasOwnProperty.call(data,table)?data[table]:[{id:table+'-'+value}],error:problem?.[table]||null});
   }};
   return {release};
  }
