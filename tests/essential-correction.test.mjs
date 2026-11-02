@@ -124,8 +124,8 @@ test('manager correction approvals verify server scope and pending record before
 test('PWA install includes correction module and versions the entry consistently',()=>{
  const html=readFileSync(new URL('../web/live/index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
- assert.match(html,/app\.js\?v=essential-78-bento/);
- assert.match(sw,/app\.js\?v=essential-78-bento/);
- assert.match(sw,/punch-360-essential-v87-bento/);
+ assert.match(html,/app\.js\?v=essential-79-bento/);
+ assert.match(sw,/app\.js\?v=essential-79-bento/);
+ assert.match(sw,/punch-360-essential-v88-bento/);
  assert.match(sw,/'\.\/essential-correction\.js'/);
 });
