@@ -8,7 +8,7 @@ test('offline PWA cache includes exact versioned assets for app and kiosk shells
  const serviceWorker=readFileSync(new URL('sw.js',root),'utf8');
  const list=serviceWorker.match(/const FILES=\[([\s\S]*?)\];/);
  assert.ok(list,'Service worker must declare an install precache');
- const cached=new Set([...list[1].matchAll(/'(\.\/[^']+)'/g)].map(match=>match[1]));
+ const cached=new Set([...list[1].matchAll(/'(\.\/[^']*)'/g)].map(match=>match[1]));
  assert.ok(cached.has('./')&&cached.has('./index.html')&&cached.has('./kiosk.html'),
   'Both offline entrypoints must be in the precache');
  const missing=[];
