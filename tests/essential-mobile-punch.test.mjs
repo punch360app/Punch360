@@ -235,3 +235,45 @@ test('Expo Essentiel recovers from corrupt channel cache without hiding hours or
  assert.equal(networkFailure.validCache,true);
  assert.match(native,/const updated=await loadPunchState\(account\.companyId\)/);
 });
+
+test('Expo Essentiel ignores stale overlapping reads and defers refresh during a punch action',async()=>{
+ const start=native.indexOf('async function load(){');
+ const end=native.indexOf('\n useEffect(()=>{setMobileAllowed(false)',start);
+ assert.ok(start>=0&&end>start,'Native async refresh boundary changed');
+ const source=native.slice(start,end)
+  .replace('let cached:any=null;','let cached=null;')
+  .replace('}catch(e:any){','}catch(e){');
+ const params=['punchActionInFlight','syncInFlight','account','punchReadRevision','visitContext',
+  'AsyncStorage','Network','supabase','loadPunchState','journalSummary',
+  'setSiteJob','setMobileAllowed','setNotice','setMissionWorker','setMyVisit',
+  'setVisitUnavailable','setFixedAddress','setFixedName','setPunch','setPending',
+  'setConflicts','setPendingItems','setConflictItems','personalUpcomingClientVisit'];
+ const builder=new Function(...params,source+'\nreturn load;');
+ const revision={current:0},action={current:false},sync={current:false},scope={current:'A:u'};
+ const held=[],updates=[];
+ const setter=key=>value=>{if(key==='punch')updates.push(value.sessions[0]?.id)};
+ const load=builder(action,sync,{companyId:'A',userId:'u'},revision,scope,
+  {getItem:async()=>JSON.stringify({version:2,job:'J',allowed:true,checkedAt:Date.now()})},
+  {getNetworkStateAsync:async()=>({isConnected:false,isInternetReachable:false})},
+  null,async()=>new Promise(resolve=>held.push(resolve)),
+  async()=>({pending:0,conflicts:0,pendingItems:[],conflictItems:[],blocked:false}),
+  ...['siteJob','mobileAllowed','notice','missionWorker','myVisit','visitUnavailable',
+   'fixedAddress','fixedName','punch','pending','conflicts','pendingItems','conflictItems'].map(setter),
+  ()=>null);
+ const snapshot=id=>({sessions:[{id}],segments:[],breaks:[],active:null,lastJobId:null,readSource:'cache'});
+ const first=load();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(held.length,1,'First read must reach the server/cache fetch');
+ const second=load();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(held.length,2,'Second read must be able to overtake the first');
+ held[1](snapshot('new'));await second;
+ held[0](snapshot('old'));await first;
+ assert.deepEqual(updates,['new'],'The stale first read must never replace a newer snapshot');
+ action.current=true;await load();action.current=false;
+ sync.current=true;await load();sync.current=false;
+ assert.equal(held.length,2,'Refresh must not race with punch submission or manual sync');
+ assert.match(native,/const revision=\+\+punchReadRevision\.current/);
+ assert.match(native,/const current=\(\)=>visitContext\.current===requestedFor&&punchReadRevision\.current===revision/);
+ assert.match(native,/\[account\.companyId,account\.userId\]/);
+});
