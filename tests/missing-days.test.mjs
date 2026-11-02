@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {webcrypto as crypto} from 'node:crypto';import {missingDayPayload,createMissingDaysController,employeeMissingDaysSummary} from '../web/live/missing-days.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {webcrypto as crypto} from 'node:crypto';import {missingDayPayload,createMissingDaysController,employeeMissingDaysSummary,managerMissingDayApprovalSummary} from '../web/live/missing-days.js';
 import {readFileSync} from 'node:fs';
 const form={worker:'worker',job:'job',start:'2026-11-01T00:00:00-04:00',end:'2026-11-01T04:00:00-05:00',reason:'Forgot overnight day',breaks:[]};
 test('missing day uses explicit offsets across DST and refuses calendar errors or overlapping pauses',()=>{const p=missingDayPayload('company',form);assert.equal(Date.parse(p.p_end)-Date.parse(p.p_start),5*3600000);assert.throws(()=>missingDayPayload('company',{...form,start:'2026-02-31T08:00:00-05:00'}),/calendrier/);assert.throws(()=>missingDayPayload('company',{...form,start:'2026-11-01T00:00:00'}),/fuseau/);assert.throws(()=>missingDayPayload('company',{...form,breaks:[{start:'2026-11-01T01:00:00-04:00',end:'2026-11-01T02:00:00-05:00',paid:false},{start:'2026-11-01T01:30:00-04:00',end:'2026-11-01T02:30:00-05:00',paid:true}]}),/chevauchement/)});
@@ -74,4 +74,46 @@ test('employee missing-day history never renders a contaminated company or worke
  const html=ui.render();
  assert.match(html,/Correct request/);
  assert.doesNotMatch(html,/PRIVATE COMPANY|PRIVATE WORKER/);
+});
+
+test('manager approval summary is company and reviewer scoped, without self-approval',()=>{
+ const row={id:'a',company_id:'company',worker_id:'worker-a',status:'pending',
+  starts_at:'2026-11-01T12:00:00Z',ends_at:'2026-11-01T20:00:00Z',created_at:'2026-11-02T12:00:00Z',requested_by:'employee-a'};
+ const source={company:'company',user:'manager',role:'boss',loaded:true,
+  workers:[{id:'worker-a',auth_user_id:'employee-a',first_name:'Alex',last_name:'Nord'},
+           {id:'manager-worker',auth_user_id:'manager',first_name:'Owner'},
+           {id:'worker-b',auth_user_id:'employee-b'}],
+  requests:[row,{...row,id:'other-company',company_id:'another'},
+   {...row,id:'self',worker_id:'manager-worker',requested_by:'employee-b'},
+   {...row,id:'requester-self',requested_by:'manager'},
+   {...row,id:'unknown-worker',worker_id:'unknown'},
+   {...row,id:'approved',status:'approved'},
+   {...row,id:'other-worker',worker_id:'worker-b',created_at:'2026-11-02T13:00:00Z'}]};
+ const actual=managerMissingDayApprovalSummary({companyId:'company',reviewerId:'manager',source});
+ assert.equal(actual.ready,true);assert.equal(actual.count,2);
+ assert.deepEqual(actual.requests.map(x=>x.id),['other-worker','a']);
+ assert.equal(actual.requests[1].workerName,'Alex Nord');
+ assert.doesNotMatch(JSON.stringify(actual),/another|unknown|Owner|employee-a|employee-b/);
+});
+test('manager queue fails closed after account, role or network snapshot changes',()=>{
+ const source={company:'company',user:'manager',role:'boss',loaded:true,workers:[],requests:[]};
+ for(const changes of [{companyId:'another'}, {reviewerId:'different'},
+  {source:{...source,role:'employee'}},
+  {source:{...source,loaded:false}},
+  {source:{...source,requests:null}}]){
+  const actual=managerMissingDayApprovalSummary({companyId:'company',reviewerId:'manager',source,...changes});
+  assert.deepEqual(actual,{ready:false,count:0,requests:[]});
+ }
+});
+test('manager approvals link to the existing missing-day review, not a parallel RPC',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const first=app.indexOf('function essentialApprovals()');
+ const last=app.indexOf('function essentialPage()',first);
+ const view=app.slice(first,last);
+ assert.match(app,/import \{employeeMissingDaysSummary,managerMissingDayApprovalSummary\} from '\.\/missing-days\.js'/);
+ assert.match(view,/managerMissingDayApprovalSummary\(\{companyId:company\(\),reviewerId:state\.user\?\.id/);
+ assert.match(view,/Journées entièrement oubliées à examiner/);
+ assert.match(view,/data-id="missingDays"/);
+ assert.match(view,/Les heures restent non confirmées avant décision serveur/);
+ assert.doesNotMatch(view,/review_essential_missing_day|\.rpc\(/);
 });
