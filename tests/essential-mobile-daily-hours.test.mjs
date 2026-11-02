@@ -229,3 +229,15 @@ test('native hours use applied projection cutoff but show all pending events',()
  assert.match(ui,/hasLocalProjection:punch\.hasAppliedLocalProjection/);
  assert.match(ui,/punch\.hasLocalProjection\?\(punch\.readSource==='cache'/);
 });
+
+test('Expo keeps original attendance hours apart from local projected estimate in both views',()=>{
+ const native=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(native,/baselineSnapshot:\{sessions:ownSessions,segments:ownSegments,breaks:ownBreaks\}/);
+ assert.match(ui,/baselineLimit=essentialMobileHoursLimit\(\{now,snapshotFetchedAt:punch\.snapshotFetchedAt\}\)/);
+ assert.match(ui,/baselineSnapshot\.sessions,segments:baselineSegments/);
+ assert.match(ui,/comparePendingHours=!!punch\.hasLocalProjection&&!punch\.snapshotUnverified/);
+ assert.match(ui,/Relevé : '\+hm\(baselineWeekMs\)/);
+ assert.match(ui,/Dernier relevé disponible : '\+hm\(baselineDailyHours\.reduce/);
+ assert.match(ui,/Avec pointages locaux en attente : estimation non confirmée/);
+});

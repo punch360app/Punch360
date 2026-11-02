@@ -487,3 +487,28 @@ test('valid offline OUT is applied; blocked journal is never counted',async()=>{
  const blocked=await fixture({flushFail:true}).load('A');
  assert.equal(blocked.hasAppliedLocalProjection,false);
 });
+
+test('Expo retains a separate personal baseline while pending offline OUT changes the projection',async()=>{
+ const h=fixture({offline:true}),state=await h.load('A');
+ assert.equal(state.hasLocalProjection,true);
+ assert.equal(state.hasAppliedLocalProjection,true);
+ assert.equal(state.sessions[0].ended_at,'2026-11-02T12:00:00Z');
+ assert.equal(state.baselineSnapshot.sessions[0].ended_at,null);
+ assert.deepEqual(state.baselineSnapshot.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(state.baselineSnapshot.segments.map(s=>s.id),['own-segment']);
+ assert.deepEqual(state.baselineSnapshot.breaks,[]);
+ assert.equal(state.baselineSnapshot.segments[0].ended_at,null);
+});
+test('Expo baseline filters foreign users and tenants from both cache and server results',async()=>{
+ const contaminated={...cached,segments:[
+  cached.segments[0],cached.segments[1],
+  {...cached.segments[1],id:'foreign-user',user_id:'V',job_id:'private-foreign'}
+ ]};
+ const offline=await fixture({rawCache:JSON.stringify(contaminated),flushFail:true}).load('A');
+ assert.deepEqual(offline.baselineSnapshot.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(offline.baselineSnapshot.segments.map(s=>s.id),['own-segment']);
+ const live=await fixture({offline:false,serverMixed:true,flushFail:true}).load('A');
+ assert.equal(live.readSource,'server');
+ assert.deepEqual(live.baselineSnapshot.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(live.baselineSnapshot.segments.map(s=>s.id),['own-segment']);
+});

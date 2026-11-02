@@ -182,6 +182,21 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   sessions:punch.sessions,segments:visibleSegments,breaks:punch.breaks||[],
   companyId:account.companyId,userId:account.userId,now,cutoff:displayNow,weekAt:viewWeekDate.getTime()
  });
+ // An independent attendance baseline prevents local pending punches
+ // from appearing to be the last server/cache acknowledgement.
+ const baselineLimit=essentialMobileHoursLimit({now,snapshotFetchedAt:punch.snapshotFetchedAt});
+ const baselineSegments=baselineLimit.excludeOpen
+  ?(punch.baselineSnapshot?.segments||[]).filter(segment=>segment.ended_at!=null)
+  :(punch.baselineSnapshot?.segments||[]);
+ const baselineDailyHours=punch.baselineSnapshot&&!punch.snapshotUnverified
+  ?essentialMobileDailyHours({
+   sessions:punch.baselineSnapshot.sessions,segments:baselineSegments,
+   breaks:punch.baselineSnapshot.breaks,
+   companyId:account.companyId,userId:account.userId,now,
+   cutoff:baselineLimit.until,weekAt:viewWeekDate.getTime()
+  }):[];
+ const comparePendingHours=!!punch.hasLocalProjection&&!punch.snapshotUnverified&&!!punch.baselineSnapshot;
+ const baselineWeekMs=hoursFor(baselineSegments,baselineLimit.until,week,baselineLimit.until,punch.baselineSnapshot?.breaks||[]);
  const offerCachedRefresh=shouldOfferEssentialCachedRefresh({readSource:punch.readSource,pending,blocked:journalBlocked});
  const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
   journalBlocked?'Journal local à vérifier':
@@ -306,7 +321,9 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  </View>:null}
  <PersonalMissionCard companyId={account.companyId} workerId={missionWorker?.key===visitContext.current?missionWorker.id:null} navProvider={navPref}/>
  {visitUnavailable?txt('Adresses d’intervention : consultation en ligne indisponible ou incomplète.',{fontSize:10,color:Z.muted}):null}
- <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(journalBlocked?'Journal à vérifier':pending?pending+' en attente':conflicts?conflicts+' conflit(s)':punch.readSource==='cache'?'Copie locale':punch.readSource==='server'?'Relevé serveur':'Relevé non vérifié',{fontSize:15,marginTop:15,color:Z.sage})}
+ <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}{comparePendingHours
+ ?txt('Relevé : '+hm(baselineWeekMs)+' · estimation locale non confirmée',
+   {fontSize:10,color:Z.muted,marginTop:5}):null}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(journalBlocked?'Journal à vérifier':pending?pending+' en attente':conflicts?conflicts+' conflit(s)':punch.readSource==='cache'?'Copie locale':punch.readSource==='server'?'Relevé serveur':'Relevé non vérifié',{fontSize:15,marginTop:15,color:Z.sage})}
  {pending>0&&!journalBlocked?<Pressable accessibilityRole="button" accessibilityLabel="Synchroniser mes pointages en attente"
   accessibilityState={{disabled:busy}} disabled={busy}
   onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:7}}>
@@ -321,6 +338,12 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   {txt(journalBlocked?'Vérifier le journal dans Mes heures':pending?conflicts+' conflit(s) · voir Mes heures':'Voir les conflits dans Mes heures',{fontSize:11,color:Z.sage,fontWeight:'700'})}
  </Pressable>:null}
  </View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(weekOffset===0?tr('thisWeek').toUpperCase():'SEMAINE DU '+viewWeekStart.toLocaleDateString('fr-CA',{month:'short',day:'numeric'}).toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(dailyHours.reduce((sum,row)=>sum+row.netMs,0)),{fontSize:36,fontWeight:'300',marginTop:8})}
+ {comparePendingHours?<View style={{gap:4,marginTop:8}}>
+  {txt('Dernier relevé disponible : '+hm(baselineDailyHours.reduce((sum,row)=>sum+row.netMs,0)),
+   {fontSize:12,color:Z.muted})}
+  {txt('Avec pointages locaux en attente : estimation non confirmée',
+   {fontSize:11,color:Z.sage})}
+ </View>:null}
  <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:12}}>
   <Pressable accessibilityRole="button" accessibilityLabel="Semaine précédente" accessibilityState={{disabled:weekOffset===4}} disabled={weekOffset===4}
    onPress={()=>setWeekOffset(v=>Math.min(4,v+1))} style={{padding:7,opacity:weekOffset===4?0.4:1}}>
