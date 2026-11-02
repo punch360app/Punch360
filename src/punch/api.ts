@@ -10,7 +10,7 @@ import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
 export type PunchSegment={id:string;session_id:string;company_id:string;user_id?:string|null;job_id:string;started_at:string;ended_at:string|null};
 export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean;company_id?:string;user_id?:string};
-export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean;cacheWriteFailed?:boolean;snapshotUnverified?:boolean;snapshotFetchedAt?:number|null};
+export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean;cacheWriteFailed?:boolean;snapshotUnverified?:boolean;snapshotFetchedAt?:number|null;hasAppliedLocalProjection?:boolean};
 export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
  const journal=await getPunchJournal(companyId);
@@ -33,9 +33,11 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   const own={...state,sessions:ownSessions,segments:ownSegments,breaks:ownBreaks};
   let events:LocalPunchEvent[]=[];
   if(!journalBlocked)try{events=await journal.read()}catch{journalBlocked=true}
-  return {...projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id}),
+  const projected=projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id});
+  return {...projected,
    localJournalBlocked:journalBlocked||snapshotUnverified,readSource,cacheWriteFailed,snapshotUnverified,
    snapshotFetchedAt:state.snapshotFetchedAt??null,
+   hasAppliedLocalProjection:!journalBlocked&&projected.appliedLocalEvents>0,
    hasLocalProjection:!journalBlocked&&events.some(e=>e.status==='pending'&&e.company===companyId&&e.user===user.id)} as PunchState;
  };
  // A missing or corrupt cache is UNKNOWN attendance, not a verified empty day.

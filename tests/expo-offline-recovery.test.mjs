@@ -26,10 +26,10 @@ const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,serverMixed=false,rawCache=undefined,malformedTable='',malformedData=null,rejectTable='',throwTable=''}={}){
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,serverMixed=false,rawCache=undefined,malformedTable='',malformedData=null,rejectTable='',throwTable='',pendingEvents=null}={}){
  const store=new Map(),calls={send:0,read:0,db:0};
  if(rawCache!==null)store.set('punch-state:U:A',rawCache===undefined?JSON.stringify(cached):rawCache);
- const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
+ const offlineEvents=pendingEvents??[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
  const j={flush:async()=>{calls.send++;if(flushFail)throw Error('Journal non vérifiable')},
   read:async()=>{calls.read++;if(readFail)throw Error('Journal illisible');return offlineEvents}};
  const storage={getItem:async key=>store.get(key)||null,setItem:async(k,v)=>{if(writeFail)throw Error('cache saturé');store.set(k,v)}};
@@ -468,4 +468,22 @@ test('Expo rejects a cross-user server segment even when its session belongs to 
 test('Expo allows legacy segments without user_id when their verified session is personal',async()=>{
  const h=fixture({flushFail:true}),state=await h.load('A');
  assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+});
+
+test('pending but unapplied event does not extend Expo cached open hours',async()=>{
+ const pendingEvents=[{id:'unused-end',company:'A',user:'U',action:'break_end',
+  status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
+ const state=await fixture({pendingEvents}).load('A');
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.hasLocalProjection,true,'Pending status stays visible');
+ assert.equal(state.hasAppliedLocalProjection,false,'No break to close');
+ assert.equal(state.snapshotFetchedAt,null);
+});
+test('valid offline OUT is applied; blocked journal is never counted',async()=>{
+ const current=await fixture().load('A');
+ assert.equal(current.hasLocalProjection,true);
+ assert.equal(current.hasAppliedLocalProjection,true);
+ assert.equal(current.sessions[0].ended_at,'2026-11-02T12:00:00Z');
+ const blocked=await fixture({flushFail:true}).load('A');
+ assert.equal(blocked.hasAppliedLocalProjection,false);
 });

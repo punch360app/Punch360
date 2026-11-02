@@ -171,7 +171,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const viewWeekStart=new Date(viewWeekDate.getFullYear(),viewWeekDate.getMonth(),viewWeekDate.getDate()-(viewWeekDate.getDay()+6)%7);
  const viewWeekEnd=new Date(viewWeekStart.getFullYear(),viewWeekStart.getMonth(),viewWeekStart.getDate()+7).getTime();
  const hoursLimit=essentialMobileHoursLimit({now,snapshotFetchedAt:punch.snapshotFetchedAt,
-  hasLocalProjection:punch.hasLocalProjection});
+  hasLocalProjection:punch.hasAppliedLocalProjection});
  const visibleSegments=hoursLimit.excludeOpen
   ?punch.segments.filter(segment=>segment.ended_at!=null):punch.segments;
  const displayNow=hoursLimit.until;

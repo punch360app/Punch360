@@ -223,3 +223,9 @@ test('native home and My Hours refresh cached hours through the existing safe sy
  assert.match(ui,/Connexion Internet requise pour actualiser le relevé/);
  assert.match(ui,/onPress=\{\(\)=>\{void syncLocalPunches\(\)\}\}/);
 });
+
+test('native hours use applied projection cutoff but show all pending events',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(ui,/hasLocalProjection:punch\.hasAppliedLocalProjection/);
+ assert.match(ui,/punch\.hasLocalProjection\?\(punch\.readSource==='cache'/);
+});

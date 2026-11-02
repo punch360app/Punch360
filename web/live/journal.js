@@ -64,6 +64,7 @@ export function projectPendingPunches(snapshot,events,scope=null){
   ((e.action!=='in'&&e.action!=='transfer')||
    (typeof e.job==='string'&&!!e.job.trim()))&&(!identity||
   e.company===identity.company&&e.user===identity.user)):[];
+ let appliedLocalEvents=0;
  for(const event of pending){
   // A stale or contaminated snapshot must never let one employee's
   // offline event edit a different employee/company session.
@@ -86,11 +87,11 @@ export function projectPendingPunches(snapshot,events,scope=null){
   if(active&&(at<Date.parse(active.started_at)||
    segments.some(s=>ownsRecord(s)&&laterBoundary(s))||
    breaks.some(b=>ownsRecord(b)&&laterBoundary(b))))continue;
-  if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
-  if(event.action==='break_start'&&active)breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});
-  if(event.action==='break_end'&&active)for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;
-  if(event.action==='out'&&active){for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;}
-  if(event.action==='transfer'&&active){for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
+  if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});appliedLocalEvents++;}
+  if(event.action==='break_start'&&active){breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});appliedLocalEvents++;}
+  if(event.action==='break_end'&&active){let closed=0;for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at){pause.ended_at=event.occurredAt;closed++;}if(closed)appliedLocalEvents++;}
+  if(event.action==='out'&&active){for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;appliedLocalEvents++;}
+  if(event.action==='transfer'&&active){for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});appliedLocalEvents++;}
  }
  const latest=pending.at(-1);
  const owner=identity||latest&&{company:latest.company,user:latest.user};
@@ -115,5 +116,5 @@ export function projectPendingPunches(snapshot,events,scope=null){
   return !latest||(Number.isFinite(at)&&(!Number.isFinite(previous)||at>previous))||
    (at===previous&&s.ended_at==null&&latest.ended_at!=null)?s:latest;
  },null):segments[0];
- return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null};
+ return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null,appliedLocalEvents};
 }

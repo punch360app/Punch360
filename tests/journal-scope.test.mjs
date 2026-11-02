@@ -364,3 +364,14 @@ test('equal segment start times prefer the open job instead of a closed one',()=
  ],breaks:[]};
  assert.equal(projectPendingPunches(current,[],{company:'tenant-A',user:'employee-A'}).lastJobId,'open-site');
 });
+
+test('only an offline event actually applied to a shift counts as a local projection',()=>{
+ const identity={company:'tenant-A',user:'employee-A'};
+ const unused={...event('break_end','no-open-break'),occurredAt:'2026-11-01T12:00:00Z'};
+ assert.equal(projectPendingPunches(base,[unused],identity).appliedLocalEvents,0);
+ const real={...event('out','valid-out'),occurredAt:'2026-11-01T12:00:00Z'};
+ const done=projectPendingPunches(base,[real],identity);
+ assert.equal(done.appliedLocalEvents,1);
+ assert.equal(done.active,null);
+ assert.equal(projectPendingPunches(base,[{...real,company:'tenant-B'}],identity).appliedLocalEvents,0);
+});
