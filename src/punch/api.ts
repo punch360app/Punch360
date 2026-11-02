@@ -8,7 +8,7 @@ import {netSegmentMilliseconds} from '../../web/live/essential-hours-export.js';
 import * as Location from 'expo-location';
 import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
-export type PunchSegment={id:string;session_id:string;company_id:string;job_id:string;started_at:string;ended_at:string|null};
+export type PunchSegment={id:string;session_id:string;company_id:string;user_id?:string|null;job_id:string;started_at:string;ended_at:string|null};
 export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean;company_id?:string;user_id?:string};
 export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean;cacheWriteFailed?:boolean;snapshotUnverified?:boolean;snapshotFetchedAt?:number|null};
 export async function loadPunchState(companyId:string):Promise<PunchState>{
@@ -23,7 +23,10 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   // Prevent cross-company hours from legacy mixed offline snapshots.
   const ownSessions=(state.sessions||[]).filter(s=>s.company_id===companyId&&s.user_id===user.id);
   const ids=new Set(ownSessions.map(s=>s.id));
-  const ownSegments=(state.segments||[]).filter(s=>s.company_id===companyId&&ids.has(s.session_id));
+  // Older cached segments can carry an explicit user_id; reject foreign
+  // ones even if their session_id collides with a valid personal session.
+  const ownSegments=(state.segments||[]).filter(s=>s.company_id===companyId&&
+   ids.has(s.session_id)&&(s.user_id==null||s.user_id===user.id));
   const ownBreaks=(state.breaks||[]).filter(b=>ids.has(b.session_id)&&
    (b.company_id==null||b.company_id===companyId)&&
    (b.user_id==null||b.user_id===user.id));
@@ -108,7 +111,8 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .order('started_at',{ascending:false});
  if(segmentsError||!Array.isArray(segments)||!segments.every(validServerSegment))return offlineState();
  const ownSessionIds=new Set(list.map(s=>s.id));
- const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&ownSessionIds.has(s.session_id));
+ const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&
+  ownSessionIds.has(s.session_id)&&(s.user_id==null||s.user_id===user.id));
  const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data)||!breakResult.data.every(validServerBreak))return offlineState();
  // Break rows do not select company_id/user_id on all schema versions;
  // their session_id must belong to a verified session before caching.

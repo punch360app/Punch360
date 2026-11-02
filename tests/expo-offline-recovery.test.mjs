@@ -437,3 +437,35 @@ test('Expo persists the server fetch time and handles timestamp-free legacy cach
  assert.equal(empty.readSource,'server');
  assert.ok(Number.isFinite(empty.snapshotFetchedAt));
 });
+
+test('legacy Expo cache excludes another worker segment sharing a personal session id',async()=>{
+ const contaminated={...cached,segments:[
+  cached.segments[1],
+  {...cached.segments[1],id:'foreign-user-shared-session',user_id:'V',
+   job_id:'foreign-job',started_at:'2026-11-02T10:00:00Z'},
+  cached.segments[0]
+ ]};
+ const state=await fixture({rawCache:JSON.stringify(contaminated),flushFail:true}).load('A');
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.snapshotUnverified,false);
+ assert.deepEqual(state.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+ assert.equal(state.lastJobId,'my-site');
+});
+test('Expo rejects a cross-user server segment even when its session belongs to the worker',async()=>{
+ const rows=[cached.segments[1],
+  {...cached.segments[1],id:'foreign-row',user_id:'V',
+   job_id:'foreign-job',started_at:'2026-11-02T10:00:00Z'}];
+ const h=fixture({offline:false,flushFail:true,malformedTable:'punch_segments',malformedData:rows});
+ const state=await h.load('A');
+ assert.equal(state.readSource,'server');
+ assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+ const cachedState=JSON.parse(h.store.get('punch-state:U:A'));
+ assert.deepEqual(cachedState.segments.map(s=>s.id),['own-segment'],
+  'foreign user segment must not be written to the offline cache');
+ assert.equal(state.lastJobId,'my-site');
+});
+test('Expo allows legacy segments without user_id when their verified session is personal',async()=>{
+ const h=fixture({flushFail:true}),state=await h.load('A');
+ assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+});
