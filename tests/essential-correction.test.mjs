@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialCorrectionView,validateEssentialCorrection} from '../web/live/essential-correction.js';
+import {essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView} from '../web/live/essential-correction.js';
 
 const company='company-A',user='worker-A';
 const closed={id:'session-A',company_id:company,user_id:user,started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T20:00:00Z'};
@@ -65,7 +65,7 @@ test('invalid dates, reversed hours and short explanations cannot be submitted',
 
 test('Essentiel UI uses the server snapshot and revalidates identity and session before insert',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{essentialCorrectionView,validateEssentialCorrection\} from '\.\/essential-correction\.js'/);
+ assert.match(app,/import \{essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView\} from '\.\/essential-correction\.js'/);
  assert.match(app,/const sessions=correction\.sessions/);
  assert.match(app,/correction\.requests\.map/);
  assert.match(app,/validateEssentialCorrection\(\{view,sessionId:sid,reason,requestedStart,requestedEnd\}\)/);
@@ -91,11 +91,41 @@ test('Essentiel correction entry opens a dedicated scoped screen with a real ret
  assert.match(app,/correction\.requests\.slice\(0,30\)/);
 });
 
+test('correction review queue requires manager, current company and not the requester',()=>{
+ const pending={id:'correction-A',company_id:company,session_id:closed.id,requested_by:user,reason:'Entrée manquante',status:'pending',created_at:'2026-11-01T15:00:00Z'};
+ const rows=[pending,{...pending,id:'other-company',company_id:'company-B'},
+  {...pending,id:'self',requested_by:'manager-A'},
+  {...pending,id:'resolved',status:'approved'},
+  {...pending,id:'unlinked',session_id:null},
+  {...pending,id:'latest',requested_by:'worker-B',created_at:'2026-11-02T15:00:00Z'}];
+ const found=essentialCorrectionApprovalView({companyId:company,reviewerId:'manager-A',manager:true,loaded:true,requests:rows});
+ assert.equal(found.ready,true);
+ assert.deepEqual(found.requests.map(r=>r.id),['latest','correction-A']);
+ for(const options of [{manager:false},{loaded:false},{reviewerId:''},{companyId:''},{requests:null}]){
+  assert.deepEqual(essentialCorrectionApprovalView({companyId:company,reviewerId:'manager-A',manager:true,loaded:true,requests:rows,...options}),{ready:false,requests:[]});
+ }
+});
+
+test('manager correction approvals verify server scope and pending record before RPC',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/correctionApprovals:\[\],correctionApprovalsLoaded:false,correctionReviewSubmitting:false/);
+ assert.match(app,/essentialCorrectionApprovalView\(\{companyId:company\(\),reviewerId:state\.user\?\.id/);
+ assert.match(app,/state\.correctionApprovalsLoaded=!correctionQueue\.error/);
+ assert.match(app,/state\.correctionApprovals=correctionQueue\.error\?\[\]:correctionQueue\.data\|\|\[\]/);
+ assert.match(app,/const proof=await sb\.from\('punch_correction_requests'\)/);
+ assert.match(app,/\.eq\('id',id\)\.eq\('company_id',companyId\)\.eq\('status','pending'\)\.maybeSingle\(\)/);
+ assert.match(app,/proof\.data\.session_id!==selected\.session_id\|\|proof\.data\.requested_by!==selected\.requested_by/);
+ assert.match(app,/sb\.rpc\('review_punch_correction',\{p_request:id,p_approve:approve,p_note:reason\}\)/);
+ assert.match(app,/if\(state\.correctionReviewSubmitting\)return/);
+ assert.match(app,/else if\(a==='reviewCorrection'\)await \(isEssential\(\)\?reviewEssentialCorrection\(/);
+ assert.match(app,/state\.correctionApprovalsLoaded=false;state\.correctionApprovals=\[\]/);
+});
+
 test('PWA install includes correction module and versions the entry consistently',()=>{
  const html=readFileSync(new URL('../web/live/index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
- assert.match(html,/app\.js\?v=essential-74-bento/);
- assert.match(sw,/app\.js\?v=essential-74-bento/);
- assert.match(sw,/punch-360-essential-v82-bento/);
+ assert.match(html,/app\.js\?v=essential-75-bento/);
+ assert.match(sw,/app\.js\?v=essential-75-bento/);
+ assert.match(sw,/punch-360-essential-v83-bento/);
  assert.match(sw,/'\.\/essential-correction\.js'/);
 });
