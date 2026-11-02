@@ -254,3 +254,37 @@ test('a valid empty sessions array remains a confirmed server read',async()=>{
  assert.equal(state.snapshotUnverified,false);
  assert.deepEqual(state.sessions,[]);
 });
+
+test('Expo rejects malformed attendance rows without erasing a valid cached shift',async()=>{
+ const validRows={
+  punch_sessions:{...own},
+  punch_segments:{...cached.segments[1]},
+  punch_breaks:{id:'break-a',session_id:'own',started_at:own.started_at,ended_at:null}
+ };
+ for(const [table,valid] of Object.entries(validRows)){
+  for(const badRow of [null,{}, {...valid,id:''},
+   {...valid,started_at:'bad-date'},
+   {...valid,ended_at:'2026-11-01T06:00:00Z'}]){
+   const h=fixture({offline:false,malformedTable:table,malformedData:[badRow]});
+   const state=await h.load('A');
+   assert.equal(state.readSource,'cache',table+': '+JSON.stringify(badRow));
+   assert.equal(state.snapshotUnverified,false,table);
+   assert.deepEqual(state.sessions.map(s=>s.id),['own'],table);
+   assert.deepEqual(state.segments.map(s=>s.id),['own-segment'],table);
+   assert.equal(state.lastJobId,'my-site',table);
+   // A malformed response must not replace a worker's last cached snapshot.
+   assert.deepEqual(JSON.parse(h.store.get('punch-state:U:A')),cached);
+  }
+ }
+});
+
+test('invalid session rows without a previous offline snapshot remain unverified',async()=>{
+ const h=fixture({offline:false,rawCache:null,malformedTable:'punch_sessions',
+  malformedData:[{...own,started_at:'invalid'}]});
+ const state=await h.load('A');
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.snapshotUnverified,true);
+ assert.equal(state.localJournalBlocked,true);
+ assert.deepEqual(state.sessions,[]);
+ assert.equal(h.store.has('punch-state:U:A'),false);
+});
