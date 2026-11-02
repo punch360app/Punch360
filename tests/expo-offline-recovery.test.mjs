@@ -77,7 +77,7 @@ test('Both native workspace UI paths disable writes during journal recovery',()=
  assert.match(essential,/disabled=\{busy\|\|!mobileAllowed\|\|punch\.localJournalBlocked\}/);
  assert.match(essential,/punch\.active&&mobileAllowed&&!punch\.localJournalBlocked/);
  assert.match(app,/disabled=\{journalBlocked\|\|working\|\|syncBusy\|\|journalViewScope!==currentScope\} onPress=\{togglePunch\}/);
- assert.match(app,/if\(punchActive&&\(journalBlocked\|\|journalViewScope!==currentScope\|\|working\|\|punchActionInFlight\.current\)\)\{Alert\.alert/);
+ assert.match(app,/if\(journalBlocked\|\|journalViewScope!==currentScope\|\|working\|\|\s*punchActionInFlight\.current\|\|syncInFlight\.current\)\{/);
 });
 test('Journal summary and two mobile screens explicitly surface blocked status',()=>{
  assert.match(journal,/hasUnsafePunchJournalEntries\(events,j\.company,j\.user\)/);
