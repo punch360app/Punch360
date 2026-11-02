@@ -72,6 +72,7 @@ test('QR verification refuses disabled establishment and inactive punch job',()=
  assert.match(sql,/location\.company_id=device\.company_id/);
  assert.match(sql,/location\.punch_job_id=device\.site_id/);
  assert.match(sql,/location\.active and job\.active/);
+ assert.match(sql,/for share of location,job/);
  for(const scenario of ['Inactive establishment accepted QR','Inactive punch job accepted QR','Reactivated establishment still denies valid QR'])
   assert.ok(acceptance.includes(scenario),'Missing rollback-only SQL scenario '+scenario);
 });
