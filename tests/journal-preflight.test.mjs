@@ -224,3 +224,43 @@ test('well-formed legacy IN followed by jobless OUT and breaks still synchronize
  assert.equal(result.pending,0);
  assert.deepEqual(sent,['in','break_start','out']);
 });
+
+test('a mismatched predecessor quarantines the whole offline queue without network or data loss',async()=>{
+ const cases=[
+  [ {...good('first'),previous:'outside-journal'} ],
+  [ good('first'),{...good('second'),action:'out',previous:'unknown'} ],
+  [ good('first'),{...good('second'),action:'out',previous:'second'} ],
+  [ good('first'),{...good('second'),action:'out',previous:'unknown'},good('third') ],
+ ];
+ for(const rows of cases){
+  const sent=[],h=setup(rows,async e=>{sent.push(e.id);return {sync_status:'synced'};});
+  const before=h.memory.get(h.key);
+  assert.equal(hasUnsafePunchJournalEntries(rows,'company-A','employee-A'),true);
+  await assert.rejects(h.journal.flush(),/aucun envoi effectué/);
+  await assert.rejects(h.journal.append('out'),/aucune nouvelle opération ajoutée/);
+  assert.deepEqual(sent,[]);
+  assert.equal(h.memory.get(h.key),before);
+ }
+});
+test('valid immediate predecessor and legacy unlinked journal rows remain readable',async()=>{
+ const chain=[
+  {...good('start'),action:'in',job:'site-A'},
+  {...good('pause'),action:'break_start',previous:'start',job:null},
+  {...good('finish'),action:'out',previous:'pause',job:null}
+ ];
+ assert.equal(hasUnsafePunchJournalEntries(chain,'company-A','employee-A'),false);
+ assert.equal(hasUnsafePunchJournalEntries([good('legacy-1'),good('legacy-2')],
+  'company-A','employee-A'),false);
+ const sent=[],h=setup(chain,async e=>{sent.push(e.id);return {sync_status:'synced'};});
+ const result=await h.journal.flush();
+ assert.equal(result.pending,0);
+ assert.deepEqual(sent,['start','pause','finish']);
+});
+test('an offline append writes the exact predecessor of the last persisted event',async()=>{
+ const h=setup([good('stored-first')]);
+ h.journal.uuid=()=> 'new-tail';
+ const event=await h.journal.append('out',null,null,'2026-11-02T16:00:00Z');
+ assert.equal(event.previous,'stored-first');
+ assert.equal(hasUnsafePunchJournalEntries(await h.journal.read(),
+  'company-A','employee-A'),false);
+});

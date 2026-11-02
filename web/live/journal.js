@@ -8,7 +8,12 @@ export function hasUnsafePunchJournalEntries(events,company,user){
  // A duplicated id is ambiguous for server idempotency and local ACK lookup.
  // Preserve the entire queue for recovery; never upload or silently rewrite it.
  const seen=new Set();
- return events.some(event=>{
+ return events.some((event,index)=>{
+  // A non-null dependency must be the preceding durable event in this
+  // same journal. Preserve older standalone legacy entries with no link.
+  // Broken or self-referential chains are quarantined, never uploaded.
+  if(event?.previous!=null&&(index===0||
+   event.previous!==events[index-1]?.id))return true;
   if(!event||typeof event!=='object'||event.company!==company||
    event.user!==user||typeof event.id!=='string'||!event.id||
    !JOURNAL_ACTIONS.has(event.action)||!JOURNAL_STATUSES.has(event.status)||
