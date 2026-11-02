@@ -69,7 +69,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
    // Publish one coherent identity-scoped snapshot, never a partial response.
    setFullName(p.data?.full_name||'');setPhone(p.data?.phone||'');
    setContacts(c.data as Contact[]);
-   setCredentials(k.data);
+   setCredentials(k.data||[]);
    setLeaves(l.data as Leave[]);
    setLoadedPersonalScope(requestedScope);
   }catch{
