@@ -11,6 +11,30 @@ test('public comparison follows changed catalog amounts, limits and feature flag
  rows=render({...plan,base_cents:4275,included_seats:17,kiosk_limit:null,establishment_limit:4,features:['advanced_schedules']});
  assert.equal(rows.find(r=>r[0]==='Prix de base mensuel')[1],money(4275));assert.equal(rows.find(r=>r[0]==='Membres inclus')[1],'17');assert.equal(rows.find(r=>r[0]==='Bornes comprises')[1],'Illimitées');assert.equal(rows.find(r=>r[0]==='Établissements')[1],'4');assert.equal(rows.find(r=>r[0]==='Horaires avancés')[1],'Inclus');await window.happyDOM.close();
 });
+test('J1 core comparison rows match per-plan catalog flags without inventing rights',async()=>{
+ const window=new Window();
+ try{
+  const basic={...plan,title:'Basic',features:['punch','hours']};
+  const advanced={...plan,title:'Plus',features:['punch','hours','personal_account','csv','offline']};
+  const incomplete={...plan,title:'Unverified',features:['punch','offline'],kiosk_limit:undefined};
+  window.document.body.innerHTML=renderCommercialDetails([basic,advanced,incomplete],escape,money,{seats:6});
+  const rows=[...window.document.querySelectorAll('.ess-comparison tbody tr')]
+   .map(row=>[...row.children].map(cell=>cell.textContent));
+  for(const [title,values] of [
+   ['Pointage des employés',['Inclus','Inclus','À confirmer']],
+   ['Suivi des heures',['Inclus','Inclus','À confirmer']],
+   ['Compte personnel facultatif',['—','Inclus','À confirmer']],
+   ['Export CSV',['—','Inclus','À confirmer']],
+   ['Saisie hors ligne',['—','Inclus','À confirmer']]
+  ]){
+   assert.deepEqual(rows.find(row=>row[0]===title)?.slice(1),values,title);
+  }
+  assert.match(window.document.querySelector('.ess-faq')?.textContent||'',
+   /Si votre forfait comprend la saisie hors ligne/);
+  assert.equal(window.document.querySelectorAll('.ess-comparison thead th').length,4);
+ }finally{await window.happyDOM.close();}
+});
+
 test('hidden and inactive plans never appear publicly and catalog names are escaped',async()=>{
  const window=new Window();window.document.body.innerHTML=renderCommercialDetails([{...plan,title:'<img src=x onerror=alert(1)>'},{...plan,title:'Private',public_visible:false},{...plan,title:'Inactive',active:false}],escape,money);
  assert.equal(window.document.querySelectorAll('thead th').length,2);assert.equal(window.document.querySelector('img'),null);assert.ok(window.document.querySelector('thead').textContent.includes('<img'));assert.ok(!window.document.querySelector('table').textContent.includes('Private'));assert.ok(!window.document.querySelector('table').textContent.includes('Inactive'));assert.equal(window.document.querySelectorAll('summary').length,8);assert.equal(window.document.querySelector('[role="region"]').tabIndex,0);await window.happyDOM.close();
