@@ -84,6 +84,8 @@ test('Chat typing is preserved per company and conversation through background r
 
 test('After successful send, send button returns to enabled state before redraw',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/await loadChat\(chatId\);state\.sendingMessage=false;draw\(\)/);
+ const send=app.slice(app.indexOf('async function sendMessage()'),app.indexOf('// A single client request',app.indexOf('async function sendMessage()')));
+ assert.match(send,/await loadChat\(chatId\)/);
+ assert.match(send,/if\(company\(\)!==companyId\|\|state\.user\?\.id!==senderId\|\|state\.section!==section\|\|state\.chatId!==chatId\|\|!currentCompanyChat\(chatId\)\)return;\s*state\.sendingMessage=false;draw\(\)/);
  assert.match(app,/finally\{state\.sendingMessage=false\}/);
 });
