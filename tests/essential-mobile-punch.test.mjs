@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,firstEssentialPunchGuidance} from '../web/live/essential-mobile-punch.js';
+import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from '../web/live/essential-mobile-punch.js';
 const worker={company_id:'A',auth_user_id:'u',status:'active',personal_access:true,can_mobile_punch:true};
 const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
 test('An explicitly authorized, current worker may use mobile punch',()=>{
@@ -46,6 +46,23 @@ test('first mobile punch requires the exact active workplace in the current comp
  assert.equal(resolveEssentialPunchJob('B','site-1',jobs),null);
 });
 
+test('assigned worker location has priority over default and must be active in the same company',()=>{
+ const locations=[
+  {id:'loc-1',company_id:'A',punch_job_id:'site-1',active:true},
+  {id:'loc-2',company_id:'B',punch_job_id:'foreign',active:true},
+  {id:'loc-3',company_id:'A',punch_job_id:'closed',active:false}
+ ];
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'loc-1'},locations,'default'),'site-1');
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'loc-2'},locations,'default'),null);
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'loc-3'},locations,'default'),null);
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'unknown'},locations,'default'),null);
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'loc-1'},null,'default'),null);
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:null},locations,'default'),'default');
+ assert.equal(essentialWorkerPunchJobId('A',{},locations,'default'),'default');
+ assert.equal(essentialWorkerPunchJobId('A',null,locations,'default'),'default');
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'loc-1'},[{id:'loc-1',company_id:'A',punch_job_id:'site-1'}],'default'),null);
+});
+
 test('first punch guidance uses acknowledged company sessions and never optimistic offline events',()=>{
  const job={id:'site-1',company_id:'A',active:true};
  const first=(company,snapshotCompany,record,snapshot,pending,workplace)=>
@@ -70,6 +87,7 @@ test('public first-punch action does not fall back to a selected unrelated Job',
  assert.match(app,/if\(!j\)\{if\(isEssential\(\)\)toast\('Aucun établissement actif confirmé/);
  assert.doesNotMatch(app,/getJob\(essentialPunchJob\(\)\)\|\|selectedJob\(\)/);
  assert.match(app,/Votre premier PUNCH IN/);
+ assert.match(app,/function essentialPunchJob\(\)\{return essentialWorkerPunchJobId\(company\(\),essentialUI\.state\.worker,essentialUI\.planning\.state\.locations,state\.account\?\.companies\?\.default_punch_job_id\);\}/);
 });
 
 test('Kiosk-only home reports only last acknowledged server session for current company and user',()=>{
