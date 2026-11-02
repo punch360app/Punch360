@@ -4,7 +4,7 @@ import {togglePublicPasswordVisibility} from './password-visibility.js';
 import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
-import {essentialHoursView} from './essential-hours-view.js';
+import {essentialHoursView,employeeHoursRequestTimeline} from './essential-hours-view.js';
 import {employeeMissingDaysSummary,managerMissingDayApprovalSummary} from './missing-days.js';
 import {breakCorrectionInbox} from './break-corrections.js';
 import {essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView} from './essential-correction.js';
@@ -404,12 +404,17 @@ function legacyEssentialSchedule(){return heading('Horaire','more')+(manager()?c
 function essentialHours(){
  const forgotten=employeeMissingDaysSummary({companyId:company(),userId:state.user?.id,
   source:essentialUI.missingDays.state});
- const forgottenRows=forgotten.ready?(forgotten.requests.length?forgotten.requests.map(r=>
-  '<div class="hoursitem"><div class="grow"><b>'+e(when(r.startsAt))+
-  ' → '+e(when(r.endsAt))+'</b><small>Demande de journée oubliée · '+e(r.label)+
-  '</small></div></div>').join(''):
-  '<p class="small muted">Aucune demande de journée oubliée pour votre dossier.</p>'):
-  '<p class="small muted">Historique des demandes indisponible. Actualisez une fois connecté.</p>';
+ const pauses=breakCorrectionInbox({companyId:company(),userId:state.user?.id,
+  role:state.account?.role,source:essentialUI.breakCorrections.state});
+ const corrections=essentialCorrectionView({companyId:company(),userId:state.user?.id,
+  snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections});
+ const tracking=employeeHoursRequestTimeline({companyId:company(),userId:state.user?.id,
+  correctionView:corrections,breakView:pauses,missingView:forgotten});
+ const trackingRows=tracking.items.map(r=>'<div class="hoursitem"><div class="grow"><b>'+
+  e(r.title)+'</b><small>'+(r.at?e(when(r.at)):'Date indisponible')+
+  '</small></div><span class="pill">'+e(r.label)+'</span></div>').join('');
+ const trackingNotice=tracking.complete?'':'<p class="ess-notice" role="status">Suivi incomplet : '+
+  e(tracking.unavailable.join(', '))+'. Actualisez en ligne pour consulter les demandes non chargées.</p>';
  const view=essentialHoursView({companyId:company(),userId:state.user?.id,
   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,
   projectedSessions:state.sessions,projectedSegments:state.segments,
@@ -425,10 +430,13 @@ function essentialHours(){
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+essentialPunchSyncPanel()+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
   '<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
-  '<div class="ess-panel"><b>Journée entièrement oubliée</b><p class="small muted">Une journée complète manque? Vous pouvez en demander l’ajout. Une demande en attente ne constitue pas des heures confirmées.</p>'+
-  button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+
-  '<b>Suivi de mes demandes</b>'+forgottenRows+'</div>'+
-  button('Demander une correction','subpage','full','data-id="essentialCorrection"');
+  '<div class="ess-panel"><b>Mes demandes d’ajustement · dernier relevé reçu</b>'+
+  '<p class="small muted">'+tracking.pendingCount+' demande(s) en attente parmi les données vérifiées. Une demande approuvée ne confirme pas, à elle seule, votre paie.</p>'+
+  trackingNotice+(trackingRows||'<p class="small muted">'+(tracking.complete?
+   'Aucune demande d’ajustement enregistrée sur votre compte.':'Aucune demande affichable dans les données disponibles.')+'</p>')+
+  button('Corriger mes heures','subpage','full','data-id="essentialCorrection"')+
+  button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
+  button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+'</div>';
 }
 function essentialCorrectionPage(){
  const correction=essentialCorrectionView({companyId:company(),userId:state.user?.id,
