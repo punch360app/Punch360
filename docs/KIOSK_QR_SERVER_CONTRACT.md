@@ -25,6 +25,8 @@ La caméra de la borne ne reconnaît maintenant que les QR exactement conformes 
 
 Les tests `tests/kiosk-qr-camera.test.mjs` vérifient le rejet de QR non conformes, le scan ultérieur d'une carte de forme valide, l'absence de transmission du contenu et la libération de la caméra. Le filtre ne constitue **pas** un contrôle contre les captures d'écran ou le partage : le NIP indépendant et les protections de compte restent obligatoires.
 
+Le navigateur vérifie aussi `BarcodeDetector.getSupportedFormats()` lorsque cette API est disponible : s'il n'annonce pas `qr_code`, la caméra **ne demande pas la permission** et le parcours matricule/NIP reste accessible. Si la vérification native tarde ou expire, elle ne peut pas ouvrir la caméra après fermeture. Sur les navigateurs ne fournissant pas cette API expérimentale, le démarrage utilise le contrôle et la gestion d'erreur déjà présents. Ce n'est **pas** un décodage de rechange pour Safari/iPadOS et aucun support matériel n'est présumé.
+
 ## Transaction SQL à concevoir et faire auditer avant tout raccordement
 
 Le schéma actuel inclut `private.kiosk_devices`, `private.worker_pin_secrets`, `private.kiosk_events`, `public.company_workers`, `public.punch_sessions` et les segments. Il **n'existe pas de registre de cartes QR** dans la portée vérifiée. Ne pas contourner la fonction existante `kiosk_execute` en substituant un matricule extrait d'un QR.
