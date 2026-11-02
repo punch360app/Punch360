@@ -54,6 +54,9 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[conflicts,setConflicts]=useState(0),[pendingItems,setPendingItems]=useState<{label:string;occurredAt:string|null}[]>([]),[conflictItems,setConflictItems]=useState<{label:string;occurredAt:string|null}[]>([]),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
  // Never permit PUNCH when journalSummary reports an unreadable local queue.
  const [journalBlocked,setJournalBlocked]=useState(true);
+ // History navigation is local to My Hours; home always follows the real clock.
+ const [weekOffset,setWeekOffset]=useState(0);
+ useEffect(()=>{setWeekOffset(0)},[account.companyId,account.userId]);
  const dimensions=useWindowDimensions(),compact=dimensions.height<850;
  const [language,setLanguage]=useState('fr'),[languageMenu,setLanguageMenu]=useState(false);
  const [missionWorker,setMissionWorker]=useState<{key:string;id:string}|null>(null);
@@ -164,11 +167,14 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
 
  useEffect(()=>{setMobileAllowed(false);setSiteJob(null);setJournalBlocked(true);load();const timer=setInterval(load,30000),tick=setInterval(()=>setNow(Date.now()),1000);const app=AppState.addEventListener('change',s=>{if(s==='active')load()});const network=Network.addNetworkStateListener(s=>{if(s.isConnected&&s.isInternetReachable!==false)load()});return()=>{++punchReadRevision.current;clearInterval(timer);clearInterval(tick);app.remove();network.remove()}},[account.companyId,account.userId]);
  const date=new Date(now),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),week=new Date(date.getFullYear(),date.getMonth(),date.getDate()-(date.getDay()+6)%7).getTime();
+ const viewWeekDate=new Date(date.getFullYear(),date.getMonth(),date.getDate()-7*weekOffset);
+ const viewWeekStart=new Date(viewWeekDate.getFullYear(),viewWeekDate.getMonth(),viewWeekDate.getDate()-(viewWeekDate.getDay()+6)%7);
+ const viewWeekEnd=new Date(viewWeekStart.getFullYear(),viewWeekStart.getMonth(),viewWeekStart.getDate()+7).getTime();
  const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=!!punch.active&&(punch.breaks||[]).some(b=>b.session_id===punch.active?.id&&b.ended_at===null);
  // Local projections and offline snapshots are never payroll-approved hours.
  const dailyHours:{dayStart:number;netMs:number;grossMs:number;unpaidMs:number}[]=essentialMobileDailyHours({
   sessions:punch.sessions,segments:punch.segments,breaks:punch.breaks||[],
-  companyId:account.companyId,userId:account.userId,now
+  companyId:account.companyId,userId:account.userId,now,weekAt:viewWeekDate.getTime()
  });
  const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
   journalBlocked?'Journal local à vérifier':
@@ -303,7 +309,17 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   onPress={()=>setPage('hours')} style={{paddingVertical:7}}>
   {txt(journalBlocked?'Vérifier le journal dans Mes heures':pending?conflicts+' conflit(s) · voir Mes heures':'Voir les conflits dans Mes heures',{fontSize:11,color:Z.sage,fontWeight:'700'})}
  </Pressable>:null}
- </View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(tr('thisWeek').toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(weekly),{fontSize:36,fontWeight:'300',marginTop:8})}
+ </View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(weekOffset===0?tr('thisWeek').toUpperCase():'SEMAINE DU '+viewWeekStart.toLocaleDateString('fr-CA',{month:'short',day:'numeric'}).toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(dailyHours.reduce((sum,row)=>sum+row.netMs,0)),{fontSize:36,fontWeight:'300',marginTop:8})}
+ <View style={{flexDirection:'row',justifyContent:'space-between',marginTop:12}}>
+  <Pressable accessibilityRole="button" accessibilityLabel="Semaine précédente" accessibilityState={{disabled:weekOffset===4}} disabled={weekOffset===4}
+   onPress={()=>setWeekOffset(v=>Math.min(4,v+1))} style={{padding:7,opacity:weekOffset===4?0.4:1}}>
+   {txt('← Précédente',{color:Z.sage,fontSize:12,fontWeight:'700'})}
+  </Pressable>
+  <Pressable accessibilityRole="button" accessibilityLabel="Semaine suivante" accessibilityState={{disabled:weekOffset===0}} disabled={weekOffset===0}
+   onPress={()=>setWeekOffset(v=>Math.max(0,v-1))} style={{padding:7,opacity:weekOffset===0?0.4:1}}>
+   {txt('Suivante →',{color:Z.sage,fontSize:12,fontWeight:'700'})}
+  </Pressable>
+ </View>
  {txt(hoursOrigin,{fontSize:11,color:Z.muted,marginTop:7})}
  {txt('Total indicatif · les heures restent sujettes à validation.',{fontSize:10,color:Z.muted,marginTop:4})}
  </View>{journalBlocked||pending||conflicts?<View style={[styles.card,{gap:7}]}>
@@ -343,8 +359,8 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
     {fontSize:10,color:Z.muted})}
   </View>)}
   {txt('Inclut les pointages locaux en attente, le cas échéant. Non approuvé.',{fontSize:10,color:Z.muted})}
- </View>:null}
- {punch.sessions.map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(punch.segments.filter(p=>p.session_id===s.id),now,0,now,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
+ </View>:<View style={styles.card}>{txt('Aucune journée dans le relevé chargé pour cette semaine.',{fontSize:12,color:Z.muted})}</View>}
+ {punch.sessions.filter(s=>s.company_id===account.companyId&&s.user_id===account.userId&&Date.parse(s.started_at)<viewWeekEnd&&(s.ended_at==null||Date.parse(s.ended_at)>viewWeekStart.getTime())).map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(punch.segments.filter(p=>p.session_id===s.id),now,viewWeekStart.getTime(),viewWeekEnd,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
  <Pressable accessibilityRole="button" accessibilityLabel={tr('language')} accessibilityState={{expanded:languageMenu}} onPress={()=>setLanguageMenu(v=>!v)} style={[styles.menu,rtl&&{flexDirection:'row-reverse'}]}>
  {txt(tr('language')+' : '+(nativeEssentialLanguages.find(x=>x.code===language)?.name||'Français'),{textAlign:rtl?'right':'left'})}
  <Ionicons name="chevron-down" size={17} color={Z.muted}/>
