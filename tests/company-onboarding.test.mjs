@@ -34,7 +34,7 @@ test('missing or cross-tenant membership never claims the created workspace is r
   [{company_id:company},[membership]]
  ]){
   assert.equal(isCreatedCompanyVerified(company,user,account,workspaces),
-   account?.company_id===company&&workspaces[0]?.companyId===company&&workspaces[0]?.userId===user);
+   Boolean(account?.company_id===company&&workspaces[0]?.companyId===company&&workspaces[0]?.userId===user));
  }
  assert.equal(isCreatedCompanyVerified('<malformed>',user,{company_id:company},[membership]),false);
 });
@@ -76,7 +76,7 @@ test('pending creation receipt is per-tab and tied to user, not an entitlement',
 test('public app guards repeat creation and checks the server membership',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/if\(state\.authBusy\|\|state\.pendingCompanyCreation\)return;/);
- assert.match(app,/const accepted=await createCompanyOnce\(/);
+ assert.match(app,/accepted=await createCompanyOnce\(/);
  assert.match(app,/state\.pendingCompanyCreation=\{companyId:accepted\.companyId\}/);
  assert.match(app,/isCreatedCompanyVerified\(pending\.companyId,state\.user\?\.id,state\.account,companyContext\.list\)/);
  assert.match(app,/verifyCreatedCompany/);
