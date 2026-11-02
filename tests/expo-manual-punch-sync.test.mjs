@@ -164,7 +164,7 @@ test('native home routes blocked journals and conflicts to the scoped My Hours l
 test('both native home and My Hours reuse the same protected sync handler',()=>{
  const home=source.slice(source.indexOf("page==='home'?"),source.indexOf(":page==='hours'?"));
  const hours=source.slice(source.indexOf(":page==='hours'?"),source.indexOf(":page==='schedule'?"));
- assert.equal((home.match(/void syncLocalPunches\(\)/g)||[]).length,1);
- assert.equal((hours.match(/void syncLocalPunches\(\)/g)||[]).length,1);
+ assert.equal((home.match(/void syncLocalPunches\(\)/g)||[]).length,2,'Home offers pending sync and cached-hours refresh through one guarded handler');
+ assert.equal((hours.match(/void syncLocalPunches\(\)/g)||[]).length,2,'My Hours offers the same two guarded refresh actions');
  assert.match(hours,/Ces événements ne constituent pas une validation officielle des heures/);
 });
