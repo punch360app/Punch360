@@ -35,6 +35,7 @@ function fixture({connectivity='offline',damaged=false}={}){
   setItem:async(key,value)=>{cache.set(key,value)}};
  const Network={getNetworkStateAsync:async()=>{
   if(network==='unknown')throw Error('Device network unavailable');
+  if(network==='unverified')return {isConnected:true,isInternetReachable:null};
   return {isConnected:network==='online',isInternetReachable:network==='online'};
  }};
  const getLocalIdentity=async()=>({id:user});
@@ -86,6 +87,24 @@ test('Expo unknown network status preserves local hours and does not try to uplo
  assert.equal(f.writes,writes);
  assert.equal(f.queries,0);
  assert.deepEqual(f.sent,[]);
+});
+
+test('Expo mobile connectivity without verified Internet never flushes saved events',async()=>{
+ const f=fixture({connectivity:'unverified'});
+ await f.journal.append('out',null,null,'2026-11-02T17:00:00Z',false,true);
+ const bytes=f.values.get(f.journal.key),writes=f.writes;
+ const state=await f.load(f.company);
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.localJournalBlocked,false);
+ assert.equal(state.hasLocalProjection,true);
+ assert.equal(f.queries,0);
+ assert.deepEqual(f.sent,[]);
+ assert.equal(f.writes,writes);
+ assert.equal(f.values.get(f.journal.key),bytes);
+ const punch=await f.capture(f.company,'in',f.job);
+ assert.equal(punch.queued,true);
+ assert.deepEqual(f.sent,[]);
+ assert.deepEqual((await f.journal.read()).map(e=>e.status),['pending','pending']);
 });
 
 test('Expo unreadable journal stays blocked; official cache stays available for viewing',async()=>{
