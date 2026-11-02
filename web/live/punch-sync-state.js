@@ -36,7 +36,12 @@ export function localPunchSyncState(events,companyId,userId){
  * UI wording is deliberately not equivalent to payroll approval.
  * A locally acknowledged event may still require GPS review or reconciliation.
  */
-export function localPunchStatusSummary({events,companyId,userId,snapshotCompanyId,snapshotFetchedAt}={}){
+export function localPunchStatusSummary({events,companyId,userId,snapshotCompanyId,snapshotFetchedAt,journalBlocked=false}={}){
+ // A corrupt local queue must not be hidden behind a valid but unrelated
+ // server snapshot label. Server hours remain separately readable.
+ if(journalBlocked===true&&typeof companyId==='string'&&companyId&&
+  typeof userId==='string'&&userId)
+  return {kind:'blocked',label:'Journal local à vérifier'};
  const {pending,conflicts}=localPunchSyncState(events,companyId,userId);
  if(pending.length&&conflicts.length)
   return {kind:'mixed',label:'En attente et conflit à vérifier'};
