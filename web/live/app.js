@@ -409,7 +409,9 @@ function essentialHours(){
  const corrections=essentialCorrectionView({companyId:company(),userId:state.user?.id,
   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections});
  const tracking=employeeHoursRequestTimeline({companyId:company(),userId:state.user?.id,
-  correctionView:corrections,breakView:pauses,missingView:forgotten});
+  correctionView:corrections,breakView:pauses,missingView:forgotten,
+  leaveView:essentialLeaveView({companyId:company(),userId:state.user?.id,
+   loaded:state.leavesLoaded,requests:state.leaves})});
  const trackingRows=tracking.items.map(r=>'<div class="hoursitem"><div class="grow"><b>'+
   e(r.title)+'</b><small>'+(r.at?e(when(r.at)):'Date indisponible')+
   '</small></div><span class="pill">'+e(r.label)+'</span></div>').join('');
@@ -430,13 +432,14 @@ function essentialHours(){
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+essentialPunchSyncPanel()+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
   '<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
-  '<div class="ess-panel"><b>Mes demandes d’ajustement · dernier relevé reçu</b>'+
+  '<div class="ess-panel"><b>Mes demandes et absences · dernier relevé reçu</b>'+
   '<p class="small muted">'+tracking.pendingCount+' demande(s) en attente parmi les données vérifiées. Une demande approuvée ne confirme pas, à elle seule, votre paie.</p>'+
   trackingNotice+(trackingRows||'<p class="small muted">'+(tracking.complete?
    'Aucune demande d’ajustement enregistrée sur votre compte.':'Aucune demande affichable dans les données disponibles.')+'</p>')+
   button('Corriger mes heures','subpage','full','data-id="essentialCorrection"')+
   button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
-  button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+'</div>';
+  button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+
+  button('Mes congés et absences','subpage','full','data-id="leave"')+'</div>';
 }
 function essentialCorrectionPage(){
  const correction=essentialCorrectionView({companyId:company(),userId:state.user?.id,
