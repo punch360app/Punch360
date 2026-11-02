@@ -54,7 +54,7 @@ test('Construction invalid timestamps never create positive hours',()=>{
 });
 test('Construction refresh and manual retry preserve break rows, never raw session hours',()=>{
  assert.match(app,/const \[serverBreaks,setServerBreaks\]=useState<PunchBreak\[\]>\(\[\]\)/);
- assert.equal(app.match(/setSessions\(punch\.sessions\);setServerSegments\(punch\.segments\);setServerBreaks\(punch\.breaks\|\|\[\]\)/g)?.length,2);
+ assert.equal(app.match(/setSessions\(punch\.sessions\);setServerSegments\(punch\.segments\);setServerBreaks\(punch\.breaks\|\|\[\]\)/g)?.length,3);
  assert.match(app,/const weekDuration=hoursFor\(serverSegments,now,weekBegin,now,serverBreaks\)/);
  assert.match(app,/const annualDuration=hoursFor\(serverSegments,now,yearBegin,now,serverBreaks\)/);
  assert.match(app,/formatHours\(hoursFor\(serverSegments\.filter\(seg=>seg\.session_id===s\.id\),now,Date\.parse\(s\.started_at\),s\.ended_at\?Date\.parse\(s\.ended_at\):now,serverBreaks\)\)/);
