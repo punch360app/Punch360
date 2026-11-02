@@ -57,6 +57,8 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const [myVisit,setMyVisit]=useState<ReturnType<typeof personalUpcomingClientVisit>|null>(null),[visitUnavailable,setVisitUnavailable]=useState(false),[visitExpanded,setVisitExpanded]=useState(false);
  const [fixedAddress,setFixedAddress]=useState(''),[fixedName,setFixedName]=useState('');
  const [navPref,setNavPref]=useState<string|null>(null),[navChooser,setNavChooser]=useState(false);
+ // Ignore old timer and reconnect reads after a newer punch or sync.
+ const punchReadRevision=useRef(0),punchActionInFlight=useRef(false),syncInFlight=useRef(false);
  const visitContext=useRef(account.companyId+':'+account.userId);visitContext.current=account.companyId+':'+account.userId;
  const navKey=navigationPreferenceKey(account.userId,account.companyId);
  useEffect(()=>{let current=true;setNavPref(null);setNavChooser(false);setFixedAddress('');setFixedName('');
@@ -77,14 +79,19 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const appearance=usePersonalTheme(account.userId),t=appearance.theme,Z={bg:t.bg,text:t.text,muted:t.muted,line:t.line,sage:t.accent};const styles=makeStyles(Z,t.surface,compact);
  const manager=['boss','admin'].includes(account.role);
  useEffect(()=>{if(appearance.needsChoice){setPage('more');setDetail('appearance');}},[appearance.needsChoice]);
- async function load(){try{
+ async function load(){
+  if(punchActionInFlight.current||syncInFlight.current)return;
   const requestedFor=account.companyId+':'+account.userId;
+  const revision=++punchReadRevision.current;
+  const current=()=>visitContext.current===requestedFor&&punchReadRevision.current===revision;
+  try{
   const cacheKey='essential-punch-channel:'+account.companyId+':'+account.userId;
   // Damaged or unreadable channel permissions cannot block the hours view.
   // They are treated as unknown authorization, never as an active grant.
   let cached:any=null;
   try{const raw=await AsyncStorage.getItem(cacheKey);cached=raw?JSON.parse(raw):null}
   catch{/* Continue loading the attendance snapshot with permissions disabled. */}
+  if(!current())return;
   const validCache=cached?.version===2&&Number.isFinite(cached.checkedAt)&&
     typeof cached.allowed==='boolean'&&
     (cached.job===null||typeof cached.job==='string')&&
@@ -93,17 +100,20 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   try{const network=await Network.getNetworkStateAsync();
    offline=network.isConnected===false||network.isInternetReachable===false;
   }catch{/* Unknown connectivity never grants new mobile permissions. */}
+  if(!current())return;
   if(offline){
    if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
    if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
   }else{
    const channel=await supabase.from('company_workers').select('id,status,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();
+   if(!current())return;
    if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false)}if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
    else if(channel.data){if(visitContext.current===requestedFor)setMissionWorker({key:requestedFor,id:channel.data.id});let assignedLocation=null;
     if(channel.data.location_id){
      const site=await supabase.from('essential_locations')
       .select('id,company_id,punch_job_id,active,name,address')
       .eq('company_id',account.companyId).eq('id',channel.data.location_id).maybeSingle();
+     if(!current())return;
      // A missing, inactive or unreadable assigned location must never
      // silently redirect PUNCH IN to the company's default Job.
      assignedLocation=site.error?null:site.data;
@@ -115,31 +125,33 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
      assignedLocation?[assignedLocation]:[],account.defaultJobId);
     const allowed=channel.data.status==='active'&&channel.data.can_mobile_punch===true&&channel.data.personal_access===true;setSiteJob(job);setMobileAllowed(allowed);
     await AsyncStorage.setItem(cacheKey,JSON.stringify({version:2,job,allowed,checkedAt:Date.now()})).catch(()=>{});
+    if(!current())return;
     try{
      const anchor=Date.now();
      const result=await supabase.rpc('list_essential_assigned_client_sites',{
       p_company:account.companyId,p_from:new Date(anchor-12*3600000).toISOString(),
       p_to:new Date(anchor+48*3600000).toISOString()});
+     if(!current())return;
      if(result.error)throw result.error;
      if(visitContext.current===requestedFor){
       setMyVisit(personalUpcomingClientVisit(result.data?.items,channel.data.id,anchor));
       setVisitUnavailable(!!result.data?.has_more);
      }
     }catch{if(visitContext.current===requestedFor){setMyVisit(null);setVisitUnavailable(true);}}
-   }else{setMobileAllowed(false);if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(false);setFixedAddress('');setFixedName('');}}
+   }else{setSiteJob(null);setMobileAllowed(false);if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(false);setFixedAddress('');setFixedName('');}}
   }
   const updated=await loadPunchState(account.companyId);
   const summary=await journalSummary(account.companyId);
-  if(visitContext.current!==requestedFor)return;
+  if(!current())return;
   setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
   setPendingItems(summary.pendingItems);setConflictItems(summary.conflictItems);
   if(updated.snapshotUnverified)setNotice('Relevé hors ligne indisponible : pointage suspendu jusqu’à vérification en ligne.');
   else if(updated.localJournalBlocked||summary.blocked)
    setNotice('Journal local à vérifier : pointage bloqué sur cet appareil. Heures serveur consultables.');
   else setNotice(previous=>previous.startsWith('Journal local à vérifier :')?'':previous);
- }catch(e:any){setNotice(e.message)}}
+ }catch(e:any){if(current())setNotice(e?.message||String(e))}}
 
- useEffect(()=>{load();const timer=setInterval(load,30000),tick=setInterval(()=>setNow(Date.now()),1000);const app=AppState.addEventListener('change',s=>{if(s==='active')load()});const network=Network.addNetworkStateListener(s=>{if(s.isConnected&&s.isInternetReachable!==false)load()});return()=>{clearInterval(timer);clearInterval(tick);app.remove();network.remove()}},[account.companyId]);
+ useEffect(()=>{setMobileAllowed(false);setSiteJob(null);load();const timer=setInterval(load,30000),tick=setInterval(()=>setNow(Date.now()),1000);const app=AppState.addEventListener('change',s=>{if(s==='active')load()});const network=Network.addNetworkStateListener(s=>{if(s.isConnected&&s.isInternetReachable!==false)load()});return()=>{++punchReadRevision.current;clearInterval(timer);clearInterval(tick);app.remove();network.remove()}},[account.companyId,account.userId]);
  const date=new Date(now),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),week=new Date(date.getFullYear(),date.getMonth(),date.getDate()-(date.getDay()+6)%7).getTime();
  const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=(punch.breaks||[]).some(b=>!b.ended_at);
  // Local projections and offline snapshots are never payroll-approved hours.
@@ -150,14 +162,16 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   punch.hasLocalProjection?'Relevé serveur + pointages locaux en attente':
   punch.readSource==='server'?'Dernier relevé reçu du serveur':'Relevé non vérifié';
  async function act(action:'punch'|'pause',paid=false){
-  if(busy||!mobileAllowed||punch.localJournalBlocked)return;
+  if(busy||punchActionInFlight.current||syncInFlight.current||!mobileAllowed||punch.localJournalBlocked)return;
   if(action==='punch'&&!punch.active&&!siteJob){
    setNotice('Établissement de pointage non confirmé. Consultez votre responsable avant de commencer.');
    return;
   }
-  setBusy(true);setNotice('');try{const result=action==='pause'?await punchBreak(account.companyId,paused,paid):punch.active?await punchOut(account.companyId):await punchIn(account.companyId,siteJob!);setNotice(result.queued?'Enregistré sur cet appareil. Envoi au retour du réseau.':result.review_status==='pending'?'Enregistré · validation du responsable requise':'Enregistré.');await load()}catch(e:any){setNotice(e.message)}finally{setBusy(false)}}
+  punchActionInFlight.current=true;++punchReadRevision.current;setBusy(true);setNotice('');try{const result=action==='pause'?await punchBreak(account.companyId,paused,paid):punch.active?await punchOut(account.companyId):await punchIn(account.companyId,siteJob!);setNotice(result.queued?'Enregistré sur cet appareil. Envoi au retour du réseau.':result.review_status==='pending'?'Enregistré · validation du responsable requise':'Enregistré.');punchActionInFlight.current=false;await load()}catch(e:any){setNotice(e.message)}finally{punchActionInFlight.current=false;setBusy(false)}}
  async function syncLocalPunches(){
-  if(busy||punch.localJournalBlocked)return;
+  if(busy||punchActionInFlight.current||syncInFlight.current||punch.localJournalBlocked)return;
+   syncInFlight.current=true;
+   const revision=++punchReadRevision.current;
   setBusy(true);
   try{
    const network=await Network.getNetworkStateAsync();
@@ -169,7 +183,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
    const requestedFor=account.companyId+':'+account.userId;
    const updated=await loadPunchState(account.companyId);
    const summary=await journalSummary(account.companyId);
-   if(visitContext.current!==requestedFor)return;
+   if(visitContext.current!==requestedFor||punchReadRevision.current!==revision)return;
    setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
   setPendingItems(summary.pendingItems);setConflictItems(summary.conflictItems);
    setNotice(essentialManualPunchSyncNotice({
@@ -177,8 +191,8 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
      pending:summary.pending,conflicts:summary.conflicts,
      readSource:updated.readSource,cacheWriteFailed:!!updated.cacheWriteFailed
     }));
-  }catch(e:any){setNotice('Synchronisation non confirmée : '+(e?.message||String(e)))}
-  finally{setBusy(false)}
+  }catch(e:any){if(visitContext.current===account.companyId+':'+account.userId&&punchReadRevision.current===revision)setNotice('Synchronisation non confirmée : '+(e?.message||String(e)))}
+  finally{syncInFlight.current=false;setBusy(false)}
  }
  const navDestination=navigationDestination({visit:myVisit,usualAddress:fixedAddress,usualName:fixedName,incomplete:visitUnavailable});
  const navOptions=navigationProviders(Platform.OS);
