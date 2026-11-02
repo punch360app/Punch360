@@ -375,3 +375,12 @@ test('only an offline event actually applied to a shift counts as a local projec
  assert.equal(done.active,null);
  assert.equal(projectPendingPunches(base,[{...real,company:'tenant-B'}],identity).appliedLocalEvents,0);
 });
+ 
+test('shared journal TypeScript declaration exposes applied local event count',()=>{
+ const declaration=readFileSync(new URL('../web/live/journal.d.ts',import.meta.url),'utf8');
+ const runtime=readFileSync(new URL('../web/live/journal.js',import.meta.url),'utf8');
+ assert.match(declaration,/appliedLocalEvents:number/);
+ assert.match(runtime,/return \{sessions,segments,breaks,active,lastJobId:[^;]*,appliedLocalEvents\}/);
+ const native=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
+ assert.match(native,/hasAppliedLocalProjection:!journalBlocked&&projected\.appliedLocalEvents>0/);
+});

@@ -5,7 +5,7 @@ export class PunchJournal {
  read():Promise<LocalPunchEvent[]>;append(action:LocalPunchEvent['action'],job?:string|null,fix?:LocalPunchEvent['fix'],occurredAt?:string,paid?:boolean,offline?:boolean):Promise<LocalPunchEvent>;
  flush():Promise<{sent:number;events:LocalPunchEvent[];pending:number}>;pending():Promise<LocalPunchEvent[]>;
 }
-export function projectPendingPunches<T extends {sessions:any[];segments:any[]}>(snapshot:T,events:LocalPunchEvent[],scope?:{company:string;user:string}|null):T & {breaks:any[];active:any;lastJobId:string|null};
+export function projectPendingPunches<T extends {sessions:any[];segments:any[]}>(snapshot:T,events:LocalPunchEvent[],scope?:{company:string;user:string}|null):T & {breaks:any[];active:any;lastJobId:string|null;appliedLocalEvents:number};
 
 /** Safeguard before append or flush; preserves unverified local events unchanged. */
 export function hasUnsafePunchJournalEntries(events:unknown,company:string,user:string):boolean;
