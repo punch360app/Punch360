@@ -302,7 +302,7 @@ test('Essentiel manual punch synchronization reports a cached fallback as unconf
  assert.match(essential,/setNotice\(essentialManualPunchSyncNotice\(\{/);
  assert.match(essential,/readSource:updated\.readSource/);
  assert.match(essential,/cacheWriteFailed:!!updated\.cacheWriteFailed/);
- const evaluate=({blocked=false,pending=0,conflicts=0,readSource='server',cacheWriteFailed=false}={})=>
+ const evaluate=({blocked=false,pending=0,conflicts=0,readSource=null,cacheWriteFailed=false}={})=>
   message(blocked,pending,conflicts,readSource,cacheWriteFailed);
  assert.match(evaluate({readSource:'cache'}),/synchronisation non confirmée/i);
  assert.match(evaluate({readSource:undefined}),/synchronisation non confirmée/i);
