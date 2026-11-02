@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
-import {renderCommercialDetails,estimatePublicPlanPrice,isPublicPlanOfferComplete,publicPlanHighlights} from '../web/live/commercial.js';
+import {renderCommercialDetails,estimatePublicPlanPrice,isPublicPlanOfferComplete,quotePublicPlanOffer,publicPlanHighlights} from '../web/live/commercial.js';
 const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const money=cents=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(cents/100);
 const plan={active:true,public_visible:true,title:'Essentiel',base_cents:1900,extra_seat_cents:300,included_seats:5,annual_discount:15,kiosk_limit:1,establishment_limit:1,features:[]};
@@ -67,7 +67,7 @@ test('Bento uses neutral unknown limits, never negative or missing quotas',async
   const rows=[...window.document.querySelectorAll('tbody tr')].map(row=>[...row.children].map(c=>c.textContent));
   assert.deepEqual(rows.find(r=>r[0]==='Bornes comprises').slice(1),['À confirmer','Illimitées']);
   assert.deepEqual(rows.find(r=>r[0]==='Établissements').slice(1),['À confirmer','Plusieurs']);
-  assert.deepEqual(rows.find(r=>r[0]==='Prix de base mensuel').slice(1),[money(1900),money(1900)]);
+  assert.deepEqual(rows.find(r=>r[0]==='Prix de base mensuel').slice(1),['À confirmer',money(1900)]);
  }finally{await window.happyDOM.close();}
 });
 
@@ -91,6 +91,34 @@ test('public offer selection requires known limits and feature entitlements',()=
  assert.equal(isPublicPlanOfferComplete(null),false);
 });
 
+
+test('comparison, card and signup can only quote complete public offers',async()=>{
+ const window=new Window();
+ try{
+  const incomplete=[
+   {...plan,title:'Droits inconnus',features:null},
+   {...plan,title:'Bornes inconnues',kiosk_limit:undefined},
+   {...plan,title:'Établissements inconnus',establishment_limit:-2}
+  ];
+  for(const p of incomplete){
+   assert.equal(isPublicPlanOfferComplete(p),false);
+   assert.ok(estimatePublicPlanPrice(p,8,'yearly'),
+    'pure arithmetic may be available before legal offer terms');
+   assert.equal(quotePublicPlanOffer(p,8,'yearly'),null);
+  }
+  assert.deepEqual(quotePublicPlanOffer(plan,8,'yearly'),estimatePublicPlanPrice(plan,8,'yearly'));
+  window.document.body.innerHTML=renderCommercialDetails([...incomplete,plan],escape,money,{seats:8,cadence:'yearly'});
+  const rows=[...window.document.querySelectorAll('tbody tr')].map(row=>[...row.children].map(c=>c.textContent));
+  for(const title of ['Tarif estimé · 8 membres · paiement annuel','Économie sur 12 mois',
+   'Membres inclus','Prix de base mensuel','Réduction annuelle','Supplément pour 12 mois']){
+   const row=rows.find(r=>r[0]===title);
+   assert.ok(row,title);
+   assert.deepEqual(row.slice(1,4),['À confirmer','À confirmer','À confirmer'],title);
+   assert.notEqual(row[4],'À confirmer','valid fourth offer: '+title);
+  }
+  assert.doesNotMatch(window.document.querySelector('table').textContent,/NaN|Infinity|undefined/);
+ }finally{await window.happyDOM.close();}
+});
 
 test('public pricing cards list only verifiable feature flags, never invented entitlements',()=>{
  assert.deepEqual(publicPlanHighlights({...plan,features:['messages']}),['Messagerie']);
