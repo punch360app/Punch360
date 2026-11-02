@@ -542,7 +542,8 @@ function essentialPunchSyncPanel(){
   (blocked?'<p>Journal local non vérifiable : la synchronisation et les nouveaux pointages sur cet appareil sont bloqués. Aucun événement local n\'a été effacé. Contactez votre responsable pour une vérification; les heures serveur restent consultables.</p>':'')+
   (pending.length?'<p>'+pending.length+' événement(s) en attente de transmission. Ces pointages ne sont pas confirmés et ne figurent pas dans le relevé officiel.</p><ul>'+entries(pending)+'</ul>'+
     (pending.length>5?'<p class="small muted">Et '+(pending.length-5)+' autre(s) événement(s) en attente.</p>':'')+
-    (navigator.onLine?button('Synchroniser maintenant','syncPendingPunches','full',state.busy?'disabled aria-disabled="true"':''):
+    (blocked?(state.section==='hours'||conflicts.length?'':button('Consulter Mes heures','navigate','full','data-id="hours"')):
+     navigator.onLine?button('Synchroniser maintenant','syncPendingPunches','full',state.busy?'disabled aria-disabled="true"':''):
      '<p class="small muted">Connexion Internet requise pour réessayer l’envoi.</p>'):'')+
   (conflicts.length?'<p>'+conflicts.length+' événement(s) en conflit avec le serveur : non confirmés, à vérifier avec votre responsable.</p><ul>'+entries(conflicts)+'</ul>'+
     (conflicts.length>5?'<p class="small muted">Et '+(conflicts.length-5)+' autre(s) conflit(s) à vérifier.</p>':'')+
