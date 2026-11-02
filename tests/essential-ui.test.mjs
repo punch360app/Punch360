@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
 import {createEssentialController} from '../web/live/essential.js';
+import {rememberPublicPlanIntent,readPublicPlanIntent,clearSavedPublicPlanSelection} from '../web/live/public-plan-intent.js';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const plan={id:'essential_plus',title:'Essentiel Plus',base_cents:3900,included_seats:5,extra_seat_cents:400,annual_discount:15,kiosk_limit:3,establishment_limit:1,features:['punch','hours','csv','offline','personal_account','themes','advanced_schedules'],active:true,public_visible:true,sort_order:2,version:1,grace_days:30,description:'',recommended:true};
 function setup(rpc=async()=>({data:true})){const w=new Window();let calls=[];const sb={rpc:async(name,args)=>{calls.push({name,args});return rpc(name,args);}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});ui.state.plans=[{...plan}];return {w,ui,calls};}
@@ -114,6 +115,38 @@ test('Bento selection reads restored seat input even without input events',async
   chosenSeats=null;
   await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
   assert.equal(chosenSeats,null,'an invalid restored count must never navigate');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento repricing clears previous signup intent in same browser tab',async()=>{
+ const w=new Window(),data=new Map(),storage={
+  getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)
+ };
+ let cleared=0;
+ const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,
+  onPricingChange:()=>{cleared++;clearSavedPublicPlanSelection(storage)}});
+ try{
+  ui.state.plans=[{...plan}];
+  w.document.body.innerHTML=ui.renderPricing();
+  const input=w.document.getElementById('ess-seats');
+  rememberPublicPlanIntent(storage,{planId:plan.id,seats:5,cadence:'monthly'});
+  input.value='7';ui.input(input);
+  assert.equal(cleared,1);
+  assert.equal(readPublicPlanIntent(storage),null,'signup cannot show old seat count');
+  rememberPublicPlanIntent(storage,{planId:plan.id,seats:7,cadence:'monthly'});
+  input.value='7';ui.input(input);
+  assert.equal(cleared,1,'unchanged seat input does not discard the chosen plan');
+  await ui.handle({dataset:{action:'ess:yearly'}});
+  assert.equal(cleared,2);
+  assert.equal(readPublicPlanIntent(storage),null,'signup cannot show obsolete monthly cadence');
+  rememberPublicPlanIntent(storage,{planId:plan.id,seats:7,cadence:'yearly'});
+  await ui.handle({dataset:{action:'ess:yearly'}});
+  assert.equal(cleared,2,'clicking the already-selected period retains intent');
+  assert.ok(readPublicPlanIntent(storage));
+  const {readFileSync}=await import('node:fs');
+  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+  assert.match(app,/onPricingChange:\(\)=>clearSavedPublicPlanSelection\(sessionStorage\)/,
+   'actual signup app must connect the controller to tab storage cleanup');
  }finally{await w.happyDOM.close();}
 });
 
