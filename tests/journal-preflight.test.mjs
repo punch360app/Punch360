@@ -281,6 +281,13 @@ test('invalid saved GPS fixes quarantine all punches before RPC and preserve byt
  for(const fix of invalid){
   const row={...good('invalid-gps'),fix},sent=[];
   const h=setup([row],async e=>{sent.push(e.id);return {sync_status:'synced'};});
+  // JSON.stringify turns Infinity into null (an allowed missing accuracy).
+  // Simulate hostile persisted numeric bytes: JSON.parse(1e309) is Infinity.
+  if(fix?.accuracy===Infinity){
+   const raw=h.memory.get(h.key);
+   assert.match(raw,/"accuracy":null/);
+   h.memory.set(h.key,raw.replace('"accuracy":null','"accuracy":1e309'));
+  }
   const bytes=h.memory.get(h.key);
   assert.equal(hasUnsafePunchJournalEntries([row],'company-A','employee-A'),true);
   await assert.rejects(h.journal.flush(),/aucun envoi effectué/);
