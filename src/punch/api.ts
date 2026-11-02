@@ -273,11 +273,21 @@ export async function loadArchives():Promise<string[]>{
  if(error||!Array.isArray(data)||!data.every(row=>row&&validIds([row.segment_id])))
   return cached();
  const ids=Array.from(new Set(data.map(row=>row.segment_id as string)));
- // A mutation completed while this request was in flight: its local result
- // takes precedence over the stale response from before that mutation.
- if(requestRevision!==(archiveRevisions.get(key)||0))return cached();
- // A valid server response stays available even if device storage is full.
- try{await AsyncStorage.setItem(key,JSON.stringify(ids))}catch{}
+ // Serialize a server snapshot with archive/restore writes. Checking revision
+ // only before an asynchronous setItem is not sufficient: an earlier read
+ // can finish writing AFTER a more recent confirmed archive mutation.
+ const prior=archiveWrites.get(key)||Promise.resolve();
+ const persist=prior.catch(()=>{}).then(async()=>{
+  if(requestRevision!==(archiveRevisions.get(key)||0))return;
+  try{await AsyncStorage.setItem(key,JSON.stringify(ids))}catch{}
+ });
+ archiveWrites.set(key,persist);
+ await persist;
+ if(requestRevision!==(archiveRevisions.get(key)||0)){
+  // A newer confirmed mutation wins; wait for its queued write before reading.
+  await (archiveWrites.get(key)||Promise.resolve()).catch(()=>{});
+  return cached();
+ }
  return ids;
 }
 /** The mobile totals must match the web's CSV and Essential hours view:
