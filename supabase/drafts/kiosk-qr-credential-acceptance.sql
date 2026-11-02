@@ -115,6 +115,31 @@ begin
    where company_id=company_a and worker_id=worker.id and revoked_at is null)
  then raise exception 'Self revocation left an active card';end if;
 
+ -- Removing company membership must invalidate a live card even if
+ -- the worker record has not yet been synchronized by another trigger.
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ execute 'set local role authenticated';
+ enrollment:=public.create_worker_qr_enrollment(worker.id);
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ execute 'set local role authenticated';
+ card_two:=public.activate_my_kiosk_qr_card(company_a,enrollment,gen_random_uuid());
+ execute 'reset role';
+ if not exists(select 1 from private.kiosk_qr_cards
+  where company_id=company_a and worker_id=worker.id
+   and token_hash=sha256(convert_to(card_two,'UTF8')) and revoked_at is null)
+ then raise exception 'Membership test setup did not issue card';end if;
+ update public.company_members set status='disabled'
+  where company_id=company_a and user_id=employee;
+ if exists(select 1 from private.kiosk_qr_cards
+   where company_id=company_a and worker_id=worker.id and revoked_at is null)
+ then raise exception 'Disabled company membership kept QR active';end if;
+ update public.company_members set status='active'
+  where company_id=company_a and user_id=employee;
+ if exists(select 1 from private.kiosk_qr_cards
+   where company_id=company_a and worker_id=worker.id and revoked_at is null)
+ then raise exception 'Reactivation silently restored an old QR';end if;
+
  -- Fresh enrollment becomes invalid on staff deactivation in the same tx.
  perform set_config('request.jwt.claim.sub',boss::text,true);
  execute 'set local role authenticated';
