@@ -33,11 +33,11 @@ function fixture(){
    then:(accept,reject)=>request.promise.then(accept,reject)};
   return query;
  }};
- function create(account){
+ function create(account,mode='schedule'){
   const scope=account.companyId+':'+account.userId;
-  return new Function('scope','scopeRef','readRevision','account','supabase',
+  return new Function('scope','scopeRef','readRevision','account','supabase','mode',
    ...Object.keys(setters),loadCode+'\nreturn load;')(
-   scope,scopeRef,readRevision,account,supabase,...Object.values(setters));
+   scope,scopeRef,readRevision,account,supabase,mode,...Object.values(setters));
  }
  function gates(value='A',data=undefined,problem=null){
   const map=new Map();
@@ -64,7 +64,7 @@ test('slow tenant A query cannot display jobs, workers, shifts or documents afte
  old.release();await loadingA;
  assert.equal(f.state.loadedScope,'tenant-B:user-B');
  for(const [field,table] of [['jobs','jobs'],['members','company_members'],
-  ['shifts','scheduled_shifts'],['docs','job_documents'],['acks','document_acknowledgements']]){
+  ['shifts','scheduled_shifts']]){
   assert.deepEqual(f.state[field],[{id:table+'-B'}],field);
   assert.equal(f.writes.some(([key,value])=>key===field&&
    value?.[0]?.id===table+'-A'),false,'Stale private response must never be rendered');
@@ -129,9 +129,55 @@ test('panel hides stale private rows until exact user and company finish loading
   source.indexOf('return <ScrollView keyboardShouldPersistTaps'));
  assert.match(source,/setLoadedScope\(''\);setJobs\(\[\]\);setMembers\(\[\]\);setShifts\(\[\]\)/);
  assert.match(source,/setDocs\(\[\]\);setAcks\(\[\]\);setJob\(account\.defaultJobId\|\|''\)/);
- assert.match(source,/\},\[scope\]\);/);
+ assert.match(source,/\},\[scope,mode\]\);/);
  const ast=ts.createSourceFile('OperationsPanel.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(ast.parseDiagnostics.length,0);
+});
+
+test('invite mode needs no private company operations tables to load',async()=>{
+ const f=fixture();
+ // No gates means a Supabase query would fail immediately.
+ await f.create({companyId:'tenant-A',userId:'user-A'},'invite')();
+ assert.equal(f.state.loadedScope,'tenant-A:user-A');
+ assert.deepEqual(f.state.jobs,[]);
+ assert.deepEqual(f.state.members,[]);
+ assert.deepEqual(f.state.docs,[]);
+ assert.deepEqual(f.state.acks,[]);
+});
+
+test('document mode reads documents and acknowledgements but not employee schedules',async()=>{
+ const f=fixture(),request=f.gates('docs');
+ const promise=f.create({companyId:'tenant-A',userId:'user-A'},'documents')();
+ request.release();await promise;
+ assert.deepEqual(f.state.jobs,[{id:'jobs-docs'}]);
+ assert.deepEqual(f.state.docs,[{id:'job_documents-docs'}]);
+ assert.deepEqual(f.state.acks,[{id:'document_acknowledgements-docs'}]);
+ assert.deepEqual(f.state.members,[]);
+ assert.deepEqual(f.state.shifts,[]);
+});
+
+test('schedule mode ignores document-read failures unrelated to work planning',async()=>{
+ const f=fixture(),request=f.gates('sched',null,{
+  job_documents:new Error('Document service unavailable'),
+  document_acknowledgements:new Error('Document permissions unavailable')
+ });
+ const promise=f.create({companyId:'tenant-A',userId:'user-A'},'schedule')();
+ request.release();await promise;
+ assert.equal(f.state.loadedScope,'tenant-A:user-A');
+ assert.deepEqual(f.state.shifts,[{id:'scheduled_shifts-sched'}]);
+ assert.deepEqual(f.state.docs,[]);
+});
+
+test('document mode ignores schedule-table failures unrelated to reading PDFs',async()=>{
+ const f=fixture(),request=f.gates('pdf',null,{
+  company_members:new Error('Members unavailable'),
+  scheduled_shifts:new Error('Schedules unavailable')
+ });
+ const promise=f.create({companyId:'tenant-A',userId:'user-A'},'documents')();
+ request.release();await promise;
+ assert.equal(f.state.loadedScope,'tenant-A:user-A');
+ assert.deepEqual(f.state.docs,[{id:'job_documents-pdf'}]);
+ assert.deepEqual(f.state.shifts,[]);
 });
 
 test('a loading error offers a scoped retry without showing old company data',()=>{
