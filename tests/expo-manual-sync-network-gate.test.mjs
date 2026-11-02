@@ -10,7 +10,7 @@ function sourceSlice(content,from,to){
  assert.ok(a>=0&&b>a,'Missing source boundaries: '+from);
  return content.slice(a,b);
 }
-const constructionSync=sourceSlice(construction,'async function syncConstructionPunches(){',' useEffect(()=>{refresh();');
+const constructionSync=sourceSlice(construction,'async function syncConstructionPunches(){','\n useEffect(');
 const essentialSync=sourceSlice(essential,' async function syncLocalPunches(){',' const navDestination=',);
 function actualGate(src,variable){
  const match=src.match(new RegExp('if\\(('+variable+'\\.isConnected[^\\n]*?'+variable+'\\.isInternetReachable[^\\n]*?)\\)\\{'));
