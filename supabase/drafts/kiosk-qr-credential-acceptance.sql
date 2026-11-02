@@ -73,6 +73,37 @@ begin
  if not denied then raise exception 'Enrollment replay succeeded';end if;
  execute 'reset role';
 
+ -- A personal card status is visible only to the right authenticated
+ -- employee; status output must not include the secret or installation ID.
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ execute 'set local role authenticated';
+ if public.my_kiosk_qr_card_status(company_a)->>'active'<>'true'
+ then raise exception 'Own active card not reported';end if;
+ if (public.my_kiosk_qr_card_status(company_a))::text like '%'||card_one||'%'
+ then raise exception 'Card secret exposed in own status';end if;
+ denied:=false;
+ begin
+  perform public.my_kiosk_qr_card_status(company_b);
+ exception when insufficient_privilege then denied:=true;end;
+ if not denied then raise exception 'Employee read foreign QR status';end if;
+ denied:=false;
+ begin
+  perform public.list_kiosk_qr_card_status(company_a);
+ exception when insufficient_privilege then denied:=true;end;
+ if not denied then raise exception 'Employee read manager QR status';end if;
+ execute 'reset role';
+
+ -- Boss may see his company's worker enrollment flags without secrets.
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ execute 'set local role authenticated';
+ if not exists(
+  select 1 from jsonb_array_elements(public.list_kiosk_qr_card_status(company_a)) x
+   where x->>'worker_id'=worker.id::text and x->>'active'='true'
+ ) then raise exception 'Boss missing active card status';end if;
+ if (public.list_kiosk_qr_card_status(company_a))::text like '%'||card_one||'%'
+ then raise exception 'Manager status leaked card secret';end if;
+ execute 'reset role';
+
  if not exists(
   select 1 from private.kiosk_qr_cards
   where company_id=company_a and worker_id=worker.id
@@ -139,6 +170,13 @@ begin
  if exists(select 1 from private.kiosk_qr_cards
    where company_id=company_a and worker_id=worker.id and revoked_at is null)
  then raise exception 'Reactivation silently restored an old QR';end if;
+
+ -- Revoked cards never appear active to their former owner.
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ execute 'set local role authenticated';
+ if public.my_kiosk_qr_card_status(company_a)->>'active'<>'false'
+ then raise exception 'Revoked card still reported active';end if;
+ execute 'reset role';
 
  -- Fresh enrollment becomes invalid on staff deactivation in the same tx.
  perform set_config('request.jwt.claim.sub',boss::text,true);
