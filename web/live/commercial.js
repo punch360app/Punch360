@@ -12,7 +12,7 @@ export function estimatePublicPlanPrice(plan,seats,cadence){
   !Number.isInteger(discount)||discount<0||discount>100)return null;
  const monthlyCents=base+(unlimited===true?0:Math.max(0,seats-included)*extra);
  const annualCents=Math.round(monthlyCents*12*(100-discount)/100);
- if(!Number.isSafeInteger(monthlyCents)||!Number.isSafeInteger(annualCents))return null;
+ if(!Number.isSafeInteger(monthlyCents)||!Number.isSafeInteger(monthlyCents*12)||!Number.isSafeInteger(annualCents))return null;
  return {monthlyCents,annualCents,payableCents:cadence==='yearly'?annualCents:monthlyCents};
 }
 
@@ -45,13 +45,15 @@ export function renderCommercialDetails(plans,escape,money,{seats=null,cadence='
   }]]:[]),
   ['Membres facturés en supplément',p=>quote(p)?String(extraSeats(p)):'À confirmer'],
   [cadence==='yearly'?'Supplément pour 12 mois':'Supplément mensuel',p=>supplement(p)],
-  ['Prix de base mensuel',p=>money(p.base_cents)],
-  ['Membres inclus',p=>p.included_seats_unlimited===true?'Illimité':String(p.included_seats)],
-  ['Membre supplémentaire / mois',p=>p.included_seats_unlimited===true?'Aucun supplément':money(p.extra_seat_cents)],
-  ['Réduction annuelle',p=>p.annual_discount+' %'],
-  ['Bornes comprises',p=>p.kiosk_limit===null?'Illimitées':String(p.kiosk_limit)],
-  ['Établissements',p=>p.establishment_limit===null?'Plusieurs':String(p.establishment_limit)],
-  ...[['Horaires avancés','advanced_schedules'],['Départements','departments'],['Superviseurs','supervisors'],['Échanges de quarts','shift_swaps'],['Annonces et lectures','announcements'],['Messagerie','messages'],['Couverture minimale','minimum_coverage'],['Rapports avancés','advanced_reports'],['Documents RH','hr_documents'],['Certifications','certifications'],['Banques d’heures','time_banks'],['Coûts de main-d’œuvre','labor_costs']].map(([title,key])=>[title,p=>(p.features||[]).includes(key)?'Inclus':'—'])
+  // Incomplete server catalog rows must never masquerade as free prices or
+  // valid discounts: use the same validated quote as the selection cards.
+  ['Prix de base mensuel',p=>quote(p)?money(p.base_cents):'À confirmer'],
+  ['Membres inclus',p=>quote(p)?(p.included_seats_unlimited===true?'Illimité':String(p.included_seats)):'À confirmer'],
+  ['Membre supplémentaire / mois',p=>quote(p)?(p.included_seats_unlimited===true?'Aucun supplément':money(p.extra_seat_cents)):'À confirmer'],
+  ['Réduction annuelle',p=>quote(p)?p.annual_discount+' %':'À confirmer'],
+  ['Bornes comprises',p=>p.kiosk_limit===null?'Illimitées':Number.isSafeInteger(p.kiosk_limit)&&p.kiosk_limit>=0?String(p.kiosk_limit):'À confirmer'],
+  ['Établissements',p=>p.establishment_limit===null?'Plusieurs':Number.isSafeInteger(p.establishment_limit)&&p.establishment_limit>=0?String(p.establishment_limit):'À confirmer'],
+  ...[['Horaires avancés','advanced_schedules'],['Départements','departments'],['Superviseurs','supervisors'],['Échanges de quarts','shift_swaps'],['Annonces et lectures','announcements'],['Messagerie','messages'],['Couverture minimale','minimum_coverage'],['Rapports avancés','advanced_reports'],['Documents RH','hr_documents'],['Certifications','certifications'],['Banques d’heures','time_banks'],['Coûts de main-d’œuvre','labor_costs']].map(([title,key])=>[title,p=>Array.isArray(p.features)?(p.features.includes(key)?'Inclus':'—'):'À confirmer'])
  ];
  const questions=[
   ['Faut-il un téléphone pour pointer?','Non. Un salarié peut utiliser la tablette commune avec son matricule et son NIP personnel, sans courriel ni compte mobile.'],
