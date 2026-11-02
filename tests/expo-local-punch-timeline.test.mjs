@@ -49,7 +49,8 @@ test('Native hours UI renders time-safe read-only items, truncation and recovery
  assert.match(screen,/pendingItems\.map\(\(item,i\)=>/);
  assert.match(screen,/conflictItems\.map\(\(item,i\)=>/);
  assert.match(screen,/new Date\(item\.occurredAt\)\.toLocaleString\('fr-CA'/);
- assert.match(screen,/!punch\.localJournalBlocked\?<>/);
+ assert.match(screen,/!journalBlocked\?<>/);
+ assert.match(screen,/setJournalBlocked\(!!updated\.localJournalBlocked\|\|summary\.blocked\)/);
  assert.match(screen,/pending>pendingItems\.length/);
  assert.match(screen,/conflicts>conflictItems\.length/);
  assert.match(screen,/setPendingItems\(summary\.pendingItems\);setConflictItems\(summary\.conflictItems\)/);
