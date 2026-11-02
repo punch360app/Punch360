@@ -17,9 +17,19 @@ export function estimatePublicPlanPrice(plan,seats,cadence){
 }
 
 /** Public comparison reads the same server catalog as the price cards. */
-export function renderCommercialDetails(plans,escape,money){
+export function renderCommercialDetails(plans,escape,money,{seats=null,cadence='monthly'}={}){
  const visible=plans.filter(p=>p.active&&p.public_visible);
+ // Quotes are derived from the current server catalog, not persisted contracts.
+ const validCount=Number.isSafeInteger(seats)&&seats>=1&&seats<=100000;
+ const priceLabel=validCount?'Tarif estimé · '+seats+' membre'+(seats>1?'s':'')+
+  (cadence==='yearly'?' · paiement annuel':' · paiement mensuel'):
+  'Tarif estimé · nombre de membres à confirmer';
+ const quote=plan=>validCount?estimatePublicPlanPrice(plan,seats,cadence):null;
  const rows=[
+  [priceLabel,p=>{const price=quote(p);return price?money(price.payableCents):'À confirmer';}],
+  ...(cadence==='yearly'?[['Économie sur 12 mois',p=>{
+   const price=quote(p);return price?money(price.monthlyCents*12-price.annualCents):'À confirmer';
+  }]]:[]),
   ['Prix de base mensuel',p=>money(p.base_cents)],
   ['Membres inclus',p=>p.included_seats_unlimited===true?'Illimité':String(p.included_seats)],
   ['Membre supplémentaire / mois',p=>p.included_seats_unlimited===true?'Aucun supplément':money(p.extra_seat_cents)],
