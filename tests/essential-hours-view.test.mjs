@@ -141,7 +141,7 @@ test('a partial HR adjustment read cannot be shown as an empty verified inbox',(
  assert.deepEqual(v.items.map(x=>x.key),['pauses:mine']);
  assert.deepEqual(v.unavailable,['Correction d’heures','Journée oubliée']);
  assert.deepEqual(employeeHoursRequestTimeline({...base,userId:''}),
-  {complete:false,pendingCount:0,items:[],unavailable:[]});
+  {complete:false,pendingCount:0,total:0,items:[],unavailable:[]});
 });
 test('manager viewing personal hours never receives colleagues pending break requests',()=>{
  const own={id:'own',company_id:company,requested_by:'boss',status:'pending',
@@ -157,7 +157,9 @@ test('My Hours links every adjustment type and never treats reviewed requests as
  const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
  const view=app.slice(begin,end);
  assert.match(app,/import \{essentialHoursView,employeeHoursRequestTimeline\} from '\.\/essential-hours-view\.js'/);
- assert.match(view,/employeeHoursRequestTimeline\(\{companyId:company\(\),userId:state\.user\?\.id/);
+ assert.match(app,/function myRequestsTimeline\(limit=8\)/);
+ assert.match(app,/employeeHoursRequestTimeline\(\{companyId,userId,limit/);
+ assert.match(view,/myRequestsTimeline\(\)/);
  assert.match(view,/Mes demandes et absences/);
  assert.match(view,/Suivi incomplet/);
  assert.match(view,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
@@ -199,9 +201,48 @@ test('My Hours passes only the leave view scoped to the account, with no automat
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  const start=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',start);
  const hours=app.slice(start,end);
- assert.match(hours,/leaveView:essentialLeaveView\(\{companyId:company\(\),userId:state\.user\?\.id/);
- assert.match(hours,/loaded:state\.leavesLoaded,requests:state\.leaves/);
+ assert.match(app,/leaveView:essentialLeaveView\(\{companyId,userId,loaded:state\.leavesLoaded/);
+ assert.match(app,/loaded:state\.leavesLoaded,requests:state\.leaves/);
  assert.match(hours,/data-id="leave"/);
  assert.match(hours,/Mes demandes et absences/);
  assert.match(hours,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
+});
+
+test('all personal requests page expands beyond eight rows while preserving the summary limit',()=>{
+ const own=Array.from({length:35},(_,i)=>({id:'req-'+i,company_id:company,
+  requested_by:user,status:i%2?'approved':'pending',
+  created_at:new Date(Date.parse('2026-11-02T10:00:00Z')+i*60000).toISOString()}));
+ const foreign={...own[0],id:'foreign',requested_by:'someone-else'};
+ const args={companyId:company,userId:user,
+  correctionView:{ready:true,requests:[...own,foreign]},
+  breakView:{ready:true,requests:[]},missingView:{ready:true,requests:[]},
+  leaveView:{ready:true,requests:[]}};
+ const compact=employeeHoursRequestTimeline(args);
+ const full=employeeHoursRequestTimeline({...args,limit:100});
+ assert.equal(compact.items.length,8);
+ assert.equal(full.items.length,35);
+ assert.equal(compact.total,35);
+ assert.equal(full.total,35);
+ assert.equal(full.pendingCount,18);
+ assert.doesNotMatch(JSON.stringify(full),/foreign/);
+ assert.equal(employeeHoursRequestTimeline({...args,limit:NaN}).items.length,8);
+ assert.equal(employeeHoursRequestTimeline({...args,limit:1000}).items.length,35);
+});
+
+test('all requests page exposes status filters, scoped actions and failure notices',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('function essentialRequestsPage()'),end=app.indexOf('function essentialHours()',start);
+ const page=app.slice(start,end);
+ assert.match(page,/const tracking=myRequestsTimeline\(100\)/);
+ for(const status of ['all','pending','approved','rejected','cancelled'])
+  assert.match(page,new RegExp("'"+status+"'"));
+ for(const route of ['essentialCorrection','breakCorrections','missingDays','leave'])
+  assert.match(page,new RegExp("'"+route+"'"));
+ assert.match(page,/tracking\.unavailable\.join/);
+ assert.match(page,/requestFilter/);
+ assert.match(page,/data-id="hours"/);
+ assert.match(app,/if\(state\.sub==='myRequests'\)return essentialRequestsPage\(\)/);
+ assert.match(app,/else if\(a==='requestFilter'\)/);
+ assert.match(app,/data-id="myRequests"/);
+ assert.doesNotMatch(page,/\.rpc\(/);
 });
