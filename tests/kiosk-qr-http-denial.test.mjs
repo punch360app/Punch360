@@ -69,3 +69,23 @@ test('the existing employee-number PIN identification still reaches the original
  assert.equal(h.calls[0].p.p_number,'SYNTH-001');
  assert.deepEqual(h.secretReads,['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY'],'the PIN path must still load server credentials');
 });
+
+test('malformed PIN or pairing requests never read service-role environment',async()=>{
+ const malformed=[
+  {action:'identify',deviceId,token:'a'.repeat(64),number:'SYNTH-001',pin:''},
+  {action:'identify',deviceId,token:'a'.repeat(64),number:'SYNTH-001',pin:'short'},
+  {action:'in',deviceId,token:'a'.repeat(64),number:'SYNTH-001',pin:'829471',eventId:'not-a-uuid'},
+  {action:'pair',code:'too-short'},
+  {action:'unexpected'},
+  null,
+  []
+ ];
+ for(const payload of malformed){
+  const h=harness(),result=await h.invoke(payload);
+  assert.equal(result.status,400);
+  assert.equal(result.body.ok,false);
+  assert.deepEqual(h.secretReads,[],'Invalid input must not read privileged keys');
+  assert.deepEqual(h.database,[],'Invalid input must not initialize a privileged client');
+  assert.deepEqual(h.calls,[],'Invalid input must not reach RPC');
+ }
+});
