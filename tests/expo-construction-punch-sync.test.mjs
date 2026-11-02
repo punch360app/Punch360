@@ -11,14 +11,15 @@ function harness({pending=2,conflicts=1,blocked=false,connected=true,changed=fal
  const calls=[],messages=[],flags={locked:false};
  const req={companyId:'A',userId:'U'},scopeRef={current:scope};
  const syncInFlight={get current(){return flags.locked},set current(v){flags.locked=v}};
+ const punchReadRevision={current:0};
  const punch={sessions:[],segments:[],active:null,readSource:'server',hasLocalProjection:pending>0,localJournalBlocked:blocked};
  const set=(name,value)=>calls.push([name,value]);
- const retry=new Function('account','syncInFlight','working','journalBlocked','localPending','journalViewScope',
+ const retry=new Function('account','syncInFlight','punchReadRevision','working','journalBlocked','localPending','journalViewScope',
   'setSyncBusy','Network','scopeRef','setMessage','loadPunchState','journalSummary','setJournalBlocked',
   'setLocalPending','setLocalConflicts','setPendingItems','setConflictItems','setJournalViewScope',
   'setHoursReadSource','setHoursProjected','setSessions','setServerSegments','setServerBreaks','setSegments',
   'setPunchActive','setStartMs',code+'\nreturn syncConstructionPunches;')(
-  req,syncInFlight,working,blocked,pending,scope,
+  req,syncInFlight,punchReadRevision,working,blocked,pending,scope,
   x=>set('syncBusy',x),
   {getNetworkStateAsync:async()=>{set('network',true);if(throwNetwork)throw Error('network');return {isConnected:connected,isInternetReachable:connected}}},
   scopeRef,x=>messages.push(x),

@@ -57,6 +57,8 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const scopeRef=useRef(currentScope);scopeRef.current=currentScope;
  const syncInFlight=useRef(false);
  const punchActionInFlight=useRef(false);
+ // Monotonic read version: network callbacks and post-action refreshes may finish out of order.
+ const punchReadRevision=useRef(0);
  const [startMs,setStartMs]=useState<number|null>(null);
  const [now,setNow]=useState(Date.now());
  const [segments,setSegments]=useState<Segment[]>([]);
@@ -73,6 +75,8 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const [showArchived,setShowArchived]=useState(false);
  async function refresh(){
   const requestedFor=account.companyId+':'+account.userId;
+  if(punchActionInFlight.current)return;
+  const revision=++punchReadRevision.current;
   try{
    const net=await Network.getNetworkStateAsync();const offline=net.isConnected===false||net.isInternetReachable===false;
    const [result,punch,archives,orderResult]=await Promise.all([
@@ -80,7 +84,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
     offline?Promise.resolve({data:null,error:{message:'offline'}}):supabase.from('material_orders').select('id,job_id,status,note,created_at').eq('company_id',account.companyId).order('created_at',{ascending:false}).limit(50)
    ]);
    const local=await journalSummary(account.companyId);
-   if(scopeRef.current!==requestedFor)return;
+   if(scopeRef.current!==requestedFor||punchReadRevision.current!==revision)return;
    setJobs(result.jobs);setDemo(false);
    const blocked=!!punch.localJournalBlocked||local.blocked;
    setLocalPending(local.pending);setLocalConflicts(local.conflicts);
@@ -102,16 +106,17 @@ function Workspace({account}:{account:WorkspaceAccount}){
    setSelectedId(old=>openSegment?.job_id || (old&&result.jobs.some(j=>j.id===old)?old:(mostRecent&&result.jobs.some(j=>j.id===mostRecent)?mostRecent:result.jobs[0]?.id||'')));
    setPunchActive(!!punch.active);setStartMs(punch.active?Date.parse(punch.active.started_at):null);
    if(!orderResult.error)setOrders(orderResult.data||[]);
-  }catch(e:any){if(scopeRef.current===requestedFor)setMessage('Erreur de synchronisation : '+(e.message||String(e)));}
+  }catch(e:any){if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Erreur de synchronisation : '+(e.message||String(e)));}
  }
  async function syncConstructionPunches(){
   const requestedFor=account.companyId+':'+account.userId;
   if(syncInFlight.current||working||journalBlocked||localPending===0||
      journalViewScope!==requestedFor)return;
   syncInFlight.current=true;setSyncBusy(true);
+  const revision=++punchReadRevision.current;
   try{
    const net=await Network.getNetworkStateAsync();
-   if(scopeRef.current!==requestedFor)return;
+   if(scopeRef.current!==requestedFor||punchReadRevision.current!==revision)return;
    if(net.isConnected===false||net.isInternetReachable===false){
     setMessage('Connexion Internet requise : les pointages restent enregistrés sur cet appareil.');
     return;
@@ -119,7 +124,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    // This reuses the journal preflight and server reload, not a separate send endpoint.
    const punch=await loadPunchState(account.companyId);
    const local=await journalSummary(account.companyId);
-   if(scopeRef.current!==requestedFor)return;
+   if(scopeRef.current!==requestedFor||punchReadRevision.current!==revision)return;
    const blocked=!!punch.localJournalBlocked||local.blocked;
    setJournalBlocked(blocked);setLocalPending(local.pending);setLocalConflicts(local.conflicts);
    setPendingItems(local.pendingItems);setConflictItems(local.conflictItems);
@@ -135,10 +140,10 @@ function Workspace({account}:{account:WorkspaceAccount}){
     local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
     'Aucun pointage local en attente. Vérifiez les heures officielles sur le serveur.');
   }catch(e:any){
-   if(scopeRef.current===requestedFor)setMessage('Synchronisation non confirmée : '+(e?.message||String(e)));
+   if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Synchronisation non confirmée : '+(e?.message||String(e)));
   }finally{syncInFlight.current=false;setSyncBusy(false);}
  }
- useEffect(()=>{refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected&&state.isInternetReachable!==false)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{sub.remove();network.remove();clearInterval(retry)}},[account.companyId]);
+ useEffect(()=>{refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected&&state.isInternetReachable!==false)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
  const current=jobs.find(j=>j.id===selectedId)||jobs[0];
  const detail=jobs.find(j=>j.id===detailId)||current;
@@ -185,15 +190,24 @@ function Workspace({account}:{account:WorkspaceAccount}){
  function openJobs(mode:'browse'|'switch'='browse'){Keyboard.dismiss();setPickerMode(mode);setQuery('');setFilter('all');setPage('jobs')}
  function openDetail(j:Job){setDetailId(j.id);setShowArchived(false);setPage('detail')}
  function switchTo(j:Job){
-  if(punchActive&&(journalBlocked||journalViewScope!==currentScope||working||punchActionInFlight.current)){Alert.alert('Transfert indisponible','Vérifiez le journal de pointage et le compte avant de transférer.');return;}
+  if(journalBlocked||journalViewScope!==currentScope||working||
+     punchActionInFlight.current||syncInFlight.current){
+   Alert.alert('Transfert indisponible','Vérifiez le journal de pointage et le compte avant de changer de job.');
+   return;
+  }
   if(j.id===selectedId){setPage('home');return;}
   const apply=async()=>{
-   if(working)return;setWorking(true);
+   const requestedFor=account.companyId+':'+account.userId;
+   if(working||punchActionInFlight.current||scopeRef.current!==requestedFor)return;
+   punchActionInFlight.current=true;setWorking(true);
+   ++punchReadRevision.current;
    try{
     if(punchActive)await punchTransfer(account.companyId,j.id);
-    setSelectedId(j.id);setPage('home');await refresh();
-   }catch(e:any){Alert.alert('Transfert impossible',e.message||String(e))}
-   finally{setWorking(false);}
+    if(scopeRef.current!==requestedFor)return;
+    setSelectedId(j.id);setPage('home');
+    if(punchActive)await refreshConstructionPunchState();
+   }catch(e:any){if(scopeRef.current===requestedFor)Alert.alert('Transfert impossible',e.message||String(e))}
+   finally{punchActionInFlight.current=false;setWorking(false);}
   };
   if(punchActive)Alert.alert('Transférer mon punch',
    'Le temps de #'+current?.number+' se termine au même instant où commence celui de #'+j.number+'. Le compteur de la journée continue.',
@@ -202,9 +216,10 @@ function Workspace({account}:{account:WorkspaceAccount}){
  }
 async function refreshConstructionPunchState(){
   const requestedFor=account.companyId+':'+account.userId;
+  const revision=++punchReadRevision.current;
   const punch=await loadPunchState(account.companyId);
   const local=await journalSummary(account.companyId);
-  if(scopeRef.current!==requestedFor)return;
+  if(scopeRef.current!==requestedFor||punchReadRevision.current!==revision)return false;
   const blocked=!!punch.localJournalBlocked||local.blocked;
   setJournalBlocked(blocked);setLocalPending(local.pending);setLocalConflicts(local.conflicts);
   setPendingItems(local.pendingItems);setConflictItems(local.conflictItems);
@@ -219,6 +234,7 @@ async function refreshConstructionPunchState(){
    local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
    punch.readSource==='cache'?'Relevé local à vérifier · synchronisation non confirmée.':
    'Relevé reçu du serveur · heures sujettes à validation.');
+  return true;
  }
  async function toggleConstructionBreak(paid=false){
   const requestedFor=account.companyId+':'+account.userId;
@@ -226,14 +242,15 @@ async function refreshConstructionPunchState(){
      journalViewScope!==requestedFor||!punchActive||!activeSession)return;
   const resume=paused;
   punchActionInFlight.current=true;setWorking(true);
+  ++punchReadRevision.current; // invalidate any older background read before this write
   let recorded=false;
   try{
    const result=await punchBreak(account.companyId,resume,paid);
    recorded=true;
    if(scopeRef.current!==requestedFor)return;
    // Refresh from the scoped journal without depending on job/order/archives network.
-   await refreshConstructionPunchState();
-   if(scopeRef.current!==requestedFor)return;
+   const applied=await refreshConstructionPunchState();
+   if(!applied||scopeRef.current!==requestedFor)return;
    if(result.queued)setMessage('Pause enregistrée sur cet appareil · envoi au retour du réseau.');
    else if(result.review_status==='pending')setMessage('Pause enregistrée · validation du responsable requise.');
   }catch(e:any){
@@ -268,9 +285,10 @@ async function refreshConstructionPunchState(){
     const requestedFor=account.companyId+':'+account.userId;
     if(punchActionInFlight.current||scopeRef.current!==requestedFor)return;
     punchActionInFlight.current=true;setWorking(true);
+    ++punchReadRevision.current;
     try{if(punchActive)await punchOut(account.companyId);
     else await punchIn(account.companyId,current.id);
-    await refreshConstructionPunchState();
+    if(scopeRef.current===requestedFor)await refreshConstructionPunchState();
     }catch(e:any){if(scopeRef.current===requestedFor)Alert.alert('Punch non enregistré',e.message||String(e))}
     finally{punchActionInFlight.current=false;setWorking(false)}
    }}]);

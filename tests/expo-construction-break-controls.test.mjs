@@ -11,14 +11,14 @@ function fixture({paused=false,blocked=false,active=true,working=false,connected
  scope='A:U'}={}){
  const calls=[],alerts=[],messages=[],state={busy:false};
  const account={companyId:'A',userId:'U'},scopeRef={current:scope},punchActionInFlight={current:false};
- const syncInFlight={current:false},activeSession=active?{id:'S'}:null;
- const fn=new Function('account','punchActionInFlight','working','syncInFlight','journalBlocked',
+ const syncInFlight={current:false},punchReadRevision={current:0},activeSession=active?{id:'S'}:null;
+ const fn=new Function('account','punchActionInFlight','punchReadRevision','working','syncInFlight','journalBlocked',
   'journalViewScope','punchActive','activeSession','paused','scopeRef','setWorking','punchBreak',
   'refreshConstructionPunchState','setMessage','Alert',source+'\nreturn toggleConstructionBreak;')(
-  account,punchActionInFlight,working,syncInFlight,blocked,scope,active,activeSession,paused,
+  account,punchActionInFlight,punchReadRevision,working,syncInFlight,blocked,scope,active,activeSession,paused,
   scopeRef,x=>{state.busy=x;calls.push(['busy',x])},
   async(...args)=>{calls.push(['punchBreak',...args]);if(throwPunch)throw Error('RPC échoué');if(changed)scopeRef.current='B:U';return {queued,review_status:review}},
-  async()=>{calls.push(['refresh']);if(throwRefresh)throw Error('Relevé introuvable')},
+  async()=>{calls.push(['refresh']);if(throwRefresh)throw Error('Relevé introuvable');return true},
   x=>messages.push(x),{alert:(...args)=>alerts.push(args)}
  );
  return {fn,calls,alerts,messages,state,punchActionInFlight,syncInFlight};
