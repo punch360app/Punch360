@@ -24,6 +24,7 @@ import {PunchJournal,projectPendingPunches} from '../web/live/journal.js';
 const src=await readFile(new URL('../web/live/app.js',import.meta.url),'utf8');
 test('auth preserves typed credentials across async redraws, submits signup, explains confirmation and handles recovery',async()=>{
  const w=new Window({url:'https://punch.test/?edition=construction',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
+ try{
  w.document.body.innerHTML='<div id="root"></div>';w.__journal={PunchJournal,projectPendingPunches};w.__locale={createEssentialLocale,ESSENTIAL_LANGUAGES};w.__essential=createEssentialController;w.__boss=createBossHandoffController;w.__missions=createPersonalMissionController;w.__edition=resolvePublicEdition;
  const calls=[];let callback;let oauthAttempts=0;
  w.__appImports={validatePublicSignupPassword,togglePublicPasswordVisibility,isPublicEdition,canUseEssentialMessages,essentialTabs,canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,isCurrentCompanyChat,createChatUnreadController,beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection,listVerifiedWorkspaces,chooseVerifiedWorkspace,isRestrictedManagement,canUseRestrictedManagement,personalUpcomingClientVisit,navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference};
@@ -42,5 +43,5 @@ test('auth preserves typed credentials across async redraws, submits signup, exp
  w.document.getElementById('newPassword').value='new-pass-123';w.document.getElementById('confirmPassword').value='wrong-pass';await a.savePassword();assert.equal(calls.length,2);assert.match(w.document.getElementById('authError').textContent,/correspondent/);
  w.document.getElementById('confirmPassword').value='new-pass-123';await a.savePassword();assert.equal(calls[2].password,'new-pass-123');assert.equal(a.state.recovery,false);
  assert.ok(![...Array(w.localStorage.length)].some((_,i)=>w.localStorage.getItem(w.localStorage.key(i)).includes('test-pass-123')));
- await w.happyDOM.close();
+ }finally{await w.happyDOM.close();}
 });
