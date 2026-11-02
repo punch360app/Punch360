@@ -27,7 +27,7 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
  let generation=0,stream=null,video=null,detector=null,timer=null,expirationTimer=null,active=false;
  let detachTrackListeners=null;
  let started=0;
- const stopTracks=media=>{for(const track of media?.getTracks?.()||[])try{track.stop()}catch{}};
+ const stopTracks=media=>{for(const track of media?.getTracks?.()||media?.getVideoTracks?.()||[])try{track.stop()}catch{}};
  function stop(){
   generation++;active=false;
   if(timer!==null){cancel(timer);timer=null;}
@@ -74,14 +74,28 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
    stream=acquired;video=element;detector=reader;video.srcObject=acquired;
    await video.play?.();
    if(token!==generation)return false;
+   // Camera permission can resolve even when the underlying track has
+   // already ended (or a buggy browser yields an empty stream). Never show
+   // a scanning state without a live video track. Prefer getVideoTracks so an
+   // unexpected audio-only stream cannot masquerade as a working camera.
+   const tracks=acquired.getVideoTracks?.()??acquired.getTracks?.()??[];
+   if(!Array.isArray(tracks)||tracks.length===0){
+    stop();notify?.('camera');return false;
+   }
    active=true;
    // A camera can disappear while scanning (device unplugged, permission
-   // withdrawn, OS interruption). Stop the whole preview immediately and
-   // detach all listeners on every close/restart, without exposing QR data.
-   const tracks=acquired.getTracks?.()||[];
+   // withdrawn, OS interruption). Attach listeners before checking the live
+   // state to close the race between video.play() and registration.
    const onEnded=()=>{if(token!==generation||!active)return;stop();notify?.('camera');};
-   for(const track of tracks)try{track.addEventListener?.('ended',onEnded)}catch{}
    detachTrackListeners=()=>{for(const track of tracks)try{track.removeEventListener?.('ended',onEnded)}catch{}};
+   for(const track of tracks){
+    if(token!==generation)return false;
+    try{track.addEventListener?.('ended',onEnded)}catch{}
+   }
+   if(token!==generation)return false;
+   if(tracks.some(track=>track.readyState==='ended')){
+    stop();notify?.('camera');return false;
+   }
    // The startup watchdog remains active during decoding, including when
    // BarcodeDetector.detect() never resolves.
    const scan=async()=>{
