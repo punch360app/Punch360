@@ -123,14 +123,18 @@ test('browsing cannot extend an old server snapshot into a later week',()=>{
   sessions:[],segments:[],breaks:[],now:time(2,12),weekAt:NaN}),[]);
 });
 
-test('native My Hours can browse scoped weeks without moving current home time',()=>{
+test('native My Hours browses scoped weeks without changing the home clock',()=>{
  const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
- assert.match(ui,/weekAt:viewWeekDate\\.getTime\\(\\)/);
- assert.match(ui,/setWeekOffset\\(v=>Math\\.min\\(4,v\\+1\\)\\)/);
- assert.match(ui,/setWeekOffset\\(v=>Math\\.max\\(0,v-1\\)\\)/);
- assert.match(ui,/weekOffset===0\\?tr\\('thisWeek'\\)/);
- assert.match(ui,/dailyHours\\.reduce\\(\\(sum,row\\)=>sum\\+row\\.netMs,0\\)/);
- assert.match(ui,/Aucune journée dans le relevé chargé/);
+ assert.ok(ui.includes('weekAt:viewWeekDate.getTime()'));
+ assert.ok(ui.includes('setWeekOffset(v=>Math.min(4,v+1))'));
+ assert.ok(ui.includes('setWeekOffset(v=>Math.max(0,v-1))'));
+ assert.ok(ui.includes("weekOffset===0?tr('thisWeek')"));
+ assert.ok(ui.includes('dailyHours.reduce((sum,row)=>sum+row.netMs,0)'));
+ assert.ok(ui.includes('Aucune journée dans le relevé chargé'));
+ assert.ok(ui.includes('Date.parse(s.started_at)<viewWeekEnd'));
+ assert.ok(ui.includes('s.company_id===account.companyId&&s.user_id===account.userId'));
+ assert.ok(ui.includes('weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[])'));
+ assert.ok(ui.includes('setWeekOffset(0)},[account.companyId,account.userId]'));
 });
 
 test('sum of daily gross minus unpaid always equals sum of daily net',()=>{
