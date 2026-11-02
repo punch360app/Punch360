@@ -19,3 +19,61 @@ test('paid break metadata survives storage and projection without changing the p
  const memory=new Map();let sequence=0;const journal=new PunchJournal({company:'c',user:'u',uuid:()=>String(++sequence),storage:{get:async k=>memory.get(k),set:async(k,v)=>memory.set(k,v)},send:async()=>{throw Error('offline')}});
  await journal.append('break_start',null,null,'2026-10-01T10:00:00Z',true);await journal.flush();const events=await journal.read();assert.equal(events[0].paid,true);const state=projectPendingPunches({sessions:[{id:'session',started_at:'2026-10-01T08:00:00Z',ended_at:null}],segments:[],breaks:[]},events);assert.equal(state.breaks[0].is_paid,true);assert.equal(state.breaks[0].session_id,'session');
 });
+
+test('offline IN, pause and OUT survive restart, reconnect in order and reconcile hours',async()=>{
+ const company='test-company',user='test-worker',job='test-site';
+ const storageMap=new Map();
+ const storage={get:async key=>storageMap.get(key)||null,
+  set:async(key,value)=>storageMap.set(key,value)};
+ const server={sessions:[],segments:[],breaks:[]};
+ const scope={company,user};
+ const acknowledgments=[];
+ let online=false,number=0;
+ const sender=async event=>{
+  if(!online)throw Error('offline');
+  acknowledgments.push(event.id);
+  const updated=projectPendingPunches(server,[event],scope);
+  Object.assign(server,updated);
+  return {sync_status:'synced',session_id:updated.active?.id||updated.sessions[0]?.id};
+ };
+ const options={company,user,storage,uuid:()=>String(++number),send:sender};
+ const first=new PunchJournal(options);
+ await first.append('in',job,null,'2026-11-02T08:00:00Z',false,true);
+ await first.flush();
+ await first.append('break_start',null,null,'2026-11-02T12:00:00Z',false,true);
+ await first.append('break_end',null,null,'2026-11-02T12:30:00Z',false,true);
+ await first.append('out',null,null,'2026-11-02T16:00:00Z',false,true);
+ const unconfirmed=await first.read();
+ assert.equal(unconfirmed.length,4);
+ assert.deepEqual(unconfirmed.map(e=>e.action),['in','break_start','break_end','out']);
+ assert.deepEqual(unconfirmed.map(e=>e.previous),[null,'1','2','3']);
+ assert.ok(unconfirmed.every(e=>e.offline===true));
+ const projected=projectPendingPunches(server,unconfirmed,scope);
+ assert.equal(projected.active,null,'OUT closes the locally projected session');
+ assert.equal(projected.sessions[0].started_at,'2026-11-02T08:00:00Z');
+ assert.equal(projected.sessions[0].ended_at,'2026-11-02T16:00:00Z');
+ assert.equal(projected.breaks.length,1);
+ assert.equal(projected.breaks[0].started_at,'2026-11-02T12:00:00Z');
+ assert.equal(projected.breaks[0].ended_at,'2026-11-02T12:30:00Z');
+ assert.equal(projected.segments[0].job_id,job);
+ assert.deepEqual(acknowledgments,[],'No server event while offline');
+ // A fresh instance reads the persisted queue, as after an app restart.
+ const restored=new PunchJournal({...options,uuid:()=>String(++number)});
+ assert.equal((await restored.pending()).length,4);
+ online=true;
+ const synced=await restored.flush();
+ assert.equal(synced.sent,4);
+ assert.equal(synced.pending,0);
+ assert.deepEqual(acknowledgments,['1','2','3','4']);
+ assert.equal((await restored.pending()).length,0);
+ assert.ok((await restored.read()).every(e=>e.status==='synced'));
+ assert.equal(server.sessions[0].ended_at,'2026-11-02T16:00:00Z');
+ assert.equal(server.breaks[0].ended_at,'2026-11-02T12:30:00Z');
+ const official=projectPendingPunches(server,await restored.read(),scope);
+ assert.equal(official.sessions.length,1,'Reconciliation must not double count');
+ assert.equal(official.segments.length,1);
+ assert.equal(official.breaks.length,1);
+ assert.equal(official.lastJobId,job);
+ await restored.flush();
+ assert.deepEqual(acknowledgments,['1','2','3','4'],'Never replay acknowledged events');
+});
