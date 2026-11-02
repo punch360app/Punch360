@@ -2,7 +2,7 @@
  * accepts the token and an authenticated membership + worker record are read.
  * Never infer an entitlement from the URL or a tab receipt.
  */
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const tokenPattern=/^[0-9a-f]{64}$/i;
 export function validWorkerInviteToken(value){
  return typeof value==='string'&&tokenPattern.test(value);
