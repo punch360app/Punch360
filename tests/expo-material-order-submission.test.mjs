@@ -124,7 +124,7 @@ test('server identity mismatch, expired session and local user switch block inse
   {verified:'worker-B'},{verified:null},{authError:{message:'Expired'}}
  ]){
   const f=fixture(opts);
-  await assert.rejects(f.submitMaterialOrder(draft()),/Compte changé|Session non vérifiée/);
+  await assert.rejects(f.submitMaterialOrder(draft()),/Compte(?: ou entreprise)? changé|Session non vérifiée/);
   assert.equal(f.calls.inserts,0);
  }
 });
