@@ -25,3 +25,25 @@ export function lastConfirmedKioskPunch(companyId,snapshotCompanyId,userId,snaps
  const latest=sessions.reduce((a,b)=>Date.parse(a.started_at)>=Date.parse(b.started_at)?a:b);
  return {type:latest.ended_at?'out':'in',at:latest.ended_at||latest.started_at};
 }
+
+/** Bind the pointage action to the worker's server-selected workplace.
+ * Never fall back to an unrelated selected Job if the location is absent.
+ * The server must still revalidate all permissions on the actual event.
+ */
+export function resolveEssentialPunchJob(companyId,jobId,jobs){
+ if(typeof companyId!=='string'||!companyId||
+  typeof jobId!=='string'||!jobId||!Array.isArray(jobs))return null;
+ return jobs.find(job=>job?.id===jobId&&job.company_id===companyId&&job.active===true)||null;
+}
+
+/** First-use guidance only from the current company's server-acknowledged
+ * session snapshot. Pending journal events do not imply a first punch.
+ */
+export function firstEssentialPunchGuidance(companyId,userId,worker,snapshotCompanyId,
+ snapshot,pendingCount,workplace){
+ if(!canUseEssentialMobilePunch(companyId,userId,worker)||
+  snapshotCompanyId!==companyId||!Array.isArray(snapshot?.sessions)||
+  !Number.isSafeInteger(pendingCount)||pendingCount!==0)return null;
+ if(snapshot.sessions.some(session=>session?.user_id===userId))return null;
+ return workplace?'ready':'missing-workplace';
+}
