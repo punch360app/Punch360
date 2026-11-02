@@ -113,7 +113,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    setJournalViewScope(requestedFor);
    setHoursReadSource(punch.readSource||null);setHoursProjected(!!punch.hasLocalProjection);
    setJournalBlocked(blocked);
-   setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':
+   setMessage(blocked?(punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu jusqu’à vérification en ligne.':'Journal local à vérifier : pointage bloqué; heures serveur consultables.'):
     local.pending?'Pointages locaux non confirmés · '+local.pending+' en attente sur ce téléphone':
     local.conflicts?local.conflicts+' conflit(s) transmis à l’administration':
     punch.cacheWriteFailed?'Relevé serveur reçu · copie hors ligne indisponible sur cet appareil.':
@@ -158,7 +158,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    setSegments(punch.segments.map(s=>({id:s.id,jobId:s.job_id,start:Date.parse(s.started_at),
     end:s.ended_at?Date.parse(s.ended_at):null})));
    setPunchActive(!!punch.active);setStartMs(punch.active?Date.parse(punch.active.started_at):null);
-   setMessage(blocked?'Journal local à vérifier : aucun envoi possible. Contactez votre responsable.':
+   setMessage(blocked?(punch.snapshotUnverified?'Relevé hors ligne indisponible · vérification serveur requise avant de pointer.':'Journal local à vérifier : aucun envoi possible. Contactez votre responsable.'):
     local.pending&&local.conflicts?local.pending+' pointage(s) en attente et '+local.conflicts+' conflit(s) à vérifier.':
     local.pending?local.pending+' pointage(s) encore en attente de transmission.':
     local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
@@ -265,7 +265,7 @@ async function refreshConstructionPunchState(){
   setSegments(punch.segments.map(s=>({id:s.id,jobId:s.job_id,start:Date.parse(s.started_at),
    end:s.ended_at?Date.parse(s.ended_at):null})));
   setPunchActive(!!punch.active);setStartMs(punch.active?Date.parse(punch.active.started_at):null);
-  setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':
+  setMessage(blocked?(punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu jusqu’à vérification en ligne.':'Journal local à vérifier : pointage bloqué; heures serveur consultables.'):
    local.pending?'Pointages locaux enregistrés · '+local.pending+' en attente de transmission.':
    local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
    punch.cacheWriteFailed?'Relevé serveur reçu · copie hors ligne indisponible sur cet appareil.':

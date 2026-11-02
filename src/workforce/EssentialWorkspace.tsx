@@ -91,7 +91,8 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   if(visitContext.current!==requestedFor)return;
   setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
   setPendingItems(summary.pendingItems);setConflictItems(summary.conflictItems);
-  if(updated.localJournalBlocked||summary.blocked)
+  if(updated.snapshotUnverified)setNotice('Relevé hors ligne indisponible : pointage suspendu jusqu’à vérification en ligne.');
+  else if(updated.localJournalBlocked||summary.blocked)
    setNotice('Journal local à vérifier : pointage bloqué sur cet appareil. Heures serveur consultables.');
   else setNotice(previous=>previous.startsWith('Journal local à vérifier :')?'':previous);
  }catch(e:any){setNotice(e.message)}}
@@ -100,7 +101,8 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const date=new Date(now),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),week=new Date(date.getFullYear(),date.getMonth(),date.getDate()-(date.getDay()+6)%7).getTime();
  const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=(punch.breaks||[]).some(b=>!b.ended_at);
  // Local projections and offline snapshots are never payroll-approved hours.
- const hoursOrigin=punch.localJournalBlocked?'Journal local à vérifier':
+ const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
+  punch.localJournalBlocked?'Journal local à vérifier':
   punch.cacheWriteFailed?'Relevé serveur · copie hors ligne indisponible sur cet appareil':
   punch.readSource==='cache'?'Dernier relevé sauvegardé sur cet appareil':
   punch.hasLocalProjection?'Relevé serveur + pointages locaux en attente':

@@ -20,8 +20,9 @@ const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false}={}){
- const store=new Map([['punch-state:U:A',JSON.stringify(cached)]]),calls={send:0,read:0,db:0};
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,rawCache=undefined}={}){
+ const store=new Map(),calls={send:0,read:0,db:0};
+ if(rawCache!==null)store.set('punch-state:U:A',rawCache===undefined?JSON.stringify(cached):rawCache);
  const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
  const j={flush:async()=>{calls.send++;if(flushFail)throw Error('Journal non vérifiable')},
   read:async()=>{calls.read++;if(readFail)throw Error('Journal illisible');return offlineEvents}};
@@ -162,4 +163,41 @@ test('Construction and Essential warn when a verified snapshot cannot be cached'
  assert.match(native,/cacheWriteFailed\?:boolean/);
  assert.match(app,/cacheWriteFailed\?'Relevé serveur reçu · copie hors ligne indisponible/);
  assert.match(essential,/cacheWriteFailed\?'Relevé serveur · copie hors ligne indisponible/);
+});
+
+test('offline first launch cannot mistake missing hours for an empty server workday',async()=>{
+ const h=fixture({rawCache:null}),state=await h.load('A');
+ assert.equal(state.snapshotUnverified,true);assert.equal(state.localJournalBlocked,true);
+ assert.equal(state.readSource,'cache');assert.equal(h.calls.db,0);
+});
+test('corrupted cached hours remain on disk and fail closed',async()=>{
+ const h=fixture({rawCache:'{"sessions":'}),state=await h.load('A');
+ assert.equal(state.snapshotUnverified,true);assert.equal(state.localJournalBlocked,true);
+ assert.equal(h.store.get('punch-state:U:A'),'{"sessions":');
+});
+test('legacy incomplete or structurally invalid snapshots fail closed',async()=>{
+ for(const rawCache of ['null','{}','{"sessions":{},"segments":[]}','{"sessions":[null],"segments":[]}']){
+  const state=await fixture({rawCache}).load('A');
+  assert.equal(state.snapshotUnverified,true);assert.equal(state.localJournalBlocked,true);
+ }
+});
+test('offline absent cache after server failure is not verified',async()=>{
+ const state=await fixture({offline:false,dbFail:true,rawCache:null}).load('A');
+ assert.equal(state.snapshotUnverified,true);assert.equal(state.readSource,'cache');
+});
+test('fresh server read recovers from an invalid local cache',async()=>{
+ const state=await fixture({offline:false,rawCache:'invalid json'}).load('A');
+ assert.equal(state.snapshotUnverified,false);assert.equal(state.localJournalBlocked,false);
+ assert.equal(state.readSource,'server');
+ assert.deepEqual(state.sessions.map(s=>s.id),['own']);
+});
+test('valid cached and server snapshots are still verified',async()=>{
+ assert.equal((await fixture().load('A')).snapshotUnverified,false);
+ assert.equal((await fixture({offline:false}).load('A')).snapshotUnverified,false);
+});
+test('both mobile UIs distinguish a damaged cache from a blocked journal',()=>{
+ assert.match(native,/snapshotUnverified\?:boolean/);
+ assert.match(native,/localJournalBlocked:journalBlocked\|\|snapshotUnverified/);
+ assert.match(app,/punch\.snapshotUnverified\?'Relevé hors ligne introuvable ou illisible/);
+ assert.match(essential,/punch\.snapshotUnverified\?'Relevé hors ligne introuvable ou illisible/);
 });
