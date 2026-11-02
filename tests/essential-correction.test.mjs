@@ -77,3 +77,25 @@ test('Essentiel UI uses the server snapshot and revalidates identity and session
  assert.match(app,/requested_start:checked\.requestedStart,requested_end:checked\.requestedEnd/);
  assert.match(app,/Transmission non confirmée/);
 });
+
+
+test('Essentiel correction entry opens a dedicated scoped screen with a real return and disabled submission states',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/function essentialCorrectionPage\(\)/);
+ assert.match(app,/if\(state\.sub==='essentialCorrection'\)return essentialCorrectionPage\(\)/);
+ assert.match(app,/button\('Demander une correction','subpage','full','data-id="essentialCorrection"'\)/);
+ assert.match(app,/button\('← Retour à mes heures','navigate','full','data-id="hours"'\)/);
+ assert.match(app,/correction\.sessions\.length>0&&!state\.correctionSubmitting/);
+ assert.match(app,/button\(state\.correctionSubmitting\?'Envoi en cours…':'Soumettre pour approbation'/);
+ assert.match(app,/Aucune journée terminée et vérifiée/);
+ assert.match(app,/correction\.requests\.slice\(0,30\)/);
+});
+
+test('PWA install includes correction module and versions the entry consistently',()=>{
+ const html=readFileSync(new URL('../web/live/index.html',import.meta.url),'utf8');
+ const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
+ assert.match(html,/app\.js\?v=essential-70-bento/);
+ assert.match(sw,/app\.js\?v=essential-70-bento/);
+ assert.match(sw,/punch-360-essential-v78-bento/);
+ assert.match(sw,/'\.\/essential-correction\.js'/);
+});
