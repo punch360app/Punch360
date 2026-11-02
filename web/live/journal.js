@@ -16,9 +16,12 @@ export class PunchJournal {
  }
  async pending(){return (await this.read()).filter(e=>e.status==='pending');}
 }
-export function projectPendingPunches(snapshot,events){
+export function projectPendingPunches(snapshot,events,scope=null){
+ const identity=typeof scope?.company==='string'&&scope.company&&
+  typeof scope?.user==='string'&&scope.user?scope:null;
  const sessions=snapshot.sessions.map(s=>({...s})),segments=snapshot.segments.map(s=>({...s})),breaks=(snapshot.breaks||[]).map(s=>({...s}));
- for(const event of events.filter(e=>e.status==='pending')){
+ for(const event of events.filter(e=>e.status==='pending'&&(!identity||
+  e.company===identity.company&&e.user===identity.user))){
   // A stale or contaminated snapshot must never let one employee's
   // offline event edit a different employee/company session.
   const active=sessions.find(s=>!s.ended_at&&
@@ -33,15 +36,17 @@ export function projectPendingPunches(snapshot,events){
   if(event.action==='out'&&active){for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;}
   if(event.action==='transfer'&&active){for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
  }
- const pending=events.filter(e=>e.status==='pending'),latest=pending.at(-1);
- const active=sessions.find(s=>!s.ended_at&&(!latest||
-  (s.company_id==null||s.company_id===latest.company)&&
-  (s.user_id==null||s.user_id===latest.user)))||null;
+ const pending=events.filter(e=>e.status==='pending'&&(!identity||
+  e.company===identity.company&&e.user===identity.user)),latest=pending.at(-1);
+ const owner=identity||latest&&{company:latest.company,user:latest.user};
+ const active=sessions.find(s=>!s.ended_at&&(!owner||
+  (s.company_id==null&&!identity||s.company_id===owner.company)&&
+  (s.user_id==null&&!identity||s.user_id===owner.user)))||null;
  // A pending local event supplies the identity for the last selected job.
  // Do not display or reuse another tenant's job from a mixed old cache.
- const ownSessionIds=latest?new Set(sessions.filter(s=>
-  s.company_id===latest.company&&s.user_id===latest.user).map(s=>s.id)):null;
- const lastSegment=latest?segments.find(s=>
-  s.company_id===latest.company&&ownSessionIds.has(s.session_id)):segments[0];
+ const ownSessionIds=owner?new Set(sessions.filter(s=>
+  s.company_id===owner.company&&s.user_id===owner.user).map(s=>s.id)):null;
+ const lastSegment=owner?segments.find(s=>
+  s.company_id===owner.company&&ownSessionIds.has(s.session_id)):segments[0];
  return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null};
 }
