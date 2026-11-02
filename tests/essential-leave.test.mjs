@@ -41,7 +41,7 @@ test('Essentiel leave flow uses server identity, request validation and separate
  assert.match(app,/import \{essentialLeaveView,validateEssentialLeaveRequest\} from '\.\/essential-leave\.js'/);
  assert.match(app,/if\(state\.sub==='leave'\)return essentialLeavePage\(\)/);
  assert.match(app,/function essentialLeavePage\(\)/);
- assert.match(app,/const canSubmit=online&&view\.ready&&!state\.leaveSubmitting/);
+ assert.match(app,/canSubmit=online&&view\.ready&&!state\.leaveSubmitting/);
  assert.match(app,/validateEssentialLeaveRequest\(\{view,companyId,userId,type,from,to,reason\}\)/);
  assert.match(app,/if\(state\.leaveSubmitting\)return/);
  assert.match(app,/sb\.auth\.getUser\(\)/);
