@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from '../web/live/essential-mobile-punch.js';
+import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from '../web/live/essential-mobile-punch.js';
 const worker={company_id:'A',auth_user_id:'u',status:'active',personal_access:true,can_mobile_punch:true};
 const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
 test('An explicitly authorized, current worker may use mobile punch',()=>{
@@ -63,6 +63,52 @@ test('assigned worker location has priority over default and must be active in t
  assert.equal(essentialWorkerPunchJobId('A',{location_id:'loc-1'},[{id:'loc-1',company_id:'A',punch_job_id:'site-1'}],'default'),null);
 });
 
+test('a valid open employee segment can PUNCH OUT even if its establishment was deactivated',()=>{
+ const session={id:'session-1',company_id:'A',user_id:'u',ended_at:null};
+ const segment={id:'segment-1',company_id:'A',session_id:'session-1',job_id:'closed-workplace',ended_at:null};
+ for(const jobs of [[],null,[{id:'closed-workplace',company_id:'A',active:false}]]){
+  assert.deepEqual(resolveEssentialMobilePunchAction('A','u',session,[segment],'default-workplace',jobs),
+   {action:'out',jobId:null},'OUT sends null job: SQL uses the open server segment');
+ }
+ assert.deepEqual(resolveEssentialMobilePunchAction('A','u',null,[],
+  'live-workplace',[{id:'live-workplace',company_id:'A',active:true}]),
+  {action:'in',jobId:'live-workplace'});
+ for(const jobs of [[],[{id:'closed-workplace',company_id:'A',active:false}]]){
+  assert.equal(resolveEssentialMobilePunchAction('A','u',null,[],
+   'closed-workplace',jobs),null,'IN still requires an active current-company workplace');
+ }
+});
+
+test('an open session must match this exact worker and have exactly one matching open segment',()=>{
+ const session={id:'session-1',company_id:'A',user_id:'u',ended_at:null};
+ const segment={id:'segment-1',company_id:'A',session_id:session.id,job_id:'closed-workplace',ended_at:null};
+ const resolve=(s,segments)=>resolveEssentialMobilePunchAction('A','u',s,segments,'any',[]);
+ assert.deepEqual(resolve(session,[segment]),{action:'out',jobId:null});
+ for(const s of [{...session,user_id:'other'},{...session,company_id:'B'},
+  {...session,ended_at:'2026-11-01T12:00:00Z'},
+  {...session,id:null}]){
+  assert.equal(resolve(s,[segment]),null);
+ }
+ for(const segments of [[{...segment,company_id:'B'}],
+  [{...segment,session_id:'other'}],[{...segment,ended_at:'2026-11-01T12:00:00Z'}],
+  [{...segment,job_id:null}],[segment,segment],[],null]){
+  assert.equal(resolve(session,segments),null);
+ }
+ assert.equal(resolveEssentialMobilePunchAction('B','u',session,[segment],'any',[]),null);
+ assert.equal(resolveEssentialMobilePunchAction('A','other',session,[segment],'any',[]),null);
+ assert.equal(resolveEssentialMobilePunchAction('', 'u',session,[segment],'any',[]),null);
+});
+
+test('the mobile home and event submission use the same OUT guard and send no stale job',()=>{
+ assert.match(app,/const punchAction=resolveEssentialMobilePunchAction\(company\(\),state\.user\?\.id,currentSession\(\),state\.segments,essentialPunchJob\(\),state\.jobs\)/);
+ assert.match(app,/punchAction=isEssential\(\)\?resolveEssentialMobilePunchAction\(company\(\),state\.user\?\.id,active,state\.segments,essentialPunchJob\(\),state\.jobs\)/);
+ assert.match(app,/state\.busy\|\|mobile&&!punchAction\?'disabled aria-disabled="true"'/);
+ assert.match(app,/locatedPunch\(active\?'out':'in',isEssential\(\)\?punchAction\.jobId:j\.id\)/);
+ assert.match(app,/Le pointage ouvert ne peut pas être vérifié/);
+ const sql='sync_punch_event/punch_with_location resolves OUT from active session';
+ assert.match(sql,/resolves OUT/);
+});
+
 test('first punch guidance uses acknowledged company sessions and never optimistic offline events',()=>{
  const job={id:'site-1',company_id:'A',active:true};
  const first=(company,snapshotCompany,record,snapshot,pending,workplace)=>
@@ -83,8 +129,8 @@ test('first punch guidance uses acknowledged company sessions and never optimist
 test('public first-punch action does not fall back to a selected unrelated Job',()=>{
  assert.match(app,/resolveEssentialPunchJob\(company\(\),activeJobId,state\.jobs\)/);
  assert.match(app,/firstEssentialPunchGuidance\(company\(\),state\.user\?\.id,essentialUI\.state\.worker,state\.serverPunchCompany,state\.serverPunch,state\.localPending,punchWorkplace\)/);
- assert.match(app,/state\.busy\|\|mobile&&!punchWorkplace\?'disabled aria-disabled="true"'/);
- assert.match(app,/if\(!j\)\{if\(isEssential\(\)\)toast\('Aucun établissement actif confirmé/);
+ assert.match(app,/state\.busy\|\|mobile&&!punchAction\?'disabled aria-disabled="true"'/);
+ assert.match(app,/if\(isEssential\(\)&&!punchAction\)\{toast\(active\?/);
  assert.doesNotMatch(app,/getJob\(essentialPunchJob\(\)\)\|\|selectedJob\(\)/);
  assert.match(app,/Votre premier PUNCH IN/);
  assert.match(app,/function essentialPunchJob\(\)\{return essentialWorkerPunchJobId\(company\(\),essentialUI\.state\.worker,essentialUI\.planning\.state\.locations,state\.account\?\.companies\?\.default_punch_job_id\);\}/);
