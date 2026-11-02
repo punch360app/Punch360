@@ -28,6 +28,25 @@ import {WorkforcePanel} from './WorkforcePanel';
 const Z={bg:'#FAFBF8',text:'#2F4935',muted:'#8C9C86',line:'#E1E8DB',sage:'#779574'};
 const duration=(ms:number)=>{const n=Math.max(0,Math.floor(ms/1000));return [Math.floor(n/3600),Math.floor(n/60)%60,n%60].map(x=>String(x).padStart(2,'0')).join(':')};
 const hm=(ms:number)=>{const n=Math.floor(ms/60000);return Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')};
+/** A journal flush is not proof of a current server attendance snapshot.
+ * Never describe a cached fallback as synchronized official hours.
+ */
+export function essentialManualPunchSyncNotice({
+ blocked,pending,conflicts,readSource,cacheWriteFailed
+}:{
+ blocked:boolean;pending:number;conflicts:number;
+ readSource:PunchState['readSource'];cacheWriteFailed:boolean
+}):string{
+ if(blocked)return 'Journal local à vérifier : aucun envoi confirmé. Contactez votre responsable.';
+ if(pending&&conflicts)return pending+' pointage(s) en attente et '+conflicts+' conflit(s) à vérifier.';
+ if(pending)return pending+' pointage(s) en attente. Réessayez avec une connexion stable.';
+ if(conflicts)return conflicts+' conflit(s) à vérifier avec votre responsable.';
+ if(readSource!=='server')
+  return 'Relevé serveur indisponible · synchronisation non confirmée. Réessayez avec une connexion stable.';
+ if(cacheWriteFailed)
+  return 'Aucun pointage local en attente · copie hors ligne indisponible sur cet appareil.';
+ return 'Aucun pointage local en attente. Vérifiez vos heures dans le relevé serveur.';
+}
 export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const breakPolicy=useBreakPolicy(account),canApproveTeam=useSupervisorApprovalAccess(account);
  const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[conflicts,setConflicts]=useState(0),[pendingItems,setPendingItems]=useState<{label:string;occurredAt:string|null}[]>([]),[conflictItems,setConflictItems]=useState<{label:string;occurredAt:string|null}[]>([]),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
@@ -124,13 +143,11 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
    if(visitContext.current!==requestedFor)return;
    setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
   setPendingItems(summary.pendingItems);setConflictItems(summary.conflictItems);
-   setNotice(updated.localJournalBlocked||summary.blocked?
-    'Journal local à vérifier : aucun envoi possible. Contactez votre responsable.':
-    summary.pending&&summary.conflicts?
-    summary.pending+' pointage(s) encore en attente et '+summary.conflicts+' conflit(s) à vérifier.':
-    summary.pending?summary.pending+' pointage(s) en attente. Réessayez avec une connexion stable.':
-    summary.conflicts?summary.conflicts+' conflit(s) à vérifier avec votre responsable.':
-    'Aucun pointage local en attente. Vérifiez vos heures confirmées sur le serveur.');
+   setNotice(essentialManualPunchSyncNotice({
+     blocked:!!updated.localJournalBlocked||summary.blocked,
+     pending:summary.pending,conflicts:summary.conflicts,
+     readSource:updated.readSource,cacheWriteFailed:!!updated.cacheWriteFailed
+    }));
   }catch(e:any){setNotice('Synchronisation non confirmée : '+(e?.message||String(e)))}
   finally{setBusy(false)}
  }
