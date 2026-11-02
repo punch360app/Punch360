@@ -38,7 +38,9 @@ begin
  end if;
  -- This device is paired to a punch job, not just a company. A formerly
  -- valid device must not issue QR punches from a closed establishment or an
- -- inactive underlying job. Match the same company for every joined row.
+ -- inactive underlying job. Lock both source rows so a simultaneous
+ -- deactivation cannot commit ahead of the QR operation after this check.
+ -- Match the same company for every joined row.
  if not exists (
    select 1 from public.essential_locations location
     join public.jobs job on job.company_id=location.company_id
@@ -46,6 +48,7 @@ begin
    where location.company_id=device.company_id
     and location.punch_job_id=device.site_id
     and location.active and job.active
+   for share of location,job
  ) then
   return jsonb_build_object('ok',false,'error','IDENTITY_DENIED');
  end if;
