@@ -12,6 +12,7 @@ const source=native.slice(a,b).replace('export async function loadPunchState(com
  .replace("const overlay=async(state:PunchState,readSource:'server'|'cache',cacheWriteFailed=false)=>",'const overlay=async(state,readSource,cacheWriteFailed=false)=>')
  .replace('let events:LocalPunchEvent[]=[];','let events=[];')
  .replace('let cached:PunchState|null=null;','let cached=null;')
+ .replace('const validCachedRange=(row:{started_at:string;ended_at:string|null})=>','const validCachedRange=(row)=>')
  .replaceAll('(row:Record<string,unknown>|null)=>','(row)=>')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
@@ -356,4 +357,49 @@ test('Rejected Supabase transport without saved attendance stays unverified',asy
   assert.deepEqual(state.sessions,[]);
   assert.equal(h.store.has('punch-state:U:A'),false);
  }
+});
+
+test('Expo rejects damaged cached interval endpoints and missing identities without confirming hours',async()=>{
+ const variants=[
+  ['session missing end',value=>{delete value.sessions[1].ended_at}],
+  ['session invalid end',value=>{value.sessions[1].ended_at='not-a-date'}],
+  ['session end preceding start',value=>{value.sessions[1].ended_at='2026-11-01T08:00:00Z'}],
+  ['segment missing job',value=>{delete value.segments[1].job_id}],
+  ['segment empty session',value=>{value.segments[1].session_id=''}],
+  ['segment invalid end',value=>{value.segments[1].ended_at='not-a-date'}],
+  ['segment end preceding start',value=>{value.segments[1].ended_at='2026-11-01T08:00:00Z'}],
+  ['break missing id',value=>{value.breaks.push({session_id:'own',started_at:own.started_at,ended_at:null})}],
+  ['break invalid end',value=>{value.breaks.push({id:'break',session_id:'own',started_at:own.started_at,ended_at:'not-a-date'})}],
+  ['break end preceding start',value=>{value.breaks.push({id:'break',session_id:'own',started_at:own.started_at,ended_at:'2026-11-01T08:00:00Z'})]
+ ];
+ for(const [name,damage] of variants){
+  const snapshot=JSON.parse(JSON.stringify(cached));
+  damage(snapshot);
+  const bytes=JSON.stringify(snapshot),h=fixture({rawCache:bytes,flushFail:true});
+  const state=await h.load('A');
+  assert.equal(state.snapshotUnverified,true,name);
+  assert.equal(state.localJournalBlocked,true,name);
+  assert.equal(state.readSource,'cache',name);
+  assert.deepEqual(state.sessions,[],name);
+  assert.equal(h.store.get('punch-state:U:A'),bytes,'Damaged bytes remain intact for recovery: '+name);
+  assert.equal(h.calls.db,0,name);
+ }
+});
+
+test('Expo accepts fully valid closed cache intervals and recovers damaged cache after fresh server read',async()=>{
+ const complete=JSON.parse(JSON.stringify(cached));
+ complete.sessions[1].ended_at='2026-11-02T12:00:00Z';
+ complete.segments[1].ended_at='2026-11-02T12:00:00Z';
+ complete.breaks.push({id:'break',session_id:'own',started_at:'2026-11-02T09:00:00Z',ended_at:'2026-11-02T09:20:00Z'});
+ const state=await fixture({rawCache:JSON.stringify(complete),flushFail:true}).load('A');
+ assert.equal(state.snapshotUnverified,false);
+ assert.equal(state.localJournalBlocked,true,'Blocked journal is independent of cache validity');
+ assert.deepEqual(state.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(state.breaks.map(b=>b.id),['break']);
+ const damaged=JSON.parse(JSON.stringify(complete));damaged.segments[1].ended_at='broken';
+ const restored=await fixture({rawCache:JSON.stringify(damaged),offline:false}).load('A');
+ assert.equal(restored.snapshotUnverified,false,'Fresh server read replaces a bad cache');
+ assert.equal(restored.readSource,'server');
+ assert.equal(restored.localJournalBlocked,false);
+ assert.deepEqual(restored.sessions.map(s=>s.id),['own']);
 });
