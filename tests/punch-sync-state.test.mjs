@@ -83,6 +83,44 @@ test('blocked local journal takes priority over last server snapshot without exp
  assert.match(home,/journalBlocked:state\.localJournalBlocked\?\.companyId===company\(\)&&state\.localJournalBlocked\?\.userId===state\.user\?\.id/);
  assert.match(app,/Journal local non vérifiable : la synchronisation et les nouveaux pointages/);
 });
+test('blocked local journal never offers a misleading manual retry, but keeps confirmed hours accessible',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const begin=app.indexOf('function essentialPunchSyncPanel(){');
+ const end=app.indexOf('function essentialRequestsHomeCard(){',begin);
+ assert.ok(begin>=0&&end>begin);
+ // Exercise the real production panel, not just a source-code regex.
+ const factory=new Function('state','company','localPunchSyncState','navigator','button','e','when',
+  app.slice(begin,end)+'\nreturn essentialPunchSyncPanel;');
+ const render=({blocked=null,online=true,section='home',events=[own]}={})=>{
+  const state={user:{id:'worker-A'},localJournalBlocked:blocked,
+   localPunchEvents:events,section,busy:false};
+  return factory(state,()=> 'business-A',localPunchSyncState,{onLine:online},
+   (label,action)=>'<button data-action="'+action+'">'+label+'</button>',
+   value=>String(value),value=>String(value))();
+ };
+ const ownBlocked={companyId:'business-A',userId:'worker-A'};
+ const blocked=render({blocked:ownBlocked});
+ assert.match(blocked,/Journal local non vérifiable/);
+ assert.match(blocked,/1 événement\(s\) en attente/);
+ assert.doesNotMatch(blocked,/syncPendingPunches|Synchroniser maintenant/);
+ assert.match(blocked,/data-action="navigate">Consulter Mes heures/);
+ assert.equal((blocked.match(/Consulter Mes heures/g)||[]).length,1);
+ const hours=render({blocked:ownBlocked,section:'hours'});
+ assert.doesNotMatch(hours,/syncPendingPunches|data-action="navigate"/);
+ const conflict=render({blocked:ownBlocked,events:[own,{...own,id:'conflict',status:'conflict'}]});
+ assert.doesNotMatch(conflict,/syncPendingPunches/);
+ assert.equal((conflict.match(/Consulter Mes heures/g)||[]).length,1);
+ const clean=render();
+ assert.match(clean,/data-action="syncPendingPunches">Synchroniser maintenant/);
+ assert.doesNotMatch(clean,/Journal local non vérifiable/);
+ const offline=render({online:false});
+ assert.match(offline,/Connexion Internet requise/);
+ assert.doesNotMatch(offline,/syncPendingPunches/);
+ // A failed journal for a different account must never control this worker's UI.
+ assert.match(render({blocked:{companyId:'business-B',userId:'worker-A'}}),/syncPendingPunches/);
+ assert.match(render({blocked:{companyId:'business-A',userId:'worker-B'}}),/syncPendingPunches/);
+});
+
 test('manual resynchronization checks the persisted journal after retry and does not claim payroll confirmation',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent\} from '\.\/punch-sync-state\.js'/);
