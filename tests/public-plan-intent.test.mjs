@@ -81,7 +81,7 @@ test('Signup reminder uses current public pricing instead of any stored price',(
  rememberPublicPlanIntent(storage,{planId:'fixture_basic',seats:7,cadence:'yearly'});
  const current={id:'fixture_basic',title:'Équipe',active:true,public_visible:true,
   base_cents:2300,included_seats:5,included_seats_unlimited:false,
-  extra_seat_cents:300,annual_discount:10};
+  extra_seat_cents:300,annual_discount:10,kiosk_limit:1,establishment_limit:1,features:['punch']};
  const render=plan=>renderPublicPlanReminder(storage,[plan],escape);
  let html=render(current);
  assert.match(html,/Estimation au catalogue actuel/);
@@ -97,6 +97,49 @@ test('Signup reminder uses current public pricing instead of any stored price',(
 
 // The selected edition must match the plan, including after an OAuth redirect.
 // Private-browsing storage errors may remove the reminder, not block signup.
+test('Signup recap never quotes a retired or incomplete offer from an old tab selection',()=>{
+ const storage=store();
+ rememberPublicPlanIntent(storage,{planId:'fixture_basic',seats:8,cadence:'yearly'});
+ const offer={id:'fixture_basic',title:'Équipe',active:true,public_visible:true,
+  base_cents:2300,included_seats:5,extra_seat_cents:300,annual_discount:10,
+  kiosk_limit:1,establishment_limit:2,features:['punch','hours']};
+ const show=p=>renderPublicPlanReminder(storage,[p],escape);
+ const valid=show(offer);
+ assert.match(valid,/Estimation au catalogue actuel/);
+ assert.match(valid,/2\d{2},\d{2}/);
+ assert.match(valid,/3 membres supplémentaires facturés/);
+ assert.match(valid,/Économie estimée sur 12 mois/);
+ for(const changed of [
+  {...offer,features:undefined},
+  {...offer,features:'punch'},
+  {...offer,kiosk_limit:undefined},
+  {...offer,establishment_limit:-1},
+  {...offer,base_cents:null},
+  {...offer,annual_discount:101}
+ ]){
+  const html=show(changed);
+  assert.match(html,/Tarif et conditions à confirmer/);
+  assert.doesNotMatch(html,/Estimation au catalogue actuel|Économie estimée|membres supplémentaires facturés/);
+  assert.doesNotMatch(html,/NaN|undefined|Infinity/);
+ }
+});
+
+test('Signup recap keeps monthly and unlimited-member supplements consistent with price cards',()=>{
+ const storage=store();
+ const offer={id:'fixture_basic',title:'Équipe',active:true,public_visible:true,
+  base_cents:2300,included_seats:5,extra_seat_cents:300,annual_discount:10,
+  kiosk_limit:null,establishment_limit:null,features:['punch']};
+ rememberPublicPlanIntent(storage,{planId:'fixture_basic',seats:8,cadence:'monthly'});
+ let html=renderPublicPlanReminder(storage,[offer],escape);
+ assert.match(html,/32,00/);
+ assert.match(html,/3 membres supplémentaires facturés/);
+ assert.doesNotMatch(html,/Économie estimée/);
+ html=renderPublicPlanReminder(storage,[{...offer,included_seats_unlimited:true}],escape);
+ assert.match(html,/23,00/);
+ assert.match(html,/0 membre supplémentaire facturé/);
+ assert.doesNotMatch(html,/3 membres supplémentaires/);
+});
+
 test('Choosing Essentiel persists the edition and keeps only a nonbinding plan hint',()=>{
  const tab=store(),prefs=store();
  prefs.setItem('punch-creation-edition','construction');
