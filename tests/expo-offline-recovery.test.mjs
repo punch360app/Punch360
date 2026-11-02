@@ -14,14 +14,17 @@ const source=native.slice(a,b).replace('export async function loadPunchState(com
  .replace('let cached:PunchState|null=null;','let cached=null;')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
- .replace('const sorted=(segments||[]) as PunchSegment[];','const sorted=segments||[];');
+ .replace('const sorted=(segments||[]) as PunchSegment[];','const sorted=segments||[];')
+ .replace('const list=((sessions||[]) as PunchSession[]).filter','const list=(sessions||[]).filter')
+ .replace('const sorted=((segments||[]) as PunchSegment[]).filter','const sorted=(segments||[]).filter')
+ .replace('const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter','const ownBreaks=(breakResult.data||[]).filter');
 const own={id:'own',company_id:'A',user_id:'U',started_at:'2026-11-02T08:00:00Z',ended_at:null};
 const foreign={id:'foreign',company_id:'B',user_id:'V',started_at:'2026-11-02T09:00:00Z',ended_at:null};
 const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,rawCache=undefined}={}){
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,serverMixed=false,rawCache=undefined}={}){
  const store=new Map(),calls={send:0,read:0,db:0};
  if(rawCache!==null)store.set('punch-state:U:A',rawCache===undefined?JSON.stringify(cached):rawCache);
  const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
@@ -30,9 +33,12 @@ function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,netwo
  const storage={getItem:async key=>store.get(key)||null,setItem:async(k,v)=>{if(writeFail)throw Error('cache saturé');store.set(k,v)}};
  const network={getNetworkStateAsync:async()=>{if(networkStateFail)throw Error('Network status unavailable');return {isConnected:!offline,isInternetReachable:!offline}}};
  const supabase={from:table=>{
-  const result=table==='punch_sessions'?{data:emptyServer?[]:[own],error:dbFail?Error('offline'):null}:
-   table==='punch_segments'?{data:[cached.segments[1]],error:null}:
-   {data:[],error:breakFail?Error('Breaks unavailable'):null};
+  const result=table==='punch_sessions'?{data:emptyServer?[]:serverMixed?[foreign,own]:[own],error:dbFail?Error('offline'):null}:
+   table==='punch_segments'?{data:serverMixed?cached.segments:[cached.segments[1]],error:null}:
+   {data:serverMixed?[
+    {id:'other-break',session_id:'foreign',started_at:foreign.started_at,ended_at:null},
+    {id:'own-break',session_id:'own',started_at:own.started_at,ended_at:null}
+   ]:[],error:breakFail?Error('Breaks unavailable'):null};
   const q={select:()=>q,eq:()=>q,in:()=>q,order:()=>q,limit:()=>q,
    then:(ok,bad)=>{calls.db++;return Promise.resolve(result).then(ok,bad)}};
   return q;
@@ -201,4 +207,20 @@ test('both mobile UIs distinguish a damaged cache from a blocked journal',()=>{
  assert.match(native,/localJournalBlocked:journalBlocked\|\|snapshotUnverified/);
  assert.match(app,/punch\.snapshotUnverified\?'Relevé hors ligne introuvable ou illisible/);
  assert.match(essential,/punch\.snapshotUnverified\?'Relevé hors ligne introuvable ou illisible/);
+});
+
+// Confirm the bytes saved to AsyncStorage are tenant-scoped, not just the
+// in-memory projection; old mixed responses must never be persisted verbatim.
+test('Expo filters foreign RPC rows before persisting the offline snapshot',async()=>{
+ const h=fixture({offline:false,serverMixed:true});
+ const state=await h.load('A');
+ assert.deepEqual(state.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+ assert.deepEqual(state.breaks.map(b=>b.id),['own-break']);
+ const stored=JSON.parse(h.store.get('punch-state:U:A'));
+ assert.deepEqual(stored.sessions.map(s=>s.id),['own']);
+ assert.deepEqual(stored.segments.map(s=>s.id),['own-segment']);
+ assert.deepEqual(stored.breaks.map(b=>b.id),['own-break']);
+ assert.equal(stored.lastJobId,'my-site');
+ assert.equal(state.readSource,'server');
 });
