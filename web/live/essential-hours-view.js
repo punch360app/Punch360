@@ -30,12 +30,13 @@ function netMilliseconds(segments,breaks,from,until){
  *   companyId?: string,
  *   userId?: string,
  *   now?: number,
- *   cutoff?: number
+ *   cutoff?: number,
+ *   weekAt?: number
  * }} [options]
  */
-export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now(),cutoff=now}={}){
+export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now(),cutoff=now,weekAt=now}={}){
  if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
-  !Number.isFinite(now)||!Number.isFinite(cutoff)||!Array.isArray(sessions)||!Array.isArray(segments)||
+  !Number.isFinite(now)||!Number.isFinite(cutoff)||!Number.isFinite(weekAt)||!Array.isArray(sessions)||!Array.isArray(segments)||
   !Array.isArray(breaks))return [];
  const ids=new Set(sessions.filter(s=>s?.company_id===companyId&&s.user_id===userId&&
   typeof s.id==='string'&&s.id).map(s=>s.id));
@@ -48,7 +49,7 @@ export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],com
   const list=pauses.get(b.session_id)||[];list.push(b);pauses.set(b.session_id,list);
  }
  const latest=Math.min(now,cutoff);
- const today=new Date(now),week=new Date(today.getFullYear(),today.getMonth(),
+ const today=new Date(weekAt),week=new Date(today.getFullYear(),today.getMonth(),
   today.getDate()-(today.getDay()+6)%7);
  const rows=[];
  for(let n=0;n<7;n++){
