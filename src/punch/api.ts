@@ -73,17 +73,17 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  // A structurally incomplete row must not masquerade as an empty or
  // confirmed attendance record. Keep the previous cache until a complete
  // server snapshot can be fetched; other tenant rows are filtered below.
- const validServerRange=row=>typeof row?.started_at==='string'&&
+ const validServerRange=(row:Record<string,unknown>|null)=>typeof row?.started_at==='string'&&
   Number.isFinite(Date.parse(row.started_at))&&
   (row.ended_at===null||(typeof row.ended_at==='string'&&
    Number.isFinite(Date.parse(row.ended_at))&&
    Date.parse(row.ended_at)>=Date.parse(row.started_at)));
- const validServerSession=row=>typeof row?.id==='string'&&!!row.id&&
+ const validServerSession=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
   typeof row.company_id==='string'&&typeof row.user_id==='string'&&validServerRange(row);
- const validServerSegment=row=>typeof row?.id==='string'&&!!row.id&&
+ const validServerSegment=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
   typeof row.company_id==='string'&&typeof row.session_id==='string'&&!!row.session_id&&
   typeof row.job_id==='string'&&!!row.job_id&&validServerRange(row);
- const validServerBreak=row=>typeof row?.id==='string'&&!!row.id&&
+ const validServerBreak=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
   typeof row.session_id==='string'&&!!row.session_id&&validServerRange(row);
  if(error||!Array.isArray(sessions)||!sessions.every(validServerSession))return offlineState();
  // A null or malformed successful response is not a verified empty shift.
