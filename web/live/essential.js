@@ -19,7 +19,7 @@ import {createPlatformAuditController} from './platform-audit.js';
 import {createSupportController} from './support.js';
 import {createPlatformTestsController} from './platform-tests.js';
 import {createBreakCorrectionsController} from './break-corrections.js';
-import {renderCommercialDetails,estimatePublicPlanPrice} from './commercial.js';
+import {renderCommercialDetails,estimatePublicPlanPrice,isPublicPlanOfferComplete} from './commercial.js';
 import {createPayrollController} from './payroll.js';
 import {createCommunicationsController} from './communications.js';
 import {createHrController} from './hr.js';
@@ -125,7 +125,8 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   Number.isSafeInteger(p.kiosk_limit)&&p.kiosk_limit>=0?p.kiosk_limit+' borne(s)':'Bornes à confirmer';
  const establishmentLabel=p.establishment_limit===null?'Plusieurs établissements':
   Number.isSafeInteger(p.establishment_limit)&&p.establishment_limit>=0?p.establishment_limit+' établissement(s)':'Établissements à confirmer';
- return `<article class="ess-price ${p.recommended?'recommended':''}">${p.recommended?'<span class="ess-badge">Recommandé</span>':''}<h3>${e(p.title)}</h3><div class="ess-price-amount">${estimate?money(estimate.payableCents):'Tarif indisponible'}<small> / ${yearly?'an':'mois'}</small></div><p>${membersLabel}</p><hr><p>${kioskLabel} · ${establishmentLabel}</p><ul><li>Pointage et heures</li><li>Compte personnel facultatif</li></ul><p>${estimate?(yearly?'Équivalent '+money(annual/12)+'/mois · économie '+money(monthly*12-annual):'Annuel : '+money(annual)+' en un versement'):'Tarification à confirmer'}</p>${btn('Choisir ce forfait','choose',`data-id="${e(p.id)}" ${seatInvalid||!estimate?'disabled':''}`)}</article>`;
+ const offerComplete=isPublicPlanOfferComplete(p);
+ return `<article class="ess-price ${p.recommended?'recommended':''}">${p.recommended?'<span class="ess-badge">Recommandé</span>':''}<h3>${e(p.title)}</h3><div class="ess-price-amount">${estimate?money(estimate.payableCents):'Tarif indisponible'}<small> / ${yearly?'an':'mois'}</small></div><p>${membersLabel}</p><hr><p>${kioskLabel} · ${establishmentLabel}</p>${!offerComplete?'<p class="ess-fine">Détails du forfait à confirmer avant sélection.</p>':''}<ul><li>Pointage et heures</li><li>Compte personnel facultatif</li></ul><p>${estimate?(yearly?'Équivalent '+money(annual/12)+'/mois · économie '+money(monthly*12-annual):'Annuel : '+money(annual)+' en un versement'):'Tarification à confirmer'}</p>${btn('Choisir ce forfait','choose',`data-id="${e(p.id)}" ${seatInvalid||!estimate||!offerComplete?'disabled':''}`)}</article>`;
  }).join('')}</div>${!visible.length?'<div class="ess-pricing-status" role="status"><span>'+(s.error?'Tarifs temporairement indisponibles. Vérifiez votre connexion.':'Chargement des tarifs…')+'</span>'+(s.error&&!s.loading?btn('Réessayer','retry-public','aria-label="Réessayer le chargement des forfaits"'):'')+'</div>':''}<p class="ess-fine">Dollars canadiens, avant taxes. Les sièges additionnels profitent du même rabais annuel. Aucun paiement confirmé à cette étape.</p>${s.checkout?`<div class="ess-notice" role="status">Forfait choisi : ${e(s.checkout)}. Le paiement Stripe n’est pas encore activé. Aucun abonnement facturé.</div>`:''}</section><details class="ess-market-details" ${comparisonOpen?'open':''}><summary>Comparer les forfaits et consulter la FAQ</summary><div class="ess-market-panel"><p class="ess-market-close">Détails des forfaits · cliquez de nouveau sur « Comparer » pour fermer.</p>${renderCommercialDetails(s.plans,e,money,{seats:seatInvalid?null:s.seats,cadence:s.cadence})}</div></details>`;}
  const nav=[['home','Accueil'],['plans','Forfaits et tarifs'],['companies','Entreprises'],['users','Utilisateurs'],['specialPrices','Tarifs particuliers'],['billing','Abonnements Stripe'],['tests','Comptes test'],['archives','Archives et récupération'],['finance','Rapports financiers'],['promotions','Codes promotionnels'],['support','Support clients'],['audit','Sécurité et audit']];
 
@@ -247,7 +248,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   // must never open onboarding for a plan that the catalog no longer offers.
   // Server-side subscription entitlement checks remain mandatory.
   const plan=s.plans.find(p=>p.id===el.dataset.id&&p.active&&p.public_visible);
-  if(!plan||!estimatePublicPlanPrice(plan,s.seats,s.cadence))throw Error('Ce forfait n’est plus disponible. Actualisez les tarifs.');
+  if(!plan||!estimatePublicPlanPrice(plan,s.seats,s.cadence)||!isPublicPlanOfferComplete(plan))throw Error('Ce forfait n’est plus disponible ou ses détails sont incomplets. Actualisez les tarifs.');
   const seatsInput=doc.getElementById('ess-seats');
   if(validSeatCount(s.seatDraft??s.seats)===null||(seatsInput&&validSeatCount(seatsInput.value)===null))
    throw Error('Indiquez un nombre entier de 1 à 100 000 membres avant de choisir.');
