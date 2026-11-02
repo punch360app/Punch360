@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 const form={worker:'worker',job:'job',start:'2026-11-01T00:00:00-04:00',end:'2026-11-01T04:00:00-05:00',reason:'Forgot overnight day',breaks:[]};
 test('missing day uses explicit offsets across DST and refuses calendar errors or overlapping pauses',()=>{const p=missingDayPayload('company',form);assert.equal(Date.parse(p.p_end)-Date.parse(p.p_start),5*3600000);assert.throws(()=>missingDayPayload('company',{...form,start:'2026-02-31T08:00:00-05:00'}),/calendrier/);assert.throws(()=>missingDayPayload('company',{...form,start:'2026-11-01T00:00:00'}),/fuseau/);assert.throws(()=>missingDayPayload('company',{...form,breaks:[{start:'2026-11-01T01:00:00-04:00',end:'2026-11-01T02:00:00-05:00',paid:false},{start:'2026-11-01T01:30:00-04:00',end:'2026-11-01T02:30:00-05:00',paid:true}]}),/chevauchement/)});
 const escape=s=>String(s??'').replaceAll('<','&lt;');const store=()=>{const m=new Map();return {getItem:k=>m.get(k),setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)}};
-function table(){const q={data:[],error:null};for(const k of ['select','eq','order','limit'])q[k]=()=>q;return q}
+function table(name){const q={data:name==='jobs'?[{id:'job',name:'Établissement'}]:[],error:null};for(const k of ['select','eq','order','limit'])q[k]=()=>q;return q}
 test('lost response retains request identity; retry cannot create another official day',async()=>{const calls=[];let fail=true;const ui=createMissingDaysController({sb:{from:table,rpc:async(name,p)=>{calls.push({name,p});if(fail){fail=false;return {error:Error('network')}}return {data:'request'}}},redraw(){},escape,crypto,storage:store()});await ui.load({company_id:'company',role:'employee'},'user',[{id:'worker',auth_user_id:'user'}]);ui.state.form={...form};await ui.handle({dataset:{action:'missing:submit'}});assert.match(ui.state.error,/network/);await ui.handle({dataset:{action:'missing:submit'}});assert.equal(calls.length,2);assert.equal(calls[0].p.p_request,calls[1].p.p_request);assert.ok(calls.every(c=>c.name==='request_essential_missing_day'));assert.equal(ui.state.form.start,'')});
 test('employee selection excludes other workers and logout clears request state',async()=>{const ui=createMissingDaysController({sb:{from:table},redraw(){},escape,crypto,storage:store()});await ui.load({company_id:'company',role:'employee'},'user',[{id:'mine',auth_user_id:'user',first_name:'Mine'},{id:'other',auth_user_id:'someone',first_name:'Private'}]);assert.deepEqual(ui.state.workers.map(w=>w.id),['mine']);assert.ok(!ui.render().includes('Private'));ui.reset();assert.equal(ui.state.company,null);assert.deepEqual(ui.state.requests,[])});
 
@@ -44,4 +44,34 @@ test('My Hours links to missing-day workflow without treating requests as payabl
  assert.match(hours,/Une demande en attente ne constitue pas des heures confirmées/);
  assert.match(hours,/Suivi de mes demandes/);
  assert.match(hours,/forgotten\.ready/);
+});
+
+test('employee form rejects an unrelated worker or unavailable facility before mutation',async()=>{
+ let calls=0;
+ const ui=createMissingDaysController({sb:{from:table,rpc:async()=>{calls++;return {data:'ok'}}},
+  redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'employee'},'user',
+  [{id:'worker',auth_user_id:'user'},{id:'foreign',auth_user_id:'different'}]);
+ ui.state.form={...form,worker:'foreign'};
+ await ui.handle({dataset:{action:'missing:submit'}});
+ assert.match(ui.state.error,/Dossier salarié non autorisé/);assert.equal(calls,0);
+ ui.state.form={...form,job:'unlisted'};
+ await ui.handle({dataset:{action:'missing:submit'}});
+ assert.match(ui.state.error,/Établissement indisponible/);assert.equal(calls,0);
+});
+test('employee missing-day history never renders a contaminated company or worker response',async()=>{
+ const ui=createMissingDaysController({sb:{from:table},redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'employee'},'user',
+  [{id:'worker',auth_user_id:'user',first_name:'Own'}]);
+ ui.state.requests=[
+  {id:'a',company_id:'company',worker_id:'worker',status:'pending',
+   requested_by:'user',starts_at:'2026-10-21T08:00:00Z',ends_at:'2026-10-21T16:00:00Z',reason:'Correct request',breaks:[]},
+  {id:'b',company_id:'other-company',worker_id:'worker',status:'pending',
+   requested_by:'different',starts_at:'2026-10-21T08:00:00Z',ends_at:'2026-10-21T16:00:00Z',reason:'PRIVATE COMPANY',breaks:[]},
+  {id:'c',company_id:'company',worker_id:'foreign',status:'pending',
+   requested_by:'different',starts_at:'2026-10-21T08:00:00Z',ends_at:'2026-10-21T16:00:00Z',reason:'PRIVATE WORKER',breaks:[]}
+ ];
+ const html=ui.render();
+ assert.match(html,/Correct request/);
+ assert.doesNotMatch(html,/PRIVATE COMPANY|PRIVATE WORKER/);
 });
