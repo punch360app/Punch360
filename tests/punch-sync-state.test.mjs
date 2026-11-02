@@ -107,3 +107,17 @@ test('journal ownership is checked before upload, not only before displaying eve
  assert.match(app,/state\.localPending=localPunchSyncState\(events,companyId,userId\)\.pending\.length;state\.localPunchEvents=events/g);
  assert.doesNotMatch(app,/state\.localPending=pending\.length;state\.localPunchEvents=events;/);
 });
+
+test('conflict recovery navigation stays inside confirmed hours and scoped corrections',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('function essentialPunchSyncPanel()');
+ const end=app.indexOf('function essentialHome()',start);
+ assert.ok(start>=0&&end>start);
+ const panel=app.slice(start,end);
+ assert.match(panel,/conflicts\.length>5/);
+ assert.match(panel,/state\.section==='hours'\?button\('Vérifier les corrections possibles','subpage','full','data-id="essentialCorrection"'\)/);
+ assert.match(panel,/button\('Consulter Mes heures','navigate','full','data-id="hours"'\)/);
+ assert.match(panel,/journée vérifiée sur le serveur/);
+ assert.match(panel,/contactez votre responsable/);
+ assert.doesNotMatch(panel,/latitude|longitude|fix\.|result\.message/);
+});
