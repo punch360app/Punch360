@@ -66,6 +66,9 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   networkAvailable=network.isConnected!==false&&network.isInternetReachable!==false;
  }catch{/* The cached snapshot is the safe fallback on network-state failure. */}
  if(!networkAvailable)return offlineState();
+ // Supabase can reject a request promise or throw before returning a result.
+ // A transport failure must retain the last complete scoped snapshot, not hide hours.
+ try{
  const {data:sessions,error}=await supabase.from('punch_sessions')
   .select('id,company_id,user_id,started_at,ended_at')
   .eq('company_id',companyId).eq('user_id',user.id)
@@ -104,6 +107,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&
   (b.company_id==null||b.company_id===companyId)&&(b.user_id==null||b.user_id===user.id));
  const snapshot={breaks:ownBreaks,sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{cacheWriteFailed=true}return overlay(snapshot,'server',cacheWriteFailed);
+ }catch{return offlineState();}
 }
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{
