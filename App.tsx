@@ -69,7 +69,12 @@ function Workspace({account}:{account:WorkspaceAccount}){
    setJobs(result.jobs);setDemo(false);const local=await journalSummary(account.companyId);
    const blocked=!!punch.localJournalBlocked||local.blocked;
    setJournalBlocked(blocked);
-   setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':local.pending?'HORS LIGNE · '+local.pending+' punch(s) conservé(s) sur ce téléphone':local.conflicts?local.conflicts+' conflit(s) transmis à l’administration':result.message||account.companyName);
+   setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':
+    local.pending?'Pointages locaux non confirmés · '+local.pending+' en attente sur ce téléphone':
+    local.conflicts?local.conflicts+' conflit(s) transmis à l’administration':
+    punch.readSource==='cache'?'Dernier relevé sauvegardé sur cet appareil · à vérifier':
+    punch.readSource==='server'?'Dernier relevé serveur · heures sujettes à validation':
+    result.message||account.companyName);
    setSessions(punch.sessions);setServerSegments(punch.segments);
    setSegments(punch.segments.map(s=>({id:s.id,jobId:s.job_id,start:Date.parse(s.started_at),end:s.ended_at?Date.parse(s.ended_at):null})));
    setArchived(archives);

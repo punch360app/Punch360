@@ -10,7 +10,7 @@ import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
 export type PunchSegment={id:string;session_id:string;company_id:string;job_id:string;started_at:string;ended_at:string|null};
 export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean;company_id?:string;user_id?:string};
-export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean};
+export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean};
 export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
  const journal=await getPunchJournal(companyId);
@@ -18,7 +18,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  let journalBlocked=false;
  try{await journal.flush()}catch{journalBlocked=true}
  const cacheKey='punch-state:'+user.id+':'+companyId;
- const overlay=async(state:PunchState)=>{
+ const overlay=async(state:PunchState,readSource:'server'|'cache')=>{
   // Prevent cross-company hours from legacy mixed offline snapshots.
   const ownSessions=(state.sessions||[]).filter(s=>s.company_id===companyId&&s.user_id===user.id);
   const ids=new Set(ownSessions.map(s=>s.id));
@@ -30,7 +30,8 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   let events:LocalPunchEvent[]=[];
   if(!journalBlocked)try{events=await journal.read()}catch{journalBlocked=true}
   return {...projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id}),
-   localJournalBlocked:journalBlocked} as PunchState;
+   localJournalBlocked:journalBlocked,readSource,
+   hasLocalProjection:!journalBlocked&&events.some(e=>e.status==='pending'&&e.company===companyId&&e.user===user.id)} as PunchState;
  };
  // If Expo cannot read network state, retain access to the last locally
  // saved, identity-scoped snapshot instead of hiding the worker's hours.
@@ -39,22 +40,22 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   const network=await Network.getNetworkStateAsync();
   networkAvailable=network.isConnected!==false&&network.isInternetReachable!==false;
  }catch{/* The cached snapshot is the safe fallback on network-state failure. */}
- if(!networkAvailable){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null});}
+ if(!networkAvailable){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null},'cache');}
  const {data:sessions,error}=await supabase.from('punch_sessions')
   .select('id,company_id,user_id,started_at,ended_at')
   .eq('company_id',companyId).eq('user_id',user.id)
   .order('started_at',{ascending:false}).limit(500);
- if(error){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached));throw error;}
+ if(error){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached),'cache');throw error;}
  const list=sessions as PunchSession[]||[];
- if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};await AsyncStorage.setItem(cacheKey,JSON.stringify(empty));return overlay(empty);}
+ if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};await AsyncStorage.setItem(cacheKey,JSON.stringify(empty));return overlay(empty,'server');}
  const {data:segments,error:segmentsError}=await supabase.from('punch_segments')
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
   .order('started_at',{ascending:false});
- if(segmentsError){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached));throw segmentsError;}
+ if(segmentsError){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached),'cache');throw segmentsError;}
  const sorted=(segments||[]) as PunchSegment[];
- const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error)throw breakResult.error;
- const snapshot={breaks:breakResult.data||[],sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot));return overlay(snapshot);
+ const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached),'cache');throw breakResult.error;}
+ const snapshot={breaks:breakResult.data||[],sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot));return overlay(snapshot,'server');
 }
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{

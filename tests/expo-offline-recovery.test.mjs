@@ -9,7 +9,7 @@ const journal=readFileSync(new URL('../src/punch/journal.ts',import.meta.url),'u
 const a=native.indexOf('export async function loadPunchState('),b=native.indexOf('export type LocationCheckResult=',a);
 assert.ok(a>=0&&b>a,'Expo loader not found');
 const source=native.slice(a,b).replace('export async function loadPunchState(companyId:string):Promise<PunchState>{','async function loadPunchState(companyId){')
- .replace('const overlay=async(state:PunchState)=>','const overlay=async(state)=>')
+ .replace("const overlay=async(state:PunchState,readSource:'server'|'cache')=>",'const overlay=async(state,readSource)=>')
  .replace('let events:LocalPunchEvent[]=[];','let events=[];')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
@@ -20,7 +20,7 @@ const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false}={}){
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false}={}){
  const store=new Map([['punch-state:U:A',JSON.stringify(cached)]]),calls={send:0,read:0,db:0};
  const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
  const j={flush:async()=>{calls.send++;if(flushFail)throw Error('Journal non vérifiable')},
@@ -30,7 +30,7 @@ function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,netwo
  const supabase={from:table=>{
   const result=table==='punch_sessions'?{data:[own],error:dbFail?Error('offline'):null}:
    table==='punch_segments'?{data:[cached.segments[1]],error:null}:
-   {data:[],error:null};
+   {data:[],error:breakFail?Error('Breaks unavailable'):null};
   const q={select:()=>q,eq:()=>q,in:()=>q,order:()=>q,limit:()=>q,
    then:(ok,bad)=>{calls.db++;return Promise.resolve(result).then(ok,bad)}};
   return q;
@@ -103,4 +103,37 @@ test('Expo network-state failure still projects valid local OUT when journal is 
 test('TypeScript local journal events must be typed rather than implicitly any',()=>{
  assert.match(native,/import type \{LocalPunchEvent\} from '\.\.\/\.\.\/web\/live\/journal.js'/);
  assert.match(native,/let events:LocalPunchEvent\[\]=\[\];/);
+});
+
+test('offline hours are labeled cache with local projection rather than server confirmed',async()=>{
+ const s=await fixture().load('A');
+ assert.equal(s.readSource,'cache');
+ assert.equal(s.hasLocalProjection,true);
+ assert.equal(s.localJournalBlocked,false);
+});
+test('complete live server reads are labeled server, but pending offline events remain provisional',async()=>{
+ const s=await fixture({offline:false}).load('A');
+ assert.equal(s.readSource,'server');
+ assert.equal(s.hasLocalProjection,true);
+});
+test('blocked local journal has no pending projection and keeps cache identity scope',async()=>{
+ const s=await fixture({flushFail:true}).load('A');
+ assert.equal(s.readSource,'cache');
+ assert.equal(s.hasLocalProjection,false);
+});
+test('sessions query failure is not called a fresh server snapshot',async()=>{
+ const s=await fixture({offline:false,dbFail:true}).load('A');
+ assert.equal(s.readSource,'cache');
+});
+test('breaks query failure reuses last complete cached snapshot, not partial fresh hours',async()=>{
+ const s=await fixture({offline:false,breakFail:true}).load('A');
+ assert.equal(s.readSource,'cache');
+ assert.deepEqual(s.sessions.map(x=>x.id),['own']);
+});
+test('Expo hours and home clearly label cache, projected time and server origin without approval claim',()=>{
+ assert.match(essential,/Dernier relevé sauvegardé sur cet appareil/);
+ assert.match(essential,/Relevé serveur \+ pointages locaux en attente/);
+ assert.match(essential,/Total indicatif · les heures restent sujettes à validation/);
+ assert.match(essential,/punch\.readSource==='cache'\?'Copie locale'/);
+ assert.match(app,/punch\.readSource==='server'\?'Dernier relevé serveur · heures sujettes à validation'/);
 });
