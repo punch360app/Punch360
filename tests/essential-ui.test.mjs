@@ -402,3 +402,29 @@ test('Bento never leaves a stale card amount visible after an invalid member cou
   assert.equal(w.document.getElementById('ess-seats'),input);
  }finally{await w.happyDOM.close();}
 });
+
+
+test('Bento cards refuse broken catalog prices and unknown limits without implying a free offer',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  ui.state.plans=[
+   {...plan,id:'missing-base',title:'Sans prix',base_cents:null,kiosk_limit:-1,establishment_limit:undefined},
+   {...plan,id:'missing-extra',title:'Sans supplément',extra_seat_cents:undefined,kiosk_limit:null,establishment_limit:null}
+  ];
+  w.document.body.innerHTML=ui.renderPricing();
+  const cards=[...w.document.querySelectorAll('.ess-price')];
+  assert.equal(cards.length,2);
+  assert.match(cards[0].textContent,/Tarif indisponible/);
+  assert.match(cards[0].textContent,/Membres et suppléments à confirmer/);
+  assert.match(cards[0].textContent,/Bornes à confirmer/);
+  assert.match(cards[0].textContent,/Établissements à confirmer/);
+  assert.match(cards[1].textContent,/Bornes illimitées/);
+  assert.match(cards[1].textContent,/Plusieurs établissements/);
+  for(const card of cards){
+   assert.equal(card.querySelector('[data-action="ess:choose"]').disabled,true);
+   assert.doesNotMatch(card.textContent,/NaN|undefined|Infinity|null membres|0,00.*membre/);
+  }
+  assert.match(w.document.querySelector('.ess-comparison').textContent,/À confirmer/);
+ }finally{await w.happyDOM.close();}
+});
