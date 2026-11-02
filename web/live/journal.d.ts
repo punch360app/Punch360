@@ -3,7 +3,10 @@ export class PunchJournal {
  readonly company:string;readonly user:string;
  constructor(options:{withLock?:<T>(fn:()=>Promise<T>)=>Promise<T>;storage:{get:(key:string)=>Promise<string|null>;set:(key:string,value:string)=>Promise<void>};send:(event:LocalPunchEvent)=>Promise<Record<string,any>>;uuid:()=>string;company:string;user:string});
  read():Promise<LocalPunchEvent[]>;append(action:LocalPunchEvent['action'],job?:string|null,fix?:LocalPunchEvent['fix'],occurredAt?:string,paid?:boolean,offline?:boolean):Promise<LocalPunchEvent>;
- flush():Promise<{sent:number;events:LocalPunchEvent[];pending:number}>;pending():Promise<LocalPunchEvent[]>;
+ flush():Promise<{sent:number;events:LocalPunchEvent[];pending:number}>;
+ /** Read and validate saved events without network I/O or rewriting them. */
+ inspect():Promise<{sent:number;events:LocalPunchEvent[];pending:number}>;
+ pending():Promise<LocalPunchEvent[]>;
 }
 export function projectPendingPunches<T extends {sessions:any[];segments:any[]}>(snapshot:T,events:LocalPunchEvent[],scope?:{company:string;user:string}|null):T & {breaks:any[];active:any;lastJobId:string|null;appliedLocalEvents:number};
 
