@@ -26,7 +26,8 @@ export function createScopedPassivePunchRefresh({
     }
     if(isBusy()||!isCurrent(scope))return false;
     await refresh(scope);
-    return true;
+    // A refresh that finishes after a company or account switch is stale.
+    return isCurrent(scope);
    }catch{return false}
   };
   const task=run();
