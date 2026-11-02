@@ -108,3 +108,59 @@ test('Web and Expo always supply the worker/company to the shared overlay',()=>{
  assert.equal(web.split('projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId})').length-1,2);
  assert.match(native,/projectPendingPunches\(state,await journal\.read\(\),\{company:companyId,user:user\.id\}\)/);
 });
+
+
+test('scoped projections ignore legacy sessions with no verified owner',()=>{
+ const anonymous={id:'legacy',company_id:null,user_id:null,started_at:'2026-11-01T08:00:00Z',ended_at:null};
+ const old={sessions:[anonymous],segments:[
+  {id:'old-segment',company_id:null,session_id:'legacy',job_id:'uncertain',ended_at:null}
+ ],breaks:[]};
+ const scope={company:'tenant-A',user:'employee-A'};
+ const out=projectPendingPunches(old,[event('out','out-legacy')],scope);
+ assert.equal(out.sessions[0].ended_at,null,'Unverified session must not be closed');
+ assert.equal(out.active,null,'Unverified session must not be shown as the employee session');
+ assert.equal(out.lastJobId,null,'Unverified workplace must not be selected');
+ const newIn=projectPendingPunches(old,[event('in','in-safe','my-site')],scope);
+ assert.equal(newIn.sessions.find(s=>s.id==='legacy').ended_at,null);
+ assert.equal(newIn.active?.id,'local-in-safe');
+ assert.equal(newIn.active?.company_id,'tenant-A');
+ assert.equal(newIn.active?.user_id,'employee-A');
+ // Unscoped legacy callers keep their historic behavior.
+ assert.equal(projectPendingPunches(old,[event('out','old-unscoped')]).sessions[0].ended_at,
+  '2026-11-01T12:00:00Z');
+});
+
+test('scoped OUT does not change segments or breaks with missing ownership',()=>{
+ const session={...own};
+ const old={sessions:[session],segments:[
+  {id:'unknown-company',company_id:null,session_id:session.id,job_id:'unknown-job',ended_at:null},
+  {id:'own-segment',company_id:'tenant-A',session_id:session.id,job_id:'my-site',ended_at:null}
+ ],breaks:[
+  {id:'unknown-break',company_id:null,user_id:'employee-A',session_id:session.id,ended_at:null},
+  {id:'my-break',company_id:'tenant-A',user_id:'employee-A',session_id:session.id,ended_at:null}
+ ]};
+ const result=projectPendingPunches(old,[event('out','safe')],{company:'tenant-A',user:'employee-A'});
+ assert.equal(result.segments.find(s=>s.id==='unknown-company').ended_at,null);
+ assert.equal(result.breaks.find(b=>b.id==='unknown-break').ended_at,null);
+ assert.equal(result.segments.find(s=>s.id==='own-segment').ended_at,'2026-11-01T12:00:00Z');
+ assert.equal(result.breaks.find(b=>b.id==='my-break').ended_at,'2026-11-01T12:00:00Z');
+});
+
+test('last offline workplace ignores a segment owned by another worker even if session ID collides',()=>{
+ const snapshot={sessions:[own],segments:[
+  {id:'wrong-worker',company_id:'tenant-A',user_id:'employee-B',session_id:own.id,job_id:'other-job'},
+  {id:'own-job',company_id:'tenant-A',session_id:own.id,job_id:'my-site'}
+ ],breaks:[]};
+ assert.equal(projectPendingPunches(snapshot,[],{company:'tenant-A',user:'employee-A'}).lastJobId,'my-site');
+});
+
+test('invalid journal entries are retained for recovery but not projected into attendance',()=>{
+ const result=projectPendingPunches({sessions:[],segments:[],breaks:[]},[
+  null,{status:'pending'}, {id:'invalid',status:'pending',company:'tenant-A',user:null},
+  event('in','valid-in','my-site')
+ ],{company:'tenant-A',user:'employee-A'});
+ assert.equal(result.sessions.length,1);
+ assert.equal(result.active?.id,'local-valid-in');
+ assert.equal(projectPendingPunches({sessions:[],segments:[],breaks:[]},[null,{}],
+  {company:'tenant-A',user:'employee-A'}).active,null);
+});

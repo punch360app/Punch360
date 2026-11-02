@@ -20,15 +20,24 @@ export function projectPendingPunches(snapshot,events,scope=null){
  const identity=typeof scope?.company==='string'&&scope.company&&
   typeof scope?.user==='string'&&scope.user?scope:null;
  const sessions=snapshot.sessions.map(s=>({...s})),segments=snapshot.segments.map(s=>({...s})),breaks=(snapshot.breaks||[]).map(s=>({...s}));
- for(const event of events.filter(e=>e.status==='pending'&&(!identity||
-  e.company===identity.company&&e.user===identity.user))){
+ // Damaged legacy journal rows are kept on disk for recovery, but
+ // must not become apparent attendance or a selected workplace.
+ const pending=Array.isArray(events)?events.filter(e=>e?.status==='pending'&&
+  typeof e.id==='string'&&e.id&&typeof e.company==='string'&&e.company&&
+  typeof e.user==='string'&&e.user&&(!identity||
+  e.company===identity.company&&e.user===identity.user)):[];
+ for(const event of pending){
   // A stale or contaminated snapshot must never let one employee's
   // offline event edit a different employee/company session.
+  // Under a known login, missing ownership is not authorization to
+  // reuse an old session. Legacy permissive projection is only unscoped.
   const active=sessions.find(s=>!s.ended_at&&
-   (s.company_id==null||s.company_id===event.company)&&
-   (s.user_id==null||s.user_id===event.user));
+   (identity?s.company_id===event.company&&s.user_id===event.user:
+    (s.company_id==null||s.company_id===event.company)&&
+    (s.user_id==null||s.user_id===event.user)));
   const ownsRecord=record=>record?.session_id===active?.id&&
-   (record.company_id==null||record.company_id===event.company)&&
+   (identity?record.company_id===event.company:
+    (record.company_id==null||record.company_id===event.company))&&
    (record.user_id==null||record.user_id===event.user);
   if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
   if(event.action==='break_start'&&active)breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});
@@ -36,8 +45,7 @@ export function projectPendingPunches(snapshot,events,scope=null){
   if(event.action==='out'&&active){for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;}
   if(event.action==='transfer'&&active){for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
  }
- const pending=events.filter(e=>e.status==='pending'&&(!identity||
-  e.company===identity.company&&e.user===identity.user)),latest=pending.at(-1);
+ const latest=pending.at(-1);
  const owner=identity||latest&&{company:latest.company,user:latest.user};
  const active=sessions.find(s=>!s.ended_at&&(!owner||
   (s.company_id==null&&!identity||s.company_id===owner.company)&&
@@ -47,6 +55,7 @@ export function projectPendingPunches(snapshot,events,scope=null){
  const ownSessionIds=owner?new Set(sessions.filter(s=>
   s.company_id===owner.company&&s.user_id===owner.user).map(s=>s.id)):null;
  const lastSegment=owner?segments.find(s=>
-  s.company_id===owner.company&&ownSessionIds.has(s.session_id)):segments[0];
+  s.company_id===owner.company&&ownSessionIds.has(s.session_id)&&
+  (s.user_id==null||s.user_id===owner.user)):segments[0];
  return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null};
 }
