@@ -47,3 +47,21 @@ export function validateEssentialCorrection({view,sessionId,reason,requestedStar
   return {ok:false,message:'La nouvelle sortie doit être après la nouvelle entrée.'};
  return {ok:true,reason:explanation,sessionId,requestedStart:start.iso,requestedEnd:end.iso};
 }
+
+/**
+ * Review candidates come from the separate, server-read pending inbox.
+ * The transactional review RPC remains the sole authority for permissions.
+ */
+export function essentialCorrectionApprovalView({companyId,reviewerId,manager=false,loaded=false,requests=[]}={}){
+ const ready=loaded===true&&manager===true&&
+  typeof companyId==='string'&&companyId.length>0&&
+  typeof reviewerId==='string'&&reviewerId.length>0&&Array.isArray(requests);
+ if(!ready)return {ready:false,requests:[]};
+ const valid=request=>request?.company_id===companyId&&request.status==='pending'&&
+  typeof request.id==='string'&&request.id.length>0&&
+  typeof request.session_id==='string'&&request.session_id.length>0&&
+  typeof request.requested_by==='string'&&request.requested_by.length>0&&
+  request.requested_by!==reviewerId;
+ return {ready:true,requests:requests.filter(valid)
+  .sort((a,b)=>(parsed(b.created_at)??0)-(parsed(a.created_at)??0))};
+}
