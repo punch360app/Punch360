@@ -121,6 +121,43 @@ test('blocked local journal never offers a misleading manual retry, but keeps co
  assert.match(render({blocked:{companyId:'business-A',userId:'worker-B'}}),/syncPendingPunches/);
 });
 
+test('blocked journal panel always offers confirmed hours without unsafe retry',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('function essentialPunchSyncPanel()');
+ const end=app.indexOf('function essentialRequestsHomeCard()',start);
+ assert.ok(start>=0&&end>start,'Render actual production panel');
+ const body=app.slice(start,end);
+ const state={
+  user:{id:'worker-A'},section:'punch',busy:false,
+  localPunchEvents:[],localJournalBlocked:{companyId:'business-A',userId:'worker-A'}
+ };
+ const render=new Function('state','company','localPunchSyncState','e','when','button','navigator',
+  body+';return essentialPunchSyncPanel;')(
+  state,()=> 'business-A',localPunchSyncState,value=>String(value),
+  value=>String(value),(label,action)=>'<button data-action="'+action+'">'+label+'</button>',
+  {onLine:true});
+ let html=render();
+ assert.match(html,/Journal local non vérifiable/);
+ assert.match(html,/data-action="navigate">Consulter Mes heures/);
+ assert.doesNotMatch(html,/data-action="syncPendingPunches"/);
+ state.section='hours';
+ html=render();
+ assert.match(html,/Journal local non vérifiable/);
+ assert.doesNotMatch(html,/data-action="navigate"/);
+ state.section='punch';
+ state.localPunchEvents=[own];
+ html=render();
+ assert.match(html,/1 événement\\(s\\) en attente/);
+ assert.match(html,/data-action="navigate">Consulter Mes heures/);
+ assert.doesNotMatch(html,/data-action="syncPendingPunches"/);
+ state.localJournalBlocked={companyId:'business-B',userId:'worker-A'};
+ html=render();
+ assert.doesNotMatch(html,/Journal local non vérifiable/);
+ assert.match(html,/data-action="syncPendingPunches"/);
+ state.localPunchEvents=[];
+ assert.equal(render(),'','No warning from a foreign-company journal');
+});
+
 test('manual resynchronization checks the persisted journal after retry and does not claim payroll confirmation',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent\} from '\.\/punch-sync-state\.js'/);
