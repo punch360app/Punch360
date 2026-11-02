@@ -11,7 +11,7 @@ function sourceSlice(content,from,to){
  return content.slice(a,b);
 }
 const constructionSync=sourceSlice(construction,'async function syncConstructionPunches(){',' useEffect(()=>{refresh();');
-const essentialSync=sourceSlice(essential,' async function syncLocalPunches(){',' useEffect(',);
+const essentialSync=sourceSlice(essential,' async function syncLocalPunches(){',' const navDestination=',);
 function actualGate(src,variable){
  const match=src.match(new RegExp('if\\(('+variable+'\\.isConnected[^\\n]*?'+variable+'\\.isInternetReachable[^\\n]*?)\\)\\{'));
  assert.ok(match,'Missing real connectivity gate for '+variable);
