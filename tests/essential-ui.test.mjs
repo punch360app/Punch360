@@ -167,6 +167,41 @@ test('Bento removes an obsolete chosen-plan message when seats or billing period
  }finally{await w.happyDOM.close();}
 });
 
+test('Bento discards cached public prices and pending catalog requests after reset',async()=>{
+ const w=new Window();let resolveCatalog,requested=false;
+ const pending=new Promise(resolve=>{resolveCatalog=resolve});
+ const sb={from(table){
+  assert.equal(table,'essential_plans');
+  return {select(){return {order(){requested=true;return pending}}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  // A stale public offer must not remain in a shared tablet after signout.
+  ui.state.plans=[{...plan}];
+  ui.state.checkout=plan.title;ui.state.error='Previous error';
+  ui.reset();
+  assert.deepEqual(ui.state.plans,[]);
+  assert.equal(ui.state.checkout,null);
+  assert.equal(ui.state.error,'');
+  assert.equal(ui.state.loading,false);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+
+  const loading=ui.load(null,null);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requested,true);
+  ui.reset();
+  resolveCatalog({data:[{...plan,title:'Outdated public offer'}],error:null});
+  await loading;
+  assert.deepEqual(ui.state.plans,[],
+   'an old network reply must not restore a quoted plan after logout');
+  assert.equal(ui.state.platform,false);
+  assert.equal(ui.state.checkout,null);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+ }finally{await w.happyDOM.close();}
+});
+
 test('late personnel responses cannot repopulate private state after signout',async()=>{const w=new Window();let release;const pending=new Promise(resolve=>{release=resolve});const sb={rpc:async()=>({data:false}),from(table){const q={select(){return q},eq(){return q},order(){return table==='company_workers'?pending:Promise.resolve({data:[plan]})}};return q;}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});const loading=ui.load({id:'old-user'},{company_id:'tenant',role:'employee',companies:{product_edition:'essential'}});await new Promise(r=>setTimeout(r,0));ui.reset();release({data:[{id:'private-worker',auth_user_id:'old-user',first_name:'Private'}]});await loading;assert.equal(ui.state.worker,null);assert.deepEqual(ui.state.workers,[]);assert.equal(ui.state.platform,false);await w.happyDOM.close();});
 test('kiosk navigation uses a static public URL without pairing secrets',async()=>{const {w,ui}=setup();ui.state.devices=[{id:'device',name:'Reception',paired_at:null,revoked_at:null}];ui.state.pairCode='secret-code';w.document.body.innerHTML=ui.renderKiosks();const links=[...w.document.querySelectorAll('a')].filter(a=>a.textContent==='Ouvrir la pointeuse');assert.equal(links.length,1);assert.equal(links[0].getAttribute('href'),'https://punch360app.github.io/Punch360/kiosk.html');assert.equal(new URL(links[0].href).search,'');assert.equal(new URL(links[0].href).hash,'');assert.ok(w.document.querySelector('[data-action="ess:copy-kiosk-link"]'));await w.happyDOM.close();});
 
