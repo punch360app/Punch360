@@ -162,6 +162,9 @@ function Workspace({account}:{account:WorkspaceAccount}){
     local.pending&&local.conflicts?local.pending+' pointage(s) en attente et '+local.conflicts+' conflit(s) à vérifier.':
     local.pending?local.pending+' pointage(s) encore en attente de transmission.':
     local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
+    // A successful journal flush is not proof that the official attendance
+    // snapshot was reread: loadPunchState can fall back to an older cache.
+    punch.readSource!=='server'?'Relevé serveur indisponible · synchronisation non confirmée. Réessayez avec une connexion stable.':
     punch.cacheWriteFailed?'Aucun pointage en attente · copie hors ligne indisponible sur cet appareil.':
     'Aucun pointage local en attente. Vérifiez les heures officielles sur le serveur.');
   }catch(e:any){
