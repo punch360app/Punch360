@@ -72,6 +72,15 @@ export function projectPendingPunches(snapshot,events,scope=null){
    (identity?record.company_id===event.company:
     (record.company_id==null||record.company_id===event.company))&&
    (record.user_id==null||record.user_id===event.user);
+  // Clock changes and delayed queued actions must not roll a server-backed
+  // shift, job segment or unpaid pause back before its verified start.
+  // Preserve the event in the journal for review; do not fabricate hours.
+  const at=Date.parse(event.occurredAt);
+  if(active&&(at<Date.parse(active.started_at)||
+   ((event.action==='out'||event.action==='transfer')&&segments.some(s=>
+    ownsRecord(s)&&s.ended_at==null&&at<Date.parse(s.started_at)))||
+   ((event.action==='out'||event.action==='break_end')&&breaks.some(b=>
+    ownsRecord(b)&&b.ended_at==null&&at<Date.parse(b.started_at)))))continue;
   if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
   if(event.action==='break_start'&&active)breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});
   if(event.action==='break_end'&&active)for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;
