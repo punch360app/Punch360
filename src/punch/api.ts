@@ -14,7 +14,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
  const journal=await getPunchJournal(companyId);await journal.flush();
  const cacheKey='punch-state:'+user.id+':'+companyId;
- const overlay=async(state:PunchState)=>projectPendingPunches(state,await journal.read()) as PunchState;
+ const overlay=async(state:PunchState)=>projectPendingPunches(state,await journal.read(),{company:companyId,user:user.id}) as PunchState;
  const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null});}
  const {data:sessions,error}=await supabase.from('punch_sessions')
   .select('id,company_id,user_id,started_at,ended_at')
