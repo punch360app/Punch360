@@ -35,10 +35,9 @@ function fixture({network='offline',cache=[segA],response=[{segment_id:segA}],
    then:(done,fail)=>Promise.resolve({data:response,error}).then(done,fail)};
   return query;
  }};
- const archiveRevisions=new Map();
  const loadArchives=new Function('getLocalIdentity','AsyncStorage','Network',
-  'supabase','archiveRevisions',js+'\nreturn loadArchives;')(
-  getLocalIdentity,AsyncStorage,Network,supabase,archiveRevisions);
+  'supabase',js+'\nreturn loadArchives;')(
+  getLocalIdentity,AsyncStorage,Network,supabase);
  return {run:loadArchives,memory,key,calls};
 }
 
