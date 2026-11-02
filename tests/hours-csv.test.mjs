@@ -68,7 +68,7 @@ test('open or corrupted timestamps do not create fake confirmed payable hours',(
  const backwards={...row('backwards'),ended_at:'2026-11-04T09:00:00Z'};
  const csv=createHoursCsv({...fixtures,rows:[open,corrupt,backwards],breaks:[]});
  assert.equal(csv.rows.length,3);
- assert.deepEqual(csv.rows.map(x=>x[8]),['SORTIE MANQUANTE','HORODATAGE INVALIDE','HORODATAGE INVALIDE']);
+ assert.deepEqual(csv.rows.map(x=>x[8]),['SORTIE MANQUANTE','HORODATAGE INVALIDE','SORTIE AVANT ENTRÉE']);
  for(const row of csv.rows)assert.deepEqual(row.slice(5,8),['','','']);
 });
 
@@ -85,12 +85,12 @@ test('web export fetches only breaks of exported sessions and does not use the o
  const beginning=app.indexOf('async function exportHours(){');
  const ending=app.indexOf('\n\nfunction schedulePage()',beginning);
  const fn=app.slice(beginning,ending);
- assert.match(fn,/const scope=hoursExportScope\(company\(\),state\.user\?\.id,state\.account\?\.role,state\.section\)/);
- assert.match(fn,/\.eq\('company_id',scope\.companyId\)\.eq\('punch_sessions\.company_id',scope\.companyId\)/);
- assert.match(fn,/if\(scope\.ownOnly\)q=q\.eq\('punch_sessions\.user_id',scope\.userId\)/);
- assert.match(fn,/\.in\('session_id',batch\)/);
+ assert.match(fn,/const \{companyId,userId,ownOnly:selfOnly\}=hoursExportScope\(company\(\),state\.user\.id,state\.account\?\.role,state\.section\)/);
+ assert.match(fn,/\.eq\('company_id',companyId\)\.eq\('punch_sessions\.company_id',companyId\)/);
+ assert.match(fn,/if\(selfOnly\)q=q\.eq\('punch_sessions\.user_id',userId\)/);
+ assert.match(fn,/\.in\('session_id',ids\)/);
  assert.match(fn,/\.range\(offset,offset\+499\)/);
- assert.match(fn,/scope\.companyId!==company\(\)\|\|scope\.userId!==state\.user\?\.id/);
- assert.match(fn,/const content=createHoursCsv\(/);
+ assert.match(fn,/company\(\)!==companyId\|\|state\.user\?\.id!==userId/);
+ assert.match(fn,/const data=createHoursCsv\(/);
  assert.doesNotMatch(fn,/projectPendingPunches|punchJournal\(/);
 });
