@@ -98,5 +98,5 @@ test('source code reads and saves only through scoped validation',()=>{
  assert.match(source,/scopedOfflinePunchSnapshot/);
  assert.match(source,/readScopedOfflineSnapshot/);
  assert.doesNotMatch(source,/function restoreOfflineSnapshot\(\)[^{]*\{[^}]*JSON\.parse/);
- assert.match(app,/restoreOfflineSnapshot\(\);if\(isEssential\(\)\)/);
+ assert.match(app,/restoreOfflineSnapshot\(\);\s*if\(isEssential\(\)\)/);
 });
