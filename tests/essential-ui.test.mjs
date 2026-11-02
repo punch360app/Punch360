@@ -356,3 +356,49 @@ test('member edits immediately update comparison without outdated quotes on inva
  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
  await w.happyDOM.close();
 });
+
+test('Bento shows extra seats and the exact monthly and annual supplement from current catalog',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;ui.state.cadence='monthly';
+  w.document.body.innerHTML=ui.renderPricing();
+  let rows=[...w.document.querySelectorAll('.ess-comparison tbody tr')];
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Membres facturés en supplément').textContent,/3/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Supplément mensuel').textContent,/12,00/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent.startsWith('Tarif estimé')).textContent,/51,00/);
+
+  ui.state.seats=6;ui.state.cadence='yearly';
+  w.document.body.innerHTML=ui.renderPricing();
+  rows=[...w.document.querySelectorAll('.ess-comparison tbody tr')];
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Membres facturés en supplément').textContent,/1/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Supplément pour 12 mois').textContent,/40,80/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent.startsWith('Tarif estimé')).textContent,/438,60/);
+
+  ui.state.plans=[{...plan,included_seats_unlimited:true}];
+  w.document.body.innerHTML=ui.renderPricing();
+  rows=[...w.document.querySelectorAll('.ess-comparison tbody tr')];
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Membres facturés en supplément').textContent,/0/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Supplément pour 12 mois').textContent,/0,00/);
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento never leaves a stale card amount visible after an invalid member count',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  w.document.body.innerHTML=ui.renderPricing();
+  const input=w.document.getElementById('ess-seats');
+  assert.match(w.document.querySelector('.ess-price-amount').textContent,/51,00/);
+  input.value='';ui.input(input);
+  assert.match(w.document.querySelector('.ess-price-amount').textContent,/Tarif indisponible/);
+  assert.doesNotMatch(w.document.querySelector('.ess-price-amount').textContent,/51,00/);
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
+  assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/À confirmer/);
+  assert.equal(w.document.getElementById('ess-seats'),input,'input/caret must stay attached');
+
+  input.value='7';ui.input(input);
+  assert.match(w.document.querySelector('.ess-price-amount').textContent,/47,00/);
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
+  assert.equal(w.document.getElementById('ess-seats'),input);
+ }finally{await w.happyDOM.close();}
+});
