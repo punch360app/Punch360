@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialMobileDailyHours} from '../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit} from '../web/live/essential-hours-view.js';
 
 const companyId='A',userId='U';
 const time=(day,hour=0,minute=0)=>new Date(2026,10,day,hour,minute).getTime();
@@ -69,7 +69,7 @@ test('native hours displays the same scoped daily calculation as provisional tim
  const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
  assert.match(ui,/import \{essentialMobileDailyHours\} from '\.\.\/\.\.\/web\/live\/essential-hours-view\.js'/);
  assert.match(ui,/dailyHours:\{dayStart:number;netMs:number;grossMs:number;unpaidMs:number\}\[\]=essentialMobileDailyHours/);
- assert.match(ui,/sessions:punch\.sessions,segments:punch\.segments,breaks:punch\.breaks\|\|\[\]/);
+ assert.match(ui,/sessions:punch\.sessions,segments:visibleSegments,breaks:punch\.breaks\|\|\[\]/);
  assert.match(ui,/dailyHours\.map\(row=>/);
  assert.match(ui,/Détail quotidien · temps indicatif/);
  assert.match(ui,/Brut '\+hm\(row\.grossMs\)/);
@@ -146,4 +146,47 @@ test('sum of daily gross minus unpaid always equals sum of daily net',()=>{
  assert.equal(total('grossMs'),4*3600000);
  assert.equal(total('unpaidMs'),3600000);
  assert.equal(total('netMs'),total('grossMs')-total('unpaidMs'));
+});
+
+test('cached open shifts stop at the last complete server read',()=>{
+ const cutoff=time(2,10),now=time(2,15),start=time(2,8);
+ const limit=essentialMobileHoursLimit({now,snapshotFetchedAt:cutoff});
+ assert.deepEqual(limit,{until:cutoff,excludeOpen:false});
+ const rows=essentialMobileDailyHours({companyId,userId,
+  sessions:[session('cached',start)],segments:[segment('cached',start)],
+  breaks:[],now,cutoff:limit.until});
+ assert.equal(rows[0].netMs,2*3600000);
+ assert.equal(rows[0].grossMs,2*3600000);
+});
+test('legacy cache keeps completed days without guessing open hours',()=>{
+ const now=time(2,18),start=time(2,8),end=time(2,10);
+ const limit=essentialMobileHoursLimit({now,snapshotFetchedAt:null});
+ assert.deepEqual(limit,{until:now,excludeOpen:true});
+ const segments=[segment('closed',start,end),segment('open',time(2,11))];
+ const rows=essentialMobileDailyHours({companyId,userId,
+  sessions:[session('closed',start,end),session('open',time(2,11))],
+  segments:segments.filter(s=>s.ended_at!=null),breaks:[],now,cutoff:limit.until});
+ assert.equal(rows[0].netMs,2*3600000);
+ assert.equal(rows[0].grossMs,2*3600000);
+});
+test('pending local events remain provisional and stale future time fails closed',()=>{
+ const now=time(2,15),old=time(2,10);
+ assert.deepEqual(essentialMobileHoursLimit({now,snapshotFetchedAt:old,hasLocalProjection:true}),
+  {until:now,excludeOpen:false});
+ assert.deepEqual(essentialMobileHoursLimit({now,snapshotFetchedAt:now+60000}),
+  {until:now,excludeOpen:true});
+ assert.deepEqual(essentialMobileHoursLimit({now,snapshotFetchedAt:now+1000}),
+  {until:now,excludeOpen:false});
+ assert.deepEqual(essentialMobileHoursLimit({now:NaN,snapshotFetchedAt:old}),
+  {until:0,excludeOpen:true});
+});
+test('native totals, daily rows and session cards honor the display cutoff',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(ui,/essentialMobileHoursLimit\(\{now,snapshotFetchedAt:punch\.snapshotFetchedAt/);
+ assert.match(ui,/visibleSegments=hoursLimit\.excludeOpen/);
+ assert.match(ui,/hoursFor\(visibleSegments,displayNow,day,displayNow/);
+ assert.match(ui,/segments:visibleSegments,breaks:punch\.breaks\|\|\[\]/);
+ assert.match(ui,/now,cutoff:displayNow,weekAt:viewWeekDate/);
+ assert.match(ui,/hoursFor\(visibleSegments\.filter/);
+ assert.match(ui,/Date du dernier relevé indisponible/);
 });

@@ -17,7 +17,7 @@ import type {WorkspaceAccount} from '../auth/AuthGate';
 import {loadPunchState,punchIn,punchOut,punchBreak,hoursFor,PunchState} from '../punch/api';
 import {personalUpcomingClientVisit} from '../../web/live/personal-client-visit.js';
 import {essentialWorkerPunchJobId} from '../../web/live/essential-mobile-punch.js';
-import {essentialMobileDailyHours} from '../../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit} from '../../web/live/essential-hours-view.js';
 import {PersonalMissionCard} from './MissionsPanel';
 import {navigationProviders,navigationUrl,navigationDestination,navigationPreferenceKey,chooseNavigationPreference,writeNavigationPreference} from '../../web/live/navigation-choices.js';
 import {journalSummary} from '../punch/journal';
@@ -170,11 +170,17 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const viewWeekDate=new Date(date.getFullYear(),date.getMonth(),date.getDate()-7*weekOffset);
  const viewWeekStart=new Date(viewWeekDate.getFullYear(),viewWeekDate.getMonth(),viewWeekDate.getDate()-(viewWeekDate.getDay()+6)%7);
  const viewWeekEnd=new Date(viewWeekStart.getFullYear(),viewWeekStart.getMonth(),viewWeekStart.getDate()+7).getTime();
- const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=!!punch.active&&(punch.breaks||[]).some(b=>b.session_id===punch.active?.id&&b.ended_at===null);
+ const hoursLimit=essentialMobileHoursLimit({now,snapshotFetchedAt:punch.snapshotFetchedAt,
+  hasLocalProjection:punch.hasLocalProjection});
+ const visibleSegments=hoursLimit.excludeOpen
+  ?punch.segments.filter(segment=>segment.ended_at!=null):punch.segments;
+ const displayNow=hoursLimit.until;
+ const worked=hoursFor(visibleSegments,displayNow,day,displayNow,punch.breaks||[]),
+  weekly=hoursFor(visibleSegments,displayNow,week,displayNow,punch.breaks||[]),paused=!!punch.active&&(punch.breaks||[]).some(b=>b.session_id===punch.active?.id&&b.ended_at===null);
  // Local projections and offline snapshots are never payroll-approved hours.
  const dailyHours:{dayStart:number;netMs:number;grossMs:number;unpaidMs:number}[]=essentialMobileDailyHours({
-  sessions:punch.sessions,segments:punch.segments,breaks:punch.breaks||[],
-  companyId:account.companyId,userId:account.userId,now,weekAt:viewWeekDate.getTime()
+  sessions:punch.sessions,segments:visibleSegments,breaks:punch.breaks||[],
+  companyId:account.companyId,userId:account.userId,now,cutoff:displayNow,weekAt:viewWeekDate.getTime()
  });
  const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
   journalBlocked?'Journal local à vérifier':
@@ -321,6 +327,9 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   </Pressable>
  </View>
  {txt(hoursOrigin,{fontSize:11,color:Z.muted,marginTop:7})}
+ {hoursLimit.excludeOpen&&!punch.hasLocalProjection
+  ?txt('Date du dernier relevé indisponible : les quarts ouverts ne sont pas prolongés sans vérification serveur.',
+    {fontSize:11,color:Z.muted,marginTop:5}):null}
  {txt('Total indicatif · les heures restent sujettes à validation.',{fontSize:10,color:Z.muted,marginTop:4})}
  </View>{journalBlocked||pending||conflicts?<View style={[styles.card,{gap:7}]}>
  {txt(journalBlocked?'Journal local à vérifier':pending?pending+' pointage(s) à transmettre':'Conflits de synchronisation',
@@ -360,7 +369,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   </View>)}
   {txt('Inclut les pointages locaux en attente, le cas échéant. Non approuvé.',{fontSize:10,color:Z.muted})}
  </View>:<View style={styles.card}>{txt('Aucune journée dans le relevé chargé pour cette semaine.',{fontSize:12,color:Z.muted})}</View>}
- {punch.sessions.filter(s=>s.company_id===account.companyId&&s.user_id===account.userId&&Date.parse(s.started_at)<viewWeekEnd&&(s.ended_at==null||Date.parse(s.ended_at)>viewWeekStart.getTime())).map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(punch.segments.filter(p=>p.session_id===s.id),now,viewWeekStart.getTime(),viewWeekEnd,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
+ {punch.sessions.filter(s=>s.company_id===account.companyId&&s.user_id===account.userId&&Date.parse(s.started_at)<viewWeekEnd&&(s.ended_at==null||Date.parse(s.ended_at)>viewWeekStart.getTime())).map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(visibleSegments.filter(p=>p.session_id===s.id),displayNow,viewWeekStart.getTime(),viewWeekEnd,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
  <Pressable accessibilityRole="button" accessibilityLabel={tr('language')} accessibilityState={{expanded:languageMenu}} onPress={()=>setLanguageMenu(v=>!v)} style={[styles.menu,rtl&&{flexDirection:'row-reverse'}]}>
  {txt(tr('language')+' : '+(nativeEssentialLanguages.find(x=>x.code===language)?.name||'Français'),{textAlign:rtl?'right':'left'})}
  <Ionicons name="chevron-down" size={17} color={Z.muted}/>

@@ -10,7 +10,7 @@ import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
 export type PunchSegment={id:string;session_id:string;company_id:string;job_id:string;started_at:string;ended_at:string|null};
 export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean;company_id?:string;user_id?:string};
-export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean;cacheWriteFailed?:boolean;snapshotUnverified?:boolean};
+export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean;cacheWriteFailed?:boolean;snapshotUnverified?:boolean;snapshotFetchedAt?:number|null};
 export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
  const journal=await getPunchJournal(companyId);
@@ -32,6 +32,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   if(!journalBlocked)try{events=await journal.read()}catch{journalBlocked=true}
   return {...projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id}),
    localJournalBlocked:journalBlocked||snapshotUnverified,readSource,cacheWriteFailed,snapshotUnverified,
+   snapshotFetchedAt:state.snapshotFetchedAt??null,
    hasLocalProjection:!journalBlocked&&events.some(e=>e.status==='pending'&&e.company===companyId&&e.user===user.id)} as PunchState;
  };
  // A missing or corrupt cache is UNKNOWN attendance, not a verified empty day.
@@ -100,7 +101,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  // Filter untrusted RPC rows before writing the offline snapshot. Filtering
  // only during UI projection would leave another tenant's records on disk.
  const list=((sessions||[]) as PunchSession[]).filter(s=>s&&s.company_id===companyId&&s.user_id===user.id);
- if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(empty))}catch{cacheWriteFailed=true}return overlay(empty,'server',cacheWriteFailed);}
+ if(!list.length){const empty={sessions:[],segments:[],breaks:[],active:null,lastJobId:null,snapshotFetchedAt:Date.now()};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(empty))}catch{cacheWriteFailed=true}return overlay(empty,'server',cacheWriteFailed);}
  const {data:segments,error:segmentsError}=await supabase.from('punch_segments')
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
@@ -113,7 +114,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  // their session_id must belong to a verified session before caching.
  const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&
   (b.company_id==null||b.company_id===companyId)&&(b.user_id==null||b.user_id===user.id));
- const snapshot={breaks:ownBreaks,sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{cacheWriteFailed=true}return overlay(snapshot,'server',cacheWriteFailed);
+ const snapshot={breaks:ownBreaks,sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null,snapshotFetchedAt:Date.now()};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{cacheWriteFailed=true}return overlay(snapshot,'server',cacheWriteFailed);
  }catch{return offlineState();}
 }
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};

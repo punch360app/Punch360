@@ -421,3 +421,19 @@ test('Expo hours origin never labels pending offline time as saved-only or serve
  assert.match(label({...offline,snapshotUnverified:true},false),/pointage suspendu/);
  assert.equal(label(offline,true),'Journal local à vérifier');
 });
+
+test('Expo persists the server fetch time and handles timestamp-free legacy caches',async()=>{
+ const online=fixture({offline:false,flushFail:true}),before=Date.now();
+ const current=await online.load('A');
+ assert.equal(current.readSource,'server');
+ assert.ok(current.snapshotFetchedAt>=before&&current.snapshotFetchedAt<=Date.now());
+ const onDisk=JSON.parse(online.store.get('punch-state:U:A'));
+ assert.equal(onDisk.snapshotFetchedAt,current.snapshotFetchedAt);
+ const legacy=await fixture({offline:true,flushFail:true}).load('A');
+ assert.equal(legacy.readSource,'cache');
+ assert.equal(legacy.snapshotFetchedAt,null);
+ assert.equal(legacy.sessions.length,1);
+ const empty=await fixture({offline:false,flushFail:true,emptyServer:true}).load('A');
+ assert.equal(empty.readSource,'server');
+ assert.ok(Number.isFinite(empty.snapshotFetchedAt));
+});
