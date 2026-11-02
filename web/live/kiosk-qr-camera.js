@@ -43,6 +43,11 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
   let reader;
   try{reader=new BarcodeDetector({formats:['qr_code']});}
   catch{notify?.('unsupported');return false;}
+  // Bound the WHOLE camera attempt: permissions and video.play() may remain
+  // unresolved indefinitely. If media arrives after expiry, release it
+  // immediately instead of reviving a discarded shared-tablet session.
+  started=now();
+  expirationTimer=expire(()=>{if(token!==generation)return;stop();notify?.('expired');});
   let acquired;
   try{
    acquired=await mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
@@ -50,7 +55,7 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
    stream=acquired;video=element;detector=reader;video.srcObject=acquired;
    await video.play?.();
    if(token!==generation)return false;
-   started=now();active=true;
+   active=true;
    // A camera can disappear while scanning (device unplugged, permission
    // withdrawn, OS interruption). Stop the whole preview immediately and
    // detach all listeners on every close/restart, without exposing QR data.
@@ -58,9 +63,8 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
    const onEnded=()=>{if(token!==generation||!active)return;stop();notify?.('camera');};
    for(const track of tracks)try{track.addEventListener?.('ended',onEnded)}catch{}
    detachTrackListeners=()=>{for(const track of tracks)try{track.removeEventListener?.('ended',onEnded)}catch{}};
-   // Independent privacy watchdog: a stalled BarcodeDetector.detect() must
-   // never leave the shared tablet camera running indefinitely.
-   expirationTimer=expire(()=>{if(token!==generation||!active)return;stop();notify?.('expired');});
+   // The startup watchdog remains active during decoding, including when
+   // BarcodeDetector.detect() never resolves.
    const scan=async()=>{
     if(!active||token!==generation)return;
     if(now()-started>=30000){stop();notify?.('expired');return;}
