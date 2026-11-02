@@ -36,3 +36,37 @@ test('Shared calculator covers seats, annual discounts and unlimited plans',()=>
  for(const seats of [0,-1,100001,1.5])assert.equal(estimatePublicPlanPrice(p,seats,'monthly'),null);
  assert.equal(estimatePublicPlanPrice(p,5,'weekly'),null);
 });
+
+test('Bento comparison refuses incomplete catalog prices instead of displaying fake free amounts',async()=>{
+ const window=new Window();
+ try{
+  window.document.body.innerHTML=renderCommercialDetails([
+   {...plan,title:'Incomplete',base_cents:null,features:undefined},
+   {...plan,title:'Overflow',base_cents:Number.MAX_SAFE_INTEGER,features:'advanced_schedules'}
+  ],escape,money,{seats:8,cadence:'yearly'});
+  const table=window.document.querySelector('.ess-comparison');
+  const rows=[...table.querySelectorAll('tbody tr')].map(row=>[...row.children].map(c=>c.textContent));
+  for(const label of ['Tarif estimé · 8 membres · paiement annuel','Économie sur 12 mois','Prix de base mensuel','Membres inclus','Membre supplémentaire / mois','Réduction annuelle']){
+   const row=rows.find(r=>r[0]===label);
+   assert.ok(row,'missing breakdown: '+label);
+   assert.deepEqual(row.slice(1),['À confirmer','À confirmer'],'invalid catalog: '+label);
+  }
+  assert.deepEqual(rows.find(r=>r[0]==='Horaires avancés').slice(1),['À confirmer','À confirmer']);
+  assert.doesNotMatch(table.textContent,/NaN|undefined|Infinity/);
+  assert.equal(estimatePublicPlanPrice({...plan,base_cents:Number.MAX_SAFE_INTEGER},8,'yearly'),null);
+ }finally{await window.happyDOM.close();}
+});
+
+test('Bento uses neutral unknown limits, never negative or missing quotas',async()=>{
+ const window=new Window();
+ try{
+  window.document.body.innerHTML=renderCommercialDetails([
+   {...plan,kiosk_limit:-4,establishment_limit:undefined},
+   {...plan,kiosk_limit:null,establishment_limit:null}
+  ],escape,money,{seats:8});
+  const rows=[...window.document.querySelectorAll('tbody tr')].map(row=>[...row.children].map(c=>c.textContent));
+  assert.deepEqual(rows.find(r=>r[0]==='Bornes comprises').slice(1),['À confirmer','Illimitées']);
+  assert.deepEqual(rows.find(r=>r[0]==='Établissements').slice(1),['À confirmer','Plusieurs']);
+  assert.deepEqual(rows.find(r=>r[0]==='Prix de base mensuel').slice(1),[money(1900),money(1900)]);
+ }finally{await window.happyDOM.close();}
+});
