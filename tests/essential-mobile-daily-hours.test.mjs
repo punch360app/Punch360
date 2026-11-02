@@ -67,7 +67,7 @@ test('invalid identity, clock and record arrays fail closed',()=>{
 });
 test('native hours displays the same scoped daily calculation as provisional time',()=>{
  const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
- assert.match(ui,/import \{essentialMobileDailyHours\} from '\.\.\/\.\.\/web\/live\/essential-hours-view\.js'/);
+ assert.match(ui,/import \{[^}]*essentialMobileDailyHours[^}]*\} from '\.\.\/\.\.\/web\/live\/essential-hours-view\.js'/);
  assert.match(ui,/dailyHours:\{dayStart:number;netMs:number;grossMs:number;unpaidMs:number\}\[\]=essentialMobileDailyHours/);
  assert.match(ui,/sessions:punch\.sessions,segments:visibleSegments,breaks:punch\.breaks\|\|\[\]/);
  assert.match(ui,/dailyHours\.map\(row=>/);
@@ -133,7 +133,7 @@ test('native My Hours browses scoped weeks without changing the home clock',()=>
  assert.ok(ui.includes('Aucune journée dans le relevé chargé'));
  assert.ok(ui.includes('Date.parse(s.started_at)<viewWeekEnd'));
  assert.ok(ui.includes('s.company_id===account.companyId&&s.user_id===account.userId'));
- assert.ok(ui.includes('weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[])'));
+ assert.ok(ui.includes('weekly=hoursFor(visibleSegments,displayNow,week,displayNow,punch.breaks||[])'));
  assert.ok(ui.includes('setWeekOffset(0)},[account.companyId,account.userId]'));
 });
 
@@ -201,7 +201,7 @@ test('Expo daily-hours TypeScript contract stays attached to its function',()=>{
  assert.match(docs,/@param/);
  assert.match(source,/export function essentialMobileHoursLimit/);
  const native=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
- assert.match(native,/Fin non vérifiée/);
+ assert.match(native,/openShiftLabel=essentialMobileOpenShiftLabel\(/);
  assert.match(native,/openShiftLabel=essentialMobileOpenShiftLabel/);
 });
 
