@@ -15,7 +15,7 @@ const site={id:'job-1',company_id:'tenant-A',number:'JOB-001',name:'Bureau',
  address:'1, rue Test',latitude:null,longitude:null,photo_url:null,active:true};
 const existing={jobs:[{...site,assigned_to_me:true,planned_start:null}],
  demo:false,message:'',readSource:'server'};
-function fixture({state='online',cache=existing,override={},error={}}={}){
+function fixture({state='online',cache=existing,override={},error={},reject={},throwAt={}}={}){
  let network=state,writes=0,reads=0;
  const memory=new Map();
  const key='punch-jobs:worker-A:tenant-A';
@@ -30,12 +30,15 @@ function fixture({state='online',cache=existing,override={},error={}}={}){
  };
  const supabase={from:name=>{
   calls.push(name);
+  if(throwAt[name])throw Error('Construction failed: '+name);
   const query={select:()=>query,eq:()=>query,order:()=>query,
    is:()=>query,gt:()=>query,
-   then:(done,fail)=>Promise.resolve({
-    data:Object.prototype.hasOwnProperty.call(override,name)?override[name]:tables[name],
-    error:error[name]||null
-   }).then(done,fail)};
+   then:(done,fail)=>(reject[name]?
+    Promise.reject(Error('Transport rejected: '+name)):
+    Promise.resolve({
+     data:Object.prototype.hasOwnProperty.call(override,name)?override[name]:tables[name],
+     error:error[name]||null
+    })).then(done,fail)};
   return query;
  }};
  const Network={getNetworkStateAsync:async()=>{
@@ -147,4 +150,52 @@ test('malformed cached job catalogue is never accepted offline',async()=>{
   assert.deepEqual(f.calls,[]);
   assert.equal(f.writes,0);
  }
+});
+
+test('transport rejection after successful network probe keeps scoped offline jobs',async()=>{
+ for(const table of ['jobs','job_assignments','scheduled_shifts']){
+  const f=fixture({reject:{[table]:true}});
+  const before=f.memory.get(f.key);
+  const result=await f.load();
+  assert.equal(result.readSource,'cache',table);
+  assert.equal(result.jobs[0].assigned_to_me,true,table);
+  assert.equal(f.writes,0,table);
+  assert.equal(f.memory.get(f.key),before,'No partial response may rewrite the saved catalogue');
+  assert.equal(f.calls.at(-1),table);
+ }
+});
+
+test('synchronous Supabase request construction error still recovers scoped jobs',async()=>{
+ for(const table of ['jobs','job_assignments','scheduled_shifts']){
+  const f=fixture({throwAt:{[table]:true}});
+  const before=f.memory.get(f.key);
+  const result=await f.load();
+  assert.equal(result.readSource,'cache',table);
+  assert.equal(result.jobs[0].id,'job-1');
+  assert.equal(f.memory.get(f.key),before);
+  assert.equal(f.writes,0);
+  assert.equal(f.calls.at(-1),table);
+ }
+});
+
+test('no saved jobs means rejected network requests still fail instead of inventing an empty workday',async()=>{
+ for(const table of ['jobs','job_assignments','scheduled_shifts']){
+  for(const kind of ['reject','throwAt']){
+   const f=fixture({cache:null,[kind]:{[table]:true}});
+   await assert.rejects(f.load(),new RegExp(
+    (kind==='reject'?'Transport rejected: ':'Construction failed: ')+table));
+   assert.equal(f.memory.has(f.key),false);
+   assert.equal(f.writes,0);
+  }
+ }
+});
+
+test('foreign tenant jobs remain refused without using the cache even on later transport failures',async()=>{
+ const f=fixture({override:{jobs:[{...site,company_id:'tenant-B'}]},
+  reject:{job_assignments:true}});
+ const saved=f.memory.get(f.key);
+ await assert.rejects(f.load(),/hors entreprise/);
+ assert.deepEqual(f.calls,['jobs'],'Foreign tenant never reaches assignment reads');
+ assert.equal(f.writes,0);
+ assert.equal(f.memory.get(f.key),saved);
 });
