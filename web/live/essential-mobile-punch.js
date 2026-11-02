@@ -36,6 +36,30 @@ export function resolveEssentialPunchJob(companyId,jobId,jobs){
  return jobs.find(job=>job?.id===jobId&&job.company_id===companyId&&job.active===true)||null;
 }
 
+/** An existing Punch OUT belongs to the authenticated worker's open
+ * session/segment, even when that location is now inactive or absent from
+ * the ACTIVE jobs list. The SQL sync_punch_event -> punch_with_location
+ * derives the OUT job from the open server segment: p_job must be null.
+ * PUNCH IN continues to require an active job of the same company.
+ * This is a UI guard only; the server remains authoritative.
+ */
+export function resolveEssentialMobilePunchAction(companyId,userId,activeSession,segments,assignedJobId,jobs){
+ if(typeof companyId!=='string'||!companyId||
+  typeof userId!=='string'||!userId)return null;
+ if(activeSession){
+  if(activeSession.company_id!==companyId||
+   activeSession.user_id!==userId||
+   typeof activeSession.id!=='string'||!activeSession.id||
+   activeSession.ended_at!=null||!Array.isArray(segments))return null;
+  const matching=segments.filter(segment=>
+   segment?.session_id===activeSession.id&&segment.company_id===companyId&&
+   segment.ended_at==null&&typeof segment.job_id==='string'&&segment.job_id.length>0);
+  return matching.length===1?{action:'out',jobId:null}:null;
+ }
+ const workplace=resolveEssentialPunchJob(companyId,assignedJobId,jobs);
+ return workplace?{action:'in',jobId:workplace.id}:null;
+}
+
 /** First-use guidance only from the current company's server-acknowledged
  * session snapshot. Pending journal events do not imply a first punch.
  */
