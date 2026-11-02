@@ -38,7 +38,7 @@ test('invalid types, non-existing dates, reverse ranges and oversized notes are 
 
 test('Essentiel leave flow uses server identity, request validation and separate history',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{essentialLeaveView,validateEssentialLeaveRequest\} from '\.\/essential-leave\.js'/);
+ assert.match(app,/import \{essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView\} from '\.\/essential-leave\.js'/);
  assert.match(app,/if\(state\.sub==='leave'\)return essentialLeavePage\(\)/);
  assert.match(app,/function essentialLeavePage\(\)/);
  assert.match(app,/canSubmit=online&&view\.ready&&!state\.leaveSubmitting/);
