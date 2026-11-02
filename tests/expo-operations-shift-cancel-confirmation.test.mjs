@@ -27,7 +27,7 @@ function fixture({reason='  Pluie  ',manager=true,busy=false,
  const supabase={rpc:async(name,payload)=>{
   calls.rpc.push({name,payload});return {error:rpcError};
  }};
- const run=async action=>{calls.runs++;await action()};
+ const run=async action=>{calls.runs++;try{await action()}catch(error){calls.errors.push(error?.message||String(error))}};
  const setError=value=>calls.errors.push(value);
  const setCancelReason=value=>calls.cleared.push(value);
  const params={manager,busy,loadedScope,scope,scopeRef,shifts,account,Alert,
@@ -122,12 +122,10 @@ test('confirmation opened under previous account cannot execute after switching 
 test('server cancellation errors do not clear reason or claim success',async()=>{
  const f=fixture({rpcError:new Error('Refus serveur')});
  f.fn(shift);
- const button=f.calls.alerts[0][2].find(x=>x.style==='destructive');
  // A rejected run must preserve the user's draft reason for a second try.
- await assert.rejects(async()=>{
-  button.onPress();await new Promise(resolve=>setImmediate(resolve));
- },/Refus serveur/).catch(()=>{});
+ await f.confirm();
  assert.deepEqual(f.calls.cleared,[]);
+ assert.deepEqual(f.calls.errors,['Refus serveur']);
  assert.equal(f.calls.rpc.length,1);
 });
 
