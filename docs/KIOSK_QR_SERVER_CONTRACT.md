@@ -43,6 +43,12 @@ L'architecture et l'implantation doivent être approuvées avec les experts Séc
 - Un `installation_id` fourni par le navigateur **n'est pas une preuve d'appareil**. Le registre devra être complété par un vrai protocole d'enrôlement, attestation lorsque possible et révocation à l'identité/à la session, avant tout support Wallet. Ne pas qualifier le brouillon de protection anti-capture ni anti-partage.
 - Ce répertoire `supabase/drafts/` **n'est pas une migration**. Ne pas déplacer son contenu dans `supabase/migrations/`, appliquer des migrations, ouvrir les permissions ni connecter le scanner à ces routines sans une revue indépendante des experts Architecture, Sécurité, Supabase/BOSS, des tests SQL isolés et une décision explicite de mise en service.
 
+## Politique des établissements et désactivation
+
+L'adaptateur SQL **en brouillon seulement** `supabase/drafts/kiosk-qr-execute.sql` refuse un QR lorsque la borne est associée à un établissement `essential_locations.active=false` ou à un poste `jobs.active=false`. La vérification relie compagnie, établissement et `device.site_id` et verrouille leurs lignes (`FOR SHARE`) pendant la transaction. Les cas établissement/poste désactivés et réactivés ont été ajoutés à la recette `supabase/drafts/kiosk-qr-adapter-acceptance.sql`.
+
+**Limite de compatibilité à revoir :** la fonction matricule/NIP déjà existante `public.kiosk_execute` n'est pas modifiée par cette PR. Avant mise en service, les règles doivent être harmonisées pour tous les modes de pointage, en garantissant notamment qu'un salarié peut toujours terminer une session de travail légitime après la désactivation d'un établissement. Les scénarios SQL restent **non exécutés** sur une base de test.
+
 ## Recette obligatoire avant activation
 
 | Scénario | Résultat attendu |
