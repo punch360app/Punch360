@@ -66,7 +66,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  * views; a partial read must not be described as an empty confirmed inbox.
  * Review statuses are decisions on requests, never an approval of payroll.
  */
-export function employeeHoursRequestTimeline({companyId,userId,correctionView,breakView,missingView}={}){
+export function employeeHoursRequestTimeline({companyId,userId,correctionView,breakView,missingView,leaveView}={}){
  const empty={complete:false,pendingCount:0,items:[],unavailable:[]};
  if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId)return empty;
  const allowed=new Set(['pending','approved','rejected','cancelled']);
@@ -79,7 +79,12 @@ export function employeeHoursRequestTimeline({companyId,userId,correctionView,br
     r.company_id===companyId,date:r=>r.created_at},
   {kind:'journée',title:'Journée oubliée',view:missingView,
    rows:missingView?.requests,belongs:r=>typeof r?.startsAt==='string',
-   date:r=>r.createdAt||r.startsAt}
+   date:r=>r.createdAt||r.startsAt},
+  // Optional for older callers; My Hours supplies this scoped personal
+  // leave inbox to show all J1 requests without inventing payroll status.
+  ...(leaveView===undefined?[]:[{kind:'congé',title:'Congé ou absence',view:leaveView,
+   rows:leaveView?.requests,belongs:r=>r?.company_id===companyId&&r.user_id===userId,
+   date:r=>r.created_at||r.begins_on}])
  ];
  const unavailable=[],found=[];
  for(const source of sources){
