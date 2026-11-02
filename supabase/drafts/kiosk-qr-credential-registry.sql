@@ -152,6 +152,56 @@ begin
   values(w.company_id,auth.uid(),'qr_card_admin_revoked',w.id,trim(p_reason));
 end $$;
 
+-- Self-service status uses only the authenticated account's stable worker.
+-- Never return the QR, its hash, installation identifier, enrollment challenge
+-- or another employee's presence. A read cannot re-activate an expired card.
+create function public.my_kiosk_qr_card_status(p_company uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $
+declare w public.company_workers;card private.kiosk_qr_cards;
+begin
+ if auth.uid() is null or p_company is null then
+  raise exception using errcode='42501',message='Accès refusé';
+ end if;
+ select * into w from public.company_workers
+  where company_id=p_company and auth_user_id=auth.uid();
+ if not found or w.status<>'active' or not w.personal_access
+  or not exists(select 1 from public.company_members m
+    where m.company_id=p_company and m.user_id=auth.uid() and m.status='active') then
+  raise exception using errcode='42501',message='Accès refusé';
+ end if;
+ select * into card from private.kiosk_qr_cards
+  where company_id=p_company and worker_id=w.id and enrolled_user_id=auth.uid()
+   and revoked_at is null and expires_at>now()
+  order by created_at desc limit 1;
+ return jsonb_build_object(
+  'active',found,
+  'issued_at',case when found then card.created_at else null end,
+  'expires_at',case when found then card.expires_at else null end);
+end $;
+
+-- Boss/Admin sees enrollment status for their own staff, never the secret or
+-- an installation identifier. Management access is checked inside the RPC.
+create function public.list_kiosk_qr_card_status(p_company uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $
+declare result jsonb;
+begin
+ if p_company is null or not private.can_administer(p_company) then
+  raise exception using errcode='42501',message='Accès refusé';
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'worker_id',w.id,
+  'active',exists(
+   select 1 from private.kiosk_qr_cards k
+    where k.company_id=w.company_id and k.worker_id=w.id
+      and k.enrolled_user_id=w.auth_user_id
+      and k.revoked_at is null and k.expires_at>now()
+  )
+ ) order by w.id),'[]'::jsonb) into result
+ from public.company_workers w where w.company_id=p_company
+  and w.role in ('employee','lead','boss');
+ return result;
+end $;
+
 -- Any change of linked account or permission invalidates issued cards and
 -- outstanding enrollment codes in the same transaction as the worker change.
 create function private.revoke_kiosk_qr_on_worker_change()
@@ -213,11 +263,15 @@ create trigger revoke_kiosk_qr_on_membership_change
 
 -- Explicit grants: public SECURITY DEFINER functions must not be executable
 -- by PUBLIC/anon. Never grant table SELECT/INSERT/UPDATE/DELETE to API roles.
+revoke all on function public.my_kiosk_qr_card_status(uuid) from public,anon,authenticated;
+revoke all on function public.list_kiosk_qr_card_status(uuid) from public,anon,authenticated;
 revoke all on function public.create_worker_qr_enrollment(uuid) from public,anon,authenticated;
 revoke all on function public.activate_my_kiosk_qr_card(uuid,text,uuid) from public,anon,authenticated;
 revoke all on function public.revoke_my_kiosk_qr_card(uuid) from public,anon,authenticated;
 revoke all on function public.revoke_worker_kiosk_qr_card(uuid,text) from public,anon,authenticated;
-grant execute on function public.create_worker_qr_enrollment(uuid),
+grant execute on function public.my_kiosk_qr_card_status(uuid),
+ public.list_kiosk_qr_card_status(uuid),
+ public.create_worker_qr_enrollment(uuid),
  public.activate_my_kiosk_qr_card(uuid,text,uuid),
  public.revoke_my_kiosk_qr_card(uuid),
  public.revoke_worker_kiosk_qr_card(uuid,text) to authenticated;
