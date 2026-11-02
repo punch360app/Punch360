@@ -117,3 +117,54 @@ test('manager approvals link to the existing missing-day review, not a parallel 
  assert.match(view,/Les heures restent non confirmées avant décision serveur/);
  assert.doesNotMatch(view,/review_essential_missing_day|\.rpc\(/);
 });
+
+test('manager review handler refuses stale and cross-company requests before RPC',async()=>{
+ const calls=[];
+ const ui=createMissingDaysController({sb:{from:table,rpc:async(name,args)=>{calls.push({name,args});return {data:'ok'}}},
+  redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'boss'},'manager',[
+  {id:'worker',auth_user_id:'employee',first_name:'Employee'},
+  {id:'own-worker',auth_user_id:'manager',first_name:'Boss'}]);
+ const req={id:'valid',company_id:'company',worker_id:'worker',requested_by:'employee',
+  status:'pending',starts_at:'2026-10-21T08:00:00Z',ends_at:'2026-10-21T16:00:00Z',breaks:[],reason:'Forgot'};
+ ui.state.requests=[req,{...req,id:'foreign',company_id:'another'},
+  {...req,id:'my-worker',worker_id:'own-worker'},
+  {...req,id:'my-request',requested_by:'manager'},
+  {...req,id:'already-reviewed',status:'approved'},
+  {...req,id:'unknown-worker',worker_id:'missing'}];
+ ui.state.note='Valid reason';
+ for(const id of ['foreign','my-worker','my-request','already-reviewed','unknown-worker','absent']){
+  await ui.handle({dataset:{action:'missing:approve',id}});
+  assert.equal(calls.length,0);
+ }
+ await ui.handle({dataset:{action:'missing:approve',id:'valid'}});
+ assert.equal(calls.length,1);assert.equal(calls[0].name,'review_essential_missing_day');
+ assert.equal(calls[0].args.p_request,'valid');
+});
+
+test('employee cancellation accepts only own pending request in selected company',async()=>{
+ const calls=[];
+ const ui=createMissingDaysController({sb:{from:table,rpc:async(name,args)=>{calls.push({name,args});return {data:'ok'}}},
+  redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'employee'},'user',[{id:'worker',auth_user_id:'user'}]);
+ const req={id:'own',company_id:'company',worker_id:'worker',requested_by:'user',status:'pending'};
+ ui.state.requests=[req,{...req,id:'other-author',requested_by:'other'},
+  {...req,id:'other-company',company_id:'different'},
+  {...req,id:'approved',status:'approved'}];
+ for(const id of ['other-author','other-company','approved','missing']){
+  await ui.handle({dataset:{action:'missing:cancel',id}});
+  assert.equal(calls.length,0);
+ }
+ await ui.handle({dataset:{action:'missing:cancel',id:'own'}});
+ assert.equal(calls.length,1);assert.equal(calls[0].name,'cancel_essential_missing_day');
+});
+
+test('manager forgotten-day form hides a foreign company even if the response is mixed',async()=>{
+ const ui=createMissingDaysController({sb:{from:table},redraw(){},escape,crypto,storage:store()});
+ await ui.load({company_id:'company',role:'boss'},'manager',[{id:'worker',auth_user_id:'employee',first_name:'Employee'}]);
+ ui.state.requests=[
+  {id:'allowed',company_id:'company',worker_id:'worker',requested_by:'employee',status:'pending',starts_at:'2026-10-21T08:00:00Z',ends_at:'2026-10-21T16:00:00Z',breaks:[],reason:'Allowed'},
+  {id:'foreign',company_id:'different',worker_id:'worker',requested_by:'employee',status:'pending',starts_at:'2026-10-21T08:00:00Z',ends_at:'2026-10-21T16:00:00Z',breaks:[],reason:'PRIVATE OTHER TENANT'}
+ ];
+ const html=ui.render();assert.match(html,/Allowed/);assert.doesNotMatch(html,/PRIVATE OTHER TENANT/);
+});
