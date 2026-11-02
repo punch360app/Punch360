@@ -147,7 +147,7 @@ test('blocked journal panel always offers confirmed hours without unsafe retry',
  state.section='punch';
  state.localPunchEvents=[own];
  html=render();
- assert.match(html,/1 événement\\(s\\) en attente/);
+ assert.match(html,/1 événement\(s\) en attente/);
  assert.match(html,/data-action="navigate">Consulter Mes heures/);
  assert.doesNotMatch(html,/data-action="syncPendingPunches"/);
  state.localJournalBlocked={companyId:'business-B',userId:'worker-A'};
