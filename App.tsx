@@ -95,12 +95,15 @@ function Workspace({account}:{account:WorkspaceAccount}){
    if(result){setJobs(result.jobs);setDemo(false);}
    setLocalPending(local.pending);setLocalConflicts(local.conflicts);
    setPendingItems(local.pendingItems);setConflictItems(local.conflictItems);
-   setJournalViewScope(requestedFor);
    if(!punch){
+    // Never enable a new PUNCH IN against an unverified attendance snapshot.
+    // Keep the journal on disk; a later network refresh can safely unlock it.
+    setJournalViewScope('');
     setJournalBlocked(local.blocked);
-    setMessage('Relevé de pointage indisponible. Les événements locaux sont conservés; vérifiez Mes heures.');
+    setMessage('Relevé de pointage indisponible. Les événements locaux sont conservés; pointage suspendu jusqu’à la prochaine lecture.');
     return;
    }
+   setJournalViewScope(requestedFor);
    const blocked=!!punch.localJournalBlocked||local.blocked;
    setLocalPending(local.pending);setLocalConflicts(local.conflicts);
    setPendingItems(local.pendingItems);setConflictItems(local.conflictItems);

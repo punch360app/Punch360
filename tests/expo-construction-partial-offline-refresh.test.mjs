@@ -53,6 +53,8 @@ test('network state lookup failure still loads cached punch hours',async()=>{
 test('failed punch loader never displays false confirmation or old sessions',async()=>{
  const h=fixture({failPunch:true});await h.run();
  assert.match(h.messages.at(-1),/Relevé de pointage indisponible/);
+ assert.match(h.messages.at(-1),/pointage suspendu/);
+ assert.equal(h.calls.filter(x=>x[0]==='scope').at(-1)[1],'');
  assert.equal(h.calls.filter(x=>x[0]==='sessions').length,0);
 });
 test('company change before promise settlement cannot reveal prior sessions',async()=>{
@@ -72,4 +74,6 @@ test('PUNCH OUT can proceed even if no cached workplace is available',()=>{
 test('background failure paths preserve monotonic revision and account validation',()=>{
  assert.match(source,/scopeRef\.current!==requestedFor\|\|punchReadRevision\.current!==revision/);
  assert.match(source,/Promise\.allSettled\(/);
+ assert.match(source,/if\(!punch\)\{[\s\S]*?setJournalViewScope\(''\)/);
+ assert.match(source,/setJournalViewScope\(requestedFor\);\s*const blocked=/);
 });
