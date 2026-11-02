@@ -8,7 +8,7 @@ import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
 import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
 import {createCompanyOnce,isCreatedCompanyVerified,recoverCreatedCompanyWorkspace,savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from './company-onboarding.js';
-import {acceptWorkerInviteOnce,isWorkerActivationVerified,recoverWorkerActivation,savePendingWorkerActivation,readPendingWorkerActivation,clearPendingWorkerActivation} from './worker-onboarding.js';
+import {acceptWorkerInviteOnce,validWorkerInviteToken,isWorkerActivationVerified,recoverWorkerActivation,savePendingWorkerActivation,readPendingWorkerActivation,clearPendingWorkerActivation} from './worker-onboarding.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -582,6 +582,7 @@ async function verifyWorkerActivation(){
 async function activateWorker(){
  if(state.authBusy||state.pendingWorkerActivation||!state.user)return;
  const token=sessionStorage.getItem('punch-worker-invite');
+ if(!validWorkerInviteToken(token))return authMessage('Lien d’activation invalide. Demandez une nouvelle invitation.',true);
  const baseline=companyContext.list.map(w=>w.companyId);
  state.authBusy=true;authMessage('');draw();
  try{
