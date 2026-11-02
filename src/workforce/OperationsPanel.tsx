@@ -68,6 +68,15 @@ export function OperationsPanel({account,mode}:{account:WorkspaceAccount;mode:'s
  async function upload(){if(!job||!title.trim()||!Number.isInteger(Number(version))||Number(version)<1)throw Error('Job, titre et version requis');const pick=await DocumentPicker.getDocumentAsync({type:'application/pdf',copyToCacheDirectory:true});if(pick.canceled)return;const asset=pick.assets[0];if((asset.size||0)>26214400)throw Error('PDF maximum 25 Mo');const bytes=await new File(asset.uri).arrayBuffer();if(bytes.byteLength>26214400||Array.from(new Uint8Array(bytes).slice(0,5)).join(',')!=='37,80,68,70,45')throw Error('PDF invalide');const path=account.companyId+'/'+job+'/'+Crypto.randomUUID()+'.pdf';const u=await supabase.storage.from('job-documents').upload(path,bytes,{contentType:'application/pdf',upsert:false});if(u.error)throw u.error;const r=await supabase.from('job_documents').insert({company_id:account.companyId,job_id:job,name:title.trim(),version:Number(version),storage_path:path,created_by:account.userId,requires_ack:true});if(r.error)throw r.error;setTitle('');}
  if(loadedScope!==scope)return <View style={{padding:14,gap:10}}>
   <Text style={{color:'white'}}>{error||'Chargement des opérations de cette entreprise…'}</Text>
+  {error?<Pressable accessibilityRole="button" onPress={()=>{
+   const requestedScope=scope;
+   setError('');
+   void load().catch(e=>{
+    if(scopeRef.current===requestedScope)setError(e?.message||'Lecture des opérations impossible.');
+   });
+  }} style={{padding:12,borderRadius:9,backgroundColor:'#29444F'}}>
+   {text('Réessayer le chargement')}
+  </Pressable>:null}
  </View>;
  return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:12,paddingBottom:25}}>{error?<Text style={{color:'#FF9999'}}>{error}</Text>:null}{busy?text('Enregistrement…'):null}
  {mode==='schedule'?<>{manager?card(<>{text('Planifier un quart')}{chooseJob()}{members.map(m=><View key={m.user_id}>{button((user===m.user_id?'✓ ':'')+m.user_id.slice(0,8)+' · '+m.role,()=>setUser(m.user_id))}</View>)}{field('Début ISO avec fuseau',start,setStart)}{field('Fin ISO avec fuseau',end,setEnd)}{field('Note / motif',note,setNote)}{button('Planifier',()=>run(async()=>{const r=await supabase.rpc('schedule_shift',{p_company:account.companyId,p_user:user,p_job:job,p_start:new Date(start).toISOString(),p_end:new Date(end).toISOString(),p_note:note});if(r.error)throw r.error}))}</>):null}{shifts.map(s=><View key={s.id}>{card(<>{text((account.edition==='essential'?'Affectation':'#'+(jobs.find(j=>j.id===s.job_id)?.number||'—'))+' · '+s.user_id.slice(0,8))}{text(new Date(s.starts_at).toLocaleString('fr-CA')+' → '+new Date(s.ends_at).toLocaleString('fr-CA'))}{text(s.note)}{manager?button('Annuler ce quart (motif dans le formulaire)',()=>run(async()=>{const r=await supabase.rpc('cancel_shift',{p_shift:s.id,p_reason:note});if(r.error)throw r.error})):null}</>)}</View>)}</>:null}
