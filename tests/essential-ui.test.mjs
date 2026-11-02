@@ -428,3 +428,26 @@ test('Bento cards refuse broken catalog prices and unknown limits without implyi
   assert.match(w.document.querySelector('.ess-comparison').textContent,/À confirmer/);
  }finally{await w.happyDOM.close();}
 });
+
+
+test('Bento rejects selection of an offer with a valid price but unverified rights and quotas',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  ui.state.plans=[{...plan,id:'unknown-terms',kiosk_limit:undefined,features:null}];
+  w.document.body.innerHTML=ui.renderPricing();
+  const card=w.document.querySelector('.ess-price');
+  assert.match(card.querySelector('.ess-price-amount').textContent,/51,00/);
+  assert.match(card.textContent,/Bornes à confirmer/);
+  assert.match(card.textContent,/Détails du forfait à confirmer/);
+  assert.equal(card.querySelector('[data-action="ess:choose"]').disabled,true);
+  // Even a forged/stale action must be refused by the controller.
+  await ui.handle({dataset:{action:'ess:choose',id:'unknown-terms'}});
+  assert.equal(ui.state.checkout,null);
+  ui.state.plans[0]={...plan,id:'unknown-terms',kiosk_limit:3,features:['punch']};
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
+  await ui.handle({dataset:{action:'ess:choose',id:'unknown-terms'}});
+  assert.equal(ui.state.checkout,plan.title);
+ }finally{await w.happyDOM.close();}
+});
