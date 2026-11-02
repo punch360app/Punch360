@@ -1,4 +1,4 @@
-import {estimatePublicPlanPrice} from './commercial.js';
+import {estimatePublicPlanPrice,isPublicPlanOfferComplete} from './commercial.js';
 
 // Public choice is a per-tab, untrusted reminder only. It never grants an entitlement
 // or substitutes for server-side catalog, contract, and payment verification.
@@ -60,10 +60,22 @@ export function renderPublicPlanReminder(storage,plans,escape){
  if(!intent)return '';
  const current=(Array.isArray(plans)?plans:[]).find(plan=>plan.id===intent.planId&&plan.active&&plan.public_visible);
  const label=current?'<strong>'+escape(String(current.title||'Forfait à confirmer'))+'</strong>':'<strong>Forfait à revérifier</strong>';
- const quote=current?estimatePublicPlanPrice(current,intent.seats,intent.cadence):null;
+ // A valid price formula is not enough to verify an offer: limits and
+ // entitlements must also be known. An older tab selection might outlive a
+ // catalog update, so evaluate the CURRENT offer again on the signup screen.
+ const complete=current&&isPublicPlanOfferComplete(current);
+ const quote=complete?estimatePublicPlanPrice(current,intent.seats,intent.cadence):null;
+ const money=cents=>escape(new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(cents/100));
+ const supplemental=quote?(current.included_seats_unlimited===true?0:
+  Math.max(0,intent.seats-current.included_seats)):null;
+ const supplementLabel=quote?'<p>'+supplemental+' membre'+(supplemental>1?'s':'')+
+  ' supplémentaire'+(supplemental>1?'s':'')+' facturé'+(supplemental>1?'s':'')+'.</p>':'';
+ const annualSavings=quote&&intent.cadence==='yearly'&&quote.monthlyCents*12>quote.annualCents
+  ?'<p>Économie estimée sur 12 mois : '+money(quote.monthlyCents*12-quote.annualCents)+'.</p>':'';
  const estimate=quote?'<p>Estimation au catalogue actuel : <strong>'+
-  escape(new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(quote.payableCents/100))+
-  '</strong> / '+(intent.cadence==='yearly'?'an':'mois')+' avant taxes.</p>':'';
+  money(quote.payableCents)+'</strong> / '+(intent.cadence==='yearly'?'an':'mois')+
+  ' avant taxes.</p>'+supplementLabel+annualSavings:
+  '<p>Tarif et conditions à confirmer au catalogue actuel.</p>';
  const cadence=intent.cadence==='yearly'?'annuel':'mensuel';
  const seats=intent.seats+' membre'+(intent.seats>1?'s':'');
  return '<section class="notice" aria-label="Votre préférence de forfait"><p>Votre sélection Essentiel : '+label+' · '+seats+' · paiement '+cadence+'.</p>'+estimate+'<small>Choix conservé dans cet onglet à titre indicatif. Il ne crée aucun abonnement et ne fixe aucun tarif; le catalogue et le contrat devront être confirmés avant facturation.</small></section>';
