@@ -86,6 +86,18 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   if(result.error)throw result.error;
   s.plans=Array.isArray(result.data)?result.data:[];
  }
+ // Anonymous refresh after signout: load only the current public catalog,
+ // never employee, tenant, platform or billing data. The revision also
+ // prevents a late response from an earlier identity/session from winning.
+ async function refreshPublicCatalog(){
+  if(s.loading)return;
+  s.loading=true;s.error='';s.plans=[];s.checkout=null;redraw();
+  const request=publicCatalogRevision+1;
+  try{await plans();}
+  catch(err){if(request===publicCatalogRevision)
+   s.error=String(err?.message||'Catalogue indisponible');}
+  finally{if(request===publicCatalogRevision){s.loading=false;redraw();}}
+ }
  async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
    if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(s.mfaRequired){
@@ -251,13 +263,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  // The app redraw replaces button nodes. Keep the focused billing-period
  // control reachable for keyboard and switch users after that redraw.
  const focusedCadenceAction=(action==='monthly'||action==='yearly')&&doc.activeElement===el?action:null;
- if(action==='retry-public'){
-  if(s.loading)return true;
-  s.loading=true;s.error='';s.plans=[];s.checkout=null;redraw();
-  try{await plans();}catch(err){s.error=String(err?.message||'Catalogue indisponible');}
-  finally{s.loading=false;redraw();}
-  return true;
- }
+ if(action==='retry-public'){await refreshPublicCatalog();return true;}
  s.error='';try{
  if(action==='monthly'||action==='yearly'){
   if(s.cadence!==action){onPricingChange();s.cadence=action;s.checkout=null;}
@@ -395,5 +401,5 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   }
  }if(el.id==='ess-company-search')for(const row of doc.querySelectorAll('[data-company-name]'))row.hidden=!row.dataset.companyName.includes(el.value.toLocaleLowerCase());}
  function reset(){subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset();identityRevision++;publicCatalogRevision++;s.plans=[];s.loading=false;s.error='';s.platformUser=null;finance.reset();promotions.reset();audit.reset();support.reset();platformTests.reset();breakCorrections.reset();payroll.reset();communications.reset();hr.reset();appearance.reset();billing.reset();s.billingOverview=null;planning.reset();s.platform=false;s.effectiveBillingStatus=null;s.snapshot=null;s.testAccounts=[];s.testCredentials=null;s.workers=[];s.worker=null;s.invitationLink=null;s.pairCode=null;s.enrollment=null;s.devices=[];s.qr=null;s.factor=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';s.mfaRequired=true;s.tab='home';s.seats=5;s.seatDraft=null;s.cadence='monthly';s.checkout=null;}
- return {state:s,subscriptions,qualifiedCoverage,laborBudgets,platformUsers,platformAdmins,platformPriceProposals,directory,invitationEmail,notificationPreferences,supervision,breakPolicies,offlineReview,missingDays,archives,finance,promotions,audit,support,platformTests,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
+ return {state:s,subscriptions,qualifiedCoverage,laborBudgets,platformUsers,platformAdmins,platformPriceProposals,directory,invitationEmail,notificationPreferences,supervision,breakPolicies,offlineReview,missingDays,archives,finance,promotions,audit,support,platformTests,breakCorrections,planning,billing,appearance,hr,communications,payroll,reset,load,refreshPublicCatalog,renderPricing,renderPlatform,renderWorkers,renderKiosks,renderDashboard,handle,input};
 }
