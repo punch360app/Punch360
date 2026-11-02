@@ -1,4 +1,4 @@
-import {estimatePublicPlanPrice,isPublicPlanOfferComplete} from './commercial.js';
+import {quotePublicPlanOffer} from './commercial.js';
 
 // Public choice is a per-tab, untrusted reminder only. It never grants an entitlement
 // or substitutes for server-side catalog, contract, and payment verification.
@@ -63,8 +63,7 @@ export function renderPublicPlanReminder(storage,plans,escape){
  // A valid price formula is not enough to verify an offer: limits and
  // entitlements must also be known. An older tab selection might outlive a
  // catalog update, so evaluate the CURRENT offer again on the signup screen.
- const complete=current&&isPublicPlanOfferComplete(current);
- const quote=complete?estimatePublicPlanPrice(current,intent.seats,intent.cadence):null;
+ const quote=current?quotePublicPlanOffer(current,intent.seats,intent.cadence):null;
  const money=cents=>escape(new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(cents/100));
  const supplemental=quote?(current.included_seats_unlimited===true?0:
   Math.max(0,intent.seats-current.included_seats)):null;
