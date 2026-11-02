@@ -18,14 +18,20 @@ Deno.serve(async(req:Request)=>{
    if(!parseKioskQrEnvelope(p).ok)return reply(400,{ok:false,error:'INVALID_REQUEST'});
    return reply(403,{ok:false,error:'OPERATION_REFUSED'});
   }
-  const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
-  let result;
+  // Reject malformed old PIN / pairing requests *before* reading the
+  // service-role environment or constructing the privileged DB client.
+  if(!p||typeof p!=='object'||Array.isArray(p))return reply(400,{ok:false,error:'INVALID_REQUEST'});
   if(p.action==='pair'){
    if(typeof p.code!=='string'||p.code.length!==101)return reply(400,{ok:false});
-   result=await client.rpc('kiosk_pair_device',{p_code:p.code});
   }else{
    if(typeof p.deviceId!=='string'||!/^[0-9a-f-]{36}$/i.test(p.deviceId)||typeof p.token!=='string'||!/^[0-9a-f]{64}$/i.test(p.token)||typeof p.number!=='string'||p.number.length>40||typeof p.pin!=='string'||!/^\d{6,12}$/.test(p.pin)||!['identify','enroll','in','out','break_start','break_start_paid','break_end'].includes(p.action))return reply(400,{ok:false,error:'INVALID_REQUEST'});
    if(p.eventId!=null&&(typeof p.eventId!=='string'||!/^[0-9a-f-]{36}$/i.test(p.eventId)))return reply(400,{ok:false});
+  }
+  const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+  let result;
+  if(p.action==='pair'){
+   result=await client.rpc('kiosk_pair_device',{p_code:p.code});
+  }else{
    result=await client.rpc('kiosk_execute',{p_device:p.deviceId,p_token:p.token,p_number:p.number,p_pin:p.pin,p_action:p.action,p_event:p.eventId||null,p_enrollment:p.enrollment||null});
   }
   if(result.error)return reply(409,{ok:false,error:'OPERATION_REFUSED'});
