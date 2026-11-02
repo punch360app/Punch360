@@ -94,8 +94,8 @@ test('Essentiel correction entry opens a dedicated scoped screen with a real ret
 test('PWA install includes correction module and versions the entry consistently',()=>{
  const html=readFileSync(new URL('../web/live/index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
- assert.match(html,/app\.js\?v=essential-70-bento/);
- assert.match(sw,/app\.js\?v=essential-70-bento/);
- assert.match(sw,/punch-360-essential-v78-bento/);
+ assert.match(html,/app\.js\?v=essential-72-bento/);
+ assert.match(sw,/app\.js\?v=essential-72-bento/);
+ assert.match(sw,/punch-360-essential-v80-bento/);
  assert.match(sw,/'\.\/essential-correction\.js'/);
 });
