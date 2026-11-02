@@ -23,8 +23,8 @@ function fixture(journal){
  return {state,calls,load:loader};
 }
 test('an unreadable local journal shows only a confirmed snapshot, preserving it',async()=>{
- const h=fixture({flush:async()=>{throw Error('Journal invalide')},
-  read:async()=>{throw Error('unsafe read')},pending:async()=>{throw Error('unsafe pending')}});
+ const h=fixture({flush:()=>{throw Error('Offline must never flush')},
+  inspect:async()=>{throw Error('Journal invalide')}});
  await h.load();
  assert.deepEqual(h.state.localJournalBlocked,{companyId:'A',userId:'U'});
  assert.equal(h.state.localPending,0);
@@ -34,22 +34,23 @@ test('an unreadable local journal shows only a confirmed snapshot, preserving it
  assert.equal(h.calls.save,0);
 });
 test('a successful offline retry clears warning and does not invent confirmation',async()=>{
- let blocked=true,reads=0;
- const journal={flush:async()=>{if(blocked)throw Error('unsafe');return {events:[],pending:0}},
-  read:async()=>{reads++;return []},pending:async()=>[]};
+ let blocked=true,inspections=0;
+ const journal={flush:()=>{throw Error('Offline must never flush')},
+  inspect:async()=>{inspections++;if(blocked)throw Error('unsafe');return {events:[],pending:0,sent:0}}};
  const h=fixture(journal);
  await h.load();assert.ok(h.state.localJournalBlocked);
  blocked=false;await h.load();
  assert.equal(h.state.localJournalBlocked,null);
- assert.equal(reads,1);
+ assert.equal(inspections,2);
  assert.equal(h.calls.save,1);
  assert.equal(h.state.localPending,0);
 });
-test('company switch during failed flush cannot display stale warning',async()=>{
- let rejectFlush;
- const h=fixture({flush:()=>new Promise((_,reject)=>{rejectFlush=reject})});
+test('company switch during failed inspection cannot display stale warning',async()=>{
+ let rejectInspection;
+ const h=fixture({flush:()=>{throw Error('Offline must never flush')},
+  inspect:()=>new Promise((_,reject)=>{rejectInspection=reject})});
  const request=h.load();h.state.account={company_id:'B'};
- rejectFlush(Error('unverified'));
+ rejectInspection(Error('unverified'));
  await request;
  assert.equal(h.state.localJournalBlocked,null);
  assert.equal(h.calls.project.length,0);
