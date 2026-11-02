@@ -91,9 +91,11 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   .sort((a,b)=>Date.parse(b.started_at)-Date.parse(a.started_at));
  const approvedIds=new Set(confirmedSessions.map(s=>s.id));
  const confirmedSegments=snapshot.segments.filter(s=>approvedIds.has(s.session_id)&&
-  (!s.company_id||s.company_id===companyId));
+  (!s.company_id||s.company_id===companyId)&&
+  (s.user_id==null||s.user_id===userId));
  const confirmedBreaks=snapshot.breaks.filter(s=>approvedIds.has(s.session_id)&&
-  (!s.company_id||s.company_id===companyId));
+  (!s.company_id||s.company_id===companyId)&&
+  (s.user_id==null||s.user_id===userId));
  const confirmedWeekMs=netMilliseconds(confirmedSegments,confirmedBreaks,monday,weekUntil);
  // Web daily detail uses the same scoped, read-only calculation as Expo,
  // bounded by the last server read rather than the viewer's later clock.
@@ -125,8 +127,12 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   const projectedIds=new Set(projectedSessions.filter(s=>
    s?.company_id===companyId&&s.user_id===userId).map(s=>s.id));
   projectedWeekMs=netMilliseconds(
-   projectedSegments.filter(s=>projectedIds.has(s.session_id)&&(!s.company_id||s.company_id===companyId)),
-   projectedBreaks.filter(s=>projectedIds.has(s.session_id)&&(!s.company_id||s.company_id===companyId)),
+   projectedSegments.filter(s=>projectedIds.has(s.session_id)&&
+    (!s.company_id||s.company_id===companyId)&&
+    (s.user_id==null||s.user_id===userId)),
+   projectedBreaks.filter(s=>projectedIds.has(s.session_id)&&
+    (!s.company_id||s.company_id===companyId)&&
+    (s.user_id==null||s.user_id===userId)),
    monday,Math.min(now,weekEnd));
  }
  return {ready:true,confirmedSessions,confirmedDays,confirmedWeekDays,confirmedDaily,confirmedWeekMs,projectedWeekMs,
