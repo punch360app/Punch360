@@ -66,8 +66,8 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  * views; a partial read must not be described as an empty confirmed inbox.
  * Review statuses are decisions on requests, never an approval of payroll.
  */
-export function employeeHoursRequestTimeline({companyId,userId,correctionView,breakView,missingView,leaveView}={}){
- const empty={complete:false,pendingCount:0,items:[],unavailable:[]};
+export function employeeHoursRequestTimeline({companyId,userId,correctionView,breakView,missingView,leaveView,limit=8}={}){
+ const empty={complete:false,pendingCount:0,total:0,items:[],unavailable:[]};
  if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId)return empty;
  const allowed=new Set(['pending','approved','rejected','cancelled']);
  const sources=[
@@ -100,7 +100,8 @@ export function employeeHoursRequestTimeline({companyId,userId,correctionView,br
   }
  }
  found.sort((a,b)=>(b.at?Date.parse(b.at):0)-(a.at?Date.parse(a.at):0));
+ const max=Number.isSafeInteger(limit)?Math.min(100,Math.max(0,limit)):8;
  return {complete:unavailable.length===0,
-  pendingCount:found.filter(r=>r.status==='pending').length,
-  items:found.slice(0,8),unavailable};
+  pendingCount:found.filter(r=>r.status==='pending').length,total:found.length,
+  items:found.slice(0,max),unavailable};
 }
