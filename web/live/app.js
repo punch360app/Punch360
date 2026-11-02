@@ -335,7 +335,7 @@ async function loadData(){if(!member())return;
  await journal.flush();if(!scopeCurrent())return;
  if(!navigator.onLine){
   const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;
-  const view=projectPendingPunches(state.serverPunch,events);
+  const view=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});
   state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=pending.length;
   const ownSession=currentSession(),ownSegment=ownSession?state.segments.find(s=>s.company_id===companyId&&s.session_id===ownSession.id&&!s.ended_at):null;
   state.selected=ownSegment?.job_id||state.selected;
@@ -372,7 +372,7 @@ if(manager()){const team=await sb.from('punch_sessions').select('id,user_id,star
 if(!scopeCurrent())return;
 if(state.sessions.length){const ids=state.sessions.map(s=>s.id);const q=await sb.from('punch_segments').select('id,company_id,session_id,job_id,started_at,ended_at').eq('company_id',companyId).in('session_id',ids).order('started_at',{ascending:false}).limit(1800);if(q.error)errors.push('segments: '+q.error.message);else state.segments=q.data||[]}else state.segments=[];
 if(!scopeCurrent())return;
-if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;const projected=projectPendingPunches(state.serverPunch,events);state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=pending.length;saveOfflineSnapshot();
+if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;const projected=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=pending.length;saveOfflineSnapshot();
 const active=activeSegment();const preference=localStorage.getItem('punch360-selection-'+state.user.id+':'+company());if(active&&getJob(active.job_id))state.selected=active.job_id;else if(!state.selected||!getJob(state.selected))state.selected=getJob(preference)?.id||state.segments.find(s=>getJob(s.job_id))?.job_id||state.jobs[0]?.id||null;
 if(state.chatId&&!currentCompanyChat(state.chatId)){state.chatLoadRevision++;state.chatId=null;state.messages=[]}if(errors.length)toast('Quelques données non accessibles : '+errors[0]);
 }catch(err){error(err)}}
