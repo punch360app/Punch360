@@ -14,7 +14,7 @@ const loader=source.slice(two,end)
  .replace('const jobs:Job[]=','const jobs=')
  .replace('const result:JobLoad=','const result=');
 const job=(company='A')=>({id:'J1',company_id:company,number:'214',name:'Job',address:'Québec',
- latitude:46.8,longitude:-71.2,photo_url:null,assigned_to_me:true,planned_start:null});
+ latitude:46.8,longitude:-71.2,photo_url:null,active:true,assigned_to_me:true,planned_start:null});
 const valid=()=>({jobs:[job()],demo:false,message:''});
 function fixture({online=false,networkError=false,cache=valid(),serverJobs=[job()],
  jobsError=false,assignError=false,writeFail=false}={}){
