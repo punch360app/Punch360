@@ -44,6 +44,28 @@ test('pending journal time is visibly separate from server-sourced time',()=>{
  assert.equal(view.pending,1);
 });
 
+test('an open day stops accumulating confirmed time at the last complete server read',()=>{
+ const fetchedAt=Date.parse('2026-11-04T14:30:00Z');
+ const v=essentialHoursView({...fixture,snapshotFetchedAt:fetchedAt,
+  now:Date.parse('2026-11-04T21:00:00Z')});
+ assert.equal(v.confirmedWeekMs,(2*60+30-15)*60000);
+ assert.deepEqual(v.confirmedDays.map(x=>({id:x.session.id,minutes:x.netMs/60000,open:x.open})),[
+  {id:'day-2',minutes:30,open:true},
+  {id:'day-1',minutes:105,open:false}
+ ]);
+ const capped=essentialHoursView({...fixture,snapshotFetchedAt:at-15*60000,
+  now:at+500000});
+ assert.equal(capped.confirmedWeekMs,(2*60+45-15)*60000);
+});
+
+test('a pending local punch remains an explicitly separate estimate beyond server cutoff',()=>{
+ const earlier=Date.parse('2026-11-04T14:15:00Z');
+ const view=essentialHoursView({...fixture,snapshotFetchedAt:earlier,pendingCount:1,
+  projectedSessions:sessions,projectedSegments:segments,projectedBreaks:breaks});
+ assert.equal(view.confirmedWeekMs,(2*60+15-15)*60000);
+ assert.equal(view.projectedWeekMs,(2*60+60-15)*60000);
+});
+
 test('missing or mismatched confirmed company snapshot fails closed',()=>{
  for(const args of [
   {...fixture,snapshotCompanyId:'company-B'},
@@ -77,9 +99,12 @@ test('Essentiel hours UI does not export projected local events as the server CS
  assert.match(app,/function essentialHours\(\)\{/);
  assert.match(app,/const view=essentialHoursView\(\{/);
  assert.match(app,/snapshotCompanyId:state\.serverPunchCompany,snapshot:state\.serverPunch/);
- assert.match(app,/view\.confirmedSessions\.slice\(0,80\)/);
+ assert.match(app,/view\.confirmedDays\.slice\(0,80\)/);
  assert.match(app,/événement\(s\) conservé\(s\) sur cet appareil/);
  assert.match(app,/Exporter le relevé serveur CSV/);
+ assert.match(app,/snapshotFetchedAt:state\.serverPunchFetchedAt/);
+ assert.match(app,/\+mins\(netMs\)\+' net'/);
+
  assert.match(app,/!calls\[2\]\.error&&!calls\[21\]\.error&&!errors\.some\(x=>x\.startsWith\('segments:'\)\)/);
  assert.match(app,/serverPunchFetchedAt=Date\.now\(\)/);
  assert.match(app,/Number\.isFinite\(data\.serverPunchFetchedAt\)/);
