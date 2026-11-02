@@ -42,7 +42,7 @@ test('My Hours links to missing-day workflow without treating requests as payabl
  assert.match(hours,/employeeMissingDaysSummary\(\{companyId:company\(\),userId:state\.user\?\.id/);
  assert.match(hours,/data-id="missingDays"/);
  assert.match(hours,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
- assert.match(hours,/Mes demandes d’ajustement/);
+ assert.match(hours,/Mes demandes et absences/);
  assert.match(hours,/missingView:forgotten/);
 });
 
