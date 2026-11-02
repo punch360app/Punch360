@@ -158,9 +158,50 @@ test('My Hours links every adjustment type and never treats reviewed requests as
  const view=app.slice(begin,end);
  assert.match(app,/import \{essentialHoursView,employeeHoursRequestTimeline\} from '\.\/essential-hours-view\.js'/);
  assert.match(view,/employeeHoursRequestTimeline\(\{companyId:company\(\),userId:state\.user\?\.id/);
- assert.match(view,/Mes demandes d’ajustement/);
+ assert.match(view,/Mes demandes et absences/);
  assert.match(view,/Suivi incomplet/);
  assert.match(view,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
- for(const target of ['essentialCorrection','breakCorrections','missingDays'])
+ for(const target of ['essentialCorrection','breakCorrections','missingDays','leave'])
   assert.match(view,new RegExp('data-id="'+target+'"'));
+});
+
+test('My Hours includes only the employee own-company leave requests alongside adjustments',()=>{
+ const leave={id:'leave-own',company_id:company,user_id:user,status:'pending',
+  begins_on:'2026-11-10',created_at:'2026-11-05T09:00:00Z'};
+ const other={...leave,id:'leave-foreign',user_id:'other-person'};
+ const crossCompany={...leave,id:'leave-company',company_id:'other-company'};
+ const v=employeeHoursRequestTimeline({companyId:company,userId:user,
+  correctionView:{ready:true,requests:[]},breakView:{ready:true,requests:[]},
+  missingView:{ready:true,requests:[]},
+  leaveView:{ready:true,requests:[leave,other,crossCompany]}});
+ assert.equal(v.complete,true);
+ assert.equal(v.pendingCount,1);
+ assert.deepEqual(v.items.map(r=>r.key),['congé:leave-own']);
+ assert.deepEqual(v.items.map(r=>r.title),['Congé ou absence']);
+ assert.doesNotMatch(JSON.stringify(v),/leave-foreign|leave-company/);
+});
+
+test('unverified leave history is not counted as a confirmed empty inbox',()=>{
+ const args={companyId:company,userId:user,correctionView:{ready:true,requests:[]},
+  breakView:{ready:true,requests:[]},missingView:{ready:true,requests:[]}};
+ const v=employeeHoursRequestTimeline({...args,leaveView:{ready:false,requests:[
+  {id:'wrong',company_id:company,user_id:user,status:'pending',created_at:'2026-11-03T09:00:00Z'}
+ ]}});
+ assert.equal(v.complete,false);
+ assert.equal(v.pendingCount,0);
+ assert.deepEqual(v.unavailable,['Congé ou absence']);
+ assert.deepEqual(v.items,[]);
+ const empty=employeeHoursRequestTimeline({...args,leaveView:{ready:true,requests:[]}});
+ assert.equal(empty.complete,true);
+});
+
+test('My Hours passes only the leave view scoped to the account, with no automatic payroll approval',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',start);
+ const hours=app.slice(start,end);
+ assert.match(hours,/leaveView:essentialLeaveView\(\{companyId:company\(\),userId:state\.user\?\.id/);
+ assert.match(hours,/loaded:state\.leavesLoaded,requests:state\.leaves/);
+ assert.match(hours,/data-id="leave"/);
+ assert.match(hours,/Mes demandes et absences/);
+ assert.match(hours,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
 });
