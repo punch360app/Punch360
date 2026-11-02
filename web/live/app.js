@@ -42,7 +42,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={requestFilter:'all',pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={requestFilter:'all',pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],localJournalBlocked:null,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -404,11 +404,13 @@ function essentialUpcomingHomeCard(){
 }
 function essentialPunchJob(){return essentialWorkerPunchJobId(company(),essentialUI.state.worker,essentialUI.planning.state.locations,state.account?.companies?.default_punch_job_id);}
 function essentialPunchSyncPanel(){
+ const blocked=state.localJournalBlocked?.companyId===company()&&state.localJournalBlocked?.userId===state.user?.id;
  const {pending,conflicts}=localPunchSyncState(state.localPunchEvents,company(),state.user?.id);
- if(!pending.length&&!conflicts.length)return '';
+ if(!blocked&&!pending.length&&!conflicts.length)return '';
  const entries=(items)=>items.slice(-5).map(item=>
   '<li>'+e(item.label)+' · '+(item.occurredAt?e(when(item.occurredAt)):'heure indisponible')+'</li>').join('');
  return '<section class="ess-panel" role="status" aria-label="Synchronisation des pointages"><b>Pointages enregistrés sur cet appareil</b>'+
+  (blocked?'<p>Journal local non vérifiable : la synchronisation et les nouveaux pointages sur cet appareil sont bloqués. Aucun événement local n\'a été effacé. Contactez votre responsable pour une vérification; les heures serveur restent consultables.</p>':'')+
   (pending.length?'<p>'+pending.length+' événement(s) en attente de transmission. Ces pointages ne sont pas confirmés et ne figurent pas dans le relevé officiel.</p><ul>'+entries(pending)+'</ul>'+
     (pending.length>5?'<p class="small muted">Et '+(pending.length-5)+' autre(s) événement(s) en attente.</p>':'')+
     (navigator.onLine?button('Synchroniser maintenant','syncPendingPunches','full',state.busy?'disabled aria-disabled="true"':''):
@@ -621,7 +623,12 @@ let punchLoadRevision=0;
 async function loadData(){if(!member())return;
  const companyId=company(),userId=state.user?.id,revision=++punchLoadRevision,journal=punchJournal();
  const scopeCurrent=()=>revision===punchLoadRevision&&member()&&company()===companyId&&state.user?.id===userId;
- const flushed=await journal.flush();if(!scopeCurrent())return;
+ // A blocked local journal must not prevent reading official server hours.
+ let flushed=null,journalBlocked=false;
+ try{flushed=await journal.flush()}catch{journalBlocked=true}
+ if(!scopeCurrent())return;
+ state.localJournalBlocked=journalBlocked?{companyId,userId}:null;
+ if(journalBlocked){state.localPunchEvents=[];state.localPending=0;}
  // Journal acknowledgement is independent from the subsequent Supabase reads.
  // Keep local pending/conflict indicators accurate even if another read fails.
  if(Array.isArray(flushed?.events)){
@@ -632,6 +639,12 @@ async function loadData(){if(!member())return;
  if(!navigator.onLine){
   state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
   state.correctionApprovalsLoaded=false;state.correctionApprovals=[];
+  if(journalBlocked){
+   const snapshot=state.serverPunchCompany===companyId?state.serverPunch:{sessions:[],segments:[],breaks:[]};
+   const safe=projectPendingPunches(snapshot,[],{company:companyId,user:userId});
+   state.sessions=safe.sessions;state.segments=safe.segments;state.breaks=safe.breaks;
+   return;
+  }
    const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;
   const view=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});
   state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=localPunchSyncState(events,companyId,userId).pending.length;state.localPunchEvents=events;
@@ -690,7 +703,7 @@ if(manager()){const team=await sb.from('punch_sessions').select('id,user_id,star
 if(!scopeCurrent())return;
 if(state.sessions.length){const ids=state.sessions.map(s=>s.id);const q=await sb.from('punch_segments').select('id,company_id,session_id,job_id,started_at,ended_at').eq('company_id',companyId).in('session_id',ids).order('started_at',{ascending:false}).limit(1800);if(q.error)errors.push('segments: '+q.error.message);else state.segments=q.data||[]}else state.segments=[];
 if(!scopeCurrent())return;
-if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;const projected=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=localPunchSyncState(events,companyId,userId).pending.length;state.localPunchEvents=events;saveOfflineSnapshot();
+if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const events=journalBlocked?[]:await journal.read(),pending=journalBlocked?[]:await journal.pending();if(!scopeCurrent())return;const projected=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=localPunchSyncState(events,companyId,userId).pending.length;state.localPunchEvents=events;saveOfflineSnapshot();
 const active=activeSegment();const preference=localStorage.getItem('punch360-selection-'+state.user.id+':'+company());if(active&&getJob(active.job_id))state.selected=active.job_id;else if(!state.selected||!getJob(state.selected))state.selected=getJob(preference)?.id||state.segments.find(s=>getJob(s.job_id))?.job_id||state.jobs[0]?.id||null;
 if(state.chatId&&!currentCompanyChat(state.chatId)){state.chatLoadRevision++;state.chatId=null;state.messages=[]}if(errors.length)toast('Quelques données non accessibles : '+errors[0]);
 }catch(err){error(err)}}
@@ -1106,6 +1119,9 @@ if(a==='togglePassword'){togglePublicPasswordVisibility(document,id,el);return;}
  const companyId=company(),userId=state.user?.id;
  await reload({quiet:true});
  if(!member()||company()!==companyId||state.user?.id!==userId)return;
+ if(state.localJournalBlocked?.companyId===companyId&&state.localJournalBlocked.userId===userId){
+  toast('Journal local non vérifiable : aucun pointage envoyé. Contactez votre responsable.');return;
+ }
  // Read the journal again after the retry. A failed server reload must not
  // leave a stale in-memory list claiming everything was synchronized.
  const events=await punchJournal().read();
