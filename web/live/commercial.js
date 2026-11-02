@@ -16,6 +16,17 @@ export function estimatePublicPlanPrice(plan,seats,cadence){
  return {monthlyCents,annualCents,payableCents:cadence==='yearly'?annualCents:monthlyCents};
 }
 
+/** A displayed price alone does not make a public offer selectable.
+ * Missing quotas or unknown feature entitlements must be checked by staff
+ * before the visitor can choose a plan. Null explicitly means unlimited.
+ */
+export function isPublicPlanOfferComplete(plan){
+ const quotaValid=value=>value===null||(Number.isSafeInteger(value)&&value>=0);
+ return !!plan && quotaValid(plan.kiosk_limit) &&
+  quotaValid(plan.establishment_limit) &&
+  Array.isArray(plan.features) && plan.features.every(feature=>typeof feature==='string');
+}
+
 /** Public comparison reads the same server catalog as the price cards. */
 export function renderCommercialDetails(plans,escape,money,{seats=null,cadence='monthly'}={}){
  const visible=plans.filter(p=>p.active&&p.public_visible);
