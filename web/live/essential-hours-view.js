@@ -247,7 +247,12 @@ export function employeeHoursRequestTimeline({companyId,userId,correctionView,br
  ];
  const unavailable=[],found=[];
  for(const source of sources){
-  if(source.view?.ready!==true||!Array.isArray(source.rows)){
+  // Missing-day rows deliberately omit raw worker IDs. Their verified
+  // summary must carry its employee/company scope; never reuse one account's
+  // previously loaded inbox in another account's My Hours timeline.
+  if(source.view?.ready!==true||!Array.isArray(source.rows)||
+    (source.kind==='journée'&&
+     (source.view.companyId!==companyId||source.view.userId!==userId))){
    unavailable.push(source.title);continue;
   }
   for(const row of source.rows){

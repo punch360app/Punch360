@@ -157,7 +157,7 @@ test('My Hours combines only own company adjustment requests across all three wo
  const result=employeeHoursRequestTimeline({companyId:company,userId:user,
   correctionView:{ready:true,requests:[correction,{...correction,id:'other-hours',requested_by:'else'}]},
   breakView:{ready:true,requests:[pause,{...pause,id:'other-break',company_id:'other'}]},
-  missingView:{ready:true,requests:[missing]}});
+  missingView:{ready:true,companyId:company,userId:user,requests:[missing]}});
  assert.equal(result.complete,true);
  assert.deepEqual(result.items.map(x=>x.key),['pauses:break-1','journée:missing-1','heures:hours-1']);
  assert.deepEqual(result.items.map(x=>x.label),['Approuvée','Refusée','En attente']);
@@ -183,7 +183,7 @@ test('manager viewing personal hours never receives colleagues pending break req
  const result=employeeHoursRequestTimeline({companyId:company,userId:'boss',
   correctionView:{ready:true,requests:[]},breakView:{ready:true,requests:[
     own,{...own,id:'colleague',requested_by:'colleague'},
-    {...own,id:'foreign',company_id:'foreign'}]},missingView:{ready:true,requests:[]}});
+    {...own,id:'foreign',company_id:'foreign'}]},missingView:{ready:true,companyId:company,userId:'boss',requests:[]}});
  assert.equal(result.complete,true);assert.deepEqual(result.items.map(x=>x.key),['pauses:own']);
 });
 test('My Hours links every adjustment type and never treats reviewed requests as official payroll',()=>{
@@ -208,7 +208,7 @@ test('My Hours includes only the employee own-company leave requests alongside a
  const crossCompany={...leave,id:'leave-company',company_id:'other-company'};
  const v=employeeHoursRequestTimeline({companyId:company,userId:user,
   correctionView:{ready:true,requests:[]},breakView:{ready:true,requests:[]},
-  missingView:{ready:true,requests:[]},
+  missingView:{ready:true,companyId:company,userId:user,requests:[]},
   leaveView:{ready:true,requests:[leave,other,crossCompany]}});
  assert.equal(v.complete,true);
  assert.equal(v.pendingCount,1);
@@ -219,7 +219,7 @@ test('My Hours includes only the employee own-company leave requests alongside a
 
 test('unverified leave history is not counted as a confirmed empty inbox',()=>{
  const args={companyId:company,userId:user,correctionView:{ready:true,requests:[]},
-  breakView:{ready:true,requests:[]},missingView:{ready:true,requests:[]}};
+  breakView:{ready:true,requests:[]},missingView:{ready:true,companyId:company,userId:user,requests:[]}};
  const v=employeeHoursRequestTimeline({...args,leaveView:{ready:false,requests:[
   {id:'wrong',company_id:company,user_id:user,status:'pending',created_at:'2026-11-03T09:00:00Z'}
  ]}});
@@ -249,7 +249,7 @@ test('all personal requests page expands beyond eight rows while preserving the 
  const foreign={...own[0],id:'foreign',requested_by:'someone-else'};
  const args={companyId:company,userId:user,
   correctionView:{ready:true,requests:[...own,foreign]},
-  breakView:{ready:true,requests:[]},missingView:{ready:true,requests:[]},
+  breakView:{ready:true,requests:[]},missingView:{ready:true,companyId:company,userId:user,requests:[]},
   leaveView:{ready:true,requests:[]}};
  const compact=employeeHoursRequestTimeline(args);
  const full=employeeHoursRequestTimeline({...args,limit:100});
@@ -419,4 +419,29 @@ test('Web only presents verified selected-week history and clear empty-week copy
  assert.match(page,/Historique des journées · serveur · semaine sélectionnée/);
  assert.match(page,/Aucune journée enregistrée pour cette semaine/);
  assert.doesNotMatch(page,/view\.confirmedDays\.slice\(0,80\)/);
+});
+
+test('cross-account or unscoped missing-day summary cannot contaminate My Hours',()=>{
+ const row={id:'stale-foreign',status:'pending',startsAt:'2026-11-01T08:00:00Z'};
+ const valid={ready:true,companyId:company,userId:user,requests:[row]};
+ const base={companyId:company,userId:user,
+  correctionView:{ready:true,requests:[]},
+  breakView:{ready:true,requests:[]},missingView:valid};
+ const good=employeeHoursRequestTimeline(base);
+ assert.equal(good.complete,true);
+ assert.equal(good.pendingCount,1);
+ assert.deepEqual(good.items.map(r=>r.key),['journée:stale-foreign']);
+ for(const missingView of [
+  {...valid,companyId:'foreign-company'},
+  {...valid,userId:'foreign-user'},
+  {ready:true,requests:[row]},
+  {ready:true,requests:[]}
+ ]){
+  const result=employeeHoursRequestTimeline({...base,missingView});
+  assert.equal(result.complete,false);
+  assert.equal(result.pendingCount,0);
+  assert.deepEqual(result.items,[]);
+  assert.deepEqual(result.unavailable,['Journée oubliée']);
+  assert.doesNotMatch(JSON.stringify(result),/stale-foreign/);
+ }
 });

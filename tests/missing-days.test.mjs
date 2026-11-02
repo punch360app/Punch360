@@ -276,3 +276,19 @@ test('manager pending inbox fails closed if its separate server query fails',asy
  assert.equal(managerMissingDayApprovalSummary({companyId:'company',reviewerId:'manager',source:ui.state}).ready,false);
  assert.doesNotMatch(ui.render(),/missing:approve[^>]*data-id="old"/);
 });
+
+test('personal missing-day summary retains its verified scope for downstream account switches',()=>{
+ const source={company:'company',user:'user',loaded:true,
+  workers:[{id:'own-worker',auth_user_id:'user'}],
+  requests:[{id:'own-request',company_id:'company',worker_id:'own-worker',
+   status:'pending',starts_at:'2026-11-01T10:00:00Z'}]};
+ const current=employeeMissingDaysSummary({companyId:'company',userId:'user',source});
+ assert.equal(current.ready,true);
+ assert.equal(current.companyId,'company');
+ assert.equal(current.userId,'user');
+ assert.deepEqual(current.requests.map(r=>r.id),['own-request']);
+ const switched=employeeMissingDaysSummary({companyId:'other-company',userId:'user',source});
+ assert.equal(switched.ready,false);
+ assert.deepEqual(switched.requests,[]);
+ assert.equal(switched.companyId,undefined);
+});

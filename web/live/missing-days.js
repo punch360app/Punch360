@@ -23,7 +23,8 @@ export function employeeMissingDaysSummary({companyId,userId,source,limit=8}={})
   .sort((a,b)=>Date.parse(b.created_at||b.starts_at)-Date.parse(a.created_at||a.starts_at))
   .slice(0,max).map(r=>({id:r.id,startsAt:r.starts_at,endsAt:r.ends_at,createdAt:r.created_at,
    status:r.status,label:labels[r.status]}));
- return {ready:true,requests:rows};
+ // Carry the scope verified above into every downstream request timeline.
+ return {ready:true,companyId,userId,requests:rows};
 }
 
 /**
