@@ -65,6 +65,10 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  };
  // A missing or corrupt cache is UNKNOWN attendance, not a verified empty day.
  // Keep damaged bytes intact and retain pending journal projections for review.
+ // Repeated IDs can count one shift or pause twice in a corrupted cache
+ // or a partial RPC read. Reject the snapshot instead of picking a winner.
+ const hasDistinctIds=(rows:Array<{id:string}>)=>
+  new Set(rows.map(row=>row.id)).size===rows.length;
  const offlineState=async()=>{
   let cached:PunchState|null=null;
   try{
@@ -87,7 +91,9 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
     typeof s.company_id==='string'&&typeof s.session_id==='string'&&!!s.session_id&&
     typeof s.job_id==='string'&&!!s.job_id&&validCachedRange(s))&&
    (cached.breaks||[]).every(b=>b&&typeof b.id==='string'&&!!b.id&&
-    typeof b.session_id==='string'&&!!b.session_id&&validCachedRange(b));
+    typeof b.session_id==='string'&&!!b.session_id&&validCachedRange(b))&&
+   hasDistinctIds(cached.sessions)&&hasDistinctIds(cached.segments)&&
+   hasDistinctIds(cached.breaks||[]);
   if(!valid||!cached){
    snapshotUnverified=true;
    return overlay({sessions:[],segments:[],breaks:[],active:null,lastJobId:null},'cache');
@@ -124,7 +130,8 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   typeof row.job_id==='string'&&!!row.job_id&&validServerRange(row);
  const validServerBreak=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
   typeof row.session_id==='string'&&!!row.session_id&&validServerRange(row);
- if(error||!Array.isArray(sessions)||!sessions.every(validServerSession))return offlineState();
+ if(error||!Array.isArray(sessions)||!sessions.every(validServerSession)||
+    !hasDistinctIds(sessions))return offlineState();
  // A null or malformed successful response is not a verified empty shift.
  // Filter untrusted RPC rows before writing the offline snapshot. Filtering
  // only during UI projection would leave another tenant's records on disk.
@@ -134,11 +141,14 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
   .order('started_at',{ascending:false});
- if(segmentsError||!Array.isArray(segments)||!segments.every(validServerSegment))return offlineState();
+ if(segmentsError||!Array.isArray(segments)||!segments.every(validServerSegment)||
+    !hasDistinctIds(segments))return offlineState();
  const ownSessionIds=new Set(list.map(s=>s.id));
  const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&
   ownSessionIds.has(s.session_id)&&(s.user_id==null||s.user_id===user.id));
- const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data)||!breakResult.data.every(validServerBreak))return offlineState();
+ const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data)||
+    !breakResult.data.every(validServerBreak)||!hasDistinctIds(breakResult.data))
+  return offlineState();
  // Break rows do not select company_id/user_id on all schema versions;
  // their session_id must belong to a verified session before caching.
  const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&

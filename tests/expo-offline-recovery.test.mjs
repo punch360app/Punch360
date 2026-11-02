@@ -550,3 +550,53 @@ test('Expo bounds server segment starts before caching the visible hours calcula
  assert.equal(state.segments[0].started_at,'2026-11-02T08:00:00.000Z');
  assert.equal(state.baselineSnapshot.segments[0].started_at,'2026-11-02T08:00:00.000Z');
 });
+
+test('duplicate IDs in cached attendance arrays are unverified, not double-counted',async()=>{
+ const ownSegment=cached.segments[1],pause={
+  id:'pause-1',session_id:'own',started_at:'2026-11-02T09:00:00Z',
+  ended_at:'2026-11-02T09:15:00Z',is_paid:false
+ };
+ const cases=[
+  {...cached,sessions:[own,{...own,started_at:'2026-11-02T07:00:00Z'}]},
+  {...cached,segments:[ownSegment,{...ownSegment,started_at:'2026-11-02T10:00:00Z'}]},
+  {...cached,breaks:[pause,{...pause,started_at:'2026-11-02T10:00:00Z'}]}
+ ];
+ for(const corrupted of cases){
+  const bytes=JSON.stringify(corrupted),h=fixture({rawCache:bytes,flushFail:true});
+  const actual=await h.load('A');
+  assert.equal(actual.snapshotUnverified,true);
+  assert.equal(actual.localJournalBlocked,true);
+  assert.deepEqual(actual.sessions,[]);
+  assert.deepEqual(actual.segments,[]);
+  assert.equal(h.store.get('punch-state:U:A'),bytes,'Do not silently rewrite recoverable records');
+ }
+});
+test('duplicate server attendance IDs never replace the last complete cache',async()=>{
+ const ownSegment=cached.segments[1],pause={
+  id:'pause-1',session_id:'own',started_at:'2026-11-02T09:00:00Z',
+  ended_at:'2026-11-02T09:15:00Z',is_paid:false
+ };
+ const cases=[
+  ['punch_sessions',[own,{...own,started_at:'2026-11-02T07:00:00Z'}]],
+  ['punch_segments',[ownSegment,{...ownSegment,started_at:'2026-11-02T09:00:00Z'}]],
+  ['punch_breaks',[pause,{...pause,ended_at:'2026-11-02T09:30:00Z'}]]
+ ];
+ for(const [table,rows] of cases){
+  const h=fixture({offline:false,flushFail:true,malformedTable:table,malformedData:rows});
+  const bytes=h.store.get('punch-state:U:A');
+  const state=await h.load('A');
+  assert.equal(state.readSource,'cache',table);
+  assert.equal(state.snapshotUnverified,false,table);
+  assert.deepEqual(state.segments.map(x=>x.id),['own-segment'],table);
+  assert.equal(h.store.get('punch-state:U:A'),bytes,
+   'No partial server result may erase the previous complete snapshot');
+ }
+});
+test('duplicate server sessions with no cache cannot be called an empty confirmed workday',async()=>{
+ const state=await fixture({offline:false,rawCache:null,
+  malformedTable:'punch_sessions',malformedData:[own,{...own}]}).load('A');
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.snapshotUnverified,true);
+ assert.equal(state.localJournalBlocked,true);
+ assert.deepEqual(state.sessions,[]);
+});
