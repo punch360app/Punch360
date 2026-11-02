@@ -403,3 +403,21 @@ test('Expo accepts fully valid closed cache intervals and recovers damaged cache
  assert.equal(restored.localJournalBlocked,false);
  assert.deepEqual(restored.sessions.map(s=>s.id),['own']);
 });
+
+test('Expo hours origin never labels pending offline time as saved-only or server-confirmed',()=>{
+ const from=essential.indexOf(' const hoursOrigin='),to=essential.indexOf(' async function act(',from);
+ assert.ok(from>=0&&to>from,'Native hours label and action boundaries are required');
+ const label=new Function('punch','journalBlocked',essential.slice(from,to)+'\nreturn hoursOrigin;');
+ const offline={readSource:'cache',hasLocalProjection:true,snapshotUnverified:false,cacheWriteFailed:false};
+ const online={...offline,readSource:'server'};
+ assert.match(label(offline,false),/pointages locaux en attente · non confirmés/);
+ assert.match(label(offline,false),/Dernier relevé sauvegardé/);
+ assert.match(label(online,false),/Relevé serveur \+ pointages locaux en attente · non confirmés/);
+ assert.doesNotMatch(label(offline,false),/^Dernier relevé sauvegardé sur cet appareil$/);
+ assert.match(label({...offline,cacheWriteFailed:true},false),/pointages locaux en attente · non confirmés/,
+  'Failed snapshot backup must not conceal pending journal time');
+ assert.equal(label({...offline,hasLocalProjection:false},false),'Dernier relevé sauvegardé sur cet appareil');
+ assert.match(label({...online,hasLocalProjection:false},false),/Dernier relevé reçu du serveur/);
+ assert.match(label({...offline,snapshotUnverified:true},false),/pointage suspendu/);
+ assert.equal(label(offline,true),'Journal local à vérifier');
+});

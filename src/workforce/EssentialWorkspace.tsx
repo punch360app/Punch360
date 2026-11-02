@@ -167,9 +167,13 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  // Local projections and offline snapshots are never payroll-approved hours.
  const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
   journalBlocked?'Journal local à vérifier':
+  // Pending local events must always be visible as unconfirmed, including
+  // when the network read falls back to a saved snapshot or cache write fails.
+  punch.hasLocalProjection?(punch.readSource==='cache'
+   ?'Dernier relevé sauvegardé + pointages locaux en attente · non confirmés'
+   :'Relevé serveur + pointages locaux en attente · non confirmés'):
   punch.cacheWriteFailed?'Relevé serveur · copie hors ligne indisponible sur cet appareil':
   punch.readSource==='cache'?'Dernier relevé sauvegardé sur cet appareil':
-  punch.hasLocalProjection?'Relevé serveur + pointages locaux en attente':
   punch.readSource==='server'?'Dernier relevé reçu du serveur':'Relevé non vérifié';
  async function act(action:'punch'|'pause',paid=false){
   if(busy||punchActionInFlight.current||syncInFlight.current||!mobileAllowed||journalBlocked)return;
