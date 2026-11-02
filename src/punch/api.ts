@@ -70,7 +70,22 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .select('id,company_id,user_id,started_at,ended_at')
   .eq('company_id',companyId).eq('user_id',user.id)
   .order('started_at',{ascending:false}).limit(500);
- if(error||!Array.isArray(sessions))return offlineState();
+ // A structurally incomplete row must not masquerade as an empty or
+ // confirmed attendance record. Keep the previous cache until a complete
+ // server snapshot can be fetched; other tenant rows are filtered below.
+ const validServerRange=row=>typeof row?.started_at==='string'&&
+  Number.isFinite(Date.parse(row.started_at))&&
+  (row.ended_at===null||(typeof row.ended_at==='string'&&
+   Number.isFinite(Date.parse(row.ended_at))&&
+   Date.parse(row.ended_at)>=Date.parse(row.started_at)));
+ const validServerSession=row=>typeof row?.id==='string'&&!!row.id&&
+  typeof row.company_id==='string'&&typeof row.user_id==='string'&&validServerRange(row);
+ const validServerSegment=row=>typeof row?.id==='string'&&!!row.id&&
+  typeof row.company_id==='string'&&typeof row.session_id==='string'&&!!row.session_id&&
+  typeof row.job_id==='string'&&!!row.job_id&&validServerRange(row);
+ const validServerBreak=row=>typeof row?.id==='string'&&!!row.id&&
+  typeof row.session_id==='string'&&!!row.session_id&&validServerRange(row);
+ if(error||!Array.isArray(sessions)||!sessions.every(validServerSession))return offlineState();
  // A null or malformed successful response is not a verified empty shift.
  // Filter untrusted RPC rows before writing the offline snapshot. Filtering
  // only during UI projection would leave another tenant's records on disk.
@@ -80,10 +95,10 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
   .order('started_at',{ascending:false});
- if(segmentsError||!Array.isArray(segments))return offlineState();
+ if(segmentsError||!Array.isArray(segments)||!segments.every(validServerSegment))return offlineState();
  const ownSessionIds=new Set(list.map(s=>s.id));
  const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&ownSessionIds.has(s.session_id));
- const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data))return offlineState();
+ const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data)||!breakResult.data.every(validServerBreak))return offlineState();
  // Break rows do not select company_id/user_id on all schema versions;
  // their session_id must belong to a verified session before caching.
  const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&
