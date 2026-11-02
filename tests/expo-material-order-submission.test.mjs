@@ -20,9 +20,11 @@ function deferred(){
 }
 function fixture({online=true,unknown=false,probeThrows=false,origin=['worker-A'],
  verified='worker-A',authError=null,insertError=null,
- response={data:{id:'order-314'},error:null},transportThrows=false,hold=false}={}){
- const holdGate=deferred();
- let probes=0,identityReads=0,verifiedReads=0,inserts=0;
+ response={data:{id:'order-314'},error:null},transportThrows=false,hold=false,
+ jobResult={data:{id:'job-A',company_id:'tenant-A',active:true},error:null},
+ jobThrows=false,holdJob=false}={}){
+ const holdGate=deferred(),jobGate=deferred();
+ let probes=0,identityReads=0,verifiedReads=0,inserts=0,jobReads=0;
  const submissions=[];
  const Network={getNetworkStateAsync:async()=>{
   probes++;
@@ -36,6 +38,19 @@ function fixture({online=true,unknown=false,probeThrows=false,origin=['worker-A'
    data:{user:verified?{id:verified}:null},error:authError
   }}},
   from:table=>{
+   if(table==='jobs'){
+    jobReads++;
+    const query={
+     select:fields=>{assert.equal(fields,'id,company_id,active');return query},
+     eq:()=>query,
+     maybeSingle:async()=>{
+      if(holdJob)await jobGate.promise;
+      if(jobThrows)throw Error('Job lookup failed');
+      return jobResult;
+     }
+    };
+    return query;
+   }
    assert.equal(table,'material_orders');
    return {insert:payload=>{
     inserts++;submissions.push(payload);
@@ -53,8 +68,8 @@ function fixture({online=true,unknown=false,probeThrows=false,origin=['worker-A'
  const exports={};
  new Function('exports','Network','getLocalIdentity','supabase',compiled)(
   exports,Network,getLocalIdentity,supabase);
- return {...exports,release:holdGate.resolve,submissions,
-  get calls(){return {probes,identityReads,verifiedReads,inserts}}};
+ return {...exports,release:holdGate.resolve,releaseJob:jobGate.resolve,submissions,
+  get calls(){return {probes,identityReads,verifiedReads,jobReads,inserts}}};
 }
 
 test('valid active company job and description get normalized before insert',async()=>{
@@ -62,7 +77,7 @@ test('valid active company job and description get normalized before insert',asy
  assert.equal(await f.submitMaterialOrder(draft()),'order-314');
  assert.deepEqual(f.submissions,[{company_id:'tenant-A',job_id:'job-A',
   created_by:'worker-A',note:'4 boîtes de vis'}]);
- assert.deepEqual(f.calls,{probes:1,identityReads:2,verifiedReads:1,inserts:1});
+ assert.deepEqual(f.calls,{probes:1,identityReads:2,verifiedReads:1,jobReads:1,inserts:1});
 });
 
 test('empty account or description rejects before any identity/network request',async()=>{
@@ -166,4 +181,52 @@ test('native orders screen sends via helper and hides foreign account histories'
   const ast=ts.createSourceFile(filename,contents,ts.ScriptTarget.Latest,true,kind);
   assert.equal(ast.parseDiagnostics.length,0,filename+' has TypeScript syntax errors');
  }
+});
+
+test('server must confirm the job is active in the same company before inserting',async()=>{
+ const invalid=[
+  {data:null,error:null},
+  {data:{id:'job-A',company_id:'tenant-A',active:false},error:null},
+  {data:{id:'job-A',company_id:'tenant-B',active:true},error:null},
+  {data:{id:'job-B',company_id:'tenant-A',active:true},error:null},
+  {data:null,error:{message:'Forbidden'}}
+ ];
+ for(const jobResult of invalid){
+  const f=fixture({jobResult});
+  await assert.rejects(f.submitMaterialOrder(draft()),/Chantier inactif ou non vérifié/);
+  assert.equal(f.calls.jobReads,1);
+  assert.equal(f.calls.inserts,0);
+ }
+});
+
+test('job lookup transport failure blocks submission rather than trusting cached jobs',async()=>{
+ const f=fixture({jobThrows:true});
+ await assert.rejects(f.submitMaterialOrder(draft()),/Chantier non vérifié sur le serveur/);
+ assert.equal(f.calls.jobReads,1);
+ assert.equal(f.calls.inserts,0);
+});
+
+test('changing company during server job verification cannot submit stale purchase',async()=>{
+ const f=fixture({holdJob:true});
+ let current=true;
+ const first=f.submitMaterialOrder({...draft(),stillCurrent:()=>current});
+ for(let i=0;i<30&&f.calls.jobReads===0;i++)await Promise.resolve();
+ assert.equal(f.calls.jobReads,1);
+ current=false;
+ f.releaseJob();
+ await assert.rejects(first,/Entreprise changée pendant la vérification/);
+ assert.equal(f.calls.inserts,0);
+});
+
+test('active company context must be checked before even checking the chosen job',async()=>{
+ const f=fixture();
+ await assert.rejects(f.submitMaterialOrder({...draft(),stillCurrent:()=>false}),/Compte ou entreprise changé/);
+ assert.equal(f.calls.jobReads,0);
+ assert.equal(f.calls.inserts,0);
+});
+
+test('orders screen supplies a live scope check to the server-backed job preflight',()=>{
+ assert.match(app,/stillCurrent:\(\)=>scopeRef\.current===requestedScope/);
+ assert.match(source,/\.from\('jobs'\)\.select\('id,company_id,active'\)/);
+ assert.match(source,/jobResponse\.data\?\.active!==true/);
 });
