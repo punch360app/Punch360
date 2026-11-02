@@ -354,6 +354,73 @@ test('old track-ended callback cannot stop a replacement camera session',async()
  assert.equal(streams[1].track.stops,1);
 });
 
+test('empty camera stream cannot start a phantom QR preview',async()=>{
+ const notices=[],scheduled=[],video={srcObject:null,async play(){},pause(){}};
+ const camera=createKioskQrCamera({
+  mediaDevices:{async getUserMedia(){return {getTracks:()=>[]}}},
+  BarcodeDetector:class{async detect(){throw Error('must not scan without video')}},
+  notify:key=>notices.push(key),
+  schedule:callback=>{scheduled.push(callback);return 1;},cancel(){},
+  expire:()=>1,cancelExpire(){}
+ });
+ assert.equal(await camera.start(video),false);
+ assert.equal(camera.active,false);
+ assert.equal(video.srcObject,null);
+ assert.deepEqual(notices,['camera']);
+ assert.equal(scheduled.length,0);
+});
+
+test('audio-only or already-ended video stream is rejected before QR decoding',async()=>{
+ for(const mode of ['audio-only','ended-video']){
+  const notices=[],scheduled=[],tracks=[];
+  const track={kind:mode==='audio-only'?'audio':'video',readyState:mode==='audio-only'?'live':'ended',
+   stops:0,stop(){this.stops++},addEventListener(){},removeEventListener(){}};
+  tracks.push(track);
+  const stream={
+   getTracks:()=>tracks,
+   getVideoTracks:()=>mode==='audio-only'?[]:tracks
+  };
+  const video={srcObject:null,async play(){},pause(){}};
+  const camera=createKioskQrCamera({
+   mediaDevices:{async getUserMedia(){return stream}},
+   BarcodeDetector:class{async detect(){throw Error('must not decode an unavailable video track')}},
+   notify:key=>notices.push(key),
+   schedule:fn=>{scheduled.push(fn);return 1;},cancel(){},
+   expire:()=>2,cancelExpire(){}
+  });
+  assert.equal(await camera.start(video),false,mode);
+  assert.equal(camera.active,false,mode);
+  assert.equal(video.srcObject,null,mode);
+  assert.deepEqual(notices,['camera'],mode);
+  assert.equal(track.stops,1,mode);
+  assert.equal(scheduled.length,0,mode);
+ }
+});
+
+test('track ending while listener registers closes and detaches without stale preview',async()=>{
+ const listeners=new Set(),notices=[],scheduled=[];
+ const track={readyState:'live',stops:0,stop(){this.stops++},
+  addEventListener(type,handler){if(type==='ended'){listeners.add(handler);this.readyState='ended';handler();}},
+  removeEventListener(type,handler){if(type==='ended')listeners.delete(handler)}
+ };
+ const stream={getTracks:()=>[track],getVideoTracks:()=>[track]};
+ const video={srcObject:null,async play(){},pause(){}};
+ const camera=createKioskQrCamera({
+  mediaDevices:{async getUserMedia(){return stream}},
+  BarcodeDetector:class{async detect(){throw Error('must not decode after track ends')}},
+  notify:key=>notices.push(key),
+  schedule:fn=>{scheduled.push(fn);return 1;},cancel(){},
+  expire:()=>2,cancelExpire(){}
+ });
+ assert.equal(await camera.start(video),false);
+ assert.equal(camera.active,false);
+ assert.equal(video.srcObject,null);
+ assert.equal(track.stops,1);
+ assert.equal(listeners.size,0,'ended listener must be removed immediately');
+ assert.equal(scheduled.length,0);
+ assert.deepEqual(notices,['camera']);
+});
+
 test('QR scanner owns its own timeout instead of inheriting an earlier PIN form idle timer',()=>{
  const kiosk=readFileSync(new URL('../web/live/kiosk.js',import.meta.url),'utf8');
  assert.match(kiosk,/if\(action==='scan-qr'\)\{[^\n]*clearTimeout\(timer\);state\.qrOpen=true/);
