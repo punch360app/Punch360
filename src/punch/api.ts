@@ -71,16 +71,23 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .eq('company_id',companyId).eq('user_id',user.id)
   .order('started_at',{ascending:false}).limit(500);
  if(error)return offlineState();
- const list=sessions as PunchSession[]||[];
+ // Filter untrusted RPC rows before writing the offline snapshot. Filtering
+ // only during UI projection would leave another tenant's records on disk.
+ const list=((sessions||[]) as PunchSession[]).filter(s=>s&&s.company_id===companyId&&s.user_id===user.id);
  if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(empty))}catch{cacheWriteFailed=true}return overlay(empty,'server',cacheWriteFailed);}
  const {data:segments,error:segmentsError}=await supabase.from('punch_segments')
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
   .order('started_at',{ascending:false});
  if(segmentsError)return offlineState();
- const sorted=(segments||[]) as PunchSegment[];
+ const ownSessionIds=new Set(list.map(s=>s.id));
+ const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&ownSessionIds.has(s.session_id));
  const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error)return offlineState();
- const snapshot={breaks:breakResult.data||[],sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{cacheWriteFailed=true}return overlay(snapshot,'server',cacheWriteFailed);
+ // Break rows do not select company_id/user_id on all schema versions;
+ // their session_id must belong to a verified session before caching.
+ const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&
+  (b.company_id==null||b.company_id===companyId)&&(b.user_id==null||b.user_id===user.id));
+ const snapshot={breaks:ownBreaks,sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{cacheWriteFailed=true}return overlay(snapshot,'server',cacheWriteFailed);
 }
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{
