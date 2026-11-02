@@ -138,3 +138,33 @@ test('native home, hours and footer use the same blocked journal state',()=>{
  assert.match(source,/Ces événements ne constituent pas une validation officielle des heures/);
  assert.match(source,/notice\|\|pending\|\|conflicts\|\|journalBlocked/);
 });
+
+test('native home permits a manual retry without navigating to My Hours',()=>{
+ const home=source.slice(source.indexOf("page==='home'?"),source.indexOf(":page==='hours'?"));
+ assert.match(home,/pending>0&&!journalBlocked\?<Pressable accessibilityRole="button"/);
+ assert.match(home,/accessibilityLabel="Synchroniser mes pointages en attente"/);
+ assert.match(home,/accessibilityState=\{\{disabled:busy\}\} disabled=\{busy\}/);
+ assert.match(home,/onPress=\{\(\)=>\{void syncLocalPunches\(\)\}\}/);
+ assert.match(home,/busy\?'Synchronisation…':'Synchroniser maintenant'/);
+ const handler=source.slice(source.indexOf('async function syncLocalPunches(){'),source.indexOf('const navDestination='));
+ assert.match(handler,/if\(busy\|\|punchActionInFlight.current\|\|syncInFlight.current\|\|journalBlocked\)return/);
+ assert.match(handler,/await loadPunchState\(account.companyId\)/);
+});
+
+test('native home routes blocked journals and conflicts to the scoped My Hours list',()=>{
+ const home=source.slice(source.indexOf("page==='home'?"),source.indexOf(":page==='hours'?"));
+ assert.match(home,/journalBlocked\|\|conflicts>0\?<Pressable accessibilityRole="button"/);
+ assert.match(home,/accessibilityLabel="Consulter les pointages à vérifier"/);
+ assert.match(home,/onPress=\{\(\)=>setPage\('hours'\)\}/);
+ assert.match(home,/Vérifier le journal dans Mes heures/);
+ assert.match(home,/Voir les conflits dans Mes heures/);
+ assert.doesNotMatch(home,/onPress=\{\(\)=>.*journal\.flush/);
+});
+
+test('both native home and My Hours reuse the same protected sync handler',()=>{
+ const home=source.slice(source.indexOf("page==='home'?"),source.indexOf(":page==='hours'?"));
+ const hours=source.slice(source.indexOf(":page==='hours'?"),source.indexOf(":page==='schedule'?"));
+ assert.equal((home.match(/void syncLocalPunches\(\)/g)||[]).length,1);
+ assert.equal((hours.match(/void syncLocalPunches\(\)/g)||[]).length,1);
+ assert.match(hours,/Ces événements ne constituent pas une validation officielle des heures/);
+});

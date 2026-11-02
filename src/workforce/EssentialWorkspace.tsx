@@ -293,7 +293,17 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  </View>:null}
  <PersonalMissionCard companyId={account.companyId} workerId={missionWorker?.key===visitContext.current?missionWorker.id:null} navProvider={navPref}/>
  {visitUnavailable?txt('Adresses d’intervention : consultation en ligne indisponible ou incomplète.',{fontSize:10,color:Z.muted}):null}
- <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(journalBlocked?'Journal à vérifier':pending?pending+' en attente':conflicts?conflicts+' conflit(s)':punch.readSource==='cache'?'Copie locale':punch.readSource==='server'?'Relevé serveur':'Relevé non vérifié',{fontSize:15,marginTop:15,color:Z.sage})}</View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(tr('thisWeek').toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(weekly),{fontSize:36,fontWeight:'300',marginTop:8})}
+ <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(journalBlocked?'Journal à vérifier':pending?pending+' en attente':conflicts?conflicts+' conflit(s)':punch.readSource==='cache'?'Copie locale':punch.readSource==='server'?'Relevé serveur':'Relevé non vérifié',{fontSize:15,marginTop:15,color:Z.sage})}
+ {pending>0&&!journalBlocked?<Pressable accessibilityRole="button" accessibilityLabel="Synchroniser mes pointages en attente"
+  accessibilityState={{disabled:busy}} disabled={busy}
+  onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:7}}>
+  {txt(busy?'Synchronisation…':'Synchroniser maintenant',{fontSize:11,color:Z.sage,fontWeight:'700'})}
+ </Pressable>:null}
+ {journalBlocked||conflicts>0?<Pressable accessibilityRole="button" accessibilityLabel="Consulter les pointages à vérifier"
+  onPress={()=>setPage('hours')} style={{paddingVertical:7}}>
+  {txt(journalBlocked?'Vérifier le journal dans Mes heures':pending?conflicts+' conflit(s) · voir Mes heures':'Voir les conflits dans Mes heures',{fontSize:11,color:Z.sage,fontWeight:'700'})}
+ </Pressable>:null}
+ </View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(tr('thisWeek').toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(weekly),{fontSize:36,fontWeight:'300',marginTop:8})}
  {txt(hoursOrigin,{fontSize:11,color:Z.muted,marginTop:7})}
  {txt('Total indicatif · les heures restent sujettes à validation.',{fontSize:10,color:Z.muted,marginTop:4})}
  </View>{journalBlocked||pending||conflicts?<View style={[styles.card,{gap:7}]}>
