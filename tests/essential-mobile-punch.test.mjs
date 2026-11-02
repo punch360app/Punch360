@@ -82,7 +82,7 @@ test('a valid open employee segment can PUNCH OUT even if its establishment was 
 
 test('an open session must match this exact worker and have exactly one matching open segment',()=>{
  const session={id:'session-1',company_id:'A',user_id:'u',ended_at:null};
- const segment={id:'segment-1',company_id:'A',session_id:session.id,job_id:'closed-workplace',ended_at:null};
+ const segment={id:'segment-1',company_id:'A',user_id:'u',session_id:session.id,job_id:'closed-workplace',ended_at:null};
  const resolve=(s,segments)=>resolveEssentialMobilePunchAction('A','u',s,segments,'any',[]);
  assert.deepEqual(resolve(session,[segment]),{action:'out',jobId:null});
  for(const s of [{...session,user_id:'other'},{...session,company_id:'B'},
@@ -91,6 +91,7 @@ test('an open session must match this exact worker and have exactly one matching
   assert.equal(resolve(s,[segment]),null);
  }
  for(const segments of [[{...segment,company_id:'B'}],
+  [{...segment,user_id:'foreign-worker'}],
   [{...segment,session_id:'other'}],[{...segment,ended_at:'2026-11-01T12:00:00Z'}],
   [{...segment,job_id:null}],[segment,segment],[],null]){
   assert.equal(resolve(session,segments),null);
@@ -120,7 +121,11 @@ test('first punch guidance uses acknowledged company sessions and never optimist
  assert.equal(first('A','A',worker,empty,0,null),'missing-workplace');
  assert.equal(first('A','A',worker,empty,1,job),null);
  assert.equal(first('A','B',worker,empty,0,job),null);
- assert.equal(first('A','A',worker,{sessions:[{user_id:'u'}]},0,job),null);
+ assert.equal(first('A','A',worker,{sessions:[{company_id:'A',user_id:'u'}]},0,job),null);
+ assert.equal(first('A','A',worker,{sessions:[{company_id:'B',user_id:'u'}]},0,job),null,
+  'A foreign company session for the same user must not authorize first-punch guidance');
+ assert.equal(first('A','A',worker,{sessions:[{user_id:'u'}]},0,job),null,
+  'An unscoped legacy same-user row must not be trusted');
  assert.equal(first('A','A',worker,{sessions:[{user_id:'other'}]},0,job),'ready');
  assert.equal(first('A','A',{...worker,can_mobile_punch:false},empty,0,job),null);
  assert.equal(first('A','A',{...worker,company_id:'B'},empty,0,job),null);
@@ -139,17 +144,27 @@ test('public first-punch action does not fall back to a selected unrelated Job',
 });
 
 test('Kiosk-only home reports only last acknowledged server session for current company and user',()=>{
- const sessions=[{user_id:'u',started_at:'2026-10-31T11:00:00Z',ended_at:'2026-10-31T15:00:00Z'},
-  {user_id:'u',started_at:'2026-11-01T12:00:00Z',ended_at:null},
-  {user_id:'other',started_at:'2026-11-02T11:00:00Z',ended_at:null}];
+ const sessions=[{company_id:'A',user_id:'u',started_at:'2026-10-31T11:00:00Z',ended_at:'2026-10-31T15:00:00Z'},
+  {company_id:'A',user_id:'u',started_at:'2026-11-01T12:00:00Z',ended_at:null},
+  {company_id:'A',user_id:'other',started_at:'2026-11-02T11:00:00Z',ended_at:null}];
  assert.deepEqual(lastConfirmedKioskPunch('A','A','u',{sessions}),{type:'in',at:'2026-11-01T12:00:00Z'});
  assert.equal(lastConfirmedKioskPunch('A','B','u',{sessions}),null);
  assert.equal(lastConfirmedKioskPunch('A',null,'u',{sessions}),null);
  assert.equal(lastConfirmedKioskPunch('A','A','missing',{sessions}),null);
  assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[]}),null);
- assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[{user_id:'u',started_at:'bad'}]}),null);
- assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[{user_id:'u',started_at:'2026-10-30T16:00:00Z',ended_at:'2026-10-30T08:00:00Z'}]}),null);
- assert.deepEqual(lastConfirmedKioskPunch('A','A','u',{sessions:[{user_id:'u',started_at:'2026-10-30T08:00:00Z',ended_at:'2026-10-30T16:00:00Z'}]}),
+ assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[{
+  company_id:'B',user_id:'u',started_at:'2026-11-03T11:00:00Z',ended_at:null
+ }]}),null,'Foreign company records are not kiosk status');
+ assert.deepEqual(lastConfirmedKioskPunch('A','A','u',{sessions:[...sessions,{
+  company_id:'B',user_id:'u',started_at:'2026-11-03T11:00:00Z',ended_at:null
+ }]}),{type:'in',at:'2026-11-01T12:00:00Z'},
+  'A later foreign-company session must not replace the current company status');
+ assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[{
+  user_id:'u',started_at:'2026-11-01T12:00:00Z',ended_at:null
+ }]}),null,'A legacy record with no tenant cannot claim confirmed kiosk status');
+ assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[{company_id:'A',user_id:'u',started_at:'bad'}]}),null);
+ assert.equal(lastConfirmedKioskPunch('A','A','u',{sessions:[{company_id:'A',user_id:'u',started_at:'2026-10-30T16:00:00Z',ended_at:'2026-10-30T08:00:00Z'}]}),null);
+ assert.deepEqual(lastConfirmedKioskPunch('A','A','u',{sessions:[{company_id:'A',user_id:'u',started_at:'2026-10-30T08:00:00Z',ended_at:'2026-10-30T16:00:00Z'}]}),
   {type:'out',at:'2026-10-30T16:00:00Z'});
 });
 test('Read-only kiosk indicator uses company-bound server data, not projected offline journal',()=>{
