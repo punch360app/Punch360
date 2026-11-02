@@ -421,7 +421,11 @@ async function locatedPunch(action,job,paid=false){if(isEssential()&&!essentialM
   throw Error('Accusé serveur du pointage indisponible : vérifiez Mes heures avant de repointer.');
  return {...saved.result,queued:false,review_status:saved.result.review_status};
 }
-const passivePunchRefresh=createScopedPassivePunchRefresh({
+let scopedPassivePunchRefresh=null;
+const passivePunchRefresh=()=>{
+ // Initialize only on the first refresh. No network or journal operation
+ // is needed merely because the Web app module is evaluated.
+ if(!scopedPassivePunchRefresh)scopedPassivePunchRefresh=createScopedPassivePunchRefresh({
  getScope:()=>member()?{companyId:company(),userId:state.user?.id,role:state.account?.role}:null,
  isCurrent:scope=>member()&&company()===scope.companyId&&
   state.user?.id===scope.userId&&state.account?.role===scope.role,
@@ -438,7 +442,9 @@ const passivePunchRefresh=createScopedPassivePunchRefresh({
   return result.error?null:result.data;
  },
  refresh:async()=>reload({quiet:true})
-});
+ });
+ return scopedPassivePunchRefresh();
+};
 window.addEventListener('online',()=>{void passivePunchRefresh()});
 document.addEventListener('visibilitychange',()=>{
  if(!document.hidden)void passivePunchRefresh();
