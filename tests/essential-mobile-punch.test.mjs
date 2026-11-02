@@ -153,7 +153,7 @@ test('Kiosk-only home reports only last acknowledged server session for current 
   {type:'out',at:'2026-10-30T16:00:00Z'});
 });
 test('Read-only kiosk indicator uses company-bound server data, not projected offline journal',()=>{
- assert.match(app,/state.serverPunchCompany===company\(\)/);
+ assert.match(app,/const kioskStatus=!mobile\?lastConfirmedKioskPunch\(company\(\),state\.serverPunchCompany/);
  assert.match(app,/lastConfirmedKioskPunch\(company\(\),state.serverPunchCompany,state.user.id,state.serverPunch\)/);
  assert.match(app,/Dernier pointage confirmé disponible/);
  assert.match(app,/canUseEssentialMobilePunch\(company\(\),state.user\?\.id,essentialUI.state.worker\)/);
