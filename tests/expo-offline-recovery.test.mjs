@@ -24,7 +24,7 @@ const cached={sessions:[foreign,own],segments:[
  {id:'other-segment',company_id:'B',session_id:'foreign',job_id:'other-site',started_at:foreign.started_at,ended_at:null},
  {id:'own-segment',company_id:'A',session_id:'own',job_id:'my-site',started_at:own.started_at,ended_at:null}
 ],breaks:[],active:foreign,lastJobId:'other-site'};
-function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,serverMixed=false,rawCache=undefined}={}){
+function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,networkStateFail=false,breakFail=false,writeFail=false,emptyServer=false,serverMixed=false,rawCache=undefined,malformedTable='',malformedData=null}={}){
  const store=new Map(),calls={send:0,read:0,db:0};
  if(rawCache!==null)store.set('punch-state:U:A',rawCache===undefined?JSON.stringify(cached):rawCache);
  const offlineEvents=[{id:'out',company:'A',user:'U',action:'out',status:'pending',occurredAt:'2026-11-02T12:00:00Z'}];
@@ -39,6 +39,7 @@ function fixture({offline=true,flushFail=false,readFail=false,dbFail=false,netwo
     {id:'other-break',session_id:'foreign',started_at:foreign.started_at,ended_at:null},
     {id:'own-break',session_id:'own',started_at:own.started_at,ended_at:null}
    ]:[],error:breakFail?Error('Breaks unavailable'):null};
+  if(table===malformedTable)result.data=malformedData;
   const q={select:()=>q,eq:()=>q,in:()=>q,order:()=>q,limit:()=>q,
    then:(ok,bad)=>{calls.db++;return Promise.resolve(result).then(ok,bad)}};
   return q;
@@ -223,4 +224,33 @@ test('Expo filters foreign RPC rows before persisting the offline snapshot',asyn
  assert.deepEqual(stored.breaks.map(b=>b.id),['own-break']);
  assert.equal(stored.lastJobId,'my-site');
  assert.equal(state.readSource,'server');
+});
+
+test('Expo rejects incomplete server arrays and preserves the last cached hours',async()=>{
+ for(const table of ['punch_sessions','punch_segments','punch_breaks']){
+  for(const malformedData of [null,{}]){
+   const h=fixture({offline:false,malformedTable:table,malformedData});
+   const state=await h.load('A');
+   assert.equal(state.readSource,'cache',table+' '+String(malformedData));
+   assert.equal(state.snapshotUnverified,false,table);
+   assert.deepEqual(state.sessions.map(s=>s.id),['own'],table);
+   assert.deepEqual(state.segments.map(s=>s.id),['own-segment'],table);
+   assert.equal(state.lastJobId,'my-site',table);
+  }
+ }
+});
+
+test('Expo rejects an incomplete online response with no cached hours, without treating it as an empty shift',async()=>{
+ const state=await fixture({offline:false,rawCache:null,malformedTable:'punch_sessions'}).load('A');
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.snapshotUnverified,true);
+ assert.equal(state.localJournalBlocked,true);
+ assert.deepEqual(state.sessions,[]);
+});
+
+test('a valid empty sessions array remains a confirmed server read',async()=>{
+ const state=await fixture({offline:false,emptyServer:true}).load('A');
+ assert.equal(state.readSource,'server');
+ assert.equal(state.snapshotUnverified,false);
+ assert.deepEqual(state.sessions,[]);
 });
