@@ -42,7 +42,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={requestFilter:'all',pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],localJournalBlocked:null,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={hoursWeekOffset:0,hoursWeekScope:'',requestFilter:'all',pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],localJournalBlocked:null,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -489,6 +489,16 @@ function essentialRequestsPage(){
   '</div>';
 }
 function essentialHours(){
+ // Navigation is local UI state only: never change the server attendance scope.
+ const hoursScope=company()+':'+(state.user?.id||'');
+ if(state.hoursWeekScope!==hoursScope){state.hoursWeekScope=hoursScope;state.hoursWeekOffset=0}
+ const weekOffset=state.hoursWeekOffset;
+ const today=new Date(state.time);
+ const weekStart=new Date(today.getFullYear(),today.getMonth(),
+  today.getDate()-(today.getDay()+6)%7-7*weekOffset);
+ const weekNav='<div class="ess-actions" style="display:flex;gap:8px;flex-wrap:wrap" aria-label="Navigation des semaines">'+
+  (weekOffset<4?button('← Semaine précédente','hoursWeek','','data-id="older"'):'')+
+  (weekOffset>0?button('Semaine suivante →','hoursWeek','','data-id="newer"'):'')+'</div>';
  const tracking=myRequestsTimeline();
  const trackingRows=tracking.items.map(r=>'<div class="hoursitem"><div class="grow"><b>'+
   e(r.title)+'</b><small>'+(r.at?e(when(r.at)):'Date indisponible')+
@@ -498,14 +508,14 @@ function essentialHours(){
  const view=essentialHoursView({companyId:company(),userId:state.user?.id,
   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,
   projectedSessions:state.sessions,projectedSegments:state.segments,
-  projectedBreaks:state.breaks,pendingCount:state.localPending,now:state.time,snapshotFetchedAt:state.serverPunchFetchedAt});
+  projectedBreaks:state.breaks,pendingCount:state.localPending,now:state.time,snapshotFetchedAt:state.serverPunchFetchedAt,weekOffset});
  const notice=state.localPending>0?'<p class="ess-notice" role="status">'+state.localPending+' événement(s) conservé(s) sur cet appareil et en attente de synchronisation. Ils ne figurent pas dans le relevé serveur ni dans l’export CSV.</p>':'';
- const weekly=view.ready?'<span class="eyebrow">CETTE SEMAINE · DERNIER RELEVÉ SERVEUR REÇU</span><div class="zen-total">'+mins(view.confirmedWeekMs)+'</div><p class="small muted">Temps calculé depuis les pointages reçus du serveur, non approuvé pour la paie. '+(Number.isFinite(state.serverPunchFetchedAt)?'Dernière lecture : '+e(when(new Date(state.serverPunchFetchedAt).toISOString()))+'. ':'')+'La journée ouverte est provisoire; les données hors ligne ou une lecture réseau incomplète peuvent manquer.</p>':
+ const weekly=view.ready?'<span class="eyebrow">'+(weekOffset===0?'CETTE SEMAINE':'SEMAINE DU '+e(weekStart.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'})))+' · DERNIER RELEVÉ SERVEUR REÇU</span><div class="zen-total">'+mins(view.confirmedWeekMs)+'</div><p class="small muted">Temps calculé depuis les pointages reçus du serveur, non approuvé pour la paie. '+(Number.isFinite(state.serverPunchFetchedAt)?'Dernière lecture : '+e(when(new Date(state.serverPunchFetchedAt).toISOString()))+'. ':'')+'La journée ouverte est provisoire; les données hors ligne ou une lecture réseau incomplète peuvent manquer.</p>':
   '<p class="ess-notice" role="status">Aucun relevé serveur vérifiable pour cette entreprise. Vos heures ne sont pas confirmées sur cet appareil.</p>';
  const estimate=view.hasPending&&view.projectedWeekMs!==null?
   '<p class="small muted">Estimation locale avec événements en attente : '+mins(view.projectedWeekMs)+' · non confirmée.</p>':'';
  const daily=view.ready&&view.confirmedDaily.length?
-  '<div class="ess-panel"><b>Cette semaine · détail quotidien du relevé serveur</b>'+
+  '<div class="ess-panel"><b>'+(weekOffset===0?'Cette semaine':'Semaine sélectionnée')+' · détail quotidien du relevé serveur</b>'+
   '<p class="small muted">Brut, pauses non payées et net au dernier relevé reçu. Les pointages locaux en attente ne sont pas inclus. Ces heures ne constituent pas une approbation de paie.</p>'+
   view.confirmedDaily.map(row=>'<div class="hoursitem"><div class="grow"><b>'+
    e(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}))+
@@ -515,7 +525,7 @@ function essentialHours(){
   card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours · durée provisoire')+'</p><strong>'+mins(netMs)+' net'+(open?' · dernier relevé serveur':'')+'</strong>')).join(''):
   '<p class="small muted">'+(view.ready?'Aucune journée enregistrée sur le serveur.':'Historique serveur indisponible.')+'</p>';
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
-  notice+essentialPunchSyncPanel()+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
+  notice+essentialPunchSyncPanel()+weekNav+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
   daily+'<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
   '<div class="ess-panel"><b>Mes demandes et absences · dernier relevé reçu</b>'+
   '<p class="small muted">'+tracking.pendingCount+' demande(s) en attente parmi les données vérifiées. Une demande approuvée ne confirme pas, à elle seule, votre paie.</p>'+
@@ -1268,6 +1278,11 @@ else if(a==='closeWeek'||a==='reopenWeek')await setWeek(a==='closeWeek');
 else if(a==='exportHours')await exportHours();
 else if(a==='correction')await submitCorrection();
 else if(a==='submitOrder')await createOrder();
+else if(a==='hoursWeek'&&(id==='older'||id==='newer')){
+ const scope=company()+':'+(state.user?.id||'');
+ if(state.hoursWeekScope!==scope){state.hoursWeekScope=scope;state.hoursWeekOffset=0}
+ state.hoursWeekOffset=Math.max(0,Math.min(4,state.hoursWeekOffset+(id==='older'?1:-1)));draw();
+}
 else if(a==='requestFilter'){if(['all','pending','approved','rejected','cancelled'].includes(id)){state.requestFilter=id;draw()}}
 else if(a==='subpage'){state.section='sub';state.sub=id;if(id==='supervision')await essentialUI.supervision.refresh();if(id==='bossHandoff'&&isEssential()&&manager())await bossHandoff.load(company(),state.account.role,state.user.id);draw()}
 else if(['createTeam','addTeamWorker','assignTeamJob'].includes(a))await saveTeam(a);

@@ -284,3 +284,60 @@ test('Web Mes heures renders read-only server daily breakdown separately from pe
  assert.match(app,/pointages locaux en attente ne sont pas inclus/);
  assert.match(app,/daily\+'<div class="ess-panel"><b>Historique des journées/);
 });
+
+test('Web selected week shows only server-confirmed hours in that local week',()=>{
+ const local=(y,m,d,h)=>new Date(y,m-1,d,h).getTime();
+ const iso=ms=>new Date(ms).toISOString();
+ const oldStart=local(2026,10,28,8),nowStart=local(2026,11,4,8);
+ const add=(id,start,duration)=>({id,company_id:company,user_id:user,started_at:iso(start),ended_at:iso(start+duration)});
+ const old=add('old-week',oldStart,3*3600000),recent=add('this-week',nowStart,2*3600000);
+ const source={sessions:[old,recent],segments:[old,recent].map(s=>({session_id:s.id,company_id:company,started_at:s.started_at,ended_at:s.ended_at})),breaks:[]};
+ const args={...fixture,snapshot:source,now:local(2026,11,4,18),snapshotFetchedAt:local(2026,11,4,17)};
+ assert.equal(essentialHoursView({...args,weekOffset:0}).confirmedWeekMs,2*3600000);
+ const previous=essentialHoursView({...args,weekOffset:1});
+ assert.equal(previous.confirmedWeekMs,3*3600000);
+ assert.deepEqual(previous.confirmedDaily.map(r=>r.netMs),[3*3600000]);
+ assert.equal(essentialHoursView({...args,weekOffset:2}).confirmedWeekMs,0);
+});
+test('Web historical week projection stays unconfirmed and rejects other users',()=>{
+ const atLocal=(y,m,d,h)=>new Date(y,m-1,d,h).getTime(),iso=x=>new Date(x).toISOString();
+ const begin=atLocal(2026,10,28,8),now=atLocal(2026,11,4,15);
+ const old={id:'server-old',company_id:company,user_id:user,started_at:iso(begin),ended_at:iso(begin+3600000)};
+ const local={...old,id:'pending-old',started_at:iso(begin+7200000),ended_at:iso(begin+10800000)};
+ const stranger={...local,id:'foreign',user_id:'stranger',started_at:iso(begin+14400000)};
+ const segment=s=>({session_id:s.id,company_id:s.company_id,started_at:s.started_at,ended_at:s.ended_at});
+ const args={...fixture,now,weekOffset:1,snapshotFetchedAt:now-60000,
+  snapshot:{sessions:[old],segments:[segment(old)],breaks:[]},pendingCount:1,
+  projectedSessions:[old,local,stranger],
+  projectedSegments:[segment(old),segment(local),segment(stranger)],projectedBreaks:[]};
+ const result=essentialHoursView(args);
+ assert.equal(result.confirmedWeekMs,3600000);
+ assert.equal(result.projectedWeekMs,7200000);
+ assert.equal(result.confirmedDaily.reduce((a,r)=>a+r.netMs,0),3600000);
+});
+test('historical week hours stop at next local Monday rather than including current week',()=>{
+ const local=(y,m,d,h=0)=>new Date(y,m-1,d,h).getTime(),iso=x=>new Date(x).toISOString();
+ const start=local(2026,10,31,10),now=local(2026,11,4,16);
+ const open={id:'old-open',company_id:company,user_id:user,started_at:iso(start),ended_at:null};
+ const s={session_id:open.id,company_id:company,started_at:open.started_at,ended_at:null};
+ const result=essentialHoursView({...fixture,now,weekOffset:1,snapshotFetchedAt:now,
+  snapshot:{sessions:[open],segments:[s],breaks:[]}});
+ const end=local(2026,11,2);
+ assert.equal(result.confirmedWeekMs,end-start);
+ assert.equal(result.confirmedDaily.reduce((sum,r)=>sum+r.netMs,0),end-start);
+});
+test('Web hours navigation validates offsets and binds both arrows to scoped UI state',()=>{
+ for(const offset of [-1,5,1.2,NaN,Infinity]){
+  const v=essentialHoursView({...fixture,weekOffset:offset});
+  assert.equal(v.ready,false);
+  assert.equal(v.confirmedWeekMs,0);
+ }
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/hoursWeekOffset:0,hoursWeekScope:''/);
+ assert.match(app,/state\.hoursWeekScope!==hoursScope/);
+ assert.match(app,/weekOffset:1/);
+ assert.match(app,/data-id="older"/);
+ assert.match(app,/data-id="newer"/);
+ assert.match(app,/Math\.max\(0,Math\.min\(4,state\.hoursWeekOffset/);
+ assert.match(app,/snapshotFetchedAt:state\.serverPunchFetchedAt,weekOffset/);
+});
