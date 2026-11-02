@@ -98,3 +98,31 @@ test('manager home uses the shared Essential dashboard and adds the scoped summa
  assert.match(app,/if\(isEssential\(\)\)return essentialUI\.renderDashboard\(state\.account\)\+essentialManagerApprovalsHomePanel\(\)/);
  assert.match(app,/import \{essentialManagerApprovalsSummary\} from '\.\/essential-manager-approvals-summary\.js'/);
 });
+
+test('counts unique verified request IDs across manager inbox categories',()=>{
+ const s=base();
+ s.correctionView.requests=[
+  row('duplicate-c'),{...row('duplicate-c')},
+  {...row('duplicate-c'),company_id:'other-company'},
+  row('own-c',reviewerId),{...row('decided-c'),status:'approved'}];
+ s.leaveView.requests=[row('duplicate-l'),{...row('duplicate-l')}];
+ s.breakView.requests=[row('duplicate-b'),{...row('duplicate-b')}];
+ s.missingView={ready:true,count:0};
+ const v=essentialManagerApprovalsSummary(s);
+ assert.deepEqual(v.sections.map(x=>x.count),[1,1,1,0]);
+ assert.equal(v.total,3);
+ assert.equal(v.complete,true);
+ assert.doesNotMatch(JSON.stringify(v),/other-company|duplicate-c|duplicate-l|duplicate-b/);
+});
+test('counts valid row even when an invalid same-ID entry preceded it',()=>{
+ const s=base();
+ s.correctionView.requests=[
+  {...row('shared'),company_id:'other-company'},row('shared'),
+  {...row('shared'),status:'approved'},{...row('self',reviewerId)}];
+ s.leaveView.requests=[];
+ s.breakView.requests=[];
+ s.missingView={ready:true,count:0};
+ const v=essentialManagerApprovalsSummary(s);
+ assert.deepEqual(v.sections.map(x=>x.count),[1,0,0,0]);
+ assert.equal(v.total,1);
+});
