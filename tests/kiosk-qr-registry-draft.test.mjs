@@ -74,3 +74,27 @@ test('draft SQL acceptance plan is rollback-only, with no live customer fixture'
  }
  assert.doesNotMatch(acceptance,/(?:punch360app@gmail\.com|@gmail\.com|@outlook\.com)/i);
 });
+
+test('QR membership changes revoke independent of worker synchronization',()=>{
+ assert.match(sql,/create function private\.revoke_kiosk_qr_on_membership_change\(\)/);
+ assert.match(sql,/create trigger revoke_kiosk_qr_on_membership_change/);
+ assert.match(sql,/after update of status,role,user_id,company_id or delete/);
+ assert.match(sql,/where company_id=old\.company_id and enrolled_user_id=old\.user_id/);
+ assert.match(sql,/where company_id=old\.company_id[\s\S]*?worker_id in \([\s\S]*?w\.auth_user_id=old\.user_id/);
+ assert.match(sql,/if tg_op='DELETE' then return old;end if;/);
+ assert.match(sql,/revoke all on function private\.revoke_kiosk_qr_on_membership_change\(\)/);
+ assert.ok(acceptance.includes('Disabled company membership kept QR active'));
+ assert.ok(acceptance.includes('Reactivation silently restored an old QR'));
+});
+
+test('QR expiration and revocation timestamps refresh only after acquiring row locks',()=>{
+ const issue=fn('create_worker_qr_enrollment');
+ const activate=fn('activate_my_kiosk_qr_card');
+ const self=fn('revoke_my_kiosk_qr_card');
+ const admin=fn('revoke_worker_kiosk_qr_card');
+ assert.match(issue,/for update;\s*now_at:=clock_timestamp\(\);/);
+ assert.match(activate,/token_hash=sha256\(convert_to\(p_enrollment,'UTF8'\)\) for update;\s*now_at:=clock_timestamp\(\);/);
+ assert.ok(activate.indexOf('now_at:=clock_timestamp();')<activate.indexOf('challenge.expires_at<=now_at'));
+ assert.match(self,/for update;\s*now_at:=clock_timestamp\(\);/);
+ assert.match(admin,/for update;\s*now_at:=clock_timestamp\(\);/);
+});
