@@ -83,9 +83,10 @@ test('Network error falls back to scoped cached snapshot',async()=>{
  assert.deepEqual(s.sessions.map(x=>x.id),['own']);
 });
 test('Both native workspace UI paths disable writes during journal recovery',()=>{
- assert.match(essential,/if\(busy\|\|!mobileAllowed\|\|punch\.localJournalBlocked\)return/);
- assert.match(essential,/disabled=\{busy\|\|!mobileAllowed\|\|punch\.localJournalBlocked\}/);
- assert.match(essential,/punch\.active&&mobileAllowed&&!punch\.localJournalBlocked/);
+ assert.match(essential,/if\(busy\|\|punchActionInFlight\.current\|\|syncInFlight\.current\|\|!mobileAllowed\|\|journalBlocked\)return/);
+ assert.match(essential,/disabled=\{busy\|\|!mobileAllowed\|\|journalBlocked\|\|\(!punch\.active&&!siteJob\)\}/);
+ assert.match(essential,/punch\.active&&mobileAllowed&&!journalBlocked/);
+ assert.match(essential,/setJournalBlocked\(!!updated\.localJournalBlocked\|\|summary\.blocked\)/);
  assert.match(app,/disabled=\{journalBlocked\|\|working\|\|syncBusy\|\|journalViewScope!==currentScope\} onPress=\{togglePunch\}/);
  assert.match(app,/if\(journalBlocked\|\|journalViewScope!==currentScope\|\|working\|\|\s*punchActionInFlight\.current\|\|syncInFlight\.current\)\{/);
 });
@@ -313,4 +314,16 @@ test('Essentiel manual punch synchronization reports a cached fallback as unconf
  assert.match(evaluate({pending:1,readSource:'cache'}),/en attente/);
  assert.match(evaluate({conflicts:2}),/2 conflit\(s\).*responsable/);
  assert.match(evaluate({blocked:true,readSource:'server'}),/aucun envoi confirmé/);
+});
+
+test('Essentiel pause controls use only the active session and never a historical open break',()=>{
+ assert.match(essential,/paused=!!punch\.active&&\(punch\.breaks\|\|\[\]\)\.some\(b=>b\.session_id===punch\.active\?\.id&&b\.ended_at===null\)/);
+ const isPaused=(active,breaks)=>!!active&&(breaks||[]).some(b=>b.session_id===active.id&&b.ended_at===null);
+ const current={id:'session-now'};
+ const historical={session_id:'session-before',ended_at:null};
+ assert.equal(isPaused(current,[historical]),false);
+ assert.equal(isPaused(current,[historical,{session_id:'session-now',ended_at:null}]),true);
+ assert.equal(isPaused(null,[historical]),false);
+ assert.equal(isPaused(current,[{session_id:'session-now',ended_at:'2026-11-02T11:00:00Z'}]),false);
+ assert.match(essential,/punch\.readSource==='server'\?'Relevé serveur':'Relevé non vérifié'/);
 });
