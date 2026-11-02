@@ -74,7 +74,7 @@ test('manager queue includes only pending valid leave requests from the selected
 test('leave approvals route through a dedicated manager-only server-revalidated handler',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/import \{essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView\}/);
- assert.match(app,/essentialLeaveApprovalView\(\{companyId,manager:manager\(\),loaded:state\.leaveApprovalsLoaded,requests:state\.leaveApprovals,reviewerId:state\.user\?\.id\}\)/);
+ assert.match(app,/essentialLeaveApprovalView\(\{companyId:company\(\),manager:manager\(\),loaded:state\.leaveApprovalsLoaded,requests:state\.leaveApprovals,reviewerId:state\.user\?\.id\}\)/);
  assert.match(app,/if\(!isEssential\(\)\|\|!manager\(\)\)return toast\(/);
  assert.match(app,/if\(state\.leaveReviewSubmitting\)return/);
  assert.match(app,/\.eq\('id',id\)\.eq\('company_id',companyId\)\.eq\('status','pending'\)/);
