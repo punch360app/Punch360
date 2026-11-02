@@ -17,7 +17,7 @@ import type {WorkspaceAccount} from '../auth/AuthGate';
 import {loadPunchState,punchIn,punchOut,punchBreak,hoursFor,PunchState} from '../punch/api';
 import {personalUpcomingClientVisit} from '../../web/live/personal-client-visit.js';
 import {essentialWorkerPunchJobId} from '../../web/live/essential-mobile-punch.js';
-import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh} from '../../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../../web/live/essential-hours-view.js';
 import {PersonalMissionCard} from './MissionsPanel';
 import {navigationProviders,navigationUrl,navigationDestination,navigationPreferenceKey,chooseNavigationPreference,writeNavigationPreference} from '../../web/live/navigation-choices.js';
 import {journalSummary} from '../punch/journal';
@@ -198,6 +198,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const comparePendingHours=!!punch.hasLocalProjection&&!punch.snapshotUnverified&&!!punch.baselineSnapshot;
  const baselineWeekMs=hoursFor(baselineSegments,baselineLimit.until,week,baselineLimit.until,punch.baselineSnapshot?.breaks||[]);
  const offerCachedRefresh=shouldOfferEssentialCachedRefresh({readSource:punch.readSource,pending,blocked:journalBlocked});
+ const snapshotLabel=punch.snapshotUnverified?null:essentialMobileSnapshotLabel({readSource:punch.readSource,snapshotFetchedAt:punch.snapshotFetchedAt,now});
  const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
   journalBlocked?'Journal local à vérifier':
   // Pending local events must always be visible as unconfirmed, including
@@ -355,6 +356,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   </Pressable>
  </View>
  {txt(hoursOrigin,{fontSize:11,color:Z.muted,marginTop:7})}
+ {snapshotLabel?txt(snapshotLabel,{fontSize:10,color:Z.muted,marginTop:4}):null}
  {hoursLimit.excludeOpen&&!punch.hasLocalProjection
   ?txt('Date du dernier relevé indisponible : les quarts ouverts ne sont pas prolongés sans vérification serveur.',
     {fontSize:11,color:Z.muted,marginTop:5}):null}

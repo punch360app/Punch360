@@ -17,6 +17,26 @@ function netMilliseconds(segments,breaks,from,until){
   total+netSegmentMilliseconds(segment,bySession.get(segment.session_id)||[],from,until),0);
 }
 
+/** Time of the device's last complete server read, never a payroll
+ * approval or an assertion about the server's own clock.
+ * @param {{readSource?:'server'|'cache',snapshotFetchedAt?:number|null,now?:number}} [options]
+ * @returns {string|null}
+ */
+export function essentialMobileSnapshotLabel({readSource,snapshotFetchedAt=null,now=Date.now()}={}){
+ if(readSource!=='server'&&readSource!=='cache')return null;
+ if(!Number.isFinite(now))return null;
+ if(typeof snapshotFetchedAt!=='number'||!Number.isFinite(snapshotFetchedAt)||
+    snapshotFetchedAt<=0||snapshotFetchedAt>now+10000)
+  return readSource==='cache'?'Date du dernier chargement serveur inconnue.':null;
+ const seenAt=Math.min(now,snapshotFetchedAt);
+ const when=new Date(seenAt).toLocaleString('fr-CA',{
+  year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'
+ });
+ return 'Dernier chargement serveur : '+when+
+  (readSource==='cache'?' · copie enregistrée sur cet appareil':'')+
+  (now-seenAt>=86400000?' · relevé de plus de 24 h':'');
+}
+
 /** Limit display time to the last complete server fetch, without changing
  * pending local events. Legacy caches without a fetch timestamp can still
  * display closed shifts, but must not infer how long an open shift lasted.

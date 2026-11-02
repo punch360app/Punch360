@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh} from '../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../web/live/essential-hours-view.js';
 
 const companyId='A',userId='U';
 const time=(day,hour=0,minute=0)=>new Date(2026,10,day,hour,minute).getTime();
@@ -240,4 +240,32 @@ test('Expo keeps original attendance hours apart from local projected estimate i
  assert.match(ui,/Relevé : '\+hm\(baselineWeekMs\)/);
  assert.match(ui,/Dernier relevé disponible : '\+hm\(baselineDailyHours\.reduce/);
  assert.match(ui,/Avec pointages locaux en attente : estimation non confirmée/);
+});
+
+test('current server snapshot shows device read time, never a payroll approval',()=>{
+ const now=Date.parse('2026-11-02T17:00:00Z');
+ const label=essentialMobileSnapshotLabel({readSource:'server',snapshotFetchedAt:now-60000,now});
+ assert.match(label,/Dernier chargement serveur/);
+ assert.doesNotMatch(label,/copie enregistrée|plus de 24 h|approuvé/);
+ const cache=essentialMobileSnapshotLabel({readSource:'cache',snapshotFetchedAt:now-60000,now});
+ assert.match(cache,/copie enregistrée sur cet appareil/);
+ assert.doesNotMatch(cache,/plus de 24 h/);
+});
+test('old or timestamp-free cached hours explain staleness without inventing a server date',()=>{
+ const now=Date.parse('2026-11-02T17:00:00Z');
+ assert.match(essentialMobileSnapshotLabel({readSource:'cache',snapshotFetchedAt:now-86400000,now}),/plus de 24 h/);
+ assert.equal(essentialMobileSnapshotLabel({readSource:'cache',snapshotFetchedAt:null,now}),
+  'Date du dernier chargement serveur inconnue.');
+ assert.equal(essentialMobileSnapshotLabel({readSource:'server',snapshotFetchedAt:null,now}),null);
+ assert.equal(essentialMobileSnapshotLabel({readSource:'cache',snapshotFetchedAt:now+60000,now}),
+  'Date du dernier chargement serveur inconnue.');
+ assert.equal(essentialMobileSnapshotLabel({readSource:'cache',snapshotFetchedAt:now,now:NaN}),null);
+ assert.equal(essentialMobileSnapshotLabel({readSource:'invalid',snapshotFetchedAt:now,now}),null);
+});
+test('native My Hours displays snapshot age without asserting a time for unverified cache',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(ui,/snapshotLabel=punch\.snapshotUnverified\?null:essentialMobileSnapshotLabel/);
+ assert.match(ui,/readSource:punch\.readSource,snapshotFetchedAt:punch\.snapshotFetchedAt,now/);
+ const hourPage=ui.slice(ui.indexOf("page==='hours'?"),ui.indexOf("page==='schedule'?"));
+ assert.match(hourPage,/snapshotLabel\?txt\(snapshotLabel/);
 });
