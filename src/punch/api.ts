@@ -217,13 +217,39 @@ export async function restoreSegment(segmentId:string){
   .delete().eq('user_id',user.id).eq('segment_id',segmentId);
  if(error)throw error;
 }
-export async function loadArchives(){
+export async function loadArchives():Promise<string[]>{
  const user=await getLocalIdentity();
  const key='punch-archives:'+user.id;
- const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false)return JSON.parse(await AsyncStorage.getItem(key)||'[]') as string[];
- const {data,error}=await supabase.from('punch_archive_preferences').select('segment_id').eq('user_id',user.id);
- if(error)return JSON.parse(await AsyncStorage.getItem(key)||'[]') as string[];
- const ids=(data||[]).map(row=>row.segment_id as string);await AsyncStorage.setItem(key,JSON.stringify(ids));return ids;
+ // Invalid local preference data must never crash the hours screen or hide
+ // a legitimate segment. Keep damaged bytes intact for recovery.
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ const validIds=(ids:unknown):ids is string[]=>
+  Array.isArray(ids)&&ids.every(id=>typeof id==='string'&&uuid.test(id));
+ const cached=async():Promise<string[]>=>{
+  try{const raw=await AsyncStorage.getItem(key);
+   if(!raw)return [];
+   const ids:unknown=JSON.parse(raw);
+   return validIds(ids)?Array.from(new Set(ids)):[];
+  }catch{return [];}
+ };
+ // Do not contact Supabase when Internet is unverified or the native network
+ // probe throws. Archive preferences affect visibility, not payroll totals.
+ let online=false;
+ try{const network=await Network.getNetworkStateAsync();
+  online=network.isConnected===true&&network.isInternetReachable===true;
+ }catch{/* Use only locally scoped preferences. */}
+ if(!online)return cached();
+ let data,error;
+ try{
+  ({data,error}=await supabase.from('punch_archive_preferences')
+   .select('segment_id').eq('user_id',user.id));
+ }catch{return cached();}
+ if(error||!Array.isArray(data)||!data.every(row=>row&&validIds([row.segment_id])))
+  return cached();
+ const ids=Array.from(new Set(data.map(row=>row.segment_id as string)));
+ // A valid server response stays available even if device storage is full.
+ try{await AsyncStorage.setItem(key,JSON.stringify(ids))}catch{}
+ return ids;
 }
 /** The mobile totals must match the web's CSV and Essential hours view:
  * unpaid overlapping breaks are merged and clipped to each job segment.
