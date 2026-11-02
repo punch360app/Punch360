@@ -36,6 +36,19 @@ begin
    or device.locked_until>now_at then
   return jsonb_build_object('ok',false,'error','IDENTITY_DENIED');
  end if;
+ -- This device is paired to a punch job, not just a company. A formerly
+ -- valid device must not issue QR punches from a closed establishment or an
+ -- inactive underlying job. Match the same company for every joined row.
+ if not exists (
+   select 1 from public.essential_locations location
+    join public.jobs job on job.company_id=location.company_id
+     and job.id=location.punch_job_id
+   where location.company_id=device.company_id
+    and location.punch_job_id=device.site_id
+    and location.active and job.active
+ ) then
+  return jsonb_build_object('ok',false,'error','IDENTITY_DENIED');
+ end if;
 
  -- This first lookup finds a candidate only. It is NOT an authorization
  -- decision: all checks are re-evaluated after locking the worker + card.
