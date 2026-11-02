@@ -504,12 +504,19 @@ function essentialHours(){
   '<p class="ess-notice" role="status">Aucun relevé serveur vérifiable pour cette entreprise. Vos heures ne sont pas confirmées sur cet appareil.</p>';
  const estimate=view.hasPending&&view.projectedWeekMs!==null?
   '<p class="small muted">Estimation locale avec événements en attente : '+mins(view.projectedWeekMs)+' · non confirmée.</p>':'';
+ const daily=view.ready&&view.confirmedDaily.length?
+  '<div class="ess-panel"><b>Cette semaine · détail quotidien du relevé serveur</b>'+
+  '<p class="small muted">Brut, pauses non payées et net au dernier relevé reçu. Les pointages locaux en attente ne sont pas inclus. Ces heures ne constituent pas une approbation de paie.</p>'+
+  view.confirmedDaily.map(row=>'<div class="hoursitem"><div class="grow"><b>'+
+   e(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}))+
+   '</b><small>Brut '+mins(row.grossMs)+' · Pause non payée '+mins(row.unpaidMs)+'</small></div>'+
+   '<strong>'+mins(row.netMs)+' net</strong></div>').join('')+'</div>':'';
  const history=view.ready&&view.confirmedDays.length?view.confirmedDays.slice(0,80).map(({session:s,netMs,open})=>
   card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours · durée provisoire')+'</p><strong>'+mins(netMs)+' net'+(open?' · dernier relevé serveur':'')+'</strong>')).join(''):
   '<p class="small muted">'+(view.ready?'Aucune journée enregistrée sur le serveur.':'Historique serveur indisponible.')+'</p>';
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+essentialPunchSyncPanel()+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
-  '<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
+  daily+'<div class="ess-panel"><b>Historique des journées · serveur</b>'+history+'</div>'+
   '<div class="ess-panel"><b>Mes demandes et absences · dernier relevé reçu</b>'+
   '<p class="small muted">'+tracking.pendingCount+' demande(s) en attente parmi les données vérifiées. Une demande approuvée ne confirme pas, à elle seule, votre paie.</p>'+
   trackingNotice+(trackingRows||'<p class="small muted">'+(tracking.complete?

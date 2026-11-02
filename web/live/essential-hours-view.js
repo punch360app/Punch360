@@ -29,12 +29,13 @@ function netMilliseconds(segments,breaks,from,until){
  *   breaks?: Array<{session_id:string,company_id?:string|null,user_id?:string|null,started_at:string,ended_at:string|null,is_paid?:boolean}>,
  *   companyId?: string,
  *   userId?: string,
- *   now?: number
+ *   now?: number,
+ *   cutoff?: number
  * }} [options]
  */
-export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now()}={}){
+export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now(),cutoff=now}={}){
  if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
-  !Number.isFinite(now)||!Array.isArray(sessions)||!Array.isArray(segments)||
+  !Number.isFinite(now)||!Number.isFinite(cutoff)||!Array.isArray(sessions)||!Array.isArray(segments)||
   !Array.isArray(breaks))return [];
  const ids=new Set(sessions.filter(s=>s?.company_id===companyId&&s.user_id===userId&&
   typeof s.id==='string'&&s.id).map(s=>s.id));
@@ -46,13 +47,14 @@ export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],com
   (b.user_id==null||b.user_id===userId)){
   const list=pauses.get(b.session_id)||[];list.push(b);pauses.set(b.session_id,list);
  }
+ const latest=Math.min(now,cutoff);
  const today=new Date(now),week=new Date(today.getFullYear(),today.getMonth(),
   today.getDate()-(today.getDay()+6)%7);
  const rows=[];
  for(let n=0;n<7;n++){
   const dayStart=new Date(week.getFullYear(),week.getMonth(),week.getDate()+n).getTime();
-  if(dayStart>now)break;
-  const until=Math.min(now,new Date(week.getFullYear(),week.getMonth(),week.getDate()+n+1).getTime());
+  if(dayStart>latest)break;
+  const until=Math.min(latest,new Date(week.getFullYear(),week.getMonth(),week.getDate()+n+1).getTime());
   const grossMs=parts.reduce((sum,s)=>sum+
    netSegmentMilliseconds(s,[],dayStart,until),0);
   const netMs=parts.reduce((sum,s)=>sum+
@@ -69,7 +71,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   typeof userId==='string'&&userId.length>0&&snapshotCompanyId===companyId&&
   Array.isArray(snapshot?.sessions)&&Array.isArray(snapshot?.segments)&&
   Array.isArray(snapshot?.breaks)&&Number.isFinite(now);
- if(!ready)return {ready:false,confirmedSessions:[],confirmedDays:[],confirmedWeekMs:0,projectedWeekMs:null,
+ if(!ready)return {ready:false,confirmedSessions:[],confirmedDays:[],confirmedDaily:[],confirmedWeekMs:0,projectedWeekMs:null,
   pending:0,hasPending:false};
  const cutoff=Number.isFinite(snapshotFetchedAt)&&snapshotFetchedAt>0?Math.min(now,snapshotFetchedAt):now;
  // The requested week belongs to the viewer's current clock, not the
@@ -86,6 +88,10 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  const confirmedBreaks=snapshot.breaks.filter(s=>approvedIds.has(s.session_id)&&
   (!s.company_id||s.company_id===companyId));
  const confirmedWeekMs=netMilliseconds(confirmedSegments,confirmedBreaks,monday,cutoff);
+ // Web daily detail uses the same scoped, read-only calculation as Expo,
+ // bounded by the last server read rather than the viewer's later clock.
+ const confirmedDaily=essentialMobileDailyHours({companyId,userId,
+  sessions:confirmedSessions,segments:confirmedSegments,breaks:confirmedBreaks,now,cutoff});
  const confirmedDays=confirmedSessions.map(session=>{
   const parts=confirmedSegments.filter(segment=>segment.session_id===session.id);
   const pauses=confirmedBreaks.filter(pause=>pause.session_id===session.id);
@@ -104,7 +110,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
    projectedBreaks.filter(s=>projectedIds.has(s.session_id)&&(!s.company_id||s.company_id===companyId)),
    monday,now);
  }
- return {ready:true,confirmedSessions,confirmedDays,confirmedWeekMs,projectedWeekMs,
+ return {ready:true,confirmedSessions,confirmedDays,confirmedDaily,confirmedWeekMs,projectedWeekMs,
   pending,hasPending:pending>0};
 }
 

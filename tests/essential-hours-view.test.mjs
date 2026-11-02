@@ -246,3 +246,41 @@ test('all requests page exposes status filters, scoped actions and failure notic
  assert.match(app,/data-id="myRequests"/);
  assert.doesNotMatch(page,/\.rpc\(/);
 });
+
+test('web daily rows reconcile gross, unpaid and net with verified weekly hours',()=>{
+ const view=essentialHoursView(fixture);
+ assert.equal(view.ready,true);
+ assert.equal(view.confirmedDaily.length,1);
+ const day=view.confirmedDaily[0];
+ assert.equal(day.grossMs,3*3600000);
+ assert.equal(day.unpaidMs,15*60000);
+ assert.equal(day.netMs,view.confirmedWeekMs);
+});
+test('web daily server view never incorporates locally projected pending time',()=>{
+ const local={id:'local-new',company_id:company,user_id:user,started_at:'2026-11-04T13:00:00Z',ended_at:'2026-11-04T14:00:00Z'};
+ const view=essentialHoursView({...fixture,pendingCount:1,projectedSessions:[...sessions,local],
+  projectedSegments:[...segments,{session_id:'local-new',company_id:company,started_at:local.started_at,ended_at:local.ended_at}],
+  projectedBreaks:breaks});
+ assert.equal(view.confirmedDaily[0].netMs,view.confirmedWeekMs);
+ assert.ok(view.projectedWeekMs>view.confirmedWeekMs);
+});
+test('confirmed Web daily open hours stop at server cutoff while local week stays current',()=>{
+ const earlier=Date.parse('2026-11-04T14:30:00Z');
+ const view=essentialHoursView({...fixture,snapshotFetchedAt:earlier,
+  now:Date.parse('2026-11-04T21:00:00Z')});
+ assert.equal(view.confirmedDaily[0].netMs,view.confirmedWeekMs);
+ assert.equal(view.confirmedDaily[0].netMs,(2*60+30-15)*60000);
+ const sunday=Date.parse('2026-11-01T23:00:00Z');
+ const monday=Date.parse('2026-11-02T12:00:00Z');
+ const stale=essentialHoursView({...fixture,snapshotFetchedAt:sunday,now:monday});
+ assert.deepEqual(stale.confirmedDaily,[]);
+ assert.equal(stale.confirmedWeekMs,0);
+});
+test('Web Mes heures renders read-only server daily breakdown separately from pending',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/view\.confirmedDaily\.map\(row=>/);
+ assert.match(app,/Brut '\+mins\(row\.grossMs\)/);
+ assert.match(app,/Pause non payée '\+mins\(row\.unpaidMs\)/);
+ assert.match(app,/pointages locaux en attente ne sont pas inclus/);
+ assert.match(app,/daily\+'<div class="ess-panel"><b>Historique des journées/);
+});
