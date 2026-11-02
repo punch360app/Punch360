@@ -27,7 +27,7 @@ import {createAppearanceController} from './appearance.js';
 import {createBillingController} from './billing.js';
 import {createPlanningController} from './planning.js';
 /** Real Essentiel screens; all mutations go through checked server RPCs. */
-export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{},getLocale=()=> 'fr',confirmRestart=message=>globalThis.confirm(message)}) {
+export function createEssentialController({sb,redraw,notify,escape:e,document:doc=globalThis.document,onChoose=()=>{},onPricingChange=()=>{},getLocale=()=> 'fr',confirmRestart=message=>globalThis.confirm(message)}) {
  const subscriptions=createSubscriptionDirectoryController({sb,redraw,escape:e});
  const qualifiedCoverage=createQualifiedCoverageController({sb,redraw,escape:e});
  const laborBudgets=createLaborBudgetsController({sb,redraw,escape:e});
@@ -259,7 +259,9 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   return true;
  }
  s.error='';try{
- if(action==='monthly'||action==='yearly'){s.cadence=action;s.checkout=null;}
+ if(action==='monthly'||action==='yearly'){
+  if(s.cadence!==action){onPricingChange();s.cadence=action;s.checkout=null;}
+ }
  else if(action==='choose'){
   // The list renders only active, public plans. A forged/stale data-id
   // must never open onboarding for a plan that the catalog no longer offers.
@@ -360,7 +362,11 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();if(focusedCadenceAction)doc.querySelector('[data-action="ess:'+focusedCadenceAction+'"]')?.focus({preventScroll:true});}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){
-  s.seatDraft=String(el.value??'');s.checkout=null;doc.querySelector('.ess-pricing .ess-notice')?.remove();
+  const edited=String(el.value??'');
+  // Returning from signup and editing the estimate invalidates the saved
+  // provisional plan choice. The new choice is persisted only on CTA click.
+  if(edited!==(s.seatDraft??String(s.seats)))onPricingChange();
+  s.seatDraft=edited;s.checkout=null;doc.querySelector('.ess-pricing .ess-notice')?.remove();
   const n=validSeatCount(s.seatDraft),valid=n!==null;
   el.setAttribute('aria-invalid',valid?'false':'true');
   const status=doc.getElementById('ess-seats-status');
