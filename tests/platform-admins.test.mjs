@@ -6,10 +6,10 @@ const alice={id:'22222222-2222-4222-8222-222222222222',email:'alice@example.inva
 const bob={id:'33333333-3333-4333-8333-333333333333',email:'bob@example.invalid',role:'delegate',mfa_ready:true};
 const esc=v=>String(v??'').replace(/[&<>"']/g,k=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[k]));
 function create({isRoot=true,items=[root],prompt=()=>null,fail=false}={}){
- const calls=[],notices=[];
+ const calls=[],notices=[];let failed=fail;
  const sb={async rpc(name,args){
   calls.push({name,args});
-  if(fail)return {error:{code:'42501',message:'Session MFA refusée'}};
+  if(failed)return {error:failed===true?{code:'42501',message:'Session MFA refusée'}:failed};
   if(name==='platform_admin_members')return{data:{max:3,count:items.length,is_root:isRoot,items}};
   if(name==='platform_admin_add'){
    assert.equal(args.p_confirmation,'AJOUTER alice@example.invalid');
@@ -23,7 +23,7 @@ function create({isRoot=true,items=[root],prompt=()=>null,fail=false}={}){
   throw Error('unexpected rpc '+name);
  }};
  const ctrl=createPlatformAdminsController({sb,redraw(){},escape:esc,prompt,notify:x=>notices.push(x)});
- return{ctrl,calls,notices,setError:()=>{fail=true}};
+ return{ctrl,calls,notices,setError:(value=true)=>{failed=value}};
 }
 function submit(ctrl,email='alice@example.invalid',confirmation='AJOUTER alice@example.invalid',
  reason='Accès confirmé par propriétaire de PUNCH'){
@@ -86,7 +86,8 @@ test('permission loss clears potentially sensitive directory and reset clears fo
  x.setError();await x.ctrl.load();
  assert.equal(x.ctrl.state.items.length,0);
  assert.equal(x.ctrl.state.loaded,false);
- assert.match(x.ctrl.render(),/Session MFA refusée/);
+ assert.match(x.ctrl.render(),/Accès expiré ou refusé/);
+ assert.doesNotMatch(x.ctrl.render(),/Session MFA refusée/);
  submit(x.ctrl);x.ctrl.reset();
  assert.equal(x.ctrl.state.reason,'');
  assert.equal(x.ctrl.state.email,'');
@@ -108,4 +109,60 @@ test('main Web event dispatcher routes new platform-admin actions to their contr
  const idx=source.indexOf("if(a.startsWith('platform-admin:'))");
  const general=source.indexOf("if(a.startsWith('ess:'))");
  assert.ok(idx>0&&general>idx,'Platform buttons must dispatch before generic Essentiel routing');
+});
+
+
+test('HTTP 401 and 403 always revoke previously visible Super Admin list without leaking diagnostics',async()=>{
+ for(const status of [401,'403']){
+  const x=create({items:[root,alice]});
+  await x.ctrl.load();
+  assert.match(x.ctrl.render(),/alice@example.invalid/);
+  submit(x.ctrl);
+  x.setError({status,message:'internal backend account secret'});
+  assert.equal(await x.ctrl.load(),false);
+  assert.equal(x.ctrl.state.loaded,false);
+  assert.equal(x.ctrl.state.isRoot,false);
+  assert.deepEqual(x.ctrl.state.items,[]);
+  assert.equal(x.ctrl.state.email,'');
+  assert.equal(x.ctrl.state.confirmation,'');
+  assert.equal(x.ctrl.state.reason,'');
+  assert.doesNotMatch(x.ctrl.render(),/alice@example.invalid|root@example.invalid|backend account secret/);
+  assert.match(x.ctrl.render(),/Reconnectez-vous avec MFA/);
+ }
+});
+
+test('authorization denied during an add removes all previous memberships and controls',async()=>{
+ const x=create({items:[root,alice]});await x.ctrl.load();
+ submit(x.ctrl,'nobody@example.invalid','AJOUTER nobody@example.invalid');
+ x.setError({status:403,message:'private SQL owner details'});
+ await x.ctrl.handle({dataset:{action:'platform-admin:add'}});
+ assert.deepEqual(x.ctrl.state.items,[]);
+ assert.equal(x.ctrl.state.loaded,false);
+ assert.equal(x.ctrl.state.isRoot,false);
+ assert.equal(x.ctrl.state.reason,'');
+ assert.doesNotMatch(x.ctrl.render(),/root@example.invalid|alice@example.invalid|private SQL|Autoriser un Super Admin/);
+ assert.match(x.ctrl.render(),/Reconnectez-vous avec MFA/);
+});
+
+test('refresh hides stale Super Admin names immediately, even while server reply is pending',async()=>{
+ let release;
+ const waiting=new Promise(resolve=>{release=resolve});
+ let calls=0;
+ const sb={rpc:async()=>{
+  calls++;
+  if(calls===1)return {data:{max:3,count:2,is_root:true,items:[root,alice]}};
+  await waiting;
+  return {error:{status:503,message:'private database unavailable'}};
+ }};
+ const ctrl=createPlatformAdminsController({sb,redraw(){},escape:esc});
+ await ctrl.load();
+ assert.match(ctrl.render(),/alice@example.invalid/);
+ const pending=ctrl.load();
+ assert.equal(ctrl.state.busy,true);
+ assert.equal(ctrl.state.loaded,false);
+ assert.deepEqual(ctrl.state.items,[]);
+ assert.doesNotMatch(ctrl.render(),/alice@example.invalid/);
+ release();await pending;
+ assert.doesNotMatch(ctrl.render(),/private database unavailable/);
+ assert.match(ctrl.render(),/Impossible de vérifier les accès Super Admin/);
 });

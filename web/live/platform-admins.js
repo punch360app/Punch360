@@ -1,3 +1,5 @@
+import {isPlatformAuthorizationDenied,platformSafeError} from './platform-ui-guards.js';
+
 /** PUNCH platform Super Admin directory. Server RPC exclusively controls role grants.
  * Root can add at most two existing, email-confirmed Auth accounts, with live MFA.
  * Never write auth.users, JWT metadata, company roles or session state from here.
@@ -9,6 +11,13 @@ export function createPlatformAdminsController({sb,redraw,escape:e,
    reason:'',busy:false,error:'',status:''});
  const s=initial();
  const normalized=v=>String(v??'').trim().toLowerCase();
+ const LOCAL_ERRORS=[
+  'Seul le propriétaire principal peut gérer les Super Admins.',
+  'Motif de sécurité requis (8 à 500 caractères).',
+  'Maximum de trois Super Admins atteint.',
+  'Tapez exactement AJOUTER suivi du courriel.',
+  'Ce compte ne peut pas être retiré.'
+ ];
  const validUuid=v=>typeof v==='string'&&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
  function reset(){generation++;Object.assign(s,initial());}
@@ -31,14 +40,18 @@ export function createPlatformAdminsController({sb,redraw,escape:e,
   if(keys[el.id])s[keys[el.id]]=String(el.value??'');
  }
  async function load(){
-  const gen=++generation;s.busy=true;s.error='';
+  const gen=++generation;s.busy=true;s.error='';s.status='';
+  // Never show the previous account's directory while current authorization is being checked.
+  s.items=[];s.loaded=false;s.isRoot=false;
   try{
    const response=await rpc('platform_admin_members');
    if(gen!==generation)return false;
    accept(response);return true;
   }catch(err){
    if(gen!==generation)return false;
-   s.items=[];s.loaded=false;s.isRoot=false;s.error=String(err?.message||err);
+   s.items=[];s.loaded=false;s.isRoot=false;
+   s.email='';s.confirmation='';s.reason='';
+   s.error=platformSafeError(err,{fallback:'Impossible de vérifier les accès Super Admin. Réessayez.'});
    return false;
   }finally{if(gen===generation){s.busy=false;redraw();}}
  }
@@ -79,8 +92,11 @@ export function createPlatformAdminsController({sb,redraw,escape:e,
    notify(s.status);
   }catch(err){
    if(gen!==generation)return true;
-   if(err?.code==='42501'){s.items=[];s.isRoot=false;s.loaded=false;}
-   s.error=String(err?.message||err);
+   if(isPlatformAuthorizationDenied(err)){
+    s.items=[];s.isRoot=false;s.loaded=false;
+    s.email='';s.confirmation='';s.reason='';s.status='';
+   }
+   s.error=platformSafeError(err,{fallback:'Gestion des Super Admins indisponible. Réessayez.',local:LOCAL_ERRORS});
   }finally{if(gen===generation){s.busy=false;redraw();}}
   return true;
  }
