@@ -289,3 +289,28 @@ test('invalid session rows without a previous offline snapshot remain unverified
  assert.deepEqual(state.sessions,[]);
  assert.equal(h.store.has('punch-state:U:A'),false);
 });
+
+test('Essentiel manual punch synchronization reports a cached fallback as unconfirmed',()=>{
+ const from=essential.indexOf('export function essentialManualPunchSyncNotice(');
+ const to=essential.indexOf('export function EssentialWorkspace(',from);
+ assert.ok(from>=0&&to>from,'Missing native Essentiel sync notice');
+ const source=essential.slice(from,to);
+ const begin=source.indexOf('}):string{');
+ assert.ok(begin>=0,'Expected typed native notice function');
+ const body=source.slice(begin+'}):string{'.length,source.lastIndexOf('\n}'));
+ const message=new Function('blocked','pending','conflicts','readSource','cacheWriteFailed',body);
+ assert.match(essential,/setNotice\(essentialManualPunchSyncNotice\(\{/);
+ assert.match(essential,/readSource:updated\.readSource/);
+ assert.match(essential,/cacheWriteFailed:!!updated\.cacheWriteFailed/);
+ const evaluate=({blocked=false,pending=0,conflicts=0,readSource='server',cacheWriteFailed=false}={})=>
+  message(blocked,pending,conflicts,readSource,cacheWriteFailed);
+ assert.match(evaluate({readSource:'cache'}),/synchronisation non confirmée/i);
+ assert.match(evaluate({readSource:undefined}),/synchronisation non confirmée/i);
+ assert.doesNotMatch(evaluate({readSource:'cache'}),/heures confirmées|synchronisé/i);
+ assert.match(evaluate({readSource:'server'}),/Aucun pointage local en attente/);
+ assert.match(evaluate({readSource:'server',cacheWriteFailed:true}),/copie hors ligne indisponible/);
+ assert.match(evaluate({pending:2,conflicts:1,readSource:'cache'}),/2 pointage\(s\).*1 conflit\(s\)/);
+ assert.match(evaluate({pending:1,readSource:'cache'}),/en attente/);
+ assert.match(evaluate({conflicts:2}),/2 conflit\(s\).*responsable/);
+ assert.match(evaluate({blocked:true,readSource:'server'}),/aucun envoi confirmé/);
+});
