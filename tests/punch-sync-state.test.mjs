@@ -47,7 +47,7 @@ test('bad data and unknown actions never leak raw event details',()=>{
 
 test('employee UI shares a scoped journal status on home and hours, with manual retry',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{localPunchSyncState\} from '\.\/punch-sync-state\.js';/);
+ assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary\} from '\.\/punch-sync-state\.js';/);
  assert.match(app,/function essentialPunchSyncPanel\(\)/);
  assert.match(app,/essentialPunchSyncPanel\(\)/);
  assert.match(app,/data-action="syncPendingPunches"|button\('Synchroniser maintenant','syncPendingPunches'/);
