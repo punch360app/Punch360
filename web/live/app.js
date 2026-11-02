@@ -1,3 +1,4 @@
+import {cachedOfflineWebUser,cachedOfflineWebAccount} from './offline-identity.js';
 import {createEssentialController} from './essential.js';
 import {validatePublicSignupPassword} from './public-signup-validation.js';
 import {togglePublicPasswordVisibility} from './password-visibility.js';
@@ -826,9 +827,25 @@ const active=activeSegment();const preference=localStorage.getItem('punch360-sel
 if(state.chatId&&!currentCompanyChat(state.chatId)){state.chatLoadRevision++;state.chatId=null;state.messages=[]}if(errors.length)toast('Quelques données non accessibles : '+errors[0]);
 }catch(err){error(err)}}
 async function reload({quiet=false}={}){if(state.busy)return;state.busy=true;if(!quiet)toast('Synchronisation…');try{await loadData();if(isEssential()){await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);}else personalMissions.reset();if(state.chatId)await loadChat(state.chatId)}catch(err){error(err)}finally{state.busy=false;draw();renderMap()}}
-async function initialize(){try{const cached=JSON.parse(localStorage.getItem('punch-local-user')||'null');if(!navigator.onLine&&cached){state.user=cached;const selected=localStorage.getItem('punch-last-company:'+cached.id);
- state.account=selected?JSON.parse(localStorage.getItem('punch-account:'+cached.id+':'+selected)||'null'):null;
- companyContext.list=[];companyContext.choosing=false;restoreOfflineSnapshot();if(isEssential())await essentialUI.appearance.load(cached.id);if(member())await loadData();draw();return;}const {data,error:err}=await sb.auth.getSession();if(err&&!cached)throw err;state.user=data.session?.user||(err?cached:null);if(state.user){localStorage.setItem('punch-local-user',JSON.stringify({id:state.user.id,email:state.user.email}));if(!state.pendingCompanyCreation)state.pendingCompanyCreation=readPendingCompanyCreation(sessionStorage,state.user.id);if(!state.pendingWorkerActivation)state.pendingWorkerActivation=readPendingWorkerActivation(sessionStorage,state.user.id);}await lookupAccount();if(companyContext.choosing){draw();return;}if(state.account)restoreOfflineSnapshot();await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);if(isEssential()&&!manager()&&essentialUI.appearance.state.ready&&!essentialUI.appearance.state.hasPreference){state.section='sub';state.sub='appearance';}if(member())await loadData();draw();renderMap()}catch(err){state.error=err.message;draw();error(err)}}
+async function initialize(){try{const cached=cachedOfflineWebUser(localStorage);
+ if(!navigator.onLine){
+  // No verified server identity can be fetched offline. An invalid or
+  // mixed-account cache must display a signed-out view, not stale hours.
+  ++punchLoadRevision;
+  state.user=cached;state.account=cached?cachedOfflineWebAccount(localStorage,cached):null;
+  companyContext.list=[];companyContext.choosing=false;
+  state.jobs=[];state.assignments=[];state.shifts=[];state.selected=null;
+  state.sessions=[];state.segments=[];state.breaks=[];
+  state.serverPunch={sessions:[],segments:[],breaks:[]};
+  state.serverPunchCompany=null;state.serverPunchFetchedAt=null;
+  if(member()){
+   restoreOfflineSnapshot();
+   if(isEssential())await essentialUI.appearance.load(cached.id);
+   await loadData();
+  }
+  draw();return;
+ }
+ const {data,error:err}=await sb.auth.getSession();if(err&&!cached)throw err;state.user=data.session?.user||(err?cached:null);if(state.user){localStorage.setItem('punch-local-user',JSON.stringify({id:state.user.id,email:state.user.email}));if(!state.pendingCompanyCreation)state.pendingCompanyCreation=readPendingCompanyCreation(sessionStorage,state.user.id);if(!state.pendingWorkerActivation)state.pendingWorkerActivation=readPendingWorkerActivation(sessionStorage,state.user.id);}await lookupAccount();if(companyContext.choosing){draw();return;}if(state.account)restoreOfflineSnapshot();await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);if(isEssential()&&!manager()&&essentialUI.appearance.state.ready&&!essentialUI.appearance.state.hasPreference){state.section='sub';state.sub='appearance';}if(member())await loadData();draw();renderMap()}catch(err){state.error=err.message;draw();error(err)}}
 async function lookupAccount(){
  state.account=null;companyContext.list=[];companyContext.choosing=false;
  if(!state.user)return;
