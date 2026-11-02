@@ -73,7 +73,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   Array.isArray(snapshot?.sessions)&&Array.isArray(snapshot?.segments)&&
   Array.isArray(snapshot?.breaks)&&Number.isFinite(now)&&
   Number.isInteger(weekOffset)&&weekOffset>=0&&weekOffset<=4;
- if(!ready)return {ready:false,confirmedSessions:[],confirmedDays:[],confirmedDaily:[],confirmedWeekMs:0,projectedWeekMs:null,
+ if(!ready)return {ready:false,confirmedSessions:[],confirmedDays:[],confirmedWeekDays:[],confirmedDaily:[],confirmedWeekMs:0,projectedWeekMs:null,
   pending:0,hasPending:false};
  const cutoff=Number.isFinite(snapshotFetchedAt)&&snapshotFetchedAt>0?Math.min(now,snapshotFetchedAt):now;
  // The requested week belongs to the viewer's current clock, not the
@@ -108,6 +108,17 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
   return {session,netMs:until!==null&&from!==null&&until>=from?
    netMilliseconds(parts,pauses,from,until):0,open:session.ended_at==null};
  });
+ // A selected week's session history must use the same server-only, local-week
+ // boundaries as the weekly total. Clipping each segment (rather than the
+ // session start date) includes overnight work spanning two weeks, without
+ // exposing hours worked in adjacent weeks.
+ const confirmedWeekDays=weekUntil>monday?confirmedDays.map(({session,open})=>{
+  const parts=confirmedSegments.filter(segment=>segment.session_id===session.id);
+  const grossMs=netMilliseconds(parts,[],monday,weekUntil);
+  if(grossMs<=0)return null;
+  const pauses=confirmedBreaks.filter(pause=>pause.session_id===session.id);
+  return {session,netMs:netMilliseconds(parts,pauses,monday,weekUntil),open};
+ }).filter(Boolean):[];
  const pending=Number.isSafeInteger(pendingCount)&&pendingCount>0?pendingCount:0;
  let projectedWeekMs=null;
  if(pending&&Array.isArray(projectedSessions)&&Array.isArray(projectedSegments)&&Array.isArray(projectedBreaks)){
@@ -118,7 +129,7 @@ export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
    projectedBreaks.filter(s=>projectedIds.has(s.session_id)&&(!s.company_id||s.company_id===companyId)),
    monday,Math.min(now,weekEnd));
  }
- return {ready:true,confirmedSessions,confirmedDays,confirmedDaily,confirmedWeekMs,projectedWeekMs,
+ return {ready:true,confirmedSessions,confirmedDays,confirmedWeekDays,confirmedDaily,confirmedWeekMs,projectedWeekMs,
   pending,hasPending:pending>0};
 }
 
