@@ -8,7 +8,7 @@ assert.ok(p0>0&&p1>p0&&t0>0&&t1>t0);
 const punchCode=app.slice(p0,p1).replaceAll('catch(e:any)','catch(e)');
 const transferCode=app.slice(t0,t1).replace('function switchTo(j:Job){','function switchTo(j){').replaceAll('catch(e:any)','catch(e)');
 function scenario({active=false,queued=false,review='approved',failAction=false,failRefresh=false,
- changed=false,skipRefresh=false}={}){
+ changed=false,skipRefresh=false,cachedJobs=false}={}){
  const calls=[],alerts=[],notices=[];
  const account={companyId:'A',userId:'U'};
  const scopeRef={current:'A:U'},punchReadRevision={current:0},punchActionInFlight={current:false},
@@ -28,11 +28,11 @@ function scenario({active=false,queued=false,review='approved',failAction=false,
   v=>calls.push(['working',v]),punchReadRevision,punchOut,punchIn,refresh,v=>notices.push(v));
  const switchTo=new Function('journalBlocked','journalViewScope','currentScope','working','punchActionInFlight',
   'syncInFlight','selectedId','setPage','account','scopeRef','setWorking','punchReadRevision','punchActive',
-  'punchTransfer','setSelectedId','refreshConstructionPunchState','setMessage','Alert','current',
+  'punchTransfer','setSelectedId','refreshConstructionPunchState','setMessage','Alert','current','jobsReadSource',
   transferCode+'\nreturn switchTo;')(
   false,'A:U','A:U',working,punchActionInFlight,syncInFlight,'J1',v=>calls.push(['page',v]),
   account,scopeRef,v=>calls.push(['working',v]),punchReadRevision,active,punchTransfer,
-  v=>calls.push(['selected',v]),refresh,v=>notices.push(v),Alert,current);
+  v=>calls.push(['selected',v]),refresh,v=>notices.push(v),Alert,current,cachedJobs?'cache':'server');
  return {calls,alerts,notices,punchActionInFlight,scopeRef,newJob,togglePunch,switchTo,
   confirmPunch:async()=>{togglePunch();const a=alerts.shift();assert.ok(a);await a[2][1].onPress()},
   confirmTransfer:async()=>{switchTo(newJob);const a=alerts.shift();assert.ok(a);await a[2][1].onPress()}};
@@ -87,4 +87,17 @@ test('switching account mid-action never reveals old account success',async()=>{
 });
 test('manual synchronization refuses while mutation is in progress',()=>{
  assert.match(app,/if\(syncInFlight\.current\|\|punchActionInFlight\.current\|\|working\|\|journalBlocked\|\|localPending===0\|\|/);
+});
+
+test('confirmation of cached transfer warns user that job selection needs online revalidation',async()=>{
+ const h=scenario({active:true,cachedJobs:true});
+ h.switchTo(h.newJob);
+ assert.equal(h.alerts.length,1);
+ assert.match(h.alerts[0][1],/sélection à revalider dès la reconnexion/);
+});
+test('live transfer confirmation has no misleading cache notice',async()=>{
+ const h=scenario({active:true,cachedJobs:false});
+ h.switchTo(h.newJob);
+ assert.equal(h.alerts.length,1);
+ assert.doesNotMatch(h.alerts[0][1],/Liste des chantiers sauvegardée/);
 });
