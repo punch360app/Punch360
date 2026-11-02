@@ -31,7 +31,7 @@ test('malformed server overview must not be disguised as zero hours',()=>{
  }
 });
 
-const start=panel.indexOf(' async function load(){');
+const start=panel.indexOf(' async function load():Promise<boolean>{');
 const end=panel.indexOf(' useEffect(()=>{',start);
 assert.ok(start>0&&end>start);
 const js=ts.transpileModule(panel.slice(start,end),{compilerOptions:{
