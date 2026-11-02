@@ -28,7 +28,7 @@ const kit=({codes=[],permission,clock=()=>0,decode}={})=>{
 };
 
 test('camera preview reads employee-presented QR but does not transmit or return the raw value',async()=>{
- const raw='punch-private-opaque-should-not-leak';
+ const raw='P360C1.'+'a'.repeat(64);
  const k=kit({codes:[{format:'qr_code',rawValue:raw}]});
  assert.equal(await k.camera.start(k.video),true);
  assert.equal(k.camera.active,true);
@@ -39,6 +39,43 @@ test('camera preview reads employee-presented QR but does not transmit or return
  assert.equal(k.tracks[0].stops,1);
  assert.equal(JSON.stringify(k.notices).includes(raw),false);
 });
+test('unrelated QR codes, URLs, uppercase and malformed employee cards are ignored',async()=>{
+ const invalid=[
+  'https://example.test/user?token=private',
+  'P360C1.'+'A'.repeat(64),
+  'P360C1.'+'a'.repeat(63),
+  'P360C1.'+'a'.repeat(65),
+  'P360C1_'+'a'.repeat(64),
+  'P360C1.'+'a'.repeat(63)+'x',
+  'P360C1.'+'a'.repeat(64)+'\\n',
+  'P360C2.'+'a'.repeat(64)
+ ];
+ const k=kit({codes:[{format:'ean_13',rawValue:'1234567890123'},...invalid.map(rawValue=>({format:'qr_code',rawValue}))]});
+ await k.camera.start(k.video);
+ await k.flush();
+ assert.equal(k.camera.active,true);
+ assert.deepEqual(k.notices,[]);
+ assert.equal(k.tracks[0].stops,0);
+ k.camera.stop();
+ assert.equal(k.tracks[0].stops,1);
+});
+
+test('tablet ignores unrelated QR first and detects a valid employee card later',async()=>{
+ const raw='P360C1.'+'b'.repeat(64);
+ let calls=0;
+ const k=kit({decode:()=>++calls===1?[{format:'qr_code',rawValue:'https://example.test'}]:[{format:'qr_code',rawValue:raw}]});
+ await k.camera.start(k.video);
+ await k.flush();
+ assert.equal(k.camera.active,true);
+ assert.deepEqual(k.notices,[]);
+ await k.flush();
+ assert.equal(k.camera.active,false);
+ assert.deepEqual(k.notices,['read']);
+ assert.equal(JSON.stringify(k.notices).includes(raw),false);
+ assert.equal(k.video.srcObject,null);
+ assert.equal(k.tracks[0].stops,1);
+});
+
 test('explicit stop closes the video track and prevents stale queued decode',async()=>{
  const k=kit({codes:[{format:'qr_code',rawValue:'opaque'}]});
  await k.camera.start(k.video);
