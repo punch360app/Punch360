@@ -26,3 +26,19 @@ export function localPunchSyncState(events,companyId,userId){
  }
  return {pending,conflicts};
 }
+
+/**
+ * UI wording is deliberately not equivalent to payroll approval.
+ * A locally acknowledged event may still require GPS review or reconciliation.
+ */
+export function localPunchStatusSummary({events,companyId,userId,snapshotCompanyId,snapshotFetchedAt}={}){
+ const {pending,conflicts}=localPunchSyncState(events,companyId,userId);
+ if(pending.length&&conflicts.length)
+  return {kind:'mixed',label:'En attente et conflit à vérifier'};
+ if(conflicts.length)return {kind:'conflict',label:'Conflit à vérifier'};
+ if(pending.length)return {kind:'pending',label:'En attente d’envoi'};
+ if(typeof companyId==='string'&&companyId&&snapshotCompanyId===companyId&&
+    Number.isFinite(snapshotFetchedAt))
+  return {kind:'server',label:'Dernier relevé serveur'};
+ return {kind:'unverified',label:'Relevé à vérifier'};
+}
