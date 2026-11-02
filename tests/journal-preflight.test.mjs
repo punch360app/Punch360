@@ -196,3 +196,31 @@ test('breaks and closing an existing shift remain independent of workplace argum
  }
  assert.deepEqual((await h.journal.read()).map(e=>e.action),['break_start','break_end','out']);
 });
+
+test('legacy unassigned IN and transfer records are quarantined before replay, preserving exact bytes',async()=>{
+ for(const action of ['in','transfer']){
+  for(const badJob of [undefined,null,'','   ',42]){
+   const row={...good('legacy-unsafe'),action,job:badJob};
+   const sent=[],h=setup([row],async e=>{sent.push(e.id);return {sync_status:'synced'}});
+   const before=h.memory.get(h.key);
+   assert.equal(hasUnsafePunchJournalEntries(await h.journal.read(),'company-A','employee-A'),true);
+   await assert.rejects(h.journal.flush(),/aucun envoi effectué/);
+   await assert.rejects(h.journal.append('out'),/aucune nouvelle opération ajoutée/);
+   assert.deepEqual(sent,[]);
+   assert.equal(h.memory.get(h.key),before,'Quarantine never edits or deletes old records');
+  }
+ }
+});
+
+test('well-formed legacy IN followed by jobless OUT and breaks still synchronizes',async()=>{
+ const events=[
+  {...good('in'),action:'in',job:'job-1'},
+  {...good('break'),action:'break_start',job:null,previous:'in'},
+  {...good('out'),action:'out',job:null,previous:'break'}
+ ];
+ const sent=[],h=setup(events,async event=>{sent.push(event.action);return {sync_status:'synced'}});
+ assert.equal(hasUnsafePunchJournalEntries(events,'company-A','employee-A'),false);
+ const result=await h.journal.flush();
+ assert.equal(result.pending,0);
+ assert.deepEqual(sent,['in','break_start','out']);
+});

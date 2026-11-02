@@ -165,3 +165,27 @@ test('invalid journal entries are retained for recovery but not projected into a
  assert.equal(projectPendingPunches({sessions:[],segments:[],breaks:[]},[null,{}],
   {company:'tenant-A',user:'employee-A'}).active,null);
 });
+
+test('malformed legacy IN never creates a phantom session or unassigned projected hours',()=>{
+ const identity={company:'tenant-A',user:'employee-A'};
+ for(const job of [null,undefined,'','   ',42]){
+  const bad={...event('in','orphan',job)};
+  const projected=projectPendingPunches({sessions:[],segments:[],breaks:[]},[bad],identity);
+  assert.equal(projected.active,null);
+  assert.deepEqual(projected.sessions,[]);
+  assert.deepEqual(projected.segments,[]);
+  assert.equal(projected.lastJobId,null);
+ }
+});
+
+test('malformed legacy transfer cannot close the valid active segment or select another workplace',()=>{
+ const identity={company:'tenant-A',user:'employee-A'};
+ for(const job of [null,undefined,'  ',42]){
+  const bad={...event('transfer','orphan-transfer',job)};
+  const projected=projectPendingPunches(base,[bad],identity);
+  assert.equal(projected.active?.id,own.id);
+  assert.equal(projected.segments.find(s=>s.id==='own-segment').ended_at,null);
+  assert.equal(projected.segments.some(s=>s.id==='local-orphan-transfer'),false);
+  assert.equal(projected.lastJobId,'my-site');
+ }
+});

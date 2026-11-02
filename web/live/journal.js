@@ -12,6 +12,9 @@ export function hasUnsafePunchJournalEntries(events,company,user){
   if(!event||typeof event!=='object'||event.company!==company||
    event.user!==user||typeof event.id!=='string'||!event.id||
    !JOURNAL_ACTIONS.has(event.action)||!JOURNAL_STATUSES.has(event.status)||
+   // Old saved entries are validated too; no legacy unassigned IN/transfer.
+   ((event.action==='in'||event.action==='transfer')&&
+    (typeof event.job!=='string'||!event.job.trim()))||
    typeof event.occurredAt!=='string'||!Number.isFinite(Date.parse(event.occurredAt))||
    (event.previous!=null&&(typeof event.previous!=='string'||!event.previous))||
    (event.paid!=null&&typeof event.paid!=='boolean')||
@@ -51,7 +54,10 @@ export function projectPendingPunches(snapshot,events,scope=null){
  // must not become apparent attendance or a selected workplace.
  const pending=Array.isArray(events)?events.filter(e=>e?.status==='pending'&&
   typeof e.id==='string'&&e.id&&typeof e.company==='string'&&e.company&&
-  typeof e.user==='string'&&e.user&&(!identity||
+  typeof e.user==='string'&&e.user&&JOURNAL_ACTIONS.has(e.action)&&
+  typeof e.occurredAt==='string'&&Number.isFinite(Date.parse(e.occurredAt))&&
+  ((e.action!=='in'&&e.action!=='transfer')||
+   (typeof e.job==='string'&&!!e.job.trim()))&&(!identity||
   e.company===identity.company&&e.user===identity.user)):[];
  for(const event of pending){
   // A stale or contaminated snapshot must never let one employee's
