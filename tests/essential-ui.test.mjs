@@ -264,6 +264,10 @@ test('public catalog refresh hides stale prices, rejects old replies, supports r
    'the public visitor can retry instead of seeing a blank page');
   fail=false;
   const retry=ui.handle({dataset:{action:'ess:retry-public'}});
+  // The shared event handler first awaits its authorized feature routers.
+  // Wait for the real catalog request, not a guessed synchronous callback.
+  await Promise.resolve();
+  assert.equal(typeof resolvers[2],'function','Retry must start a new public catalog request');
   resolvers[2]({data:[{...plan}],error:null});
   await retry;
   assert.equal(ui.state.plans.length,1);
