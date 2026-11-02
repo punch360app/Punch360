@@ -26,7 +26,12 @@ export class PunchJournal {
  async read(){const raw=await this.storage.get(this.key);if(!raw)return [];const events=JSON.parse(raw);if(!Array.isArray(events))throw Error('Journal local illisible : conservation des données pour récupération');return events;}
  exclusive(fn){const task=this.serial.then(()=>this.withLock(fn));this.serial=task.catch(()=>{});return task;}
  async append(action,job,fix,occurredAt=new Date().toISOString(),paid=false,offline=false){
-  return this.exclusive(async()=>{const queue=await this.read();if(hasUnsafePunchJournalEntries(queue,this.company,this.user))throw Error('Journal local non vérifiable : aucune nouvelle opération ajoutée.');const event={id:this.uuid(),company:this.company,user:this.user,action,job:job||null,fix:fix||null,occurredAt,...(paid?{paid:true}:{}),offline:offline===true||queue.some(e=>e.status==='pending'),status:'pending',previous:queue.at(-1)?.id||null};if(hasUnsafePunchJournalEntries([...queue,event],this.company,this.user))throw Error('Nouveau pointage non vérifiable : aucun ajout enregistré.');queue.push(event);await this.storage.set(this.key,JSON.stringify(queue));return event;});
+  return this.exclusive(async()=>{const queue=await this.read();if(hasUnsafePunchJournalEntries(queue,this.company,this.user))throw Error('Journal local non vérifiable : aucune nouvelle opération ajoutée.');
+   // A new shift or job transfer must never create an unassigned local segment.
+   // Keep OUT and breaks usable without requiring a job argument.
+   if((action==='in'||action==='transfer')&&(typeof job!=='string'||!job.trim()))
+    throw Error('Établissement de pointage requis : aucun ajout enregistré.');
+   const event={id:this.uuid(),company:this.company,user:this.user,action,job:job||null,fix:fix||null,occurredAt,...(paid?{paid:true}:{}),offline:offline===true||queue.some(e=>e.status==='pending'),status:'pending',previous:queue.at(-1)?.id||null};if(hasUnsafePunchJournalEntries([...queue,event],this.company,this.user))throw Error('Nouveau pointage non vérifiable : aucun ajout enregistré.');queue.push(event);await this.storage.set(this.key,JSON.stringify(queue));return event;});
  }
  async flush(){
   if(this.flushing)return this.flushing;
