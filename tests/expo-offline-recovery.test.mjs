@@ -370,7 +370,7 @@ test('Expo rejects damaged cached interval endpoints and missing identities with
   ['segment end preceding start',value=>{value.segments[1].ended_at='2026-11-01T08:00:00Z'}],
   ['break missing id',value=>{value.breaks.push({session_id:'own',started_at:own.started_at,ended_at:null})}],
   ['break invalid end',value=>{value.breaks.push({id:'break',session_id:'own',started_at:own.started_at,ended_at:'not-a-date'})}],
-  ['break end preceding start',value=>{value.breaks.push({id:'break',session_id:'own',started_at:own.started_at,ended_at:'2026-11-01T08:00:00Z'})]
+  ['break end preceding start',value=>{value.breaks.push({id:'break',session_id:'own',started_at:own.started_at,ended_at:'2026-11-01T08:00:00Z'})}]
  ];
  for(const [name,damage] of variants){
   const snapshot=JSON.parse(JSON.stringify(cached));
