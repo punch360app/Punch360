@@ -63,6 +63,17 @@ test('switching company while membership lookup is pending cancels refresh',asyn
  assert.equal(await pending,false);
  assert.deepEqual(h.calls,['auth','membership']);
 });
+test('workspace switch during pending refresh never reports completion for old company',async()=>{
+ let finish;
+ const h=harness({refresh:()=>new Promise(resolve=>{finish=resolve})});
+ const pending=h.retry();
+ for(let i=0;i<8&&!finish;i++)await Promise.resolve();
+ assert.equal(typeof finish,'function','Server refresh must have started');
+ h.setScope({companyId:'company-B'});
+ finish();
+ assert.equal(await pending,false);
+ assert.deepEqual(h.calls,['auth','membership','refresh']);
+});
 test('concurrent online and visibility callbacks share one verification',async()=>{
  let release;
  const h=harness({getUser:()=>new Promise(resolve=>{release=resolve})});
