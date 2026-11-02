@@ -64,3 +64,46 @@ test('old account save response cannot update newly loaded notification preferen
  assert.equal(ui.state.rows[0].email_enabled,false);
  assert.equal(ui.state.draft.decisions,undefined);
 });
+
+test('revoking a push device requires explicit review; cancel performs no RPC',async()=>{
+ const {ui,calls}=setup();await ui.load('company');
+ ui.state.devices=[{id:'device-1',platform:'Android',revoked_at:null}];
+ await ui.handle({dataset:{action:'notification-pref:revoke',device:'device-1'}});
+ assert.equal(ui.state.pendingDevice,'device-1');
+ assert.match(ui.render(),/Confirmer la révocation/);
+ assert.equal(calls.filter(c=>c.name==='revoke_push_device').length,0);
+ await ui.handle({dataset:{action:'notification-pref:revoke-cancel',device:'device-1'}});
+ assert.equal(ui.state.pendingDevice,null);
+ assert.equal(calls.filter(c=>c.name==='revoke_push_device').length,0);
+});
+test('confirmed revocation sends one device RPC and hides old pending action',async()=>{
+ const {ui,calls}=setup();await ui.load('company');
+ ui.state.devices=[{id:'device-1',platform:'iOS',revoked_at:null}];
+ await ui.handle({dataset:{action:'notification-pref:revoke-confirm',device:'device-1'}});
+ assert.equal(calls.filter(c=>c.name==='revoke_push_device').length,0);
+ await ui.handle({dataset:{action:'notification-pref:revoke',device:'device-1'}});
+ await ui.handle({dataset:{action:'notification-pref:revoke-confirm',device:'device-1'}});
+ assert.deepEqual(calls.filter(c=>c.name==='revoke_push_device').map(c=>c.args),[{p_device:'device-1'}]);
+ assert.equal(ui.state.pendingDevice,null);
+ assert.match(ui.state.status,/révocation/);
+});
+test('unknown and already-revoked devices cannot be revoked from stale buttons',async()=>{
+ const {ui,calls}=setup();await ui.load('company');
+ ui.state.devices=[{id:'old',platform:'Web',revoked_at:'2026-01-01'}];
+ await ui.handle({dataset:{action:'notification-pref:revoke',device:'old'}});
+ await ui.handle({dataset:{action:'notification-pref:revoke-confirm',device:'old'}});
+ await ui.handle({dataset:{action:'notification-pref:revoke',device:'unknown'}});
+ await ui.handle({dataset:{action:'notification-pref:revoke-confirm',device:'unknown'}});
+ assert.equal(calls.filter(c=>c.name==='revoke_push_device').length,0);
+ ui.reset();assert.equal(ui.state.pendingDevice,null);
+});
+test('switching company clears a prepared device revocation',async()=>{
+ const {ui,calls}=setup();await ui.load('company-a');
+ ui.state.devices=[{id:'device-1',platform:'Web',revoked_at:null}];
+ await ui.handle({dataset:{action:'notification-pref:revoke',device:'device-1'}});
+ await ui.load('company-b');
+ await ui.handle({dataset:{action:'notification-pref:revoke-confirm',device:'device-1'}});
+ assert.equal(ui.state.pendingDevice,null);
+ assert.equal(ui.state.company,'company-b');
+ assert.equal(calls.filter(c=>c.name==='revoke_push_device').length,0);
+});
