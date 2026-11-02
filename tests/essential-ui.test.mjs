@@ -11,6 +11,30 @@ test('worker creation calls the checked RPC, permits no email and never creates 
 test('price edits send expected version and a reason, and surface server denial',async()=>{const {w,ui,calls}=setup(async()=>({error:{message:'MFA required'}}));ui.state.mfaRequired=false;ui.state.tab='plans';w.document.body.innerHTML=ui.renderPlatform();w.document.getElementById('ess-base').value='45.50';w.document.getElementById('ess-reason').value='Nouveaux clients seulement';await ui.handle({dataset:{action:'ess:save-plan'}});assert.equal(calls[0].name,'platform_save_essential_plan');assert.equal(calls[0].args.p_expected_version,1);assert.equal(calls[0].args.p_values.base_cents,4550);assert.match(ui.state.error,/MFA required/);assert.equal(ui.state.plans[0].base_cents,3900);await w.happyDOM.close();});
 test('personnel names are escaped and private platform state is cleared at signout',async()=>{const {w,ui}=setup();ui.state.workers=[{id:'x',first_name:'<script>alert(1)</script>',last_name:'',employee_number:'AB',status:'active',auth_user_id:null}];w.document.body.innerHTML=ui.renderWorkers();assert.equal(w.document.querySelector('script'),null);ui.state.platform=true;ui.state.snapshot={companies_list:[{name:'private'}]};ui.reset();assert.equal(ui.state.platform,false);assert.equal(ui.state.snapshot,null);assert.equal(ui.state.workers.length,0);await w.happyDOM.close();});
 test('choosing a public plan calls signup navigation without claiming payment',async()=>{const w=new Window();let chosen;const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,onChoose:p=>{chosen=p}});ui.state.plans=[plan];await ui.handle({dataset:{action:'ess:choose',id:'essential_plus'}});assert.equal(chosen.id,'essential_plus');assert.equal(ui.state.checkout,'Essentiel Plus');assert.equal(ui.state.paymentConfirmed,undefined);await w.happyDOM.close();});
+test('Bento cards avoid promising personal accounts when the feature is absent',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.plans=[{...plan,id:'schedule-only',features:['advanced_schedules','messages']}];
+  w.document.body.innerHTML=ui.renderPricing();
+  const card=w.document.querySelector('.ess-price');
+  assert.ok(card);
+  assert.deepEqual([...card.querySelectorAll('ul li')].map(li=>li.textContent),['Horaires avancés','Messagerie']);
+  assert.doesNotMatch(card.textContent,/Pointage des employés|Compte personnel facultatif|Suivi des heures/);
+  ui.state.plans=[{...plan,features:[]}];
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.deepEqual([...w.document.querySelectorAll('.ess-price ul li')].map(li=>li.textContent),
+   ['Fonctions à vérifier dans le comparatif']);
+  ui.state.plans=[{...plan,features:['messages','<img src=x onerror=alert(1)>']}];
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('.ess-price img'),null);
+  assert.deepEqual([...w.document.querySelectorAll('.ess-price ul li')].map(li=>li.textContent),['Messagerie']);
+  ui.state.plans=[{...plan,features:null}];
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
+  assert.match(w.document.querySelector('.ess-price').textContent,/Détails du forfait à confirmer/);
+ }finally{await w.happyDOM.close();}
+});
+
 test('Bento rejects previously cached offers when the catalog refresh fails and safely recovers',async()=>{
  const w=new Window();let fail=true,chosen=0,reads=0;
  const sb={from(table){
