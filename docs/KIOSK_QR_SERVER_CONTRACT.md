@@ -19,6 +19,12 @@
 - `supabase/functions/essential-kiosk/qr-contract.js` valide la forme de cette enveloppe et les conditions requises sur **preuves de confiance déjà obtenues**. Cette vérification **n'authentifie ni la carte, ni la borne, ni le NIP** et **n'autorise aucune écriture**. Le module est indépendant de la fonction déployée et peut être révisé avant intégration.
 - L'Edge Function actuelle `essential-kiosk/index.ts` refuse toujours `qr_identify` et `qr_execute` puisqu'elle n'accepte que matricule + NIP. Ce refus constitue une barrière volontaire jusqu'à la disponibilité d'un registre QR et d'une transaction complète.
 
+## Reconnaissance locale — filtre, pas authentification
+
+La caméra de la borne ne reconnaît maintenant que les QR exactement conformes au format proposé `P360C1.` + 64 caractères hexadécimaux **minuscules**. Les QR Web, codes de paiement, versions inconnues, longueurs invalides et lettres majuscules sont ignorés en poursuivant l'aperçu. Une carte conforme ne révèle toujours aucun identifiant à l'écran, n'est pas envoyée au serveur et ne crée **aucun pointage**. Seule une future validation atomique par le serveur pourra autoriser l'identification.
+
+Les tests `tests/kiosk-qr-camera.test.mjs` vérifient le rejet de QR non conformes, le scan ultérieur d'une carte de forme valide, l'absence de transmission du contenu et la libération de la caméra. Le filtre ne constitue **pas** un contrôle contre les captures d'écran ou le partage : le NIP indépendant et les protections de compte restent obligatoires.
+
 ## Transaction SQL à concevoir et faire auditer avant tout raccordement
 
 Le schéma actuel inclut `private.kiosk_devices`, `private.worker_pin_secrets`, `private.kiosk_events`, `public.company_workers`, `public.punch_sessions` et les segments. Il **n'existe pas de registre de cartes QR** dans la portée vérifiée. Ne pas contourner la fonction existante `kiosk_execute` en substituant un matricule extrait d'un QR.
