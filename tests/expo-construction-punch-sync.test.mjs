@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../App.tsx',import.meta.url),'utf8');
 const start=source.indexOf('async function syncConstructionPunches(){');
-const end=source.indexOf('useEffect(()=>{refresh();',start);
+const end=source.indexOf('\n useEffect(',start);
 assert.ok(start>=0&&end>start,'Construction retry handler missing');
 const code=source.slice(start,end).replace('catch(e:any)','catch(e)');
 function harness({pending=2,conflicts=1,remainingPending=pending,source='server',blocked=false,connected=true,changed=false,
