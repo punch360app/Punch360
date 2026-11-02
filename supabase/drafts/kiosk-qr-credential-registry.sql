@@ -139,7 +139,7 @@ declare w public.company_workers; now_at timestamptz:=clock_timestamp();
 begin
  select * into w from public.company_workers where id=p_worker for update;
  now_at:=clock_timestamp();
- if not found or not private.can_administer(w.company_id) then
+ if not found or not private.is_manager(w.company_id) then
   raise exception using errcode='42501',message='Accès refusé';
  end if;
  if length(trim(coalesce(p_reason,'')))<3 or length(p_reason)>300 then
@@ -156,7 +156,7 @@ end $$;
 -- Never return the QR, its hash, installation identifier, enrollment challenge
 -- or another employee's presence. A read cannot re-activate an expired card.
 create function public.my_kiosk_qr_card_status(p_company uuid)
-returns jsonb language plpgsql stable security definer set search_path='' as $
+returns jsonb language plpgsql stable security definer set search_path='' as $qr_body$
 declare w public.company_workers;card private.kiosk_qr_cards;
 begin
  if auth.uid() is null or p_company is null then
@@ -177,15 +177,15 @@ begin
   'active',found,
   'issued_at',case when found then card.created_at else null end,
   'expires_at',case when found then card.expires_at else null end);
-end $;
+end $qr_body$;
 
 -- Boss/Admin sees enrollment status for their own staff, never the secret or
 -- an installation identifier. Management access is checked inside the RPC.
 create function public.list_kiosk_qr_card_status(p_company uuid)
-returns jsonb language plpgsql stable security definer set search_path='' as $
+returns jsonb language plpgsql stable security definer set search_path='' as $qr_body$
 declare result jsonb;
 begin
- if p_company is null or not private.can_administer(p_company) then
+ if p_company is null or not private.is_manager(p_company) then
   raise exception using errcode='42501',message='Accès refusé';
  end if;
  select coalesce(jsonb_agg(jsonb_build_object(
@@ -200,7 +200,7 @@ begin
  from public.company_workers w where w.company_id=p_company
   and w.role in ('employee','lead','boss');
  return result;
-end $;
+end $qr_body$;
 
 -- Any change of linked account or permission invalidates issued cards and
 -- outstanding enrollment codes in the same transaction as the worker change.
@@ -229,7 +229,7 @@ create trigger revoke_kiosk_qr_on_worker_change
 -- Membership suspension or removal revokes credentials even when a
 -- separate worker-sync trigger does not run. Both triggers are idempotent.
 create function private.revoke_kiosk_qr_on_membership_change()
-returns trigger language plpgsql security definer set search_path='' as $
+returns trigger language plpgsql security definer set search_path='' as $qr_body$
 declare v_revoke boolean:=false;
 begin
  if tg_op='DELETE' then
@@ -253,7 +253,7 @@ begin
  end if;
  if tg_op='DELETE' then return old;end if;
  return new;
-end $;
+end $qr_body$;
 revoke all on function private.revoke_kiosk_qr_on_membership_change()
  from public,anon,authenticated;
 create trigger revoke_kiosk_qr_on_membership_change
