@@ -42,16 +42,23 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
    const raw=await AsyncStorage.getItem(cacheKey);
    if(raw)cached=JSON.parse(raw);
   }catch{/* Recover on the next successful server read. */}
+  // Validate both ends of every cached interval. A partially corrupted
+  // snapshot is UNKNOWN attendance, never a verified shift or pause.
+  const validCachedRange=(row:{started_at:string;ended_at:string|null})=>
+   typeof row?.started_at==='string'&&Number.isFinite(Date.parse(row.started_at))&&
+   (row.ended_at===null||(typeof row.ended_at==='string'&&
+    Number.isFinite(Date.parse(row.ended_at))&&
+    Date.parse(row.ended_at)>=Date.parse(row.started_at)));
   const valid=cached&&Array.isArray(cached.sessions)&&Array.isArray(cached.segments)&&
    (cached.breaks==null||Array.isArray(cached.breaks))&&
-   cached.sessions.every(s=>s&&typeof s.id==='string'&&s.id&&
+   cached.sessions.every(s=>s&&typeof s.id==='string'&&!!s.id&&
     typeof s.company_id==='string'&&typeof s.user_id==='string'&&
-    typeof s.started_at==='string'&&Number.isFinite(Date.parse(s.started_at)))&&
-   cached.segments.every(s=>s&&typeof s.id==='string'&&s.id&&
-    typeof s.company_id==='string'&&typeof s.session_id==='string'&&
-    typeof s.started_at==='string'&&Number.isFinite(Date.parse(s.started_at)))&&
-   (cached.breaks||[]).every(b=>b&&typeof b.session_id==='string'&&
-    typeof b.started_at==='string'&&Number.isFinite(Date.parse(b.started_at)));
+    validCachedRange(s))&&
+   cached.segments.every(s=>s&&typeof s.id==='string'&&!!s.id&&
+    typeof s.company_id==='string'&&typeof s.session_id==='string'&&!!s.session_id&&
+    typeof s.job_id==='string'&&!!s.job_id&&validCachedRange(s))&&
+   (cached.breaks||[]).every(b=>b&&typeof b.id==='string'&&!!b.id&&
+    typeof b.session_id==='string'&&!!b.session_id&&validCachedRange(b));
   if(!valid||!cached){
    snapshotUnverified=true;
    return overlay({sessions:[],segments:[],breaks:[],active:null,lastJobId:null},'cache');
