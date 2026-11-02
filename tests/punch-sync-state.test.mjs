@@ -145,7 +145,10 @@ test('journal flush receipt refreshes UI state before independent Supabase reads
  const end=app.indexOf('async function reload(',start);
  assert.ok(start>=0&&end>start);
  const loader=app.slice(start,end);
- assert.match(loader,/try\{flushed=await journal\.flush\(\)\}catch\{journalBlocked=true\}/);
+ assert.match(loader,/try\{flushed=await \(onlineAtStart\?journal\.flush\(\):journal\.inspect\(\)\)\}catch\{journalBlocked=true\}/);
+ assert.match(loader,/const onlineAtStart=navigator\.onLine===true/);
+ assert.match(loader,/const events=flushed\.events/);
+ assert.match(loader,/state\.serverPunchCompany===companyId\?state\.serverPunch/);
  assert.match(loader,/state\.localJournalBlocked=journalBlocked\?\{companyId,userId\}:null/);
  assert.match(loader,/const syncState=localPunchSyncState\(flushed\.events,companyId,userId\)/);
  assert.match(loader,/state\.localPunchEvents=flushed\.events/);
