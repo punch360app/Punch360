@@ -19,7 +19,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  let networkAvailable=false;
  try{
   const network=await Network.getNetworkStateAsync();
-  networkAvailable=network.isConnected!==false&&network.isInternetReachable!==false;
+  networkAvailable=network.isConnected===true&&network.isInternetReachable===true;
  }catch{/* Unknown connectivity is not permission to upload saved punches. */}
  // A blocked local queue must not prevent official hours from loading.
  let journalBlocked=false;
@@ -169,7 +169,7 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
  let offline=false;
  try{
   const network=await Network.getNetworkStateAsync();
-  offline=network.isConnected===false||network.isInternetReachable===false;
+  offline=network.isConnected!==true||network.isInternetReachable!==true;
  }catch{offline=true;}
  let latitude:number|null=null,longitude:number|null=null,accuracy:number|null=null;
  try{const permission=action.startsWith('break_')?null:await Location.requestForegroundPermissionsAsync();if(permission?.status==='granted'){
