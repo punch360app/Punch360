@@ -1,3 +1,4 @@
+import {createScopedPassivePunchRefresh} from './passive-punch-refresh.js';
 import {cachedOfflineWebUser,cachedOfflineWebAccount} from './offline-identity.js';
 import {createEssentialController} from './essential.js';
 import {validatePublicSignupPassword} from './public-signup-validation.js';
@@ -420,9 +421,29 @@ async function locatedPunch(action,job,paid=false){if(isEssential()&&!essentialM
   throw Error('Accusé serveur du pointage indisponible : vérifiez Mes heures avant de repointer.');
  return {...saved.result,queued:false,review_status:saved.result.review_status};
 }
-window.addEventListener('online',()=>{if(member())reload({quiet:true})});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&member())reload({quiet:true})});
-setInterval(()=>{if(member()&&!state.busy)reload({quiet:true})},30000);
+const passivePunchRefresh=createScopedPassivePunchRefresh({
+ getScope:()=>member()?{companyId:company(),userId:state.user?.id,role:state.account?.role}:null,
+ isCurrent:scope=>member()&&company()===scope.companyId&&
+  state.user?.id===scope.userId&&state.account?.role===scope.role,
+ isOnline:()=>navigator.onLine,
+ isBusy:()=>state.busy,
+ getVerifiedUser:async()=>{
+  const result=await sb.auth.getUser();
+  return result.error?null:result.data?.user?.id||null;
+ },
+ getMembership:async scope=>{
+  const result=await sb.from('company_members').select('company_id,user_id,status,role')
+   .eq('company_id',scope.companyId).eq('user_id',scope.userId)
+   .eq('status','active').maybeSingle();
+  return result.error?null:result.data;
+ },
+ refresh:async()=>reload({quiet:true})
+});
+window.addEventListener('online',()=>{void passivePunchRefresh()});
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden)void passivePunchRefresh();
+});
+setInterval(()=>{void passivePunchRefresh()},30000);
 
 const locationLabel={inside:'Dans le rayon',outside:'Hors rayon',missing:'GPS absent',inaccurate:'GPS imprécis',job_unconfigured:'Coordonnées chantier manquantes'};
 function geofenceReviewCard(){return breakApprovals()+card('<b>Conflits de synchronisation conservés</b>'+state.receipts.filter(r=>r.result?.sync_status==='conflict').map(r=>'<div class="group">'+e(r.user_id.slice(0,8))+' · '+e(r.action)+' · '+when(r.occurred_at)+'<p>'+e(r.result.message)+'</p></div>').join(''))+card('<b>Punchs GPS en attente</b>'+state.locationChecks.filter(c=>c.review_status==='pending').map(c=>'<div class="group"><b>#'+e(getJob(c.job_id)?.number||'—')+' · '+e(locationLabel[c.location_status])+(c.offline?' · HORS LIGNE':'')+'</b><p class="small">'+e(c.user_id.slice(0,8))+' · '+when(c.recorded_at)+' · '+e(c.action)+'</p><p class="small">Distance : '+(c.distance_m==null?'inconnue':Math.round(c.distance_m)+' m')+' / maximum '+c.radius_m+' m · précision '+(c.accuracy_m==null?'inconnue':Math.round(c.accuracy_m)+' m')+'</p>'+button('Accepter le punch','reviewLocation','gold',`data-id="${e(c.id)}"`)+button('Corriger les heures','correctLocation','',`data-id="${e(c.id)}"`)+'</div>').join(''));}
