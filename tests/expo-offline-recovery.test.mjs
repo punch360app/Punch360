@@ -13,6 +13,7 @@ const source=native.slice(a,b).replace('export async function loadPunchState(com
  .replace('let events:LocalPunchEvent[]=[];','let events=[];')
  .replace('let cached:PunchState|null=null;','let cached=null;')
  .replace('const validCachedRange=(row:{started_at:string;ended_at:string|null})=>','const validCachedRange=(row)=>')
+ .replace('const hasDistinctIds=(rows:Array<{id:string}>)=>','const hasDistinctIds=(rows)=>')
  .replaceAll('(row:Record<string,unknown>|null)=>','(row)=>')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
