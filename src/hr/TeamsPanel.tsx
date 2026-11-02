@@ -26,9 +26,9 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
  const readRevision=useRef(0);
  const submitInFlight=useRef<string|null>(null);
  const manager=['admin','boss'].includes(account.role);
- async function load(){
+ async function load():Promise<boolean>{
   const requestedScope=scope;
-  if(scopeRef.current!==requestedScope)return;
+  if(scopeRef.current!==requestedScope)return false;
   const revision=++readRevision.current;
   try{
    // A lead only needs their assigned teams and the server-authorized
@@ -39,7 +39,7 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
     manager?supabase.from('jobs').select('id,number,name').eq('company_id',account.companyId).eq('active',true):Promise.resolve(null),
     account.role==='lead'?supabase.rpc('lead_team_overview',{p_company:account.companyId}):Promise.resolve(null)
    ]);
-   if(scopeRef.current!==requestedScope||readRevision.current!==revision)return;
+   if(scopeRef.current!==requestedScope||readRevision.current!==revision)return false;
    if(t.error||!Array.isArray(t.data)||manager&&
       (m?.error||!Array.isArray(m?.data)||j?.error||!Array.isArray(j?.data)))
     throw Error('Liste des équipes non confirmée. Réessayez.');
@@ -54,11 +54,13 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
    setTeamStats(stats);
    setLoadError('');
    setLoadedScope(requestedScope);
+   return true;
   }catch(error){
    if(scopeRef.current===requestedScope&&readRevision.current===revision){
     setLoadError(error instanceof Error?error.message:'Chargement des équipes impossible.');
     setLoadedScope('');
    }
+   return false;
   }
  }
  useEffect(()=>{
@@ -82,9 +84,11 @@ export function TeamsPanel({account}:{account:WorkspaceAccount}){
    const r=await fn();
    if(r?.error)throw r.error;
    if(scopeRef.current!==requestedScope)return;
-   await load();
+   const refreshed=await load();
    if(scopeRef.current===requestedScope)
-    Alert.alert('Enregistré','Modification confirmée par le serveur.');
+    Alert.alert('Enregistré',refreshed?
+     'Modification confirmée par le serveur.':
+     'Modification confirmée, mais la liste n’a pas été actualisée. Réessayez le chargement.');
   }catch(e:any){
    if(scopeRef.current===requestedScope)Alert.alert('Erreur',e?.message||'Enregistrement non confirmé.');
   }finally{
