@@ -9,6 +9,31 @@ export function sessionIdChunks(rows,size=100){
  const chunks=[];for(let n=0;n<ids.length;n+=size)chunks.push(ids.slice(n,n+size));
  return chunks;
 }
+/** Shared exact millisecond calculator for the live hours view and CSV export.
+ * All intervals are clipped to this segment, and overlapping unpaid breaks
+ * are counted once. The caller scopes the parent session to the logged-in
+ * company and employee; this never authorizes server access.
+ */
+export function netSegmentMilliseconds(row,breaks,from,until){
+ if(!Number.isFinite(from)||!Number.isFinite(until)||until<from)return 0;
+ const start=timestamp(row?.started_at),end=row?.ended_at==null?until:timestamp(row.ended_at);
+ if(start===null||end===null||end<start)return 0;
+ const lo=Math.max(start,from),hi=Math.min(end,until);
+ if(hi<=lo)return 0;
+ const intervals=(Array.isArray(breaks)?breaks:[]).filter(p=>
+  p?.session_id===row.session_id&&p.is_paid===false)
+  .map(p=>{
+   const a=timestamp(p.started_at),z=p.ended_at==null?hi:timestamp(p.ended_at);
+   if(a===null||z===null||z<a)return null;
+   return [Math.max(lo,a),Math.min(hi,z)];
+  }).filter(i=>i&&i[1]>i[0]).sort((a,b)=>a[0]-b[0]);
+ let unpaid=0,endOfBreak=lo;
+ for(const [a,z] of intervals){
+  unpaid+=Math.max(0,z-Math.max(a,endOfBreak));
+  endOfBreak=Math.max(endOfBreak,z);
+ }
+ return Math.max(0,hi-lo-unpaid);
+}
 /** Segment-specific time; unpaid breaks are clipped to segment boundaries.
  * Overlapping break intervals are merged to prevent double subtraction.
  */
@@ -18,18 +43,7 @@ export function segmentExportDuration(row,breaks=[]){
  if(row?.ended_at==null)return {gross:'',unpaid:'',net:'',anomaly:'SORTIE MANQUANTE'};
  if(end===null)return {gross:'',unpaid:'',net:'',anomaly:'HORODATAGE INVALIDE'};
  if(end<start)return {gross:'',unpaid:'',net:'',anomaly:'SORTIE AVANT ENTRÉE'};
- const periods=(Array.isArray(breaks)?breaks:[]).filter(b=>b?.session_id===row.session_id&&b.is_paid!==true)
-  .map(b=>{const a=timestamp(b.started_at),z=b.ended_at==null?end:timestamp(b.ended_at);
-    return a===null||z===null||z<a?null:[Math.max(a,start),Math.min(z,end)];})
-  .filter(interval=>interval&&interval[1]>interval[0]).sort((a,b)=>a[0]-b[0]);
- let unpaid=0,lo=null,hi=null;
- for(const [a,z] of periods){
-  if(lo===null){lo=a;hi=z;continue}
-  if(a<=hi){hi=Math.max(hi,z);continue}
-  unpaid+=hi-lo;lo=a;hi=z;
- }
- if(lo!==null)unpaid+=hi-lo;
- const gross=end-start,net=Math.max(0,gross-unpaid);
- return {gross:hours(gross),unpaid:hours(Math.min(unpaid,gross)),net:hours(net),
+ const gross=end-start,net=netSegmentMilliseconds(row,breaks,start,end);
+ return {gross:hours(gross),unpaid:hours(Math.max(0,gross-net)),net:hours(net),
   anomaly:gross>16*3600000?'PLUS DE 16H':''};
 }
