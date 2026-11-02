@@ -4,16 +4,17 @@
  * authenticated user and the currently selected company.
  */
 const validDate=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))?Date.parse(value):null;
-const bounded=(start,end,from,until)=>{
- const a=validDate(start),b=end==null?until:validDate(end);
- if(a===null||b===null||b<a)return 0;
- return Math.max(0,Math.min(b,until)-Math.max(a,from));
-};
+import {netSegmentMilliseconds} from './essential-hours-export.js';
 function netMilliseconds(segments,breaks,from,until){
- const gross=segments.reduce((total,row)=>total+bounded(row.started_at,row.ended_at,from,until),0);
- const unpaid=breaks.filter(x=>x.is_paid===false).reduce((total,row)=>
-  total+bounded(row.started_at,row.ended_at,from,until),0);
- return Math.max(0,gross-unpaid);
+ const bySession=new Map();
+ for(const pause of breaks){
+  const id=pause?.session_id;
+  if(typeof id!=='string')continue;
+  const current=bySession.get(id)||[];
+  current.push(pause);bySession.set(id,current);
+ }
+ return segments.reduce((total,segment)=>
+  total+netSegmentMilliseconds(segment,bySession.get(segment.session_id)||[],from,until),0);
 }
 export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  projectedSessions=[],projectedSegments=[],projectedBreaks=[],pendingCount=0,now=Date.now(),snapshotFetchedAt=null}={}){
