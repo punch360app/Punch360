@@ -84,7 +84,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    // snapshot from loading, especially after a mobile connection drops.
    let offline=true;
    try{const net=await Network.getNetworkStateAsync();
-    offline=net.isConnected===false||net.isInternetReachable===false;
+    offline=net.isConnected!==true||net.isInternetReachable!==true;
    }catch{/* Read the scoped punch cache even if network detection fails. */}
    const [jobOutcome,punchOutcome,archiveOutcome,orderOutcome]=await Promise.allSettled([
     listMyCompanyJobs(account.companyId),loadPunchState(account.companyId),loadArchives(),
@@ -141,7 +141,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
   try{
    const net=await Network.getNetworkStateAsync();
    if(scopeRef.current!==requestedFor||punchReadRevision.current!==revision)return;
-   if(net.isConnected===false||net.isInternetReachable===false){
+   if(net.isConnected!==true||net.isInternetReachable!==true){
     setMessage('Connexion Internet requise : les pointages restent enregistrés sur cet appareil.');
     return;
    }
@@ -171,7 +171,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Synchronisation non confirmée : '+(e?.message||String(e)));
   }finally{syncInFlight.current=false;setSyncBusy(false);}
  }
- useEffect(()=>{refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected&&state.isInternetReachable!==false)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
+ useEffect(()=>{refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected===true&&state.isInternetReachable===true)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
  const current=jobs.find(j=>j.id===selectedId)||jobs[0];
  const detail=jobs.find(j=>j.id===detailId)||current;
