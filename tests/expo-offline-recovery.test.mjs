@@ -512,3 +512,41 @@ test('Expo baseline filters foreign users and tenants from both cache and server
  assert.deepEqual(live.baselineSnapshot.sessions.map(s=>s.id),['own']);
  assert.deepEqual(live.baselineSnapshot.segments.map(s=>s.id),['own-segment']);
 });
+
+test('Expo clamps a cached closed shift segment to its actual punch-in/out boundaries',async()=>{
+ const closed={...own,ended_at:'2026-11-02T12:00:00Z'};
+ const overrun={...cached.segments[1],started_at:'2026-11-02T07:00:00Z',
+  ended_at:'2026-11-02T16:00:00Z'};
+ const state=await fixture({rawCache:JSON.stringify({
+  sessions:[closed],segments:[overrun],breaks:[]
+ }),flushFail:true}).load('A');
+ assert.equal(state.readSource,'cache');
+ assert.equal(state.snapshotUnverified,false);
+ assert.equal(state.hasAppliedLocalProjection,false);
+ assert.equal(state.segments[0].started_at,'2026-11-02T08:00:00.000Z');
+ assert.equal(state.segments[0].ended_at,'2026-11-02T12:00:00.000Z');
+ assert.deepEqual(state.baselineSnapshot.segments,state.segments);
+});
+test('Expo drops wholly out-of-shift cached segments while preserving valid own work',async()=>{
+ const closed={...own,ended_at:'2026-11-02T12:00:00Z'};
+ const good={...cached.segments[1],ended_at:'2026-11-02T12:00:00Z'};
+ const bad={...good,id:'outside-session',job_id:'invalid-site',
+  started_at:'2026-11-02T13:00:00Z',ended_at:'2026-11-02T14:00:00Z'};
+ const data={sessions:[closed],segments:[bad,good],breaks:[]};
+ const h=fixture({rawCache:JSON.stringify(data),flushFail:true});
+ const state=await h.load('A');
+ assert.deepEqual(state.segments.map(s=>s.id),['own-segment']);
+ assert.equal(state.lastJobId,'my-site');
+ assert.equal(JSON.parse(h.store.get('punch-state:U:A')).segments.length,2,
+  'Recovery source remains intact; only the visible projection is filtered');
+});
+test('Expo bounds server segment starts before caching the visible hours calculation',async()=>{
+ const early={...cached.segments[1],started_at:'2026-11-02T05:00:00Z'};
+ const h=fixture({offline:false,flushFail:true,
+  malformedTable:'punch_segments',malformedData:[early]});
+ const state=await h.load('A');
+ assert.equal(state.readSource,'server');
+ assert.equal(state.segments.length,1);
+ assert.equal(state.segments[0].started_at,'2026-11-02T08:00:00.000Z');
+ assert.equal(state.baselineSnapshot.segments[0].started_at,'2026-11-02T08:00:00.000Z');
+});

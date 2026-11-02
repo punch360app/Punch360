@@ -25,8 +25,28 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   const ids=new Set(ownSessions.map(s=>s.id));
   // Older cached segments can carry an explicit user_id; reject foreign
   // ones even if their session_id collides with a valid personal session.
+  // A valid segment must also fit inside its verified parent shift.
+  // Legacy caches or inconsistent RPC rows may otherwise add hours before
+  // PUNCH IN or after PUNCH OUT. Clip only the displayed projection; retain
+  // the original stored snapshot for audit/recovery, not payroll approval.
+  const sessionsById=new Map(ownSessions.map(s=>[s.id,s]));
   const ownSegments=(state.segments||[]).filter(s=>s.company_id===companyId&&
-   ids.has(s.session_id)&&(s.user_id==null||s.user_id===user.id));
+   ids.has(s.session_id)&&(s.user_id==null||s.user_id===user.id))
+   .flatMap(s=>{
+    const parent=sessionsById.get(s.session_id);
+    if(!parent)return [];
+    const start=Date.parse(s.started_at),shiftStart=Date.parse(parent.started_at);
+    const end=s.ended_at===null?Infinity:Date.parse(s.ended_at);
+    const shiftEnd=parent.ended_at===null?Infinity:Date.parse(parent.ended_at);
+    if(!Number.isFinite(start)||!Number.isFinite(shiftStart)||
+       Number.isNaN(end)||Number.isNaN(shiftEnd))return [];
+    const clippedStart=Math.max(start,shiftStart),clippedEnd=Math.min(end,shiftEnd);
+    if(clippedEnd<clippedStart)return [];
+    if(start===clippedStart&&end===clippedEnd)return [s];
+    return [{...s,
+     started_at:new Date(clippedStart).toISOString(),
+     ended_at:Number.isFinite(clippedEnd)?new Date(clippedEnd).toISOString():null}];
+   });
   const ownBreaks=(state.breaks||[]).filter(b=>ids.has(b.session_id)&&
    (b.company_id==null||b.company_id===companyId)&&
    (b.user_id==null||b.user_id===user.id));
