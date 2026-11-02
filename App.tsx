@@ -15,7 +15,7 @@ import {journalSummary} from './src/punch/journal';
 import {MorePortal} from './src/hr/MorePortal';
 import {MessagesScreen} from './src/messages/MessagesScreen';
 import {supabase} from './src/lib/supabase';
-import {loadPunchState,punchIn,punchOut,punchTransfer,archiveSegment,restoreSegment,loadArchives,hoursFor,PunchSession,PunchSegment,PunchBreak} from './src/punch/api';
+import {loadPunchState,punchIn,punchOut,punchBreak,punchTransfer,archiveSegment,restoreSegment,loadArchives,hoursFor,PunchSession,PunchSegment,PunchBreak} from './src/punch/api';
 
 const C={bg:'#08131C',panel:'#0E202B',panel2:'#122934',stroke:'#30454E',text:'#FFFFFF',muted:'#A5B9C5',gold:'#FFBF40',mint:'#21E2B0',red:'#EF4B4B'};
 type Page='home'|'jobs'|'detail'|'hours'|'orders'|'messages'|'more'|'alerts';
@@ -56,6 +56,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const currentScope=account.companyId+':'+account.userId;
  const scopeRef=useRef(currentScope);scopeRef.current=currentScope;
  const syncInFlight=useRef(false);
+ const punchActionInFlight=useRef(false);
  const [startMs,setStartMs]=useState<number|null>(null);
  const [now,setNow]=useState(Date.now());
  const [segments,setSegments]=useState<Segment[]>([]);
@@ -142,6 +143,9 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const current=jobs.find(j=>j.id===selectedId)||jobs[0];
  const detail=jobs.find(j=>j.id===detailId)||current;
  const upcoming=jobs.filter(j=>j.assigned_to_me&&j.id!==current?.id&&j.planned_start&&Date.parse(j.planned_start)>Date.now()).sort((a,b)=>String(a.planned_start).localeCompare(String(b.planned_start)))[0];
+ const activeSession=sessions.find(s=>s.ended_at===null&&s.company_id===account.companyId&&s.user_id===account.userId);
+ const activeBreak=activeSession?serverBreaks.find(b=>b.session_id===activeSession.id&&b.ended_at===null):null;
+ const paused=!!activeBreak&&journalViewScope===currentScope;
  const elapsed=startMs&&punchActive?(now-startMs)/1000:0;
  const today=new Date(now);
  const yearBegin=new Date(today.getFullYear(),0,1).getTime();
@@ -177,7 +181,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
  function openJobs(mode:'browse'|'switch'='browse'){Keyboard.dismiss();setPickerMode(mode);setQuery('');setFilter('all');setPage('jobs')}
  function openDetail(j:Job){setDetailId(j.id);setShowArchived(false);setPage('detail')}
  function switchTo(j:Job){
-  if(punchActive&&journalBlocked){Alert.alert('Journal local à vérifier','Le transfert est bloqué sur cet appareil. Les heures serveur restent consultables.');return;}
+  if(punchActive&&(journalBlocked||journalViewScope!==currentScope||working||punchActionInFlight.current)){Alert.alert('Transfert indisponible','Vérifiez le journal de pointage et le compte avant de transférer.');return;}
   if(j.id===selectedId){setPage('home');return;}
   const apply=async()=>{
    if(working)return;setWorking(true);
@@ -192,19 +196,79 @@ function Workspace({account}:{account:WorkspaceAccount}){
    [{text:'Annuler',style:'cancel'},{text:'Confirmer',onPress:apply}]);
   else apply();
  }
- function togglePunch(){
-  if(journalBlocked){Alert.alert('Journal local à vérifier','Le pointage est bloqué sur cet appareil. Contactez votre responsable; les heures serveur restent consultables.');return;}
+async function refreshConstructionPunchState(){
+  const requestedFor=account.companyId+':'+account.userId;
+  const punch=await loadPunchState(account.companyId);
+  const local=await journalSummary(account.companyId);
+  if(scopeRef.current!==requestedFor)return;
+  const blocked=!!punch.localJournalBlocked||local.blocked;
+  setJournalBlocked(blocked);setLocalPending(local.pending);setLocalConflicts(local.conflicts);
+  setPendingItems(local.pendingItems);setConflictItems(local.conflictItems);
+  setJournalViewScope(requestedFor);
+  setHoursReadSource(punch.readSource||null);setHoursProjected(!!punch.hasLocalProjection);
+  setSessions(punch.sessions);setServerSegments(punch.segments);setServerBreaks(punch.breaks||[]);
+  setSegments(punch.segments.map(s=>({id:s.id,jobId:s.job_id,start:Date.parse(s.started_at),
+   end:s.ended_at?Date.parse(s.ended_at):null})));
+  setPunchActive(!!punch.active);setStartMs(punch.active?Date.parse(punch.active.started_at):null);
+  setMessage(blocked?'Journal local à vérifier : pointage bloqué; heures serveur consultables.':
+   local.pending?'Pointages locaux enregistrés · '+local.pending+' en attente de transmission.':
+   local.conflicts?local.conflicts+' conflit(s) à vérifier avec votre responsable.':
+   punch.readSource==='cache'?'Relevé local à vérifier · synchronisation non confirmée.':
+   'Relevé reçu du serveur · heures sujettes à validation.');
+ }
+ async function toggleConstructionBreak(paid=false){
+  const requestedFor=account.companyId+':'+account.userId;
+  if(punchActionInFlight.current||working||syncInFlight.current||journalBlocked||
+     journalViewScope!==requestedFor||!punchActive||!activeSession)return;
+  const resume=paused;
+  punchActionInFlight.current=true;setWorking(true);
+  let recorded=false;
+  try{
+   const result=await punchBreak(account.companyId,resume,paid);
+   recorded=true;
+   if(scopeRef.current!==requestedFor)return;
+   // Refresh from the scoped journal without depending on job/order/archives network.
+   await refreshConstructionPunchState();
+   if(scopeRef.current!==requestedFor)return;
+   if(result.queued)setMessage('Pause enregistrée sur cet appareil · envoi au retour du réseau.');
+   else if(result.review_status==='pending')setMessage('Pause enregistrée · validation du responsable requise.');
+  }catch(e:any){
+   if(scopeRef.current===requestedFor)
+    Alert.alert(recorded?'État de la pause à vérifier':'Pause non confirmée',
+     recorded?'Pause enregistrée, mais le relevé ne peut pas être relu. Consultez Mes heures avant une autre action.':e?.message||String(e));
+  }finally{punchActionInFlight.current=false;setWorking(false);}
+ }
+ function requestConstructionBreak(){
+  if(punchActionInFlight.current||working||journalBlocked||syncInFlight.current||
+     journalViewScope!==currentScope||!punchActive||!activeSession)return;
+  if(paused){
+   Alert.alert('Reprendre le travail ?','Terminer la pause en cours ?',[
+    {text:'Annuler',style:'cancel'},
+    {text:'Reprendre',onPress:()=>{void toggleConstructionBreak();}}
+   ]);
+  }else{
+   Alert.alert('Début de pause','Choisissez le type prévu par votre entreprise.',[
+    {text:'Annuler',style:'cancel'},
+    {text:'Non payée / repas',onPress:()=>{void toggleConstructionBreak(false);}},
+    {text:'Payée (si autorisée)',onPress:()=>{void toggleConstructionBreak(true);}}
+   ]);
+  }
+ }
+  function togglePunch(){
+  if(journalBlocked||journalViewScope!==currentScope){Alert.alert('Journal local à vérifier','Le pointage est bloqué tant que le compte et le journal local ne sont pas vérifiés.');return;}
   if(!current){Alert.alert('Aucune job','Sélectionne une job avant de puncher.');return;}
-  if(working)return;
+  if(working||punchActionInFlight.current||syncInFlight.current)return;
   Alert.alert(punchActive?'Confirmer PUNCH OUT':'Confirmer PUNCH IN',
    '#'+current.number+' — '+current.name,
    [{text:'Annuler',style:'cancel'},{text:'Confirmer',onPress:async()=>{
-    setWorking(true);
+    const requestedFor=account.companyId+':'+account.userId;
+    if(punchActionInFlight.current||scopeRef.current!==requestedFor)return;
+    punchActionInFlight.current=true;setWorking(true);
     try{if(punchActive)await punchOut(account.companyId);
     else await punchIn(account.companyId,current.id);
-    await refresh();
-    }catch(e:any){Alert.alert('Punch non enregistré',e.message||String(e))}
-    finally{setWorking(false)}
+    await refreshConstructionPunchState();
+    }catch(e:any){if(scopeRef.current===requestedFor)Alert.alert('Punch non enregistré',e.message||String(e))}
+    finally{punchActionInFlight.current=false;setWorking(false)}
    }}]);
  }
  function archivePunch(id:string){
@@ -219,7 +283,11 @@ function Workspace({account}:{account:WorkspaceAccount}){
  function Header({back,title}:{back?:()=>void;title?:string}){return <View style={styles.header}>{back?<Pressable onPress={back} style={{paddingRight:12}}><Icon name="arrow-back" color={C.text}/></Pressable>:null}<View style={{flex:1}}>{title?<T size={21} bold>{title}</T>:<><Logo/><T size={12} color={C.muted}>{dateLabel()}</T></>}</View><Pressable onPress={()=>setPage('alerts')}><Icon name="notifications-outline" color={C.text}/></Pressable><View style={styles.avatar}><T size={12} bold>FM</T></View></View>}
  function Bottom(){return <View style={styles.nav}>{([{id:'home',label:'Accueil',icon:'home'},{id:'hours',label:'Mes heures',icon:'time-outline'},{id:'orders',label:'Commande',icon:'cart-outline'},{id:'messages',label:'Message',icon:'chatbubble-outline'},{id:'more',label:'Plus',icon:'grid-outline'}] as const).map(tab=><Pressable key={tab.id} onPress={()=>setPage(tab.id)} style={[styles.navItem,(page===tab.id||(page==='jobs'||page==='detail')&&tab.id==='home')&&styles.navSelected]}><Icon name={tab.icon} color={(page===tab.id||(page==='jobs'||page==='detail')&&tab.id==='home')?C.gold:C.muted} size={22}/><T size={10} bold={page===tab.id} color={(page===tab.id||(page==='jobs'||page==='detail')&&tab.id==='home')?C.gold:C.muted}>{tab.label}</T></Pressable>)}</View>}
  function JobCard({job,title,status,pressMode='browse',expanded=false}:{job:Job;title:string;status:string;pressMode?:'browse'|'switch';expanded?:boolean}){return <Pressable onPress={()=>openJobs(pressMode)} style={[styles.card,{padding:12},expanded&&{flex:1}]}><View style={styles.row}><Icon name={title==='Prochain chantier'?'calendar':'briefcase'} size={18}/><T bold size={15} style={{flex:1}}>{title}</T><T size={11} color={status==='En cours'?C.mint:C.gold}>{status}</T><Icon name="chevron-forward" color={C.muted}/></View><View style={[styles.row,{marginTop:9}]}><JobIcon job={job}/><View style={{flex:1,gap:3}}><T bold size={15}>#{job.number} — {job.name}</T><T size={11} color={C.muted} numberOfLines={2} style={{lineHeight:15}}>{job.address}</T><View style={styles.row}><Icon name="location" color={C.mint} size={14}/><T size={11} color={C.muted}>{title==='Prochain chantier'?'Voir la fiche et les jobs':'Plans '+(job.plan_count??'–')+' · Commandes '+(job.open_order_count??'–')}</T></View></View><Pressable onPress={e=>{e.stopPropagation();waze(job)}} style={styles.navRoute}><Icon name="navigate" color={C.text} size={20}/></Pressable></View>{expanded?<View style={{flex:1,justifyContent:'flex-end',paddingTop:10}}><Action icon="swap-horizontal" label="Changer de job / GPS" onPress={()=>openJobs('switch')}/></View>:null}</Pressable>}
- function Home(){return <View style={{flex:1,paddingHorizontal:14,paddingBottom:5,gap:compact?7:10}}><Header/><View style={[styles.row,{gap:10}]}><Card style={{flex:1,padding:10,flexDirection:'row',alignItems:'center',gap:8}}><Icon name="partly-sunny" size={26}/><View><T size={15} bold>Météo</T><T size={10} color={C.muted}>À connecter</T></View></Card><Card style={{flex:1,padding:10,flexDirection:'row',alignItems:'center',gap:8}}><Icon name="location-outline" size={23}/><View><T size={12} bold>Position GPS</T><Pressable onPress={locate}><T size={10} color={C.mint}>{pos?'Détectée':'Localiser'}</T></Pressable></View></Card></View><View style={{alignItems:'center',justifyContent:'center',height:compact?165:200}}><Pressable disabled={journalBlocked} onPress={togglePunch} style={[styles.punchCircle,{height:compact?155:186,width:compact?155:186,borderColor:punchActive?C.red:C.mint,shadowColor:punchActive?C.red:C.mint,backgroundColor:punchActive?'rgba(96,12,22,0.96)':'rgba(0,53,48,0.94)'}]}><Icon name={punchActive?'stop':'play'} size={42} color={C.text}/><T size={20} bold>PUNCH {punchActive?'OUT':'IN'}</T><T size={13} color={punchActive?'#FFACAC':C.mint} bold>{clock(elapsed)}</T></Pressable><Pressable onPress={()=>openJobs('switch')} style={{position:'absolute',bottom:0,backgroundColor:C.panel,borderColor:C.stroke,borderWidth:1,borderRadius:24,paddingHorizontal:14,paddingVertical:5,flexDirection:'row',alignItems:'center',gap:5}}><Icon name="swap-horizontal" size={16} color={C.mint}/><T size={11}>Changer de job</T></Pressable></View><View style={styles.row}><Card style={{flex:1,padding:12}}><T size={10} color={C.muted}>Cette semaine</T><T size={20} bold>{formatHours(weekDuration)}</T></Card><Card style={{flex:1,padding:12}}><T size={10} color={C.muted}>Cette année</T><T size={20} bold>{formatHours(annualDuration)}</T></Card></View>{current?<JobCard job={current} title="Job en cours" status={punchActive?'En cours':'Non pointé'} expanded={!upcoming}/>:<Pressable onPress={()=>openJobs('browse')}><Card><T>Choisir une job</T></Card></Pressable>}{upcoming?<JobCard job={upcoming} title="Prochain chantier" status={upcoming.planned_start||'À venir'}/>:null}<Pressable onPress={()=>current&&openDetail(current)}><Card style={{padding:10,borderColor:'#70333B',backgroundColor:'#28161F'}}><View style={styles.row}><Icon name="warning" color={C.red}/><View style={{flex:1}}><T bold size={12}>Documents importants</T><T size={10} color={C.muted}>Consulter les plans de la job sélectionnée</T></View><Icon name="chevron-forward" color={C.muted}/></View></Card></Pressable></View>}
+ function Home(){return <View style={{flex:1,paddingHorizontal:14,paddingBottom:5,gap:compact?7:10}}><Header/><View style={[styles.row,{gap:10}]}><Card style={{flex:1,padding:10,flexDirection:'row',alignItems:'center',gap:8}}><Icon name="partly-sunny" size={26}/><View><T size={15} bold>Météo</T><T size={10} color={C.muted}>À connecter</T></View></Card><Card style={{flex:1,padding:10,flexDirection:'row',alignItems:'center',gap:8}}><Icon name="location-outline" size={23}/><View><T size={12} bold>Position GPS</T><Pressable onPress={locate}><T size={10} color={C.mint}>{pos?'Détectée':'Localiser'}</T></Pressable></View></Card></View><View style={{alignItems:'center',justifyContent:'center',height:compact?165:200}}><Pressable disabled={journalBlocked||working||syncBusy||journalViewScope!==currentScope} onPress={togglePunch} style={[styles.punchCircle,{height:compact?155:186,width:compact?155:186,borderColor:punchActive?C.red:C.mint,shadowColor:punchActive?C.red:C.mint,backgroundColor:punchActive?'rgba(96,12,22,0.96)':'rgba(0,53,48,0.94)'}]}><Icon name={punchActive?'stop':'play'} size={42} color={C.text}/><T size={20} bold>PUNCH {punchActive?'OUT':'IN'}</T><T size={13} color={punchActive?'#FFACAC':C.mint} bold>{clock(elapsed)}</T>{paused?<T size={10} color={C.gold} bold>EN PAUSE</T>:null}</Pressable>
+ <View style={{position:'absolute',bottom:0,left:0,right:0,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8}}>
+  <Pressable onPress={()=>openJobs('switch')} style={{backgroundColor:C.panel,borderColor:C.stroke,borderWidth:1,borderRadius:24,paddingHorizontal:12,paddingVertical:8,flexDirection:'row',alignItems:'center',gap:5}}><Icon name="swap-horizontal" size={16} color={C.mint}/><T size={11}>Changer de job</T></Pressable>
+  {punchActive&&journalViewScope===currentScope?<Pressable accessibilityRole="button" accessibilityLabel={paused?'Reprendre le travail':'Début de pause'} disabled={working||syncBusy||journalBlocked} onPress={requestConstructionBreak} style={{backgroundColor:C.panel,borderColor:C.stroke,borderWidth:1,borderRadius:24,paddingHorizontal:12,paddingVertical:8,flexDirection:'row',alignItems:'center',gap:5}}><Icon name={paused?'play':'pause'} size={16} color={C.gold}/><T size={11}>{paused?'Reprendre':'Pause'}</T></Pressable>:null}
+ </View></View><View style={styles.row}><Card style={{flex:1,padding:12}}><T size={10} color={C.muted}>Cette semaine</T><T size={20} bold>{formatHours(weekDuration)}</T></Card><Card style={{flex:1,padding:12}}><T size={10} color={C.muted}>Cette année</T><T size={20} bold>{formatHours(annualDuration)}</T></Card></View>{current?<JobCard job={current} title="Job en cours" status={punchActive?'En cours':'Non pointé'} expanded={!upcoming}/>:<Pressable onPress={()=>openJobs('browse')}><Card><T>Choisir une job</T></Card></Pressable>}{upcoming?<JobCard job={upcoming} title="Prochain chantier" status={upcoming.planned_start||'À venir'}/>:null}<Pressable onPress={()=>current&&openDetail(current)}><Card style={{padding:10,borderColor:'#70333B',backgroundColor:'#28161F'}}><View style={styles.row}><Icon name="warning" color={C.red}/><View style={{flex:1}}><T bold size={12}>Documents importants</T><T size={10} color={C.muted}>Consulter les plans de la job sélectionnée</T></View><Icon name="chevron-forward" color={C.muted}/></View></Card></Pressable></View>}
  function JobsDirectory(){return <View style={{flex:1,paddingHorizontal:14,gap:9}}><Header back={()=>setPage('home')} title="Toutes les jobs"/><View style={styles.search}><Icon name="search" size={19} color={C.muted}/><TextInput value={query} onChangeText={setQuery} placeholder="Rechercher un numéro, nom ou adresse" placeholderTextColor="#718996" style={{flex:1,color:C.text,fontSize:13}} clearButtonMode="while-editing"/></View><View style={styles.row}>{([{id:'all',label:'Toutes'},{id:'mine',label:'Mes jobs'},{id:'nearby',label:'À proximité'}] as const).map(f=><Pressable key={f.id} onPress={()=>{setFilter(f.id);if(f.id==='nearby'&&!pos)locate()}} style={[styles.pill,filter===f.id&&{backgroundColor:C.gold,borderColor:C.gold}]}><T size={12} bold color={filter===f.id?C.bg:C.text}>{f.label}</T></Pressable>)}</View><View style={{height:175,borderRadius:14,overflow:'hidden',borderColor:C.stroke,borderWidth:1}}><MapView style={{flex:1}} showsUserLocation={!!pos} initialRegion={{latitude:46.82,longitude:-71.23,latitudeDelta:0.32,longitudeDelta:0.48}} region={filter==='nearby'&&pos?{latitude:pos.latitude,longitude:pos.longitude,latitudeDelta:0.25,longitudeDelta:0.25}:undefined} customMapStyle={[{elementType:'geometry',stylers:[{color:'#172b36'}]},{elementType:'labels.text.fill',stylers:[{color:'#b4c3cc'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#334954'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#123a51'}]}]}>{filtered.filter(j=>j.latitude!==null&&j.longitude!==null).map(j=><Marker key={j.id} coordinate={{latitude:j.latitude!,longitude:j.longitude!}} title={'#'+j.number+' — '+j.name} description={j.address} pinColor={j.id===current?.id?C.mint:C.gold} onCalloutPress={()=>openDetail(j)}/>)}</MapView><Pressable onPress={locate} style={styles.locateBtn}><Icon name="locate" size={21} color={C.text}/></Pressable></View><View style={styles.row}><T bold size={13}>{filtered.length} chantier{filtered.length>1?'s':''}</T><T size={10} color={C.muted}>{pickerMode==='switch'?'Choisir pour transférer':'Ouvre une job pour ses détails'}</T></View><FlatList style={{flex:1}} data={filtered} keyExtractor={j=>j.id} keyboardShouldPersistTaps="handled" ListEmptyComponent={<T color={C.muted}>Aucune job correspondante.</T>} contentContainerStyle={{paddingBottom:8,gap:7}} renderItem={({item})=><Pressable onPress={()=>openDetail(item)} style={[styles.card,{padding:9}]}><View style={styles.row}><JobIcon job={item}/><View style={{flex:1,gap:4}}><T size={15} bold>#{item.number} — {item.name}</T><T size={11} color={C.muted} numberOfLines={2}>{item.address}</T><View style={styles.row}>{item.assigned_to_me?<T size={10} color={C.mint}>Ma job · </T>:null}{pos&&item.latitude!==null&&item.longitude!==null?<T size={10} color={C.muted}>{distanceKm(pos,{latitude:item.latitude,longitude:item.longitude}).toFixed(1)} km</T>:null}{item.id===current?.id?<T size={10} color={C.gold}>Sélectionnée</T>:null}</View></View><Icon name="chevron-forward" color={C.muted}/></View></Pressable>}/></View>}
  function DetailScreen(){if(!detail)return <View/>;const relevant=segments.filter(s=>s.jobId===detail.id&&(showArchived?archived.includes(s.id):!archived.includes(s.id)));return <View style={{flex:1,paddingHorizontal:14}}><Header back={()=>setPage('jobs')} title={'Job #'+detail.number}/><ScrollView contentContainerStyle={{gap:12,paddingBottom:22}}><Card><View style={styles.row}><JobIcon job={detail}/><View style={{flex:1,gap:5}}><T bold size={19}>{detail.name}</T><T size={12} color={C.muted}>{detail.address}</T></View></View><View style={[styles.row,{marginTop:12}]}><Action icon="navigate" label="Waze" onPress={()=>waze(detail)}/><Action icon="map" label="Google Maps" onPress={()=>mapLink(detail)}/></View></Card><View style={styles.row}><Card style={{flex:1}}><Icon name="document-text" size={21}/><T bold>Plans et documents</T><T size={11} color={C.muted}>{detail.plan_count!==undefined?detail.plan_count+' fichiers':'Documents liés à la job'}</T></Card><Card style={{flex:1}}><Icon name="cart" size={21}/><T bold>Commandes</T><T size={11} color={C.muted}>{detail.open_order_count!==undefined?detail.open_order_count+' en cours':'Historique par chantier'}</T></Card></View><Action icon="swap-horizontal" label={punchActive?'Transférer mon punch ici':'Sélectionner cette job'} onPress={()=>switchTo(detail)}/><Card><View style={styles.row}><T bold style={{flex:1}}>Punchs de cette job</T><Pressable onPress={()=>setShowArchived(v=>!v)}><T color={C.gold} size={12}>{showArchived?'Actifs':'Archives'}</T></Pressable></View>{relevant.length===0?<T color={C.muted} style={{marginTop:13}}>Aucun punch {showArchived?'archivé':'enregistré sur cette job'}.</T>:relevant.map(s=><View key={s.id} style={[styles.row,{paddingVertical:11,borderTopColor:C.stroke,borderTopWidth:1,marginTop:8}]}><Icon name="time-outline" color={C.mint}/><View style={{flex:1}}><T size={12}>{new Date(s.start).toLocaleString('fr-CA')}</T><T size={11} color={C.muted}>{s.end?'Terminé':'En cours'}</T></View><Pressable onPress={()=>showArchived?unarchive(s.id):archivePunch(s.id)} style={{padding:7}}><Icon name={showArchived?'arrow-undo':'ellipsis-vertical'} color={C.text}/></Pressable></View>)}</Card></ScrollView></View>}
  function HoursScreen(){const scoped=journalViewScope===currentScope;
