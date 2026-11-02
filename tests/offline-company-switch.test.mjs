@@ -13,13 +13,13 @@ function harness(journal){
   sessions:[{id:'original'}],segments:[],breaks:[],localPending:0,selected:'old'};
  let projections=0,saves=0;
  const loadData=new Function('state','member','company','punchJournal',
-  'navigator','projectPendingPunches','saveOfflineSnapshot','currentSession',`
+  'navigator','projectPendingPunches','saveOfflineSnapshot','currentSession','localPunchSyncState',`
    ${source}
    return loadData;`)(
   state,()=>!!state.account&&!!state.user,
   ()=>state.account?.company_id,()=>journal,{onLine:false},
   ()=>{projections++;return {sessions:[{id:'foreign'}],segments:[],breaks:[]};},
-  ()=>{saves++;},()=>null
+  ()=>{saves++;},()=>null,()=>({pending:[],conflicts:[]})
  );
  return {state,loadData,counters:()=>({projections,saves})};
 }
