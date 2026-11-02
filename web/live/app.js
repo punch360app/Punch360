@@ -5,6 +5,7 @@ import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
+import {segmentExportDuration,sessionIdChunks} from './essential-hours-export.js';
 import {hoursExportScope,createHoursCsv} from './hours-csv.js';
 import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
@@ -126,54 +127,65 @@ async function advanceOrder(id,status){const note=prompt('Commentaire de suivi (
 async function setWeek(close){const week=$val('payrollWeek');if(!week)return toast('Choisis le lundi de la semaine.');const reason=prompt('Motif de '+(close?'fermeture':'réouverture'));if(!reason||reason.trim().length<3)return;try{const r=await sb.rpc('set_payroll_week',{p_company:company(),p_week:week,p_close:close,p_reason:reason});if(r.error)throw r.error;await reload({quiet:true});toast(close?'Semaine fermée':'Semaine rouverte')}catch(err){error(err)}}
 let hoursExportRunning=false;
 async function exportHours(){
- if(hoursExportRunning)return;
- hoursExportRunning=true;
+ if(!member())return toast('Connexion requise pour exporter les heures.');
+ const companyId=company(),userId=state.user.id,selfOnly=!manager()||state.section==='hours';
  try{
-  if(!navigator.onLine)throw Error('Export serveur indisponible hors ligne. Synchronisez vos pointages avant de réessayer.');
-  const scope=hoursExportScope(company(),state.user?.id,state.account?.role,state.section);
-  const rows=[];
-  for(let offset=0;;offset+=500){
+  // Always query server records. Projected offline entries are never exported.
+  let rows=[],offset=0;
+  while(true){
    let q=sb.from('punch_segments')
-    .select('id,company_id,session_id,job_id,started_at,ended_at,punch_sessions!inner(company_id,user_id,worker_id)')
-    .eq('company_id',scope.companyId).eq('punch_sessions.company_id',scope.companyId)
-    .order('id').range(offset,offset+499);
-   if(scope.ownOnly)q=q.eq('punch_sessions.user_id',scope.userId);
+    .select('id,session_id,job_id,started_at,ended_at,punch_sessions!inner(user_id,worker_id)')
+    .eq('company_id',companyId).order('id').range(offset,offset+499);
+   if(selfOnly)q=q.eq('punch_sessions.user_id',userId);
    const result=await q;
    if(result.error)throw result.error;
-   if(!Array.isArray(result.data))throw Error('Segments incomplets : export annulé.');
-   rows.push(...result.data);
-   if(result.data.length<500)break;
+   const page=result.data||[];rows.push(...page);
+   if(page.length<500)break;
+   offset+=500;
   }
-  const ids=[...new Set(rows.map(row=>row.session_id).filter(Boolean))];
+  // Fetch only breaks belonging to the actually exported sessions, not
+  // every break in a tenant. Chunk IDs for reliable PostgREST URL sizes.
   const breaks=[];
-  // Fetch only breaks relevant to the sessions in the exported dataset.
-  // Bound each request and continue paging so large companies aren't truncated.
-  for(let index=0;index<ids.length;index+=75){
-   const batch=ids.slice(index,index+75);
-   for(let offset=0;;offset+=500){
+  for(const ids of sessionIdChunks(rows)){
+   let breakOffset=0;
+   while(true){
     const result=await sb.from('punch_breaks')
-     .select('id,company_id,session_id,started_at,ended_at,is_paid')
-     .eq('company_id',scope.companyId).in('session_id',batch)
-     .order('id').range(offset,offset+499);
+     .select('session_id,started_at,ended_at,is_paid')
+     .eq('company_id',companyId).in('session_id',ids)
+     .order('id').range(breakOffset,breakOffset+499);
     if(result.error)throw result.error;
-    if(!Array.isArray(result.data))throw Error('Pauses incomplètes : export annulé.');
-    breaks.push(...result.data);
-    if(result.data.length<500)break;
+    const page=result.data||[];breaks.push(...page);
+    if(page.length<500)break;
+    breakOffset+=500;
    }
   }
-  if(scope.companyId!==company()||scope.userId!==state.user?.id)
-   throw Error('Entreprise ou compte modifié durant l’export : recommencez.');
-  const content=createHoursCsv({...scope,rows,breaks,isEssentialExport:isEssential(),
-   essential:isEssential(),roster:essentialUI.planning.state.roster,
-   locations:essentialUI.planning.state.locations,jobs:state.jobs});
-  const blob=new Blob([content.csv],{type:'text/csv;charset=utf-8'});
+  // A tenant switch or signout during an asynchronous export must fail closed.
+  if(company()!==companyId||state.user?.id!==userId)throw Error('Compte ou entreprise changé pendant l’export. Réessayez.');
+  const breaksBySession=new Map();
+  for(const pause of breaks){
+   const items=breaksBySession.get(pause.session_id)||[];
+   items.push(pause);breaksBySession.set(pause.session_id,items);
+  }
+  const data=[['Segment',isEssential()?'Matricule':'Employé',isEssential()?'Lieu':'Job',
+   'Entrée ISO','Sortie ISO','Heures brutes','Pauses non payées (h)','Heures nettes','Anomalie'],
+   ...rows.map(row=>{
+    const duration=segmentExportDuration(row,breaksBySession.get(row.session_id)||[]);
+    const identity=isEssential()?
+     (essentialUI.planning.state.roster.find(w=>w.id===row.punch_sessions?.worker_id)?.employee_number||
+      row.punch_sessions?.worker_id||row.punch_sessions?.user_id):
+     (row.punch_sessions?.user_id||row.punch_sessions?.worker_id);
+    const place=isEssential()?
+     (essentialUI.planning.state.locations.find(loc=>loc.punch_job_id===row.job_id)?.name||'Établissement'):
+     (getJob(row.job_id)?.number||row.job_id);
+    return [row.id,identity,place,row.started_at,row.ended_at||'',
+     duration.gross,duration.unpaid,duration.net,duration.anomaly];
+   })];
+  const blob=new Blob(['\uFEFF'+data.map(line=>line.map(csvCell).join(';')).join('\r\n')],
+   {type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=url;
-  link.download='PUNCH-heures-'+new Date().toISOString().slice(0,10)+'.csv';
-  link.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  link.href=url;link.download='PUNCH-heures-'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }catch(err){error(err)}
- finally{hoursExportRunning=false}
 }
 
 function schedulePage(){if(isEssential())return essentialSchedule();return heading('Horaire et affectations','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Employé</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+' · '+e(labelRole(m.role))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début (heure de cet appareil)','shiftStart','','datetime-local')+formfield('Fin (heure de cet appareil)','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Affecter au chantier','scheduleShift','gold full')):'')+card('<b>Quarts planifiés</b>'+state.shifts.map(x=>'<div class="group"><b>#'+e(getJob(x.job_id)?.number||'—')+' · '+e(x.user_id.slice(0,8))+'</b><p>'+when(x.starts_at)+' → '+when(x.ends_at)+'</p><p>'+e(x.note)+'</p>'+(manager()?button('Annuler le quart','cancelShift','',`data-id="${e(x.id)}"`):'')+'</div>').join(''));}
