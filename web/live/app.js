@@ -248,14 +248,14 @@ function essentialHours(){
  const view=essentialHoursView({companyId:company(),userId:state.user?.id,
   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,
   projectedSessions:state.sessions,projectedSegments:state.segments,
-  projectedBreaks:state.breaks,pendingCount:state.localPending,now:state.time});
+  projectedBreaks:state.breaks,pendingCount:state.localPending,now:state.time,snapshotFetchedAt:state.serverPunchFetchedAt});
  const notice=state.localPending>0?'<p class="ess-notice" role="status">'+state.localPending+' événement(s) conservé(s) sur cet appareil et en attente de synchronisation. Ils ne figurent pas dans le relevé serveur ni dans l’export CSV.</p>':'';
  const weekly=view.ready?'<span class="eyebrow">CETTE SEMAINE · DERNIER RELEVÉ SERVEUR REÇU</span><div class="zen-total">'+mins(view.confirmedWeekMs)+'</div><p class="small muted">Temps calculé depuis les pointages reçus du serveur, non approuvé pour la paie. '+(Number.isFinite(state.serverPunchFetchedAt)?'Dernière lecture : '+e(when(new Date(state.serverPunchFetchedAt).toISOString()))+'. ':'')+'La journée ouverte est provisoire; les données hors ligne ou une lecture réseau incomplète peuvent manquer.</p>':
   '<p class="ess-notice" role="status">Aucun relevé serveur vérifiable pour cette entreprise. Vos heures ne sont pas confirmées sur cet appareil.</p>';
  const estimate=view.hasPending&&view.projectedWeekMs!==null?
   '<p class="small muted">Estimation locale avec événements en attente : '+mins(view.projectedWeekMs)+' · non confirmée.</p>':'';
- const history=view.ready&&view.confirmedSessions.length?view.confirmedSessions.slice(0,80).map(s=>
-  card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours · durée provisoire')+'</p>')).join(''):
+ const history=view.ready&&view.confirmedDays.length?view.confirmedDays.slice(0,80).map(({session:s,netMs,open})=>
+  card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours · durée provisoire')+'</p><strong>'+mins(netMs)+' net'+(open?' · dernier relevé serveur':'')+'</strong>')).join(''):
   '<p class="small muted">'+(view.ready?'Aucune journée enregistrée sur le serveur.':'Historique serveur indisponible.')+'</p>';
  return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   notice+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
