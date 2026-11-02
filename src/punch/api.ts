@@ -2,7 +2,7 @@ import * as Network from 'expo-network';
 import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getPunchJournal} from './journal';
-import {projectPendingPunches} from '../../web/live/journal.js';
+import {projectPendingPunches,hasUnsafePunchJournalEntries} from '../../web/live/journal.js';
 import type {LocalPunchEvent} from '../../web/live/journal.js';
 import {netSegmentMilliseconds} from '../../web/live/essential-hours-export.js';
 import * as Location from 'expo-location';
@@ -73,9 +73,26 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
  }}catch{/* A missing fix must never erase worked time; server flags it for review. */}
  const journal=await getPunchJournal(companyId);
  const event=await journal.append(action,jobId,latitude===null?null:{latitude,longitude:longitude!,accuracy},occurredAt,paid,offline);
- const sync=await journal.flush();const saved=sync.events.find(e=>e.id===event.id);
- if(saved?.status==='conflict')throw Error('Punch conservé sur le serveur, conflit transmis à l’administration : '+saved.result?.message);
- return {...saved?.result,queued:saved?.status==='pending',review_status:saved?.status==='pending'?'local':saved?.result?.review_status} as LocationCheckResult;
+ // The append was persisted before network. A failed flush may still leave
+ // a valid pending or already acknowledged event; inspect that exact event.
+ let events:LocalPunchEvent[]|null=null;
+ try{events=(await journal.flush()).events}catch{/* Inspect persisted journal. */}
+ if(!events||!events.some(e=>e.id===event.id)){
+  try{events=await journal.read()}catch{
+   throw Error('Pointage enregistré localement, mais journal illisible : vérifiez Mes heures avant de repointer.');
+  }
+ }
+ if(hasUnsafePunchJournalEntries(events,journal.company,journal.user))
+  throw Error('Journal local non vérifiable : pointage à vérifier avant une nouvelle opération.');
+ const saved=events.find(e=>e.id===event.id);
+ if(!saved)throw Error('Statut du pointage introuvable dans le journal local : vérifiez Mes heures avant de repointer.');
+ if(saved.status==='conflict')
+  throw Error('Conflit de pointage conservé pour vérification : '+(saved.result?.message||'contactez votre responsable.'));
+ if(saved.status==='pending')
+  return {queued:true,review_status:'local'} as LocationCheckResult;
+ if(saved.status!=='synced'||!saved.result)
+  throw Error('Accusé serveur du pointage indisponible : vérifiez Mes heures avant de repointer.');
+ return {...saved.result,queued:false,review_status:saved.result.review_status} as LocationCheckResult;
 }
 export const punchIn=(companyId:string,jobId:string)=>punchWithLocation(companyId,'in',jobId);
 export const punchOut=(companyId:string)=>punchWithLocation(companyId,'out');
