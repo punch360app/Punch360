@@ -35,6 +35,14 @@ La nouvelle opération de base, idéalement dans un schéma `private` non expos�
 
 L'architecture et l'implantation doivent être approuvées avec les experts Sécurité, Supabase et MOON/BOSS. **Pas de migration SQL ou RPC de pointage QR créé par cette étape**, pas de déploiement automatique, et aucune lecture/écriture sur des données clients.
 
+## Registre privé — brouillon en cours de revue (non appliqué)
+
+- [`supabase/drafts/kiosk-qr-credential-registry.sql`](../supabase/drafts/kiosk-qr-credential-registry.sql) : tables privées d'enrôlement et de cartes avec **hash** des jetons, RLS activée sans grants directs aux rôles Web, code d'activation temporaire, émission à un compte personnel authentifié, rotation qui révoque l'ancien QR, révocation par l'employé ou l'admin et révocation par changement de rôle/compte/statut. Les fonctions `SECURITY DEFINER` nécessitent une revue SQL et des droits `EXECUTE` stricts.
+- [`supabase/drafts/kiosk-qr-credential-acceptance.sql`](../supabase/drafts/kiosk-qr-credential-acceptance.sql) : recette transactionnelle **à exécuter uniquement sur une base Supabase jetable** après avoir chargé le brouillon. Elle teste le refus interentreprises, l'émission unique, la rotation et la révocation, puis exécute `ROLLBACK`. **Aucune exécution sur base PostgreSQL n'a été effectuée ou certifiée ici.**
+- [`tests/kiosk-qr-registry-draft.test.mjs`](../tests/kiosk-qr-registry-draft.test.mjs) : garde-fous automatiques **statiques**. Ils contrôlent la présence de permissions, contraintes et scénarios; ils ne démontrent **pas** que le SQL compile ni que les droits fonctionnent en base.
+- Un `installation_id` fourni par le navigateur **n'est pas une preuve d'appareil**. Le registre devra être complété par un vrai protocole d'enrôlement, attestation lorsque possible et révocation à l'identité/à la session, avant tout support Wallet. Ne pas qualifier le brouillon de protection anti-capture ni anti-partage.
+- Ce répertoire `supabase/drafts/` **n'est pas une migration**. Ne pas déplacer son contenu dans `supabase/migrations/`, appliquer des migrations, ouvrir les permissions ni connecter le scanner à ces routines sans une revue indépendante des experts Architecture, Sécurité, Supabase/BOSS, des tests SQL isolés et une décision explicite de mise en service.
+
 ## Recette obligatoire avant activation
 
 | Scénario | Résultat attendu |
