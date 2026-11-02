@@ -82,3 +82,29 @@ test('same session ID in a contaminated cache cannot close foreign breaks or seg
  assert.equal(projected.breaks.find(x=>x.id==='foreign-break').ended_at,null);
  assert.equal(projected.segments.find(x=>x.id==='own-segment').ended_at,'2026-11-01T12:00:00Z');
 });
+
+test('a stale mixed snapshot without pending events cannot select another tenant or worker',()=>{
+ const scoped=projectPendingPunches(base,[],{company:'tenant-A',user:'employee-A'});
+ assert.equal(scoped.active?.id,'own-session');
+ assert.equal(scoped.lastJobId,'my-site');
+ const empty=projectPendingPunches({sessions:[foreign],segments:[base.segments[0]],breaks:[]},[],
+  {company:'tenant-A',user:'employee-A'});
+ assert.equal(empty.active,null);
+ assert.equal(empty.lastJobId,null);
+});
+test('only matching pending events are projected when explicit user/company scope is provided',()=>{
+ const foreignEvent={...event('out','foreign-out'),company:'tenant-B',user:'employee-B'};
+ const scoped=projectPendingPunches(base,[foreignEvent],{company:'tenant-A',user:'employee-A'});
+ assert.equal(scoped.sessions.find(s=>s.id===foreign.id).ended_at,null);
+ assert.equal(scoped.sessions.find(s=>s.id===own.id).ended_at,null);
+ assert.equal(scoped.active?.id,'own-session');
+ const ownOut=projectPendingPunches(base,[foreignEvent,event('out','own-out')],{company:'tenant-A',user:'employee-A'});
+ assert.equal(ownOut.sessions.find(s=>s.id===own.id).ended_at,'2026-11-01T12:00:00Z');
+ assert.equal(ownOut.sessions.find(s=>s.id===foreign.id).ended_at,null);
+});
+test('Web and Expo always supply the worker/company to the shared overlay',()=>{
+ const web=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const native=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
+ assert.equal(web.split('projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId})').length-1,2);
+ assert.match(native,/projectPendingPunches\(state,await journal\.read\(\),\{company:companyId,user:user\.id\}\)/);
+});
