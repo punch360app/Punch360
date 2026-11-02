@@ -34,10 +34,10 @@ export function managerMissingDayApprovalSummary({companyId,reviewerId,source}={
  if(typeof companyId!=='string'||!companyId||typeof reviewerId!=='string'||!reviewerId||
     source?.company!==companyId||source.user!==reviewerId||
     !['boss','admin'].includes(source.role)||source.loaded!==true||
-    !Array.isArray(source.workers)||!Array.isArray(source.requests))return empty;
+    !Array.isArray(source.workers)||!Array.isArray(source.pendingRequests))return empty;
  const workers=new Map(source.workers.filter(w=>typeof w?.id==='string'&&w.id&&
   typeof w.auth_user_id==='string').map(w=>[w.id,w]));
- const pending=source.requests.filter(r=>r?.company_id===companyId&&
+ const pending=source.pendingRequests.filter(r=>r?.company_id===companyId&&
   r.status==='pending'&&typeof r.id==='string'&&r.id&&
   typeof r.worker_id==='string'&&workers.has(r.worker_id)&&
   workers.get(r.worker_id).auth_user_id!==reviewerId&&
@@ -53,8 +53,8 @@ export function managerMissingDayApprovalSummary({companyId,reviewerId,source}={
 }
 
 export function createMissingDaysController({sb,redraw,escape:e,storage=globalThis.localStorage,crypto=globalThis.crypto}){
- let generation=0;const s={company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''},manager=()=>['boss','admin'].includes(s.role);
- function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''})}
+ let generation=0;const s={company:null,user:null,role:null,workers:[],jobs:[],requests:[],pendingRequests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''},manager=()=>['boss','admin'].includes(s.role);
+ function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,workers:[],jobs:[],requests:[],pendingRequests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''})}
  const rpc=async(name,args)=>{const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data};
  async function refresh(){
   const n=generation,company=s.company,worker=s.form.worker;
@@ -64,18 +64,27 @@ export function createMissingDaysController({sb,redraw,escape:e,storage=globalTh
   if(!manager()&&worker)requestsQuery=requestsQuery.eq('worker_id',worker);
   const requestsPromise=!manager()&&!worker?Promise.resolve({data:[],error:null}):
    requestsQuery.order('created_at',{ascending:false}).limit(100);
-  const [requests,jobs]=await Promise.all([requestsPromise,
+  // A separate bounded pending inbox avoids losing unresolved requests when
+  // the latest 100 historical rows have already been decided.
+  const pendingPromise=manager()?sb.from('essential_missing_days').select('*')
+   .eq('company_id',company).eq('status','pending')
+   .order('created_at',{ascending:false}).limit(200):
+   Promise.resolve({data:[],error:null});
+  const [requests,pending,jobs]=await Promise.all([requestsPromise,pendingPromise,
    sb.from('jobs').select('id,name').eq('company_id',company)]);
   if(n!==generation)return;
-  if(requests.error||jobs.error)throw requests.error||jobs.error;
-  s.requests=requests.data||[];s.jobs=jobs.data||[];s.form.job||=s.jobs[0]?.id||'';
+  if(requests.error||pending.error||jobs.error)throw requests.error||pending.error||jobs.error;
+  s.requests=requests.data||[];
+  s.pendingRequests=pending.data||[];
+  s.jobs=jobs.data||[];s.form.job||=s.jobs[0]?.id||'';
   s.loaded=true;
  }
  async function load(account,user,workers=[]){reset();const n=generation;s.company=account?.company_id;s.user=user;s.role=account?.role;s.workers=manager()?workers:workers.filter(w=>w.auth_user_id===user);s.form.worker=s.workers[0]?.id||'';if(s.company)try{await refresh()}catch(err){if(n===generation)s.error=err.message}}
  const btn=(title,action,id='')=>`<button class="ess-btn" data-action="missing:${action}" data-id="${e(id)}" ${s.busy||!s.loaded&&action!=='refresh'?'disabled':''}>${title}</button>`;
  const field=(label,id,value)=>`<label class="ess-field">${label}<input id="missing-${id}" value="${e(value)}" maxlength="1000"></label>`;
  function render(){const f=s.form;
-  const visibleRequests=(s.loaded?s.requests:[]).filter(r=>r?.company_id===s.company&&
+  const history=s.loaded?(manager()?[...new Map([...s.pendingRequests,...s.requests].map(r=>[r?.id,r])).values()]:s.requests):[];
+  const visibleRequests=history.filter(r=>r?.company_id===s.company&&
    s.workers.some(w=>w.id===r.worker_id&&
     (manager()||w.auth_user_id===s.user)));
   return `<h2>Journée entièrement oubliée</h2><p>Soumettez la journée complète, avec ses pauses. Aucune heure officielle ne change avant l’approbation par une autre personne.</p>${s.error?`<p role="alert">${e(s.error)}</p>`:''}<section class="ess-panel"><label class="ess-field">Salarié<select id="missing-worker">${s.workers.map(w=>`<option value="${e(w.id)}" ${f.worker===w.id?'selected':''}>${e(w.first_name+' '+w.last_name)}</option>`).join('')}</select></label><label class="ess-field">Établissement<select id="missing-job">${s.jobs.map(j=>`<option value="${e(j.id)}" ${f.job===j.id?'selected':''}>${e(j.name)}</option>`).join('')}</select></label><p>Dates avec fuseau : 2026-10-20T08:00:00-04:00. Pour une nuit, indiquez la date de fin suivante et son décalage applicable.</p>${field('Entrée','start',f.start)}${field('Sortie','end',f.end)}${field('Motif de la demande','reason',f.reason)}<h3>Pauses de cette journée</h3>${f.breaks.map((p,i)=>`<div>${field('Début de pause','pause-'+i+'-start',p.start)}${field('Fin de pause','pause-'+i+'-end',p.end)}<label class="ess-check"><input type="checkbox" id="missing-pause-${i}-paid" ${p.paid?'checked':''}>Payée</label>${btn('Retirer cette pause','remove-break',String(i))}</div>`).join('')}${f.breaks.length<12?btn('Ajouter une pause','add-break'):''}${btn('Soumettre pour approbation','submit')}</section>${manager()?`<section class="ess-panel">${field('Motif pour approuver ou refuser','note',s.note)}</section>`:''}<section class="ess-panel"><h3>100 demandes récentes</h3>${!s.loaded?'<p role="status">Historique non vérifié. Actualisez pour consulter vos demandes.</p>':''}${visibleRequests.map(r=>`<article class="ess-person"><div><b>${e(s.workers.find(w=>w.id===r.worker_id)?.first_name||'Salarié')}</b><p>${e(new Date(r.starts_at).toLocaleString('fr-CA'))} → ${e(new Date(r.ends_at).toLocaleString('fr-CA'))}</p><p>${e(r.reason)} · ${e(({pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'})[r.status])}</p><small>${Array.isArray(r.breaks)?r.breaks.length:0} pause(s) · ${e(r.review_note||'')}</small></div>${r.status==='pending'?(r.requested_by===s.user?btn('Annuler','cancel',r.id):manager()&&s.workers.find(w=>w.id===r.worker_id)?.auth_user_id!==s.user?btn('Approuver','approve',r.id)+btn('Refuser','reject',r.id):''):''}</article>`).join('')||'<p>Aucune demande.</p>'}</section>${btn('Actualiser','refresh')}`;}
@@ -92,7 +101,7 @@ export function createMissingDaysController({sb,redraw,escape:e,storage=globalTh
     const payload=missingDayPayload(s.company,s.form);await durableLedgerRequest({storage:{get:k=>storage.getItem(k),set:(k,v)=>storage.setItem(k,v),remove:k=>storage.removeItem(k)},key:'punch-missing-day:'+s.company+':'+s.user,payload,uuid:()=>crypto.randomUUID(),digest:async v=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))),x=>x.toString(16).padStart(2,'0')).join(''),send:args=>{if(n!==generation||s.company!==companyId||s.user!==userId)throw Error('Compte changé pendant la demande. Aucun envoi effectué.');return rpc('request_essential_missing_day',args)}});if(n===generation)s.form={...blankMissingDay(),worker:s.form.worker,job:s.form.job};}
   else if(action==='cancel'||action==='approve'||action==='reject'){
    if(!s.loaded||!s.company||!s.user)throw Error('Demandes non vérifiées. Actualisez.');
-   const request=s.requests.find(r=>r?.id===el.dataset.id&&r.company_id===s.company&&r.status==='pending');
+   const request=[...s.pendingRequests,...s.requests].find(r=>r?.id===el.dataset.id&&r.company_id===s.company&&r.status==='pending');
    const worker=request&&s.workers.find(w=>w.id===request.worker_id);
    if(!request||!worker)throw Error('Demande indisponible pour ce compte.');
    if(action==='cancel'){
