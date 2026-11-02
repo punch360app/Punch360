@@ -39,7 +39,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -146,7 +146,7 @@ async function reviewEssentialLeave(id,approve){
  if(!navigator.onLine)return toast('Une connexion Internet est requise pour approuver un congé.');
  if(state.leaveReviewSubmitting)return;
  const companyId=company(),reviewerId=state.user?.id;
- const view=essentialLeaveApprovalView({companyId,manager:manager(),loaded:state.leavesLoaded,requests:state.leaves});
+ const view=essentialLeaveApprovalView({companyId,manager:manager(),loaded:state.leaveApprovalsLoaded,requests:state.leaveApprovals,reviewerId});
  const selected=view.requests.find(request=>request.id===id);
  if(!view.ready||!selected)return toast('Cette demande n’est plus vérifiée. Actualisez la liste.');
  const note=prompt('Motif de '+(approve?'l’approbation':'la décision de refus')+' (3 à 1 000 caractères)');
@@ -166,11 +166,15 @@ async function reviewEssentialLeave(id,approve){
      proof.data.user_id!==selected.user_id||proof.data.status!=='pending'||!sameScope())
    throw Error('Pending request not verified');
   const result=await sb.rpc('review_leave',{p_request:id,p_approve:approve,p_note:reason});
-  if(result.error||!sameScope())throw Error('Leave decision not confirmed');
+  if(result.error){
+   if(String(result.error.message||'').includes('Annuler ou déplacer les quarts en conflit'))throw Error('shift_conflict');
+   throw Error('Leave decision not confirmed');
+  }
+  if(!sameScope())throw Error('Review scope changed');
   await reload({quiet:true});
   if(sameScope())toast('Décision transmise au serveur et enregistrée.');
- }catch{
-  if(sameScope())toast('Décision non confirmée. Actualisez la liste avant toute nouvelle tentative.');
+ }catch(err){
+  if(sameScope())toast(err?.message==='shift_conflict'?'Congé en conflit avec un quart planifié : déplacez ou annulez le quart avant approbation.':'Décision non confirmée. Actualisez la liste avant toute nouvelle tentative.');
  }finally{
   state.leaveReviewSubmitting=false;
   if(sameScope()&&state.section==='sub'&&state.sub==='approvals')draw();
@@ -415,7 +419,7 @@ function essentialLeavePage(){
 function essentialMore(){const items=[['profile',tr('profile')],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
 function essentialApprovals(){
  if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');
- const view=essentialLeaveApprovalView({companyId:company(),manager:manager(),loaded:state.leavesLoaded,requests:state.leaves});
+ const view=essentialLeaveApprovalView({companyId:company(),manager:manager(),loaded:state.leaveApprovalsLoaded,requests:state.leaveApprovals,reviewerId:state.user?.id});
  const canReview=view.ready&&navigator.onLine&&!state.leaveReviewSubmitting;
  const labels={vacation:'Vacances',personal:'Congé personnel',sick:'Maladie',other:'Autre'};
  const leaveRows=view.requests.length?view.requests.slice(0,100).map(l=>
@@ -450,7 +454,7 @@ async function loadData(){if(!member())return;
  const scopeCurrent=()=>revision===punchLoadRevision&&member()&&company()===companyId&&state.user?.id===userId;
  await journal.flush();if(!scopeCurrent())return;
  if(!navigator.onLine){
-  state.leavesLoaded=false;
+  state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
    const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;
   const view=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});
   state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=pending.length;state.localPunchEvents=events;
@@ -459,13 +463,13 @@ async function loadData(){if(!member())return;
   saveOfflineSnapshot();return;
  }
  if(!companyId)return;try{
-state.leavesLoaded=false;
+state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
  const calls=await Promise.all([
 sb.from('jobs').select('id,company_id,number,name,address,latitude,longitude,punch_radius_m,photo_url,active').eq('company_id',companyId).eq('active',true).order('number'),
 sb.from('job_assignments').select('job_id,planned_start').eq('company_id',companyId).eq('user_id',state.user.id).eq('active',true),
 sb.from('punch_sessions').select('id,started_at,ended_at,user_id,company_id').eq('company_id',companyId).eq('user_id',state.user.id).order('started_at',{ascending:false}).limit(150),
 sb.from('material_orders').select('id,created_at,created_by,job_id,status,note').eq('company_id',companyId).order('created_at',{ascending:false}).limit(100),
-(manager()?sb.from('leave_requests').select('id,company_id,user_id,leave_type,begins_on,ends_on,status,reason,created_at').eq('company_id',companyId):sb.from('leave_requests').select('id,company_id,user_id,leave_type,begins_on,ends_on,status,reason,created_at').eq('company_id',companyId).eq('user_id',userId)).order('created_at',{ascending:false}).limit(100),
+sb.from('leave_requests').select('id,company_id,user_id,leave_type,begins_on,ends_on,status,reason,created_at').eq('company_id',companyId).eq('user_id',userId).order('created_at',{ascending:false}).limit(100),
 sb.from('punch_correction_requests').select('id,session_id,requested_by,requested_start,requested_end,reason,status,created_at,review_note').eq('company_id',companyId).order('created_at',{ascending:false}).limit(100),
 sb.from('job_documents').select('id,name,kind,job_id,storage_path,requires_ack,version').eq('company_id',companyId),
 sb.from('conversations').select('id,title,kind,team_id').eq('company_id',companyId),
@@ -485,6 +489,15 @@ sb.from('punch_event_receipts').select('event_id,user_id,action,job_id,occurred_
 sb.from('punch_breaks').select('id,company_id,user_id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',state.user.id)
 ]);if(!scopeCurrent())return;state.conversationsCompany=null;const names=['jobs','assignments','sessions','orders','leaves','corrections','documents','conversations','profile','contacts','credentials','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks'];const errors=[];for(let i=0;i<calls.length;i++){if(calls[i].error)errors.push(names[i]+': '+calls[i].error.message);else state[names[i]]=names[i]==='profile'?calls[i].data||null:names[i]==='archived'?(calls[i].data||[]).map(a=>a.segment_id):calls[i].data||[]}
 state.leavesLoaded=!calls[4].error;if(calls[4].error)state.leaves=[];
+ if(manager()){
+  // Keep manager approvals independent from the employee's 100-row history.
+  const queue=await sb.from('leave_requests').select('id,company_id,user_id,leave_type,begins_on,ends_on,status,reason,created_at')
+   .eq('company_id',companyId).eq('status','pending').order('created_at',{ascending:false}).limit(200);
+  if(!scopeCurrent())return;
+  state.leaveApprovalsLoaded=!queue.error;
+  state.leaveApprovals=queue.error?[]:queue.data||[];
+  if(queue.error)errors.push('congés à approuver: '+queue.error.message);
+ }
  if(!calls[7].error){state.conversationsCompany=companyId;await chatUnread.load(companyId).catch(()=>chatUnread.reset());}else chatUnread.reset();
 if(!scopeCurrent())return;
 if(manager()){const team=await sb.from('punch_sessions').select('id,user_id,started_at,ended_at').eq('company_id',companyId).order('started_at',{ascending:false}).limit(500);if(team.error)errors.push('heures équipe: '+team.error.message);else state.teamSessions=team.data||[]}
@@ -545,7 +558,7 @@ async function switchCompany(companyId){
    chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();
    essentialUI.reset();bossHandoff.reset();
    for(const field of ['jobs','assignments','sessions','segments','orders','leaves','corrections','documents','conversations','messages','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks','teamSessions','contact'])state[field]=Array.isArray(state[field])?[]:null;
-   state.profile=null;state.leavesLoaded=false;state.leaveSubmitting=false;state.leaveReviewSubmitting=false;state.serverPunch={sessions:[],segments:[],breaks:[]};state.serverPunchFetchedAt=null;state.serverPunchCompany=null;state.localPending=0;state.localPunchEvents=[];state.selected=null;state.detailId=null;state.chatId=null;state.section='home';state.sub='';state.fieldMode=false;
+   state.profile=null;state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];state.leaveSubmitting=false;state.leaveReviewSubmitting=false;state.serverPunch={sessions:[],segments:[],breaks:[]};state.serverPunchFetchedAt=null;state.serverPunchCompany=null;state.localPending=0;state.localPunchEvents=[];state.selected=null;state.detailId=null;state.chatId=null;state.section='home';state.sub='';state.fieldMode=false;
    setVerifiedAccount(next);
    await essentialUI.load(state.user,state.account);
    await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);
