@@ -70,7 +70,8 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .select('id,company_id,user_id,started_at,ended_at')
   .eq('company_id',companyId).eq('user_id',user.id)
   .order('started_at',{ascending:false}).limit(500);
- if(error)return offlineState();
+ if(error||!Array.isArray(sessions))return offlineState();
+ // A null or malformed successful response is not a verified empty shift.
  // Filter untrusted RPC rows before writing the offline snapshot. Filtering
  // only during UI projection would leave another tenant's records on disk.
  const list=((sessions||[]) as PunchSession[]).filter(s=>s&&s.company_id===companyId&&s.user_id===user.id);
@@ -79,10 +80,10 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
   .order('started_at',{ascending:false});
- if(segmentsError)return offlineState();
+ if(segmentsError||!Array.isArray(segments))return offlineState();
  const ownSessionIds=new Set(list.map(s=>s.id));
  const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&ownSessionIds.has(s.session_id));
- const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error)return offlineState();
+ const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data))return offlineState();
  // Break rows do not select company_id/user_id on all schema versions;
  // their session_id must belong to a verified session before caching.
  const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&
