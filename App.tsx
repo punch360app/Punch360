@@ -9,6 +9,7 @@ import * as Location from 'expo-location';
 import MapView,{Marker} from 'react-native-maps';
 import {Job,JobFilter,Point,DEMO_JOBS,distanceKm,visibleJobs,validGeoPoint,jobHasCoordinates} from './src/jobs/catalog';
 import {listMyCompanyJobs,createJob} from './src/jobs/api';
+import {submitMaterialOrder} from './src/orders/materialOrders';
 import {AuthGate, WorkspaceAccount} from './src/auth/AuthGate';
 import {GeofencePanel} from './src/workforce/GeofencePanel';
 import {journalSummary} from './src/punch/journal';
@@ -71,6 +72,10 @@ function Workspace({account}:{account:WorkspaceAccount}){
  const [jobName,setJobName]=useState('');
  const [jobAddress,setJobAddress]=useState('');
  const [orderNote,setOrderNote]=useState('');
+ const [orderSending,setOrderSending]=useState(false);
+ const orderInFlight=useRef<string|null>(null);
+ const [orderListScope,setOrderListScope]=useState('');
+ const [orderListError,setOrderListError]=useState('');
  const [orders,setOrders]=useState<{id:string;status:string;note:string|null;created_at:string;job_id:string}[]>([]);
  const [archived,setArchived]=useState<string[]>([]);
  const [showArchived,setShowArchived]=useState(false);
@@ -88,7 +93,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    }catch{/* Read the scoped punch cache even if network detection fails. */}
    const [jobOutcome,punchOutcome,archiveOutcome,orderOutcome]=await Promise.allSettled([
     listMyCompanyJobs(account.companyId),loadPunchState(account.companyId),loadArchives(),
-    offline?Promise.resolve({data:null,error:{message:'offline'}}):supabase.from('material_orders').select('id,job_id,status,note,created_at').eq('company_id',account.companyId).order('created_at',{ascending:false}).limit(50)
+    offline?Promise.resolve({data:null,error:{message:'offline'}}):supabase.from('material_orders').select('id,company_id,job_id,status,note,created_at').eq('company_id',account.companyId).order('created_at',{ascending:false}).limit(50)
    ]);
    const local=await journalSummary(account.companyId);
    if(scopeRef.current!==requestedFor||punchReadRevision.current!==revision)return;
@@ -129,7 +134,17 @@ function Workspace({account}:{account:WorkspaceAccount}){
     old&&result.jobs.some(j=>j.id===old)?old:
     mostRecent&&result.jobs.some(j=>j.id===mostRecent)?mostRecent:result.jobs[0]?.id||'');
    setPunchActive(!!punch.active);setStartMs(punch.active?Date.parse(punch.active.started_at):null);
-   if(orderOutcome.status==='fulfilled'&&!orderOutcome.value.error)setOrders(orderOutcome.value.data||[]);
+   if(orderOutcome.status==='fulfilled'&&!orderOutcome.value.error&&
+      Array.isArray(orderOutcome.value.data)&&
+      orderOutcome.value.data.every(o=>o&&typeof o.id==='string'&&
+       typeof o.job_id==='string'&&o.company_id===account.companyId)){
+    setOrders(orderOutcome.value.data);
+    setOrderListScope(requestedFor);
+    setOrderListError('');
+   }else{
+    setOrderListError(offline?'Historique indisponible hors ligne.':
+     'Historique non confirmé. Actualisez quand la connexion est rétablie.');
+   }
   }catch(e:any){if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Erreur de synchronisation : '+(e.message||String(e)));}
  }
  async function syncConstructionPunches(){
@@ -171,7 +186,7 @@ function Workspace({account}:{account:WorkspaceAccount}){
    if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Synchronisation non confirmée : '+(e?.message||String(e)));
   }finally{syncInFlight.current=false;setSyncBusy(false);}
  }
- useEffect(()=>{refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected===true&&state.isInternetReachable===true)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
+ useEffect(()=>{setOrders([]);setOrderListScope('');setOrderListError('');setOrderNote('');setOrderSending(false);refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected===true&&state.isInternetReachable===true)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
  const current=jobs.find(j=>j.id===selectedId)||jobs[0];
  const detail=jobs.find(j=>j.id===detailId)||current;
@@ -397,7 +412,39 @@ async function refreshConstructionPunchState(){
   </Pressable>:null}
  </View>:null}
  {!scoped?<T color={C.muted}>Relevé du compte en cours de chargement.</T>:sessions.length===0?<T color={C.muted}>Aucune heure enregistrée.</T>:sessions.map(s=><Pressable key={s.id} style={{padding:10,borderRadius:10,backgroundColor:C.panel2}} onPress={()=>{const segment=serverSegments.find(z=>z.session_id===s.id);const job=jobs.find(z=>z.id===segment?.job_id);if(job)openDetail(job)}}><View style={styles.row}><Icon name="time" color={s.ended_at?C.gold:C.mint}/><View style={{flex:1}}><T size={13} bold>{new Date(s.started_at).toLocaleDateString('fr-CA')}</T><T size={11} color={C.muted}>{new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})} — {s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'}</T></View><T size={12} bold>{formatHours(hoursFor(serverSegments.filter(seg=>seg.session_id===s.id),now,Date.parse(s.started_at),s.ended_at?Date.parse(s.ended_at):now,serverBreaks))}</T><Icon name="chevron-forward" color={C.muted}/></View></Pressable>)}</ScrollView></Card></View>}
- function OrdersScreen(){return <View style={{flex:1,paddingHorizontal:14,gap:12}}><Header title="Commande"/><Card><T size={15} bold>Nouvelle demande de matériel</T><T color={C.muted} size={12}>Job : {current?('#'+current.number+' — '+current.name):'Sélectionner une job'}</T><TextInput placeholder="Décrire le matériel, les quantités…" multiline value={orderNote} onChangeText={setOrderNote} placeholderTextColor={C.muted} style={{minHeight:85,backgroundColor:C.panel2,borderRadius:10,color:C.text,padding:12,marginVertical:11,textAlignVertical:'top'}}/><Action icon="send" label="Envoyer à l’administration" onPress={async()=>{if(!current||!orderNote.trim()){Alert.alert('Information manquante','Choisis une job et décris le matériel.');return;}try{const {error}=await supabase.from('material_orders').insert({company_id:account.companyId,job_id:current.id,created_by:account.userId,note:orderNote.trim()});if(error)throw error;setOrderNote('');await refresh();Alert.alert('Commande envoyée','La demande est enregistrée pour cette job.');}catch(e:any){Alert.alert('Commande non envoyée',e.message)}}}/></Card><Card style={{flex:1}}><T size={16} bold>Historique des commandes</T><ScrollView contentContainerStyle={{gap:9,paddingTop:10}}>{orders.length===0?<T size={12} color={C.muted}>Aucune commande.</T>:orders.map(o=><View key={o.id} style={{padding:10,backgroundColor:C.panel2,borderRadius:9}}><View style={styles.row}><T size={12} bold>#{jobs.find(j=>j.id===o.job_id)?.number||'Job'}</T><T size={10} color={C.gold}>{o.status}</T><T size={10} color={C.muted}>{new Date(o.created_at).toLocaleDateString('fr-CA')}</T></View><T size={12} color={C.muted}>{o.note||'Matériel'}</T></View>)}</ScrollView></Card></View>}
+ async function sendMaterialOrder(){
+  const requestedScope=currentScope;
+  if(orderInFlight.current===requestedScope||scopeRef.current!==requestedScope)return;
+  orderInFlight.current=requestedScope;
+  setOrderSending(true);
+  let createdId:string;
+  try{
+   createdId=await submitMaterialOrder({
+    companyId:account.companyId,userId:account.userId,jobId:current?.id||'',
+    note:orderNote,jobs
+   });
+  }catch(error:any){
+   if(scopeRef.current===requestedScope)
+    Alert.alert('Commande non confirmée',error?.message||'Vérifiez l’historique avant de réessayer.');
+   if(orderInFlight.current===requestedScope)orderInFlight.current=null;
+   if(scopeRef.current===requestedScope)setOrderSending(false);
+   return;
+  }
+  // Confirmation of the INSERT must never be undone by a failed refresh.
+  if(scopeRef.current===requestedScope){
+   setOrderNote('');
+   try{await refresh()}catch{/* The server has already confirmed the order ID. */}
+   if(scopeRef.current===requestedScope)
+    Alert.alert('Commande envoyée','Demande '+createdId.slice(0,8)+
+     ' confirmée pour ce chantier. Si elle n’apparaît pas encore, actualisez l’historique.');
+  }
+  if(orderInFlight.current===requestedScope)orderInFlight.current=null;
+  if(scopeRef.current===requestedScope)setOrderSending(false);
+ }
+ function OrdersScreen(){return <View style={{flex:1,paddingHorizontal:14,gap:12}}><Header title="Commande"/><Card><T size={15} bold>Nouvelle demande de matériel</T><T color={C.muted} size={12}>Job : {current?('#'+current.number+' — '+current.name):'Sélectionner une job'}</T><TextInput placeholder="Décrire le matériel, les quantités…" multiline value={orderNote} onChangeText={setOrderNote} placeholderTextColor={C.muted} style={{minHeight:85,backgroundColor:C.panel2,borderRadius:10,color:C.text,padding:12,marginVertical:11,textAlignVertical:'top'}}/><Action icon="send" label={orderSending?'Envoi en cours…':'Envoyer à l’administration'} onPress={()=>{if(!orderSending)void sendMaterialOrder()}}/></Card><Card style={{flex:1}}><T size={16} bold>Historique des commandes</T>{orderListScope!==currentScope?
+ <T size={12} color={C.muted}>{orderListError||'Historique en cours de chargement…'}</T>:
+ orderListError?<T size={12} color={C.muted}>{orderListError}</T>:null}<ScrollView contentContainerStyle={{gap:9,paddingTop:10}}>{orderListScope!==currentScope?<T size={12} color={C.muted}>Historique non disponible pour ce compte.</T>:
+ orders.length===0?<T size={12} color={C.muted}>Aucune commande confirmée.</T>:orders.map(o=><View key={o.id} style={{padding:10,backgroundColor:C.panel2,borderRadius:9}}><View style={styles.row}><T size={12} bold>#{jobs.find(j=>j.id===o.job_id)?.number||'Job'}</T><T size={10} color={C.gold}>{o.status}</T><T size={10} color={C.muted}>{new Date(o.created_at).toLocaleDateString('fr-CA')}</T></View><T size={12} color={C.muted}>{o.note||'Matériel'}</T></View>)}</ScrollView></Card></View>}
  function MoreScreen(){return <View style={{flex:1,paddingHorizontal:14,gap:10}}><Header title="Plus"/><Card><T size={16} bold>{account.companyName}</T><T size={12} color={C.muted}>Mon rôle : {account.role} · Abonnement : {account.billingStatus}</T></Card>{account.role==='boss'||account.role==='admin'?<Card><T size={15} bold>Créer une job</T>{[{v:jobNumber,set:setJobNumber,h:'Numéro de job'},{v:jobName,set:setJobName,h:'Nom du chantier'},{v:jobAddress,set:setJobAddress,h:'Adresse ou emplacement'}].map(f=><TextInput key={f.h} style={{height:40,backgroundColor:C.panel2,color:C.text,borderRadius:8,paddingHorizontal:9,marginTop:7}} value={f.v} onChangeText={f.set} placeholder={f.h} placeholderTextColor={C.muted}/>)}<View style={{marginTop:9}}><Action icon="add" label="Ajouter le chantier" onPress={async()=>{if(!jobNumber.trim()||!jobName.trim()){Alert.alert('Champs requis','Numéro et nom du chantier.');return;}try{
  await createJob(account.companyId,jobNumber,jobName,jobAddress);
  setJobNumber('');setJobName('');setJobAddress('');
