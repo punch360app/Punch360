@@ -165,7 +165,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   else setNotice(previous=>previous.startsWith('Journal local à vérifier :')?'':previous);
  }catch(e:any){if(current()){setJournalBlocked(true);setNotice(e?.message||String(e))}}}
 
- useEffect(()=>{setMobileAllowed(false);setSiteJob(null);setJournalBlocked(true);load();const timer=setInterval(load,30000),tick=setInterval(()=>setNow(Date.now()),1000);const app=AppState.addEventListener('change',s=>{if(s==='active')load()});const network=Network.addNetworkStateListener(s=>{if(s.isConnected&&s.isInternetReachable!==false)load()});return()=>{++punchReadRevision.current;clearInterval(timer);clearInterval(tick);app.remove();network.remove()}},[account.companyId,account.userId]);
+ useEffect(()=>{setMobileAllowed(false);setSiteJob(null);setJournalBlocked(true);load();const timer=setInterval(load,30000),tick=setInterval(()=>setNow(Date.now()),1000);const app=AppState.addEventListener('change',s=>{if(s==='active')load()});const network=Network.addNetworkStateListener(s=>{if(s.isConnected===true&&s.isInternetReachable===true)load()});return()=>{++punchReadRevision.current;clearInterval(timer);clearInterval(tick);app.remove();network.remove()}},[account.companyId,account.userId]);
  const date=new Date(now),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),week=new Date(date.getFullYear(),date.getMonth(),date.getDate()-(date.getDay()+6)%7).getTime();
  const viewWeekDate=new Date(date.getFullYear(),date.getMonth(),date.getDate()-7*weekOffset);
  const viewWeekStart=new Date(viewWeekDate.getFullYear(),viewWeekDate.getMonth(),viewWeekDate.getDate()-(viewWeekDate.getDay()+6)%7);
@@ -228,7 +228,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   setBusy(true);
   try{
    const network=await Network.getNetworkStateAsync();
-   if(network.isConnected===false||network.isInternetReachable===false){
+   if(network.isConnected!==true||network.isInternetReachable!==true){
     setNotice(pending>0?'Connexion Internet requise pour transmettre les pointages.':'Connexion Internet requise pour actualiser le relevé.');
     return;
    }
