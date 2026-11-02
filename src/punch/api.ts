@@ -208,6 +208,8 @@ export const punchTransfer=(companyId:string,jobId:string)=>punchWithLocation(co
 // before the next refresh. Serialize writes for the same worker and prevent
 // a previously started archive fetch from undoing a newer local mutation.
 const archiveRevisions=new Map<string,number>();
+// A later server read supersedes older in-flight responses for this worker.
+const archiveReadOrders=new Map<string,number>();
 const archiveWrites=new Map<string,Promise<void>>();
 async function reflectArchivePreference(userId:string,segmentId:string,archived:boolean){
  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -265,6 +267,8 @@ export async function loadArchives():Promise<string[]>{
  }catch{/* Use only locally scoped preferences. */}
  if(!online)return cached();
  const requestRevision=archiveRevisions.get(key)||0;
+ const requestOrder=(archiveReadOrders.get(key)||0)+1;
+ archiveReadOrders.set(key,requestOrder);
  let data,error;
  try{
   ({data,error}=await supabase.from('punch_archive_preferences')
@@ -278,13 +282,15 @@ export async function loadArchives():Promise<string[]>{
  // can finish writing AFTER a more recent confirmed archive mutation.
  const prior=archiveWrites.get(key)||Promise.resolve();
  const persist=prior.catch(()=>{}).then(async()=>{
-  if(requestRevision!==(archiveRevisions.get(key)||0))return;
+  if(requestRevision!==(archiveRevisions.get(key)||0)||
+     requestOrder!==(archiveReadOrders.get(key)||0))return;
   try{await AsyncStorage.setItem(key,JSON.stringify(ids))}catch{}
  });
  archiveWrites.set(key,persist);
  await persist;
- if(requestRevision!==(archiveRevisions.get(key)||0)){
-  // A newer confirmed mutation wins; wait for its queued write before reading.
+ if(requestRevision!==(archiveRevisions.get(key)||0)||
+    requestOrder!==(archiveReadOrders.get(key)||0)){
+  // A newer mutation or refresh wins; await its queued write before reading.
   await (archiveWrites.get(key)||Promise.resolve()).catch(()=>{});
   return cached();
  }
