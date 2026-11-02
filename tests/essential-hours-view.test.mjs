@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialHoursView} from '../web/live/essential-hours-view.js';
+import {essentialHoursView,employeeHoursRequestTimeline} from '../web/live/essential-hours-view.js';
 
 const at=Date.parse('2026-11-04T15:00:00Z');
 const company='company-A',user='employee-A';
@@ -111,4 +111,56 @@ test('Essentiel hours UI does not export projected local events as the server CS
  assert.match(app,/DERNIER RELEVÉ SERVEUR REÇU/);
  assert.match(app,/une lecture réseau incomplète peuvent manquer/);
  assert.match(app,/if\(selfOnly\)q=q\.eq\('punch_sessions\.user_id',userId\)/);
+});
+
+test('My Hours combines only own company adjustment requests across all three workflows',()=>{
+ const correction={id:'hours-1',company_id:company,requested_by:user,status:'pending',
+  created_at:'2026-11-01T09:00:00Z'};
+ const pause={id:'break-1',company_id:company,requested_by:user,status:'approved',
+  created_at:'2026-11-03T09:00:00Z'};
+ const missing={id:'missing-1',status:'rejected',startsAt:'2026-10-31T08:00:00Z',
+  createdAt:'2026-11-02T09:00:00Z'};
+ const result=employeeHoursRequestTimeline({companyId:company,userId:user,
+  correctionView:{ready:true,requests:[correction,{...correction,id:'other-hours',requested_by:'else'}]},
+  breakView:{ready:true,requests:[pause,{...pause,id:'other-break',company_id:'other'}]},
+  missingView:{ready:true,requests:[missing]}});
+ assert.equal(result.complete,true);
+ assert.deepEqual(result.items.map(x=>x.key),['pauses:break-1','journée:missing-1','heures:hours-1']);
+ assert.deepEqual(result.items.map(x=>x.label),['Approuvée','Refusée','En attente']);
+ assert.equal(result.pendingCount,1);
+ assert.equal(result.unavailable.length,0);
+ assert.doesNotMatch(JSON.stringify(result),/other-hours|other-break/);
+});
+test('a partial HR adjustment read cannot be shown as an empty verified inbox',()=>{
+ const base={companyId:company,userId:user,correctionView:{ready:false,requests:[]},
+  breakView:{ready:true,requests:[{id:'mine',company_id:company,requested_by:user,
+   status:'pending',created_at:'2026-11-01T09:00:00Z'}]},missingView:{ready:false,requests:[]}};
+ const v=employeeHoursRequestTimeline(base);
+ assert.equal(v.complete,false);
+ assert.equal(v.pendingCount,1);
+ assert.deepEqual(v.items.map(x=>x.key),['pauses:mine']);
+ assert.deepEqual(v.unavailable,['Correction d’heures','Journée oubliée']);
+ assert.deepEqual(employeeHoursRequestTimeline({...base,userId:''}),
+  {complete:false,pendingCount:0,items:[],unavailable:[]});
+});
+test('manager viewing personal hours never receives colleagues pending break requests',()=>{
+ const own={id:'own',company_id:company,requested_by:'boss',status:'pending',
+  created_at:'2026-11-01T13:00:00Z'};
+ const result=employeeHoursRequestTimeline({companyId:company,userId:'boss',
+  correctionView:{ready:true,requests:[]},breakView:{ready:true,requests:[
+    own,{...own,id:'colleague',requested_by:'colleague'},
+    {...own,id:'foreign',company_id:'foreign'}]},missingView:{ready:true,requests:[]}});
+ assert.equal(result.complete,true);assert.deepEqual(result.items.map(x=>x.key),['pauses:own']);
+});
+test('My Hours links every adjustment type and never treats reviewed requests as official payroll',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
+ const view=app.slice(begin,end);
+ assert.match(app,/import \{essentialHoursView,employeeHoursRequestTimeline\} from '\.\/essential-hours-view\.js'/);
+ assert.match(view,/employeeHoursRequestTimeline\(\{companyId:company\(\),userId:state\.user\?\.id/);
+ assert.match(view,/Mes demandes d’ajustement/);
+ assert.match(view,/Suivi incomplet/);
+ assert.match(view,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
+ for(const target of ['essentialCorrection','breakCorrections','missingDays'])
+  assert.match(view,new RegExp('data-id="'+target+'"'));
 });
