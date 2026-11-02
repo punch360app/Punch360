@@ -19,7 +19,7 @@ test('Chat requests and responses are scoped to verified current company and rev
  assert.match(app,/state.chatLoadRevision\+\+/);
  assert.match(app,/\.eq\('company_id',companyId\)\.eq\('conversation_id',id\)/);
  assert.match(app,/if\(revision!==state.chatLoadRevision\|\|company\(\)!==companyId\|\|!currentCompanyChat\(id\)\)return/);
- assert.match(app,/if\(!currentCompanyChat\(state.chatId\)\)return/);
+ assert.match(app,/if\(!body\|\|!state.chatId\|\|!currentCompanyChat\(state.chatId\)\)return/);
  assert.match(app,/if\(!currentCompanyChat\(id\)\)\{toast\('Conversation indisponible/);
  assert.match(app,/if\(state.chatId&&!currentCompanyChat\(state.chatId\)\)/);
 });
