@@ -24,3 +24,22 @@ export function isCreatedCompanyVerified(companyId,userId,account,verifiedWorksp
   Array.isArray(verifiedWorkspaces)&&verifiedWorkspaces.some(workspace=>
    workspace?.companyId===companyId&&workspace.userId===userId);
 }
+
+const KEY='punch-company-creation-pending-v1';
+// Session-scoped recovery is a UX flag only: a stored UUID never grants rights.
+export function savePendingCompanyCreation(storage,userId,companyId){
+ if(!validCreatedCompanyId(userId))return false;
+ try{storage.setItem(KEY,JSON.stringify({userId,companyId:validCreatedCompanyId(companyId)?companyId:null}));return true}
+ catch{return false}
+}
+export function readPendingCompanyCreation(storage,userId){
+ if(!validCreatedCompanyId(userId))return null;
+ try{const raw=JSON.parse(storage.getItem(KEY)||'null');
+  return raw?.userId===userId&&
+   (raw.companyId===null||validCreatedCompanyId(raw.companyId))
+   ?{companyId:raw.companyId}:null;
+ }catch{return null}
+}
+export function clearPendingCompanyCreation(storage){
+ try{storage.removeItem(KEY);return true}catch{return false}
+}
