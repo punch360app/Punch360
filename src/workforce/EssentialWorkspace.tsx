@@ -17,7 +17,7 @@ import type {WorkspaceAccount} from '../auth/AuthGate';
 import {loadPunchState,punchIn,punchOut,punchBreak,hoursFor,PunchState} from '../punch/api';
 import {personalUpcomingClientVisit} from '../../web/live/personal-client-visit.js';
 import {essentialWorkerPunchJobId} from '../../web/live/essential-mobile-punch.js';
-import {essentialMobileDailyHours,essentialMobileHoursLimit} from '../../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh} from '../../web/live/essential-hours-view.js';
 import {PersonalMissionCard} from './MissionsPanel';
 import {navigationProviders,navigationUrl,navigationDestination,navigationPreferenceKey,chooseNavigationPreference,writeNavigationPreference} from '../../web/live/navigation-choices.js';
 import {journalSummary} from '../punch/journal';
@@ -182,6 +182,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   sessions:punch.sessions,segments:visibleSegments,breaks:punch.breaks||[],
   companyId:account.companyId,userId:account.userId,now,cutoff:displayNow,weekAt:viewWeekDate.getTime()
  });
+ const offerCachedRefresh=shouldOfferEssentialCachedRefresh({readSource:punch.readSource,pending,blocked:journalBlocked});
  const hoursOrigin=punch.snapshotUnverified?'Relevé hors ligne introuvable ou illisible · pointage suspendu':
   journalBlocked?'Journal local à vérifier':
   // Pending local events must always be visible as unconfirmed, including
@@ -207,7 +208,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   try{
    const network=await Network.getNetworkStateAsync();
    if(network.isConnected===false||network.isInternetReachable===false){
-    setNotice('Connexion Internet requise pour transmettre les pointages.');
+    setNotice(pending>0?'Connexion Internet requise pour transmettre les pointages.':'Connexion Internet requise pour actualiser le relevé.');
     return;
    }
    // Reuse the same secured journal flush and server hours refresh as auto-sync.
@@ -311,6 +312,10 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:7}}>
   {txt(busy?'Synchronisation…':'Synchroniser maintenant',{fontSize:11,color:Z.sage,fontWeight:'700'})}
  </Pressable>:null}
+ {offerCachedRefresh?<Pressable accessibilityRole="button" accessibilityLabel="Actualiser le relevé horaire sauvegardé"
+  accessibilityState={{disabled:busy}} disabled={busy} onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:7}}>
+  {txt(busy?'Actualisation…':'Actualiser mon relevé',{fontSize:11,color:Z.sage,fontWeight:'700'})}
+ </Pressable>:null}
  {journalBlocked||conflicts>0?<Pressable accessibilityRole="button" accessibilityLabel="Consulter les pointages à vérifier"
   onPress={()=>setPage('hours')} style={{paddingVertical:7}}>
   {txt(journalBlocked?'Vérifier le journal dans Mes heures':pending?conflicts+' conflit(s) · voir Mes heures':'Voir les conflits dans Mes heures',{fontSize:11,color:Z.sage,fontWeight:'700'})}
@@ -330,6 +335,10 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  {hoursLimit.excludeOpen&&!punch.hasLocalProjection
   ?txt('Date du dernier relevé indisponible : les quarts ouverts ne sont pas prolongés sans vérification serveur.',
     {fontSize:11,color:Z.muted,marginTop:5}):null}
+ {offerCachedRefresh?<Pressable accessibilityRole="button" accessibilityLabel="Actualiser le relevé horaire sauvegardé"
+  accessibilityState={{disabled:busy}} disabled={busy} onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:8}}>
+  {txt(busy?'Actualisation…':'Actualiser mon relevé',{color:Z.sage,fontWeight:'700'})}
+ </Pressable>:null}
  {txt('Total indicatif · les heures restent sujettes à validation.',{fontSize:10,color:Z.muted,marginTop:4})}
  </View>{journalBlocked||pending||conflicts?<View style={[styles.card,{gap:7}]}>
  {txt(journalBlocked?'Journal local à vérifier':pending?pending+' pointage(s) à transmettre':'Conflits de synchronisation',

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialMobileDailyHours,essentialMobileHoursLimit} from '../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,shouldOfferEssentialCachedRefresh} from '../web/live/essential-hours-view.js';
 
 const companyId='A',userId='U';
 const time=(day,hour=0,minute=0)=>new Date(2026,10,day,hour,minute).getTime();
@@ -203,4 +203,23 @@ test('Expo daily-hours TypeScript contract stays attached to its function',()=>{
  const native=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
  assert.match(native,/Fin non vérifiée/);
  assert.match(native,/hoursLimit\.excludeOpen\?'Fin non vérifiée':'En cours'/);
+});
+
+test('cached-hours refresh is offered with no pending punches, never from a blocked journal',()=>{
+ assert.equal(shouldOfferEssentialCachedRefresh({readSource:'cache',pending:0,blocked:false}),true);
+ for(const data of [
+  {readSource:'server',pending:0,blocked:false},
+  {readSource:'cache',pending:1,blocked:false},
+  {readSource:'cache',pending:0,blocked:true},
+  {readSource:'cache',pending:NaN,blocked:false},
+  {readSource:'cache',pending:0,blocked:undefined}
+ ])assert.equal(shouldOfferEssentialCachedRefresh(data),false);
+});
+test('native home and My Hours refresh cached hours through the existing safe sync handler',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.equal((ui.match(/offerCachedRefresh\?<Pressable/g)||[]).length,2);
+ assert.equal((ui.match(/accessibilityLabel="Actualiser le relevé horaire sauvegardé"/g)||[]).length,2);
+ assert.match(ui,/shouldOfferEssentialCachedRefresh\(\{readSource:punch\.readSource,pending,blocked:journalBlocked\}\)/);
+ assert.match(ui,/Connexion Internet requise pour actualiser le relevé/);
+ assert.match(ui,/onPress=\{\(\)=>\{void syncLocalPunches\(\)\}\}/);
 });

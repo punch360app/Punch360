@@ -81,6 +81,14 @@ export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],com
  return rows;
 }
 
+/** An employee can refresh a cached hours snapshot even without pending punches.
+ * Unknown or blocked journal state must not bypass local journal protections.
+ * @param {{readSource?:'server'|'cache',pending?:number,blocked?:boolean}} [options]
+ */
+export function shouldOfferEssentialCachedRefresh({readSource,pending,blocked}={}){
+ return readSource==='cache'&&pending===0&&blocked===false;
+}
+
 export function essentialHoursView({companyId,userId,snapshotCompanyId,snapshot,
  projectedSessions=[],projectedSegments=[],projectedBreaks=[],pendingCount=0,now=Date.now(),snapshotFetchedAt=null,weekOffset=0}={}){
  const ready=typeof companyId==='string'&&companyId.length>0&&
