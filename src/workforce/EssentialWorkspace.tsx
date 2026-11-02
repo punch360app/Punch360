@@ -88,7 +88,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
    if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
    if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
   }else{
-   const channel=await supabase.from('company_workers').select('id,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();
+   const channel=await supabase.from('company_workers').select('id,status,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();
    if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false)}if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
    else if(channel.data){if(visitContext.current===requestedFor)setMissionWorker({key:requestedFor,id:channel.data.id});let assignedLocation=null;
     if(channel.data.location_id){
@@ -104,7 +104,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
     }else if(visitContext.current===requestedFor){setFixedAddress('');setFixedName('');}
     const job=essentialWorkerPunchJobId(account.companyId,channel.data,
      assignedLocation?[assignedLocation]:[],account.defaultJobId);
-    const allowed=channel.data.can_mobile_punch&&channel.data.personal_access;setSiteJob(job);setMobileAllowed(allowed);
+    const allowed=channel.data.status==='active'&&channel.data.can_mobile_punch===true&&channel.data.personal_access===true;setSiteJob(job);setMobileAllowed(allowed);
     await AsyncStorage.setItem(cacheKey,JSON.stringify({version:2,job,allowed,checkedAt:Date.now()})).catch(()=>{});
     try{
      const anchor=Date.now();
