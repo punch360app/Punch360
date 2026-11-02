@@ -85,14 +85,18 @@ test('cancelling a planned shift requires and trims a real reason',()=>{
 });
 
 test('OperationsPanel uses the existing secured RPCs only after local validation',()=>{
- const schedule=panel.slice(panel.indexOf("{button('Planifier',"),panel.indexOf('{manager?button(\'Annuler ce quart',panel.indexOf("{button('Planifier',")));
+ const schedule=panel.slice(panel.indexOf("{button('Planifier',"),
+  panel.indexOf("{manager&&shifts.length>0?",panel.indexOf("{button('Planifier',")));
  assert.match(schedule,/validatedScheduleShift\(/);
  assert.ok(schedule.indexOf('validatedScheduleShift(')<schedule.indexOf("supabase.rpc('schedule_shift'"));
  assert.match(schedule,/members\.some\(/);
  assert.match(schedule,/jobs\.some\(/);
- const cancel=panel.slice(panel.indexOf("button('Annuler ce quart"),panel.indexOf("{mode==='documents'"));
- assert.match(cancel,/validatedShiftCancellationReason\(note\)/);
+ const cancel=panel.slice(panel.indexOf(' function confirmShiftCancellation('),
+  panel.indexOf(' async function upload()'));
+ assert.match(cancel,/validatedShiftCancellationReason\(cancelReason\)/);
  assert.ok(cancel.indexOf('validatedShiftCancellationReason')<cancel.indexOf("supabase.rpc('cancel_shift'"));
+ assert.match(cancel,/Alert\.alert\('Confirmer l’annulation du quart'/);
+ assert.match(panel,/Motif d’annulation \(minimum 3 caractères\)/);
  assert.match(panel,/Exemple : 2026-11-03T07:00:00-05:00/);
  const syntax=ts.createSourceFile('OperationsPanel.tsx',panel,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(syntax.parseDiagnostics.length,0,'OperationsPanel must remain valid TSX');
