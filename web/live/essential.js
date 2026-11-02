@@ -72,7 +72,20 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   return Number.isSafeInteger(n)&&n>=1&&n<=100000?n:null;
  };
  async function rpc(name,p){const r=await sb.rpc(name,p);if(r.error)throw r.error;return r.data;}
- async function plans(){const r=await sb.from('essential_plans').select('*').order('sort_order');if(r.error)throw r.error;s.plans=r.data||[];}
+ // A disconnected public catalog is not an offer: remove stale selectable
+ // prices before requesting a fresh snapshot. A late older response must
+ // never overwrite the most recently requested catalog.
+ let publicCatalogRevision=0;
+ async function plans(){
+  const request=++publicCatalogRevision;
+  s.plans=[];s.checkout=null;
+  let result;
+  try{result=await sb.from('essential_plans').select('*').order('sort_order');}
+  catch(err){if(request!==publicCatalogRevision)return;throw err;}
+  if(request!==publicCatalogRevision)return;
+  if(result.error)throw result.error;
+  s.plans=Array.isArray(result.data)?result.data:[];
+ }
  async function load(user,account){const previous={user:s.platformUser,factor:s.factor,mode:s.mfaMode,qr:s.qr,key:s.mfaSecret};subscriptions.reset();qualifiedCoverage.reset();laborBudgets.reset();platformUsers.reset();platformAdmins.reset();platformPriceProposals.reset();directory.reset();invitationEmail.reset();notificationPreferences.reset();supervision.reset();breakPolicies.reset();offlineReview.reset();missingDays.reset();archives.reset(account?.company_id||null);finance.reset();promotions.reset();s.platformUser=user?.id||null;audit.reset();support.reset();platformTests.reset();const revision=++identityRevision;const current=()=>revision===identityRevision;s.company=account?.company_id||null;s.role=account?.role;s.devices=[];s.error='';s.worker=null;s.workers=[];s.dashboard=null;s.platform=false;s.effectiveBillingStatus=null;s.tab='home';s.factor=null;s.qr=null;s.mfaSecret=null;s.mfaMode='unknown';s.mfaNotice='';
   try{await plans();if(!current())return;if(user){const platform=await rpc('platform_access');if(!current())return;s.platform=platform===true;
    if(s.platform){const r=await sb.auth.mfa.getAuthenticatorAssuranceLevel();if(!current())return;s.mfaRequired=r.data?.currentLevel!=='aal2';if(s.mfaRequired){
@@ -236,22 +249,27 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const focusedCadenceAction=(action==='monthly'||action==='yearly')&&doc.activeElement===el?action:null;
  if(action==='retry-public'){
   if(s.loading)return true;
-  s.loading=true;s.error='';redraw();
+  s.loading=true;s.error='';s.plans=[];s.checkout=null;redraw();
   try{await plans();}catch(err){s.error=String(err?.message||'Catalogue indisponible');}
   finally{s.loading=false;redraw();}
   return true;
  }
  s.error='';try{
- if(action==='monthly'||action==='yearly')s.cadence=action;
+ if(action==='monthly'||action==='yearly'){s.cadence=action;s.checkout=null;}
  else if(action==='choose'){
   // The list renders only active, public plans. A forged/stale data-id
   // must never open onboarding for a plan that the catalog no longer offers.
   // Server-side subscription entitlement checks remain mandatory.
   const plan=s.plans.find(p=>p.id===el.dataset.id&&p.active&&p.public_visible);
-  if(!plan||!estimatePublicPlanPrice(plan,s.seats,s.cadence)||!isPublicPlanOfferComplete(plan))throw Error('Ce forfait n’est plus disponible ou ses détails sont incomplets. Actualisez les tarifs.');
+  // Browsers may autofill or restore the input without dispatching input.
+  // Revalidate the CURRENT field at selection so signup cannot use the
+  // previous quote's number of seats.
   const seatsInput=doc.getElementById('ess-seats');
-  if(validSeatCount(s.seatDraft??s.seats)===null||(seatsInput&&validSeatCount(seatsInput.value)===null))
-   throw Error('Indiquez un nombre entier de 1 à 100 000 membres avant de choisir.');
+  const seats=validSeatCount(seatsInput?seatsInput.value:(s.seatDraft??s.seats));
+  if(seats===null)throw Error('Indiquez un nombre entier de 1 à 100 000 membres avant de choisir.');
+  if(s.loading||!plan||!estimatePublicPlanPrice(plan,seats,s.cadence)||!isPublicPlanOfferComplete(plan))
+   throw Error('Ce forfait n’est plus disponible ou ses détails sont incomplets. Actualisez les tarifs.');
+  s.seats=seats;s.seatDraft=String(seats);
   s.checkout=plan.title;
   notify('Forfait choisi. Paiement Stripe encore à configurer.');
   onChoose(plan);
@@ -338,7 +356,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  }catch(err){s.error=err.message;notify(err.message);}finally{s.saving=false;redraw();if(focusedCadenceAction)doc.querySelector('[data-action="ess:'+focusedCadenceAction+'"]')?.focus({preventScroll:true});}return true;
  }
  function input(el){billing.input(el);subscriptions.input(el);qualifiedCoverage.input(el);laborBudgets.input(el);platformUsers.input(el);platformAdmins.input(el);platformPriceProposals.input(el);directory.input(el);invitationEmail.input(el);notificationPreferences.input(el);supervision.input(el);breakPolicies.input(el);offlineReview.input(el);missingDays.input(el);archives.input(el);finance.input(el);promotions.input(el);audit.input(el);support.input(el);platformTests.input(el);breakCorrections.input(el);planning.input(el);payroll.input(el);if(el.id==='ess-seats'){
-  s.seatDraft=String(el.value??'');
+  s.seatDraft=String(el.value??'');s.checkout=null;doc.querySelector('.ess-pricing .ess-notice')?.remove();
   const n=validSeatCount(s.seatDraft),valid=n!==null;
   el.setAttribute('aria-invalid',valid?'false':'true');
   const status=doc.getElementById('ess-seats-status');
