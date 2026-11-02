@@ -54,7 +54,7 @@ export function firstEssentialPunchGuidance(companyId,userId,worker,snapshotComp
 export function essentialWorkerPunchJobId(companyId,worker,locations,defaultJobId){
  if(worker?.location_id){
   if(!Array.isArray(locations))return null;
-  const location=locations.find(item=>item?.id===worker.location_id&&item.company_id===companyId);
+  const location=locations.find(item=>item?.id===worker.location_id&&item.company_id===companyId&&item.active===true);
   return typeof location?.punch_job_id==='string'?location.punch_job_id:null;
  }
  return typeof defaultJobId==='string'?defaultJobId:null;
