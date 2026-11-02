@@ -318,7 +318,20 @@ function breakApprovals(){if(!manager())return '';return card('<b>Pauses hors li
 async function reviewBreak(id,worker){const note=prompt('Motif de validation');if(!note)return;try{const r=await sb.rpc('review_break_event',{p_company:company(),p_worker:worker,p_event:id,p_note:note});if(r.error)throw r.error;await reload({quiet:true})}catch(err){error(err)}}
 
 function renderMap(){if(state.section!=='jobs')return;const map=$('geoMap');if(!map)return;const list=jobList().filter(j=>j.latitude!=null&&j.longitude!=null);if(!list.length){map.innerHTML='<small>Aucune job avec coordonnées. L’admin peut ajouter une punaise GPS.</small>';return}map.innerHTML=list.slice(0,15).map((j,i)=>'<button style="left:'+((11+i*19)%80)+'%;top:'+((17+i*31)%67)+'%" data-action="detail" data-id="'+j.id+'" title="#'+e(j.number)+'">'+(i+1)+'</button>').join('')+'<small>Points indicatifs — utilise Google Maps/Waze pour la position réelle</small>'}
-async function loadData(){if(!member())return;await punchJournal().flush();if(!navigator.onLine){const view=projectPendingPunches(state.serverPunch,await punchJournal().read());state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=(await punchJournal().pending()).length;state.selected=view.segments.find(s=>!s.ended_at)?.job_id||view.lastJobId||state.selected;saveOfflineSnapshot();return;}const companyId=company();if(!companyId)return;try{
+let punchLoadRevision=0;
+async function loadData(){if(!member())return;
+ const companyId=company(),userId=state.user?.id,revision=++punchLoadRevision,journal=punchJournal();
+ const scopeCurrent=()=>revision===punchLoadRevision&&member()&&company()===companyId&&state.user?.id===userId;
+ await journal.flush();if(!scopeCurrent())return;
+ if(!navigator.onLine){
+  const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;
+  const view=projectPendingPunches(state.serverPunch,events);
+  state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=pending.length;
+  const ownSession=currentSession(),ownSegment=ownSession?state.segments.find(s=>s.company_id===companyId&&s.session_id===ownSession.id&&!s.ended_at):null;
+  state.selected=ownSegment?.job_id||state.selected;
+  saveOfflineSnapshot();return;
+ }
+ if(!companyId)return;try{
 const calls=await Promise.all([
 sb.from('jobs').select('id,company_id,number,name,address,latitude,longitude,punch_radius_m,photo_url,active').eq('company_id',companyId).eq('active',true).order('number'),
 sb.from('job_assignments').select('job_id,planned_start').eq('company_id',companyId).eq('user_id',state.user.id).eq('active',true),
@@ -342,11 +355,14 @@ sb.from('punch_location_checks').select('*').eq('company_id',companyId).order('r
 sb.from('app_notifications').select('*').eq('company_id',companyId).eq('recipient_id',state.user.id).order('created_at',{ascending:false}).limit(100),
 sb.from('punch_event_receipts').select('event_id,user_id,action,job_id,occurred_at,offline,result').eq('company_id',companyId).order('received_at',{ascending:false}).limit(200),
 sb.from('punch_breaks').select('id,company_id,user_id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',state.user.id)
-]);state.conversationsCompany=null;const names=['jobs','assignments','sessions','orders','leaves','corrections','documents','conversations','profile','contacts','credentials','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks'];const errors=[];for(let i=0;i<calls.length;i++){if(calls[i].error)errors.push(names[i]+': '+calls[i].error.message);else state[names[i]]=names[i]==='profile'?calls[i].data||null:names[i]==='archived'?(calls[i].data||[]).map(a=>a.segment_id):calls[i].data||[]}
+]);if(!scopeCurrent())return;state.conversationsCompany=null;const names=['jobs','assignments','sessions','orders','leaves','corrections','documents','conversations','profile','contacts','credentials','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks'];const errors=[];for(let i=0;i<calls.length;i++){if(calls[i].error)errors.push(names[i]+': '+calls[i].error.message);else state[names[i]]=names[i]==='profile'?calls[i].data||null:names[i]==='archived'?(calls[i].data||[]).map(a=>a.segment_id):calls[i].data||[]}
 if(!calls[7].error){state.conversationsCompany=companyId;await chatUnread.load(companyId).catch(()=>chatUnread.reset());}else chatUnread.reset();
+if(!scopeCurrent())return;
 if(manager()){const team=await sb.from('punch_sessions').select('id,user_id,started_at,ended_at').eq('company_id',companyId).order('started_at',{ascending:false}).limit(500);if(team.error)errors.push('heures équipe: '+team.error.message);else state.teamSessions=team.data||[]}
+if(!scopeCurrent())return;
 if(state.sessions.length){const ids=state.sessions.map(s=>s.id);const q=await sb.from('punch_segments').select('id,company_id,session_id,job_id,started_at,ended_at').eq('company_id',companyId).in('session_id',ids).order('started_at',{ascending:false}).limit(1800);if(q.error)errors.push('segments: '+q.error.message);else state.segments=q.data||[]}else state.segments=[];
-if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const projected=projectPendingPunches(state.serverPunch,await punchJournal().read());state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=(await punchJournal().pending()).length;saveOfflineSnapshot();
+if(!scopeCurrent())return;
+if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const events=await journal.read(),pending=await journal.pending();if(!scopeCurrent())return;const projected=projectPendingPunches(state.serverPunch,events);state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=pending.length;saveOfflineSnapshot();
 const active=activeSegment();const preference=localStorage.getItem('punch360-selection-'+state.user.id+':'+company());if(active&&getJob(active.job_id))state.selected=active.job_id;else if(!state.selected||!getJob(state.selected))state.selected=getJob(preference)?.id||state.segments.find(s=>getJob(s.job_id))?.job_id||state.jobs[0]?.id||null;
 if(state.chatId&&!currentCompanyChat(state.chatId)){state.chatLoadRevision++;state.chatId=null;state.messages=[]}if(errors.length)toast('Quelques données non accessibles : '+errors[0]);
 }catch(err){error(err)}}
