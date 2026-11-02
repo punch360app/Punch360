@@ -518,7 +518,9 @@ async function createCompany(){
  const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);
  state.authBusy=true;authMessage('');draw();
  try{
-  const accepted=await createCompanyOnce((name,params)=>sb.rpc(name,params),n,state.creationEdition);
+  let definiteError=false,accepted;
+  try{accepted=await createCompanyOnce(async(name,params)=>{const r=await sb.rpc(name,params);if(r?.error)definiteError=true;return r;},n,state.creationEdition)}
+  catch(err){if(definiteError)throw err;state.pendingCompanyCreation={companyId:null};savePendingCompanyCreation(sessionStorage,state.user?.id,null);authMessage('Réponse du serveur incertaine. Vérifiez vos accès avant toute nouvelle création.',true);return;}
   state.pendingCompanyCreation={companyId:accepted.companyId};
   savePendingCompanyCreation(sessionStorage,state.user?.id,accepted.companyId);
   clearPublicPlanSelection();
