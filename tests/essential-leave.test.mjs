@@ -57,8 +57,8 @@ test('Essentiel leave flow uses server identity, request validation and separate
 test('PWA version includes the new leave module and updated app.js',()=>{
  const html=readFileSync(new URL('../web/live/index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
- assert.match(html,/app\.js\?v=essential-71-bento/);
- assert.match(sw,/app\.js\?v=essential-71-bento/);
- assert.match(sw,/punch-360-essential-v79-bento/);
+ assert.match(html,/app\.js\?v=essential-72-bento/);
+ assert.match(sw,/app\.js\?v=essential-72-bento/);
+ assert.match(sw,/punch-360-essential-v80-bento/);
  assert.match(sw,/'\.\/essential-leave\.js'/);
 });
