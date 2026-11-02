@@ -80,7 +80,7 @@ test('blocked local journal takes priority over last server snapshot without exp
  assert.equal(localPunchStatusSummary({...args,userId:null,journalBlocked:true}).kind,'server');
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  const home=app.slice(app.indexOf('function essentialHome(){'),app.indexOf('function essentialSchedule()',app.indexOf('function essentialHome(){')));
- assert.match(home,/journalBlocked:state\\.localJournalBlocked\\?\\.companyId===company\\(\\)&&state\\.localJournalBlocked\\?\\.userId===state\\.user\\?\\.id/);
+ assert.match(home,/journalBlocked:state\.localJournalBlocked\?\.companyId===company\(\)&&state\.localJournalBlocked\?\.userId===state\.user\?\.id/);
  assert.match(app,/Journal local non vérifiable : la synchronisation et les nouveaux pointages/);
 });
 test('manual resynchronization checks the persisted journal after retry and does not claim payroll confirmation',()=>{
