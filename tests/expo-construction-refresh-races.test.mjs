@@ -21,7 +21,7 @@ function harness(){
   'loadPunchState','loadArchives','supabase','journalSummary','setJobs','setDemo','setJobsReadSource','setJournalBlocked',
   'setLocalPending','setLocalConflicts','setPendingItems','setConflictItems','setJournalViewScope',
   'setHoursReadSource','setHoursProjected','setMessage','setSessions','setServerSegments',
-  'setServerBreaks','setSegments','setArchived','setSelectedId','setPunchActive','setStartMs',
+  'setServerBreaks','setSegments','setArchived','setSelectedId','setPunchActive','setStartMs','setOrderListError',
   source+'\nreturn refresh;')(
   account,scopeRef,punchActionInFlight,syncInFlight,punchReadRevision,
   {getNetworkStateAsync:async()=>({isConnected:false,isInternetReachable:false})},
@@ -36,7 +36,7 @@ function harness(){
   x=>notices.push(x),x=>calls.push(['sessions',x]),x=>calls.push(['segments',x]),
   x=>calls.push(['breaks',x]),x=>calls.push(['segmentRows',x]),x=>calls.push(['archives',x]),
   cb=>{calls.push(['selection',true]);if(typeof cb==='function')cb('');},
-  x=>calls.push(['active',x]),x=>calls.push(['start',x])
+  x=>calls.push(['active',x]),x=>calls.push(['start',x]),x=>calls.push(['ordersError',x])
  );
  return {refresh,account,scopeRef,punchActionInFlight,syncInFlight,punchReadRevision,calls,deferred,notices};
 }
