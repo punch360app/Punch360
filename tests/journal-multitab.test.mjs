@@ -65,7 +65,8 @@ test('a lost server response keeps the same event ID across tab handover and rec
 test('native Expo persists the offline state and shares the same append signature',()=>{
  const native=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
  const declaration=readFileSync(new URL('../web/live/journal.d.ts',import.meta.url),'utf8');
- assert.match(native,/offline=network\.isConnected===false\|\|network\.isInternetReachable===false/);
+ assert.match(native,/offline=network\.isConnected!==true\|\|network\.isInternetReachable!==true/);
+ assert.match(native,/networkAvailable=network\.isConnected===true&&network\.isInternetReachable===true/);
  assert.ok(native.indexOf('offline=network.isConnected')<native.indexOf('Location.requestForegroundPermissionsAsync()'),
   'offline status is captured before waiting for the GPS permission/fix');
  assert.match(native,/catch\{offline=true;\}/);
