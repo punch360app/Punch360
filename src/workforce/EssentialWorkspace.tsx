@@ -107,14 +107,22 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
    if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
    if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
   }else{
-   const channel=await supabase.from('company_workers').select('id,status,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();
+   // A rejected permissions request must not hide the employee's hours.
+   // Treat it like a failed query, not as evidence of mobile PUNCH access.
+   let channel:any;
+   try{channel=await supabase.from('company_workers').select('id,status,can_mobile_punch,personal_access,location_id').eq('company_id',account.companyId).eq('auth_user_id',account.userId).maybeSingle();}
+   catch{channel={data:null,error:true};}
    if(!current())return;
    if(channel.error){if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false)}if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}}
    else if(channel.data){if(visitContext.current===requestedFor)setMissionWorker({key:requestedFor,id:channel.data.id});let assignedLocation=null;
     if(channel.data.location_id){
-     const site=await supabase.from('essential_locations')
+     // Unknown site assignment cannot authorize a default-job fallback,
+     // but it must not suppress the independent read-only hours snapshot.
+     let site:any;
+     try{site=await supabase.from('essential_locations')
       .select('id,company_id,punch_job_id,active,name,address')
-      .eq('company_id',account.companyId).eq('id',channel.data.location_id).maybeSingle();
+      .eq('company_id',account.companyId).eq('id',channel.data.location_id).maybeSingle();}
+     catch{site={data:null,error:true};}
      if(!current())return;
      // A missing, inactive or unreadable assigned location must never
      // silently redirect PUNCH IN to the company's default Job.
