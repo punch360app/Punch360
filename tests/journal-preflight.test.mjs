@@ -118,3 +118,49 @@ test('duplicate local IDs are invalid across pending, synced and conflict status
  const valid=[good('first-id','synced'),{...good('second-id'),action:'out',previous:'first-id'}];
  assert.equal(hasUnsafePunchJournalEntries(valid,'company-A','employee-A'),false);
 });
+
+test('a colliding new UUID cannot poison an otherwise valid stored journal',async()=>{
+ for(const status of ['pending','synced','conflict']){
+  const sent=[],h=setup([good('repeated',status)],async event=>{
+   sent.push(event.id);return {sync_status:'synced'};
+  });
+  h.journal.uuid=()=> 'repeated';
+  const before=h.memory.get(h.key);
+  await assert.rejects(h.journal.append('out',null,null,'2026-11-02T16:00:00Z'),/aucun ajout enregistré/);
+  assert.equal(h.memory.get(h.key),before,'Existing journal must remain byte-for-byte unchanged: '+status);
+  assert.equal((await h.journal.read()).length,1);
+  assert.deepEqual(sent,[],'Never send an unpersisted collision');
+ }
+});
+
+test('after a rejected UUID collision a distinct event can still be appended and synced',async()=>{
+ const sent=[],h=setup([good('original','synced')],async event=>{
+  sent.push(event.id);return {sync_status:'synced'};
+ });
+ h.journal.uuid=()=> 'original';
+ await assert.rejects(h.journal.append('out'),/aucun ajout enregistré/);
+ h.journal.uuid=()=> 'fresh';
+ const saved=await h.journal.append('out',null,null,'2026-11-02T16:00:00Z');
+ assert.equal(saved.id,'fresh');
+ assert.equal(saved.previous,'original');
+ assert.equal(hasUnsafePunchJournalEntries(await h.journal.read(),'company-A','employee-A'),false);
+ const transmitted=await h.journal.flush();
+ assert.equal(transmitted.pending,0);
+ assert.deepEqual(sent,['fresh']);
+ assert.deepEqual((await h.journal.read()).map(e=>e.status),['synced','synced']);
+});
+
+test('malformed new events fail before storage or upload, without corrupting clean queue',async()=>{
+ const h=setup([]);
+ const original=h.memory.get(h.key);
+ for(const options of [
+  {id:''},{id:null},{id:42},{id:'new',action:'unknown'},
+  {id:'new',action:'in',occurredAt:'unparsable'}
+ ]){
+  h.journal.uuid=()=>options.id;
+  await assert.rejects(h.journal.append(options.action||'in','site',null,options.occurredAt||'2026-11-02T08:00:00Z'),
+   /aucun ajout enregistré/);
+  assert.equal(h.memory.get(h.key),original);
+ }
+ assert.deepEqual(await h.journal.read(),[]);
+});
