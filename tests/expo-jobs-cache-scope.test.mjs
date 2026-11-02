@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../src/jobs/api.ts',import.meta.url),'utf8');
-const one=source.indexOf('export function scopedJobCache('),two=source.indexOf('export async function listMyCompanyJobs(',one),end=source.indexOf('export async function createJob(',two);
+const one=source.indexOf('export function scopedJobCache('),two=source.indexOf('export async function listMyCompanyJobs(',one),end=source.indexOf('export function validatedJobDraft(',two);
 assert.ok(one>0&&two>one&&end>two);
 const sanitizer=source.slice(one,two)
  .replace('export function scopedJobCache(value:unknown,companyId:string):JobLoad|null{','function scopedJobCache(value,companyId){')
