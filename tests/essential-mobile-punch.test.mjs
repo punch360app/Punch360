@@ -105,8 +105,9 @@ test('the mobile home and event submission use the same OUT guard and send no st
  assert.match(app,/state\.busy\|\|mobile&&!punchAction\?'disabled aria-disabled="true"'/);
  assert.match(app,/locatedPunch\(active\?'out':'in',isEssential\(\)\?punchAction\.jobId:j\.id\)/);
  assert.match(app,/Le pointage ouvert ne peut pas être vérifié/);
- const sql='sync_punch_event/punch_with_location resolves OUT from active session';
- assert.match(sql,/resolves OUT/);
+ const sql=readFileSync(new URL('../supabase/migrations/20261024124016_punch_geofence_review.sql',import.meta.url),'utf8');
+ assert.match(sql,/if p_action='out' then[\s\S]*?select ps\.job_id into v_job[\s\S]*?v_session:=public\.punch_out\(p_company\)/);
+ assert.match(sql,/select \* into j from public\.jobs where company_id=p_company and id=v_job/);
 });
 
 test('first punch guidance uses acknowledged company sessions and never optimistic offline events',()=>{
