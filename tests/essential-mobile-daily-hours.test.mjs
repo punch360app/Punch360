@@ -70,7 +70,8 @@ test('native hours displays the same scoped daily calculation as provisional tim
  assert.match(ui,/import \{[^}]*essentialMobileDailyHours[^}]*\} from '\.\.\/\.\.\/web\/live\/essential-hours-view\.js'/);
  assert.match(ui,/dailyHours:\{dayStart:number;netMs:number;grossMs:number;unpaidMs:number\}\[\]=essentialMobileDailyHours/);
  assert.match(ui,/sessions:punch\.sessions,segments:visibleSegments,breaks:punch\.breaks\|\|\[\]/);
- assert.match(ui,/dailyHours\.map\(row=>/);
+ assert.match(ui,/comparedDailyHours\.map\(row=>/);
+ assert.match(ui,/essentialMobileDailyComparison\(\{/);
  assert.match(ui,/Détail quotidien · temps indicatif/);
  assert.match(ui,/Brut '\+hm\(row\.grossMs\)/);
  assert.match(ui,/Pause non payée '\+hm\(row\.unpaidMs\)/);
