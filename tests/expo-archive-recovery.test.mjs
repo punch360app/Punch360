@@ -4,10 +4,10 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 
 const source=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
-const a=source.indexOf('export async function loadArchives()');
+const a=source.indexOf('const archiveRevisions=new Map');
 const b=source.indexOf('/** The mobile totals',a);
-assert.ok(a>=0&&b>a,'Expected real Expo archive-loading function');
-const js=ts.transpileModule(source.slice(a,b).replace('export ',''),
+assert.ok(a>=0&&b>a,'Expected real Expo archive write and read functions');
+const js=ts.transpileModule(source.slice(a,b).replace(/^export /gm,''),
  {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
 const segA='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const segB='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -35,9 +35,10 @@ function fixture({network='offline',cache=[segA],response=[{segment_id:segA}],
    then:(done,fail)=>Promise.resolve({data:response,error}).then(done,fail)};
   return query;
  }};
+ const archiveRevisions=new Map();
  const loadArchives=new Function('getLocalIdentity','AsyncStorage','Network',
-  'supabase',js+'\nreturn loadArchives;')(
-  getLocalIdentity,AsyncStorage,Network,supabase);
+  'supabase','archiveRevisions',js+'\nreturn loadArchives;')(
+  getLocalIdentity,AsyncStorage,Network,supabase,archiveRevisions);
  return {run:loadArchives,memory,key,calls};
 }
 
