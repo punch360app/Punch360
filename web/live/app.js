@@ -6,7 +6,7 @@ import {canUseEssentialMessages,essentialTabs} from './essential-message-navigat
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
 import {essentialCorrectionView,validateEssentialCorrection} from './essential-correction.js';
-import {essentialLeaveView,validateEssentialLeaveRequest} from './essential-leave.js';
+import {essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView} from './essential-leave.js';
 import {sessionIdChunks,netSegmentMilliseconds} from './essential-hours-export.js';
 import {hoursExportScope,createHoursCsv} from './hours-csv.js';
 import {isCurrentCompanyChat} from './company-chat-context.js';
@@ -39,7 +39,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveSubmitting:false,corrections:[],correctionSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -141,6 +141,41 @@ function approvalsPage(){
  card('<b>Historique des décisions</b>'+state.audit.map(a=>'<div class="hoursitem"><div class="grow">'+e(a.action)+'<small>'+e(a.reason)+' · '+when(a.created_at)+'</small></div></div>').join(''));
 }
 async function reviewRecord(rpc,id,approve){const note=prompt('Motif de la décision (minimum 3 caractères)');if(!note||note.trim().length<3)return;try{const r=await sb.rpc(rpc,{p_request:id,p_approve:approve,p_note:note});if(r.error)throw r.error;await reload({quiet:true});toast('Décision enregistrée et historisée')}catch(err){error(err)}}
+async function reviewEssentialLeave(id,approve){
+ if(!isEssential()||!manager())return toast('Approbation réservée aux responsables.');
+ if(!navigator.onLine)return toast('Une connexion Internet est requise pour approuver un congé.');
+ if(state.leaveReviewSubmitting)return;
+ const companyId=company(),reviewerId=state.user?.id;
+ const view=essentialLeaveApprovalView({companyId,manager:manager(),loaded:state.leavesLoaded,requests:state.leaves});
+ const selected=view.requests.find(request=>request.id===id);
+ if(!view.ready||!selected)return toast('Cette demande n’est plus vérifiée. Actualisez la liste.');
+ const note=prompt('Motif de '+(approve?'l’approbation':'la décision de refus')+' (3 à 1 000 caractères)');
+ if(note===null)return;
+ const reason=note.trim();
+ if(reason.length<3||reason.length>1000)return toast('Motif requis : entre 3 et 1 000 caractères.');
+ const sameScope=()=>company()===companyId&&state.user?.id===reviewerId&&isEssential()&&manager();
+ state.leaveReviewSubmitting=true;
+ if(state.section==='sub'&&state.sub==='approvals')draw();
+ try{
+  const auth=await sb.auth.getUser();
+  if(auth.error||auth.data?.user?.id!==reviewerId||!sameScope())throw Error('Review identity not verified');
+  // Recheck the pending record before calling the server-authorized audit RPC.
+  const proof=await sb.from('leave_requests').select('id,company_id,user_id,status')
+   .eq('id',id).eq('company_id',companyId).eq('status','pending').maybeSingle();
+  if(proof.error||!proof.data||proof.data.id!==id||proof.data.company_id!==companyId||
+     proof.data.user_id!==selected.user_id||proof.data.status!=='pending'||!sameScope())
+   throw Error('Pending request not verified');
+  const result=await sb.rpc('review_leave',{p_request:id,p_approve:approve,p_note:reason});
+  if(result.error||!sameScope())throw Error('Leave decision not confirmed');
+  await reload({quiet:true});
+  if(sameScope())toast('Décision transmise au serveur et enregistrée.');
+ }catch{
+  if(sameScope())toast('Décision non confirmée. Actualisez la liste avant toute nouvelle tentative.');
+ }finally{
+  state.leaveReviewSubmitting=false;
+  if(sameScope()&&state.section==='sub'&&state.sub==='approvals')draw();
+ }
+}
 async function advanceOrder(id,status){const note=prompt('Commentaire de suivi (minimum 3 caractères)');if(!note||note.trim().length<3)return;try{const r=await sb.rpc('advance_material_order',{p_order:id,p_status:status,p_note:note});if(r.error)throw r.error;await reload({quiet:true});toast('Commande mise à jour')}catch(err){error(err)}}
 async function setWeek(close){const week=$val('payrollWeek');if(!week)return toast('Choisis le lundi de la semaine.');const reason=prompt('Motif de '+(close?'fermeture':'réouverture'));if(!reason||reason.trim().length<3)return;try{const r=await sb.rpc('set_payroll_week',{p_company:company(),p_week:week,p_close:close,p_reason:reason});if(r.error)throw r.error;await reload({quiet:true});toast(close?'Semaine fermée':'Semaine rouverte')}catch(err){error(err)}}
 let hoursExportRunning=false;
@@ -378,7 +413,31 @@ function essentialLeavePage(){
   '<div class="ess-panel"><b>Mes demandes</b>'+(view.ready?rows:'<p class="small muted">Historique indisponible avant la vérification serveur.</p>')+'</div>';
 }
 function essentialMore(){const items=[['profile',tr('profile')],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
-function essentialApprovals(){if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');return heading('Approbations','more')+button('Corrections de pauses','subpage','full','data-id="breakCorrections"')+geofenceReviewCard()+card('<b>Corrections en attente</b>'+state.corrections.filter(c=>c.status==='pending').map(c=>'<div class="group">'+e(c.reason)+button('Accepter','reviewCorrection','gold',`data-id="${e(c.id)}" data-approve="true"`)+button('Refuser','reviewCorrection','',`data-id="${e(c.id)}" data-approve="false"`)+'</div>').join(''))+card('<b>Congés en attente</b>'+state.leaves.filter(l=>l.status==='pending').map(l=>'<div class="group">'+e(l.begins_on)+' → '+e(l.ends_on)+button('Accepter','reviewLeave','gold',`data-id="${e(l.id)}" data-approve="true"`)+button('Refuser','reviewLeave','',`data-id="${e(l.id)}" data-approve="false"`)+'</div>').join(''))+card('<b>Fermer une semaine</b>'+formfield('Lundi de la semaine','payrollWeek','','date')+button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));}
+function essentialApprovals(){
+ if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');
+ const view=essentialLeaveApprovalView({companyId:company(),manager:manager(),loaded:state.leavesLoaded,requests:state.leaves});
+ const canReview=view.ready&&navigator.onLine&&!state.leaveReviewSubmitting;
+ const labels={vacation:'Vacances',personal:'Congé personnel',sick:'Maladie',other:'Autre'};
+ const leaveRows=view.requests.length?view.requests.slice(0,100).map(l=>
+  '<div class="group"><b>'+e(labels[l.leave_type]||'Congé')+' · '+e(l.begins_on)+' → '+e(l.ends_on)+'</b>'+
+  '<small>Employé : '+e(l.user_id.slice(0,8))+'</small>'+
+  (l.reason?'<p class="small">'+e(l.reason)+'</p>':'')+
+  button('Accepter','reviewLeave','gold',`data-id="${e(l.id)}" data-approve="true" ${canReview?'':'disabled'}`)+
+  button('Refuser','reviewLeave','',`data-id="${e(l.id)}" data-approve="false" ${canReview?'':'disabled'}`)+
+  '</div>').join(''):'<p class="small muted">Aucun congé en attente.</p>';
+ const notice=!navigator.onLine?'Les décisions nécessitent une connexion Internet.':
+  !view.ready?'Demandes non vérifiées. Actualisez avant de prendre une décision.':'';
+ return heading('Approbations','more')+
+  button('Corrections de pauses','subpage','full','data-id="breakCorrections"')+
+  geofenceReviewCard()+
+  card('<b>Corrections en attente</b>'+state.corrections.filter(c=>c.status==='pending').map(c=>
+    '<div class="group">'+e(c.reason)+button('Accepter','reviewCorrection','gold',`data-id="${e(c.id)}" data-approve="true"`)+
+    button('Refuser','reviewCorrection','',`data-id="${e(c.id)}" data-approve="false"`)+'</div>').join(''))+
+  card('<b>Congés à approuver</b>'+(notice?'<p class="ess-notice" role="status">'+e(notice)+'</p>':'')+
+    (view.ready?leaveRows:'')+button('Actualiser les demandes','refresh','full'))+
+  card('<b>Fermer une semaine</b>'+formfield('Lundi de la semaine','payrollWeek','','date')+
+    button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));
+}
 function essentialPage(){if(state.section==='messages')return messagesPage();if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(state.section==='home')return manager()&&!state.fieldMode?adminHome():essentialHome();if(state.section==='punch')return essentialHome();if(state.section==='hours')return essentialHours();if(state.section==='schedule')return schedulePage();if(state.section==='more')return essentialMore();if(state.section==='sub'){if(state.sub==='approvals')return manager()?essentialApprovals():heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');if(state.sub==='breakCorrections')return essentialUI.breakCorrections.render();if(state.sub==='essentialCorrection')return essentialCorrectionPage();if(state.sub==='leave')return essentialLeavePage();if(['supervision','missingDays','members','profile','leave','geofence','invitations','notifications','settings','schedule','appearance','hr','communications','payroll','support'].includes(state.sub))return subPage();}return essentialHome();}
 async function doPause(paid=false){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin')return;if(state.busy||!currentSession())return;state.busy=true;try{await locatedPunch(activeBreak()?'break_end':'break_start',null,paid);await loadData();toast(state.localPending?'Pause conservée sur cet appareil':'Pause enregistrée')}catch(err){error(err)}finally{state.busy=false;draw()}}
 function breakApprovals(){if(!manager())return '';return card('<b>Pauses hors ligne à valider</b>'+state.receipts.filter(r=>r.action?.startsWith('break_')&&r.result?.review_status==='pending').map(r=>'<div class="group">'+e(r.action==='break_start'?(r.result?.is_paid?'Début de pause payée':'Début de pause non payée'):'Fin de pause')+' · '+when(r.occurred_at)+button('Valider','reviewBreak','gold',`data-id="${e(r.event_id)}" data-worker="${e(r.user_id)}"`)+'</div>').join(''));}
@@ -486,7 +545,7 @@ async function switchCompany(companyId){
    chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();
    essentialUI.reset();bossHandoff.reset();
    for(const field of ['jobs','assignments','sessions','segments','orders','leaves','corrections','documents','conversations','messages','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks','teamSessions','contact'])state[field]=Array.isArray(state[field])?[]:null;
-   state.profile=null;state.leavesLoaded=false;state.leaveSubmitting=false;state.serverPunch={sessions:[],segments:[],breaks:[]};state.serverPunchFetchedAt=null;state.serverPunchCompany=null;state.localPending=0;state.localPunchEvents=[];state.selected=null;state.detailId=null;state.chatId=null;state.section='home';state.sub='';state.fieldMode=false;
+   state.profile=null;state.leavesLoaded=false;state.leaveSubmitting=false;state.leaveReviewSubmitting=false;state.serverPunch={sessions:[],segments:[],breaks:[]};state.serverPunchFetchedAt=null;state.serverPunchCompany=null;state.localPending=0;state.localPunchEvents=[];state.selected=null;state.detailId=null;state.chatId=null;state.section='home';state.sub='';state.fieldMode=false;
    setVerifiedAccount(next);
    await essentialUI.load(state.user,state.account);
    await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);
@@ -960,7 +1019,7 @@ else if(a==='pausePaid')await doPause(true);
 else if(a==='pause')await doPause();
 else if(a==='reviewBreak')await reviewBreak(id,el.dataset.worker);
 else if(a==='reviewCorrection')await reviewRecord('review_punch_correction',id,el.dataset.approve==='true');
-else if(a==='reviewLeave')await reviewRecord('review_leave',id,el.dataset.approve==='true');
+else if(a==='reviewLeave')await (isEssential()?reviewEssentialLeave(id,el.dataset.approve==='true'):reviewRecord('review_leave',id,el.dataset.approve==='true'));
 else if(a==='advanceOrder')await advanceOrder(id,el.dataset.status);
 else if(a==='saveGeofence')await saveGeofence(id);
 else if(a==='reviewLocation'||a==='correctLocation')await reviewLocation(id,a==='correctLocation');
