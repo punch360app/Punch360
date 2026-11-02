@@ -35,8 +35,10 @@ export function OperationsPanel({account,mode}:{account:WorkspaceAccount;mode:'s
    if(result.error)throw result.error;
    if(!Array.isArray(result.data))throw Error('Relevé des opérations incomplet. Réessayez.');
   }
-  setJobs(queries[0].data);setMembers(queries[1].data);setShifts(queries[2].data);
-  setDocs(queries[3].data);setAcks(queries[4].data);
+  // All null/partial responses were rejected above; satisfy Supabase's
+  // nullable type without treating incomplete data as a successful load.
+  setJobs(queries[0].data||[]);setMembers(queries[1].data||[]);setShifts(queries[2].data||[]);
+  setDocs(queries[3].data||[]);setAcks(queries[4].data||[]);
   setLoadedScope(requestedScope);
  }
  useEffect(()=>{
