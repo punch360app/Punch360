@@ -29,21 +29,47 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
  };
  let offline=true;
  try{const network=await Network.getNetworkStateAsync();
-  offline=network.isConnected===false||network.isInternetReachable===false;
+  offline=network.isConnected!==true||network.isInternetReachable!==true;
  }catch{/* Network probe failure: consult scoped offline cache. */}
  if(offline){const fallback=await cached();if(fallback)return fallback;
   throw Error('Chantiers hors ligne indisponibles : reconnectez cet appareil pour les charger');}
  const {data,error}=await supabase.from('jobs').select('id,company_id,number,name,address,latitude,longitude,photo_url,active').eq('company_id',companyId).eq('active',true).order('number');
- if(error){const fallback=await cached();if(fallback)return fallback;throw error;}
- if((data||[]).some(job=>job.company_id!==companyId))
+ if(error||!Array.isArray(data)){
+  const fallback=await cached();if(fallback)return fallback;
+  throw error||Error('Relevé chantiers incomplet : synchronisation non confirmée');
+ }
+ if(data.some(job=>job?.company_id!==companyId))
   throw Error('Réponse chantiers hors entreprise : affichage et cache bloqués');
+ // A partial "successful" response must not erase verified jobs or
+ // replace a worker's last usable offline catalogue.
+ if(data.some(job=>typeof job.id!=='string'||!job.id||
+  typeof job.number!=='string'||typeof job.name!=='string'||
+  typeof job.address!=='string'||job.active!==true||
+  (job.latitude!==null&&(!Number.isFinite(job.latitude)||Math.abs(job.latitude)>90))||
+  (job.longitude!==null&&(!Number.isFinite(job.longitude)||Math.abs(job.longitude)>180))||
+  (job.photo_url!==null&&typeof job.photo_url!=='string'))){
+  const fallback=await cached();if(fallback)return fallback;
+  throw Error('Données chantiers incomplètes : synchronisation non confirmée');
+ }
  const user=identity;
  if(!user)throw Error('Session expirée');
  const {data:assignments,error:aError}=await supabase.from('job_assignments').select('job_id,planned_start').eq('company_id',companyId).eq('user_id',user.id).eq('active',true);
- if(aError){const fallback=await cached();if(fallback)return fallback;throw aError;}
- const map=new Map<string,string|null>((assignments||[]).map(a=>[a.job_id,a.planned_start]));
+ if(aError||!Array.isArray(assignments)||assignments.some(a=>!a||
+  typeof a.job_id!=='string'||!a.job_id||
+  (a.planned_start!==null&&(typeof a.planned_start!=='string'||
+   !Number.isFinite(Date.parse(a.planned_start)))))){
+  const fallback=await cached();if(fallback)return fallback;
+  throw aError||Error('Affectations incomplètes : synchronisation non confirmée');
+ }
+ const map=new Map<string,string|null>(assignments.map(a=>[a.job_id,a.planned_start]));
  const shifts=await supabase.from('scheduled_shifts').select('job_id,starts_at').eq('company_id',companyId).eq('user_id',user.id).is('cancelled_at',null).gt('starts_at',new Date().toISOString()).order('starts_at');
- for(const shift of [...(shifts.data||[])].reverse())map.set(shift.job_id,shift.starts_at);
+ if(shifts.error||!Array.isArray(shifts.data)||shifts.data.some(shift=>!shift||
+  typeof shift.job_id!=='string'||!shift.job_id||
+  typeof shift.starts_at!=='string'||!Number.isFinite(Date.parse(shift.starts_at)))){
+  const fallback=await cached();if(fallback)return fallback;
+  throw shifts.error||Error('Horaires incomplets : synchronisation non confirmée');
+ }
+ for(const shift of [...shifts.data].reverse())map.set(shift.job_id,shift.starts_at);
  const jobs:Job[]=(data||[]).map(j=>({
   id:j.id,company_id:j.company_id,number:j.number,name:j.name,address:j.address,
   latitude:j.latitude,longitude:j.longitude,photo_url:j.photo_url,
