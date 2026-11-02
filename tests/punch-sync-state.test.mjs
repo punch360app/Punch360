@@ -80,3 +80,18 @@ test('manual resynchronization checks the persisted journal after retry and does
  assert.match(app,/pending\.length&&conflicts\.length/);
  assert.match(app,/Vérifiez le relevé serveur avant de considérer vos heures confirmées/);
 });
+
+test('journal flush receipt refreshes UI state before independent Supabase reads',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const sw=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
+ const start=app.indexOf('async function loadData(){');
+ const end=app.indexOf('async function reload(',start);
+ assert.ok(start>=0&&end>start);
+ const loader=app.slice(start,end);
+ assert.match(loader,/const flushed=await journal\.flush\(\);if\(!scopeCurrent\(\)\)return/);
+ assert.match(loader,/const syncState=localPunchSyncState\(flushed\.events,companyId,userId\)/);
+ assert.match(loader,/state\.localPunchEvents=flushed\.events/);
+ assert.match(loader,/state\.localPending=syncState\.pending\.length/);
+ assert.ok(loader.indexOf('state.localPunchEvents=flushed.events')<loader.indexOf('const calls=await Promise.all('));
+ assert.match(sw,/'\.\/punch-sync-state\.js'/);
+});
