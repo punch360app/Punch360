@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {localPunchSyncState,localPunchStatusSummary} from '../web/live/punch-sync-state.js';
+import {localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent} from '../web/live/punch-sync-state.js';
 
 const own={id:'evt-a',company:'business-A',user:'worker-A',status:'pending',
  action:'in',occurredAt:'2026-11-01T10:00:00Z',fix:{latitude:47,longitude:-71},
@@ -47,7 +47,7 @@ test('bad data and unknown actions never leak raw event details',()=>{
 
 test('employee UI shares a scoped journal status on home and hours, with manual retry',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary\} from '\.\/punch-sync-state\.js';/);
+ assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent\} from '\.\/punch-sync-state\.js';/);
  assert.match(app,/function essentialPunchSyncPanel\(\)/);
  assert.match(app,/essentialPunchSyncPanel\(\)/);
  assert.match(app,/data-action="syncPendingPunches"|button\('Synchroniser maintenant','syncPendingPunches'/);
@@ -70,7 +70,7 @@ test('summary keeps server conflicts, local pending and unverifiable snapshots d
 
 test('manual resynchronization checks the persisted journal after retry and does not claim payroll confirmation',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary\} from '\.\/punch-sync-state\.js'/);
+ assert.match(app,/import \{localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent\} from '\.\/punch-sync-state\.js'/);
  assert.match(app,/function essentialHome\(\)\{const punchStatus=localPunchStatusSummary\(/);
  assert.match(app,/e\(punchStatus\.label\)/);
  assert.doesNotMatch(app,/state\.localPending\?'Sauvegardé ici':tr\('synchronized'\)/);
@@ -94,4 +94,16 @@ test('journal flush receipt refreshes UI state before independent Supabase reads
  assert.match(loader,/state\.localPending=syncState\.pending\.length/);
  assert.ok(loader.indexOf('state.localPunchEvents=flushed.events')<loader.indexOf('const calls=await Promise.all('));
  assert.match(sw,/'\.\/punch-sync-state\.js'/);
+});
+
+test('journal ownership is checked before upload, not only before displaying events',()=>{
+ assert.equal(isOwnPunchJournalEvent(own,'business-A','worker-A'),true);
+ for(const bad of [
+  null,{}, {...own,company:'business-B'}, {...own,user:'worker-B'},
+  {...own,id:''}, {...own,id:12}
+ ])assert.equal(isOwnPunchJournalEvent(bad,'business-A','worker-A'),false);
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/send:async event=>\{if\(!member\(\)\|\|!isOwnPunchJournalEvent\(event,company\(\),state\.user\?\.id\)\)throw/);
+ assert.match(app,/state\.localPending=localPunchSyncState\(events,companyId,userId\)\.pending\.length;state\.localPunchEvents=events/g);
+ assert.doesNotMatch(app,/state\.localPending=pending\.length;state\.localPunchEvents=events;/);
 });
