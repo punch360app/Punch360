@@ -22,18 +22,33 @@ export const DEMO_JOBS: Job[] = [
   {id:'demo-bureau', company_id:'demo', number:'BUREAU', name:'Bureau', address:'1653 avenue des Affaires, Québec', latitude:46.823,longitude:-71.269,photo_url:null,plan_count:1,open_order_count:0,assigned_to_me:true}
 ];
 // Coordonnées d’illustration : NE PAS utiliser comme bornes GPS de production.
+export function validGeoPoint(point:Point|null|undefined):point is Point {
+  return point!=null&&Number.isFinite(point.latitude)&&
+   Number.isFinite(point.longitude)&&Math.abs(point.latitude)<=90&&
+   Math.abs(point.longitude)<=180;
+}
+export function jobHasCoordinates(job:Job):boolean {
+  return validGeoPoint({latitude:job.latitude as number,longitude:job.longitude as number});
+}
 export function distanceKm(a:Point,b:Point):number {
+  // An unavailable GPS fix must not be mistaken for a nearby job.
+  if(!validGeoPoint(a)||!validGeoPoint(b))return Infinity;
   const toRad=(v:number)=>v*Math.PI/180;
   const dLat=toRad(b.latitude-a.latitude);
   const dLon=toRad(b.longitude-a.longitude);
   const x=Math.sin(dLat/2)**2+Math.cos(toRad(a.latitude))*Math.cos(toRad(b.latitude))*Math.sin(dLon/2)**2;
-  return 6371*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  const safe=Math.min(1,Math.max(0,x));
+  return 6371*2*Math.atan2(Math.sqrt(safe),Math.sqrt(1-safe));
 }
 export function visibleJobs(jobs:Job[], search:string, filter:JobFilter, pos:Point|null):Job[] {
   const q=search.trim().toLocaleLowerCase('fr-CA');
   const scoped=jobs.filter(j=>(filter!=='mine'||j.assigned_to_me===true)&&(!q||[j.number,j.name,j.address].join(' ').toLocaleLowerCase('fr-CA').includes(q)));
-  if(filter==='nearby'&&pos) {
-    return scoped.filter(j=>j.latitude!==null&&j.longitude!==null).sort((a,b)=>distanceKm(pos,{latitude:a.latitude!,longitude:a.longitude!})-distanceKm(pos,{latitude:b.latitude!,longitude:b.longitude!}));
+  if(filter==='nearby'){
+    // Do not label every job "nearby" if the worker refused or lost GPS.
+    if(!validGeoPoint(pos))return [];
+    return scoped.filter(jobHasCoordinates)
+     .sort((a,b)=>distanceKm(pos,{latitude:a.latitude!,longitude:a.longitude!})-
+       distanceKm(pos,{latitude:b.latitude!,longitude:b.longitude!}));
   }
   return scoped;
 }
