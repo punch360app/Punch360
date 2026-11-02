@@ -27,6 +27,30 @@ export function isPublicPlanOfferComplete(plan){
   Array.isArray(plan.features) && plan.features.every(feature=>typeof feature==='string');
 }
 
+/** Marketing highlights are derived from explicit catalog feature flags.
+ * Never advertise an entitlement that the current offer does not declare.
+ * Whitelist labels so unknown future catalog flags are not shown as promises.
+ */
+export function publicPlanHighlights(plan){
+ if(!Array.isArray(plan?.features))return [];
+ const flags=new Set(plan.features);
+ const names=[
+  ['punch','Pointage des employés'],
+  ['hours','Suivi des heures'],
+  ['personal_account','Compte personnel facultatif'],
+  ['csv','Export CSV'],
+  ['offline','Saisie hors ligne'],
+  ['advanced_schedules','Horaires avancés'],
+  ['departments','Départements'],
+  ['supervisors','Supervision des équipes'],
+  ['messages','Messagerie'],
+  ['advanced_reports','Rapports avancés'],
+  ['hr_documents','Documents RH'],
+  ['labor_costs','Coûts de main-d’œuvre']
+ ];
+ return names.filter(([key])=>flags.has(key)).slice(0,2).map(([,label])=>label);
+}
+
 /** Public comparison reads the same server catalog as the price cards. */
 export function renderCommercialDetails(plans,escape,money,{seats=null,cadence='monthly'}={}){
  const visible=plans.filter(p=>p.active&&p.public_visible);
