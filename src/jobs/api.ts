@@ -103,10 +103,40 @@ export async function listMyCompanyJobs(companyId:string):Promise<JobLoad>{
  catch{result.message=[result.message,'Sauvegarde hors ligne indisponible sur cet appareil.'].filter(Boolean).join(' ');}
  return result;
 }
+/** One validated manager-created job; never queue job creation on an
+ * uncertain connection, because retrying an unknown insert could duplicate it.
+ */
+export function validatedJobDraft(companyId:string,number:string,name:string,address:string){
+ if(typeof companyId!=='string'||!companyId.trim())
+  throw Error('Entreprise indisponible : aucun chantier créé.');
+ if(typeof number!=='string'||!number.trim())
+  throw Error('Numéro de chantier requis.');
+ if(typeof name!=='string'||!name.trim())
+  throw Error('Nom du chantier requis.');
+ if(typeof address!=='string')
+  throw Error('Adresse du chantier invalide.');
+ return {company_id:companyId,number:number.trim(),name:name.trim(),address:address.trim()};
+}
 export async function createJob(companyId:string,number:string,name:string,address:string){
- const {data,error}=await supabase.from('jobs')
- .insert({company_id:companyId,number:number.trim(),name:name.trim(),address:address.trim()})
- .select('id').single();
+ const draft=validatedJobDraft(companyId,number,name,address);
+ // An old UI instance may still carry another company's form after sign-out.
+ const origin=await getLocalIdentity();
+ if(!origin?.id)throw Error('Compte non confirmé : aucun chantier créé.');
+ let online=false;
+ try{const net=await Network.getNetworkStateAsync();
+  online=net.isConnected===true&&net.isInternetReachable===true;
+ }catch{/* An unknown connection must not submit a non-idempotent insert. */}
+ if(!online)throw Error('Connexion Internet requise pour créer un chantier.');
+ const verified=await supabase.auth.getUser();
+ if(verified.error||verified.data?.user?.id!==origin.id)
+  throw Error('Compte changé ou non vérifié : aucun chantier créé.');
+ // A worker/company switch during network checks must not submit a stale form.
+ const current=await getLocalIdentity();
+ if(current?.id!==origin.id)
+  throw Error('Compte changé pendant la création : aucun chantier envoyé.');
+ const {data,error}=await supabase.from('jobs').insert(draft).select('id').single();
  if(error)throw error;
- return data.id as string;
+ if(typeof data?.id!=='string'||!data.id)
+  throw Error('Réponse de création non confirmée. Vérifiez la liste des chantiers avant de réessayer, pour éviter un doublon.');
+ return data.id;
 }
