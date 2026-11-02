@@ -320,3 +320,39 @@ test('public monthly, yearly, people and plan actions remain usable at 44px on S
  const c=readFileSync(new URL('../web/live/essential.css',import.meta.url),'utf8');
  assert.match(c,/\.essential-public \.ess-switch \.ess-btn,\s*\.essential-public \.ess-pricing>\.ess-field input,[\s\S]*?min-height:44px/);
 });
+
+
+test('Bento comparison uses current member-count and annual quotes from real pricing calculator',async()=>{
+ const {w,ui}=setup();ui.state.seats=6;ui.state.cadence='yearly';
+ w.document.body.innerHTML=ui.renderPricing();
+ const table=w.document.querySelector('.ess-comparison');
+ assert.match(table.textContent,/Tarif estimé · 6 membres · paiement annuel/);
+ const rows=[...table.querySelectorAll('tbody tr')];
+ assert.match(rows[0].textContent,/438,60/);
+ assert.match(rows[1].textContent,/77,40/);
+ assert.match(w.document.querySelector('.ess-price-amount').textContent,/438,60/);
+ await w.happyDOM.close();
+});
+test('changing annual billing keeps comparison expanded and its seat quote',async()=>{
+ const {w,ui}=setup();ui.state.seats=7;
+ w.document.body.innerHTML=ui.renderPricing();
+ w.document.querySelector('.ess-market-details').open=true;
+ await ui.handle({dataset:{action:'ess:yearly'}});
+ w.document.body.innerHTML=ui.renderPricing();
+ assert.equal(w.document.querySelector('.ess-market-details').open,true);
+ assert.match(w.document.querySelector('.ess-comparison').textContent,/7 membres · paiement annuel/);
+ assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/479,40/);
+ await w.happyDOM.close();
+});
+test('member edits immediately update comparison without outdated quotes on invalid input',async()=>{
+ const {w,ui}=setup();w.document.body.innerHTML=ui.renderPricing();
+ const input=w.document.getElementById('ess-seats');w.document.querySelector('.ess-market-details').open=true;
+ input.value='8';ui.input(input);
+ assert.match(w.document.querySelector('.ess-comparison').textContent,/8 membres · paiement mensuel/);
+ assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/51,00/);
+ input.value='0';ui.input(input);
+ assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/À confirmer/);
+ assert.equal(w.document.querySelector('.ess-market-details').open,true);
+ assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
+ await w.happyDOM.close();
+});
