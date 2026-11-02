@@ -76,8 +76,12 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  }
  async function addJob(){
   if(restricted)return Alert.alert('Administration suspendue','Le boss doit régulariser l’abonnement.');
-  try{await createJob(account.companyId,number,jobName,address);setNumber('');setJobName('');setAddress('');await onRefresh();Alert.alert('Chantier créé');}
-  catch(e){notify('Création impossible',e)}
+  try{
+   await createJob(account.companyId,number,jobName,address);
+   setNumber('');setJobName('');setAddress('');
+  }catch(e){notify('Création impossible',e);return;}
+  try{await onRefresh();Alert.alert('Chantier créé');}
+  catch{Alert.alert('Chantier créé','Le serveur a confirmé la création, mais la liste n’a pas pu être actualisée. Actualisez avant de créer un autre chantier.');}
  }
  const open=(next:Section)=>{setSection(next);reload()};
  return <View style={{flex:1,paddingHorizontal:14,paddingBottom:8,gap:10}}>
