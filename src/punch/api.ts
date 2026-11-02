@@ -3,6 +3,7 @@ import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getPunchJournal} from './journal';
 import {projectPendingPunches} from '../../web/live/journal.js';
+import {netSegmentMilliseconds} from '../../web/live/essential-hours-export.js';
 import * as Location from 'expo-location';
 import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
@@ -76,11 +77,19 @@ export async function loadArchives(){
  if(error)return JSON.parse(await AsyncStorage.getItem(key)||'[]') as string[];
  const ids=(data||[]).map(row=>row.segment_id as string);await AsyncStorage.setItem(key,JSON.stringify(ids));return ids;
 }
+/** The mobile totals must match the web's CSV and Essential hours view:
+ * unpaid overlapping breaks are merged and clipped to each job segment.
+ * No projected event is treated as server-confirmed by this calculator.
+ */
 export function hoursFor(segments:PunchSegment[],nowMs:number,fromMs:number,toMs:number,breaks:PunchBreak[]=[]){
- return segments.reduce((acc,s)=>{
-  const begin=Math.max(Date.parse(s.started_at),fromMs);
-  const finish=Math.min(s.ended_at?Date.parse(s.ended_at):nowMs,toMs);
-  const paused=breaks.filter(b=>b.session_id===s.session_id&&!b.is_paid).reduce((n,b)=>n+Math.max(0,Math.min(b.ended_at?Date.parse(b.ended_at):nowMs,finish)-Math.max(Date.parse(b.started_at),begin)),0);
-  return acc+Math.max(0,finish-begin-paused);
- },0);
+ if(!Array.isArray(segments)||!Number.isFinite(nowMs)||!Number.isFinite(fromMs)||!Number.isFinite(toMs))return 0;
+ const until=Math.min(nowMs,toMs);
+ const bySession=new Map<string,PunchBreak[]>();
+ for(const pause of Array.isArray(breaks)?breaks:[]){
+  if(typeof pause?.session_id!=='string')continue;
+  const current=bySession.get(pause.session_id)||[];
+  current.push(pause);bySession.set(pause.session_id,current);
+ }
+ return segments.reduce((total,segment)=>
+  total+netSegmentMilliseconds(segment,bySession.get(segment.session_id)||[],fromMs,until),0);
 }
