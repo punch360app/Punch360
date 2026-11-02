@@ -34,10 +34,6 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{
  const occurredAt=new Date().toISOString();
- let latitude:number|null=null,longitude:number|null=null,accuracy:number|null=null;
- try{const permission=action.startsWith('break_')?null:await Location.requestForegroundPermissionsAsync();if(permission?.status==='granted'){
- const fix=await Promise.race([Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High}),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('GPS indisponible')),6000))]);latitude=fix.coords.latitude;longitude=fix.coords.longitude;accuracy=fix.coords.accuracy;
- }}catch{/* A missing fix must never erase worked time; server flags it for review. */}
  // Persist the network state at the point of capture, before a reconnect
  // can make an offline event appear to be an ordinary online punch.
  let offline=false;
@@ -45,6 +41,10 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
   const network=await Network.getNetworkStateAsync();
   offline=network.isConnected===false||network.isInternetReachable===false;
  }catch{offline=true;}
+ let latitude:number|null=null,longitude:number|null=null,accuracy:number|null=null;
+ try{const permission=action.startsWith('break_')?null:await Location.requestForegroundPermissionsAsync();if(permission?.status==='granted'){
+ const fix=await Promise.race([Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High}),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('GPS indisponible')),6000))]);latitude=fix.coords.latitude;longitude=fix.coords.longitude;accuracy=fix.coords.accuracy;
+ }}catch{/* A missing fix must never erase worked time; server flags it for review. */}
  const journal=await getPunchJournal(companyId);
  const event=await journal.append(action,jobId,latitude===null?null:{latitude,longitude:longitude!,accuracy},occurredAt,paid,offline);
  const sync=await journal.flush();const saved=sync.events.find(e=>e.id===event.id);
