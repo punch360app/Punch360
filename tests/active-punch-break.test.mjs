@@ -33,7 +33,7 @@ test('a closed or missing session does not resume a break',()=>{
 });
 
 test('invalid or mixed snapshot data fails closed',()=>{
- for(const entries of [null,undefined,{},[null,42,'legacy'],[pause('mine',undefined)]])
+ for(const entries of [null,undefined,{},[null,42,'legacy'],[pause('mine',null)]])
   assert.equal(currentOpenPunchBreak(company,user,active,entries),null);
 });
 
