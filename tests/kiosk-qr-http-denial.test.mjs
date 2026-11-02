@@ -4,7 +4,12 @@ import {readFileSync} from 'node:fs';
 import {parseKioskQrEnvelope} from '../supabase/functions/essential-kiosk/qr-contract.js';
 
 const source=readFileSync(new URL('../supabase/functions/essential-kiosk/index.ts',import.meta.url),'utf8');
-const executable=source.replace(/^import .*;\n/gm,'').replace('status:number,data:unknown','status,data').replace('req:Request','req');
+// The production handler is Deno TypeScript. Only strip its exact TS syntax
+// for this isolated Node HTTP test; do not replace or mock its logic.
+const executable=source.replace(/^import .*;\n/gm,'')
+ .replace('status:number,data:unknown','status,data')
+ .replace('req:Request','req')
+ .replace(/Deno\.env\.get\('SUPABASE_(URL|SERVICE_ROLE_KEY)'\)!/g,"Deno.env.get('SUPABASE_$1')");
 const deviceId='11111111-1111-4111-8111-111111111111';
 const eventId='22222222-2222-4222-8222-222222222222';
 const qr=()=>({action:'qr_identify',deviceId,token:'a'.repeat(64),cardCode:'P360C1.'+'b'.repeat(64),pin:'829471'});
