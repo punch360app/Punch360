@@ -35,7 +35,8 @@ test('an open session in an earlier week is clipped at Monday, not shown as ongo
  const previous=view(from,null,{weekOffset:1}).confirmedWeekDays[0];
  assert.equal(previous.rangeEnd,iso(local(2026,11,2)));
  assert.equal(previous.rangeEndIsFinal,false);
- assert.equal(previous.netMs,25*3600000);
+ assert.equal(previous.netMs,local(2026,11,2)-from,
+  'the civil-week window must preserve DST changes rather than assuming 24-hour days');
 });
 
 test('a current open shift history stops at the last complete server read',()=>{
