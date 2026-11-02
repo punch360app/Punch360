@@ -36,7 +36,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
  const platformPriceProposals=createPlatformPriceProposalsController({sb,redraw,escape:e});
  const directory=createPlatformDirectoryController({sb,redraw,escape:e,onPriceCompany:company=>{if(platformPriceProposals.choose(company.id,company.name))s.tab='specialPrices';redraw();},onArchives:company=>{s.snapshot={...(s.snapshot||{}),companies_list:[company,...(s.snapshot?.companies_list||[]).filter(c=>c.id!==company.id)]};archives.reset(company.id,true);s.tab='archives';redraw()}});
  const invitationEmail=createInvitationEmailController({sb,redraw,escape:e});
- const notificationPreferences=createNotificationPreferencesController({sb,redraw,escape:e});
+ const notificationPreferences=createNotificationPreferencesController({sb,redraw,escape:e,document:doc});
  const supervision=createSupervisorApprovalsController({sb,redraw,escape:e});
  const breakPolicies=createBreakPoliciesController({sb,redraw,escape:e});
  const offlineReview=createOfflineReviewController({sb,redraw,escape:e,getLocale});
