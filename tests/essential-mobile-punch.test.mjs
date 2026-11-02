@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from '../web/live/essential-mobile-punch.js';
 const worker={company_id:'A',auth_user_id:'u',status:'active',personal_access:true,can_mobile_punch:true};
 const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+const native=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
 test('An explicitly authorized, current worker may use mobile punch',()=>{
  assert.equal(canUseEssentialMobilePunch('A','u',worker),true);
  assert.equal(canUseEssentialMobilePunch('A','u',{...worker,can_mobile_punch:false}),false);
@@ -157,4 +158,36 @@ test('Read-only kiosk indicator uses company-bound server data, not projected of
  assert.match(app,/Dernier pointage confirmé disponible/);
  assert.match(app,/canUseEssentialMobilePunch\(company\(\),state.user\?\.id,essentialUI.state.worker\)/);
  assert.match(app,/\['employee','lead','boss'\]\.includes\(state.account\?\.role\)/);
+});
+
+test('Expo Essentiel reuses server-scoped assignment and never redirects a missing location to default',()=>{
+ const available=[{id:'loc-A',company_id:'A',punch_job_id:'job-A',active:true}];
+ const assigned={location_id:'loc-A'};
+ assert.equal(essentialWorkerPunchJobId('A',assigned,available,'default-A'),'job-A');
+ for(const locations of [[],null,
+  [{...available[0],active:false}],
+  [{...available[0],company_id:'B'}]]){
+  assert.equal(essentialWorkerPunchJobId('A',assigned,locations,'default-A'),null);
+ }
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:'missing'},available,'default-A'),null);
+ assert.equal(essentialWorkerPunchJobId('A',{location_id:null},available,'default-A'),'default-A');
+ assert.match(native,/import \{essentialWorkerPunchJobId\} from '\.\.\/\.\.\/web\/live\/essential-mobile-punch\.js'/);
+ assert.match(native,/\.select\('id,company_id,punch_job_id,active,name,address'\)/);
+ assert.match(native,/assignedLocation=site\.error\?null:site\.data/);
+ assert.match(native,/const job=essentialWorkerPunchJobId\(account\.companyId,channel\.data,/);
+ assert.doesNotMatch(native,/siteJob\|\|account\.defaultJobId/);
+});
+
+test('Expo Essentiel blocks PUNCH IN without verified job, retains PUNCH OUT',()=>{
+ assert.match(native,/if\(action==='punch'&&!punch\.active&&!siteJob\)/);
+ assert.match(native,/punch\.active\?await punchOut\(account\.companyId\):await punchIn\(account\.companyId,siteJob!\)/);
+ assert.match(native,/disabled=\{busy\|\|!mobileAllowed\|\|punch\.localJournalBlocked\|\|\(!punch\.active&&!siteJob\)\}/);
+ assert.match(native,/Établissement à vérifier/);
+ assert.match(native,/Établissement de pointage non confirmé/);
+});
+
+test('Expo Essentiel does not reuse legacy unscoped channel permissions after upgrade',()=>{
+ assert.match(native,/const validCache=cached\?\.version===2&&Number\.isFinite\(cached\.checkedAt\)/);
+ assert.match(native,/JSON\.stringify\(\{version:2,job,allowed,checkedAt:Date\.now\(\)\}\)/);
+ assert.match(native,/if\(channel\.error\)\{if\(validCache\)\{setSiteJob\(cached\.job\);setMobileAllowed\(cached\.allowed\)\}else\{setSiteJob\(null\);setMobileAllowed\(false\)\}/);
 });
