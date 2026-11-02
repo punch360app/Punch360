@@ -380,9 +380,9 @@ test('Web only presents verified selected-week history and clear empty-week copy
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
  const page=app.slice(begin,end);
- assert.match(page,/view\\.confirmedWeekDays\\.length/);
- assert.match(page,/view\\.confirmedWeekDays\\.slice\\(0,80\\)/);
+ assert.match(page,/view\.confirmedWeekDays\.length/);
+ assert.match(page,/view\.confirmedWeekDays\.slice\(0,80\)/);
  assert.match(page,/Historique des journées · serveur · semaine sélectionnée/);
  assert.match(page,/Aucune journée enregistrée pour cette semaine/);
- assert.doesNotMatch(page,/view\\.confirmedDays\\.slice\\(0,80\\)/);
+ assert.doesNotMatch(page,/view\.confirmedDays\.slice\(0,80\)/);
 });
