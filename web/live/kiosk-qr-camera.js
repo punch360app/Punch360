@@ -19,12 +19,17 @@ export const kioskQrText=(language,key)=>(kioskQrCopy[language]||kioskQrCopy.en)
 // Never expose the raw QR text via callbacks; recognizing a QR is NOT an identity check.
 export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedule=callback=>setTimeout(callback,180),cancel=clearTimeout,expire=callback=>setTimeout(callback,30000),cancelExpire=clearTimeout,now=()=>Date.now()}={}){
  let generation=0,stream=null,video=null,detector=null,timer=null,expirationTimer=null,active=false;
+ let detachTrackListeners=null;
  let started=0;
  const stopTracks=media=>{for(const track of media?.getTracks?.()||[])try{track.stop()}catch{}};
  function stop(){
   generation++;active=false;
   if(timer!==null){cancel(timer);timer=null;}
   if(expirationTimer!==null){cancelExpire(expirationTimer);expirationTimer=null;}
+  // Detach before stopping tracks: any late hardware-ended callbacks must
+  // never affect a new camera session on the same shared tablet.
+  const detach=detachTrackListeners;detachTrackListeners=null;
+  try{detach?.()}catch{}
   const oldVideo=video,oldStream=stream;video=null;stream=null;detector=null;
   try{oldVideo?.pause?.()}catch{}
   if(oldVideo)try{oldVideo.srcObject=null}catch{}
@@ -46,6 +51,13 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
    await video.play?.();
    if(token!==generation)return false;
    started=now();active=true;
+   // A camera can disappear while scanning (device unplugged, permission
+   // withdrawn, OS interruption). Stop the whole preview immediately and
+   // detach all listeners on every close/restart, without exposing QR data.
+   const tracks=acquired.getTracks?.()||[];
+   const onEnded=()=>{if(token!==generation||!active)return;stop();notify?.('camera');};
+   for(const track of tracks)try{track.addEventListener?.('ended',onEnded)}catch{}
+   detachTrackListeners=()=>{for(const track of tracks)try{track.removeEventListener?.('ended',onEnded)}catch{}};
    // Independent privacy watchdog: a stalled BarcodeDetector.detect() must
    // never leave the shared tablet camera running indefinitely.
    expirationTimer=expire(()=>{if(token!==generation||!active)return;stop();notify?.('expired');});
