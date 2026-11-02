@@ -28,6 +28,7 @@ const pendingMaterialOrders=new Set<string>();
  */
 export async function submitMaterialOrder(input:{
  companyId:string;userId:string;jobId:string;note:string;jobs:readonly Job[];
+ stillCurrent?:()=>boolean;
 }):Promise<string>{
  const draft=validatedMaterialOrderDraft(
   input.companyId,input.userId,input.jobId,input.note,input.jobs);
@@ -48,8 +49,25 @@ export async function submitMaterialOrder(input:{
   if(verified.error||verified.data?.user?.id!==draft.created_by)
    throw Error('Session non vérifiée : commande non envoyée.');
   const latest=await getLocalIdentity();
-  if(latest?.id!==draft.created_by)
-   throw Error('Compte changé avant envoi : commande non envoyée.');
+  if(latest?.id!==draft.created_by||input.stillCurrent?.()===false)
+   throw Error('Compte ou entreprise changé avant envoi : commande non envoyée.');
+  // Cached job lists are advisory. Confirm this job is still active in the
+  // selected company before a non-idempotent write; an offline snapshot can
+  // include a project that was subsequently closed or transferred.
+  let jobResponse;
+  try{
+   jobResponse=await supabase.from('jobs').select('id,company_id,active')
+    .eq('id',draft.job_id).eq('company_id',draft.company_id)
+    .eq('active',true).maybeSingle();
+  }catch{
+   throw Error('Chantier non vérifié sur le serveur : commande non envoyée.');
+  }
+  if(jobResponse.error||jobResponse.data?.id!==draft.job_id||
+     jobResponse.data?.company_id!==draft.company_id||
+     jobResponse.data?.active!==true)
+   throw Error('Chantier inactif ou non vérifié : recharge la liste avant d’envoyer.');
+  if(input.stillCurrent?.()===false)
+   throw Error('Entreprise changée pendant la vérification : commande non envoyée.');
   let response;
   try{
    response=await supabase.from('material_orders').insert(draft)
