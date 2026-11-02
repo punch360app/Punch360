@@ -169,7 +169,8 @@ begin
  if result->>'ok' is distinct from 'false' then
   raise exception 'Suspended member QR remained valid';end if;
  if exists(select 1 from private.kiosk_qr_cards
-  where worker_id=worker_id and revoked_at is null) then
+  where worker_id=(select id from public.company_workers where auth_user_id=employee)
+    and revoked_at is null) then
   raise exception 'Membership trigger did not revoke active QR';end if;
  raise notice 'PASS: isolated QR registry, grants, native SQL validation, company/site gates, PIN delegation mock, event replay, rotation, suspension';
 end $test$;
