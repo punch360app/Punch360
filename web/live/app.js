@@ -315,8 +315,78 @@ const receivedInvitation=new URLSearchParams(location.search).get('invite');if(r
 async function freshPunchFix(){return new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude,accuracy:p.coords.accuracy}),()=>resolve(null),{enableHighAccuracy:true,timeout:12000,maximumAge:0})})}
 const journalInstances=new Map();
 function punchJournal(){const key=state.user.id+':'+company();if(!journalInstances.has(key))journalInstances.set(key,new PunchJournal({company:company(),user:state.user.id,withLock:fn=>navigator.locks?navigator.locks.request('punch-journal:'+key,fn):fn(),uuid:()=>crypto.randomUUID(),storage:{get:async key=>localStorage.getItem(key),set:async(key,value)=>localStorage.setItem(key,value)},send:async event=>{if(!member()||!isOwnPunchJournalEvent(event,company(),state.user?.id))throw Error('Pointage local hors compte ou entreprise active : envoi bloqué.');if(!navigator.onLine)throw Error('Réseau indisponible');const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const request=event.action==='break_start'&&event.paid?sb.rpc('sync_paid_break_start',{p_event:event.id,p_company:event.company,p_occurred_at:event.occurredAt,p_offline:event.offline,p_previous:event.previous}):event.action.startsWith('break_')?sb.rpc('sync_break_event',{p_event:event.id,p_company:event.company,p_action:event.action,p_occurred_at:event.occurredAt,p_offline:event.offline,p_previous:event.previous}):sb.rpc('sync_punch_event',{p_event:event.id,p_company:event.company,p_action:event.action,p_occurred_at:event.occurredAt,p_offline:event.offline,p_job:event.job,p_latitude:event.fix?.latitude??null,p_longitude:event.fix?.longitude??null,p_accuracy:event.fix?.accuracy??null,p_previous:event.previous});const r=await request.abortSignal(controller.signal);if(r.error)throw r.error;return r.data;}finally{clearTimeout(timer)}}}));return journalInstances.get(key);}
-function saveOfflineSnapshot(){if(!member())return;localStorage.setItem('punch-snapshot:'+state.user.id+':'+company(),JSON.stringify({company:company(),serverPunchCompany:state.serverPunchCompany===company()?company():null,jobs:state.jobs,assignments:state.assignments,shifts:state.shifts,serverPunch:state.serverPunch,serverPunchFetchedAt:state.serverPunchFetchedAt,selected:state.selected}));}
-function restoreOfflineSnapshot(){if(!state.user||!company())return;const data=JSON.parse(localStorage.getItem('punch-snapshot:'+state.user.id+':'+company())||'null');if(data?.company===company()){state.jobs=data.jobs||[];state.assignments=data.assignments||[];state.shifts=data.shifts||[];state.serverPunch=data.serverPunch||{sessions:[],segments:[],breaks:[]};state.serverPunchFetchedAt=Number.isFinite(data.serverPunchFetchedAt)?data.serverPunchFetchedAt:null;state.serverPunchCompany=data.serverPunchCompany===company()?company():null;state.sessions=state.serverPunch.sessions||[];state.segments=state.serverPunch.segments||[];state.breaks=state.serverPunch.breaks||[];state.selected=data.selected;}}
+// A saved attendance copy is not a payroll approval or permission to punch.
+// Keep invalid bytes unchanged for recovery; do not silently mix identities.
+function scopedOfflinePunchSnapshot(value,companyId,userId){
+ const date=x=>typeof x==='string'&&Number.isFinite(Date.parse(x))?Date.parse(x):null;
+ const range=row=>{const a=date(row?.started_at),b=row?.ended_at===null?Infinity:date(row?.ended_at);
+  return a!==null&&b!==null&&b>=a};
+ const distinct=rows=>new Set(rows.map(r=>r.id)).size===rows.length;
+ if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
+  !value||typeof value!=='object'||Array.isArray(value)||
+  value.company!==companyId||(value.userId!=null&&value.userId!==userId)||
+  (value.serverPunchCompany!=null&&value.serverPunchCompany!==companyId)||
+  !Array.isArray(value.jobs)||!Array.isArray(value.assignments)||
+  !Array.isArray(value.shifts))return null;
+ const p=value.serverPunch;
+ if(!p||typeof p!=='object'||Array.isArray(p)||
+  !Array.isArray(p.sessions)||!Array.isArray(p.segments)||
+  (p.breaks!=null&&!Array.isArray(p.breaks)))return null;
+ if(value.serverPunchCompany===companyId&&!Array.isArray(p.breaks))return null;
+ const sessions=p.sessions,segments=p.segments,breaks=p.breaks||[],ids=new Set(sessions.map(s=>s?.id));
+ if(!sessions.every(s=>s&&typeof s.id==='string'&&s.id&&s.company_id===companyId&&
+  s.user_id===userId&&range(s))||!distinct(sessions))return null;
+ if(!segments.every(s=>s&&typeof s.id==='string'&&s.id&&s.company_id===companyId&&
+  (s.user_id==null||s.user_id===userId)&&ids.has(s.session_id)&&
+  typeof s.job_id==='string'&&s.job_id&&range(s))||!distinct(segments))return null;
+ if(!breaks.every(b=>b&&typeof b.id==='string'&&b.id&&b.company_id===companyId&&
+  (b.user_id==null||b.user_id===userId)&&ids.has(b.session_id)&&range(b))||
+  !distinct(breaks))return null;
+ if(!value.jobs.every(j=>j&&typeof j.id==='string'&&j.id&&j.company_id===companyId)||
+  !distinct(value.jobs)||!value.shifts.every(s=>s&&s.company_id===companyId))return null;
+ const jobIds=new Set(value.jobs.map(j=>j.id));
+ if(!value.assignments.every(a=>a&&jobIds.has(a.job_id)&&
+  (a.company_id==null||a.company_id===companyId)&&
+  (a.user_id==null||a.user_id===userId)))return null;
+ const fetchedAt=typeof value.serverPunchFetchedAt==='number'&&
+  Number.isFinite(value.serverPunchFetchedAt)&&value.serverPunchFetchedAt>0&&
+  value.serverPunchFetchedAt<=Date.now()+10000?value.serverPunchFetchedAt:null;
+ return {company:companyId,userId,serverPunchCompany:
+  value.serverPunchCompany===companyId&&fetchedAt!==null?companyId:null,
+  serverPunchFetchedAt:fetchedAt,jobs:value.jobs,assignments:value.assignments,
+  shifts:value.shifts,serverPunch:{sessions,segments,breaks},
+  selected:typeof value.selected==='string'&&jobIds.has(value.selected)?value.selected:null};
+}
+function readScopedOfflineSnapshot(storage,key,companyId,userId){
+ try{return scopedOfflinePunchSnapshot(JSON.parse(storage.getItem(key)||'null'),companyId,userId)}
+ catch{return null}
+}
+function saveOfflineSnapshot(){
+ if(!member())return false;
+ const id=state.user.id,c=company(),key='punch-snapshot:'+id+':'+c;
+ const data=scopedOfflinePunchSnapshot({company:c,userId:id,
+  serverPunchCompany:state.serverPunchCompany===c?c:null,
+  serverPunchFetchedAt:state.serverPunchFetchedAt,jobs:state.jobs,
+  assignments:state.assignments,shifts:state.shifts,serverPunch:state.serverPunch,
+  selected:state.selected},c,id);
+ if(!data)return false;
+ try{
+  const existing=localStorage.getItem(key);
+  if(existing!==null&&!readScopedOfflineSnapshot(localStorage,key,c,id))return false;
+  localStorage.setItem(key,JSON.stringify(data));return true;
+ }catch{return false}
+}
+function restoreOfflineSnapshot(){
+ if(!state.user||!company())return false;
+ const data=readScopedOfflineSnapshot(localStorage,
+  'punch-snapshot:'+state.user.id+':'+company(),company(),state.user.id);
+ if(!data)return false;
+ state.jobs=data.jobs;state.assignments=data.assignments;state.shifts=data.shifts;
+ state.serverPunch=data.serverPunch;state.serverPunchFetchedAt=data.serverPunchFetchedAt;
+ state.serverPunchCompany=data.serverPunchCompany;state.sessions=data.serverPunch.sessions;
+ state.segments=data.serverPunch.segments;state.breaks=data.serverPunch.breaks;
+ state.selected=data.selected;return true;
+}
 async function locatedPunch(action,job,paid=false){if(isEssential()&&!essentialMobilePunchAllowed())throw new Error('Pointage mobile non autorisé pour ce compte.');
  // Pin the company and employee before awaiting a potentially slow GPS
  // permission prompt. A workspace switch must never append to a new account
