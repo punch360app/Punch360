@@ -11,6 +11,7 @@ assert.ok(a>=0&&b>a,'Expo loader not found');
 const source=native.slice(a,b).replace('export async function loadPunchState(companyId:string):Promise<PunchState>{','async function loadPunchState(companyId){')
  .replace("const overlay=async(state:PunchState,readSource:'server'|'cache',cacheWriteFailed=false)=>",'const overlay=async(state,readSource,cacheWriteFailed=false)=>')
  .replace('let events:LocalPunchEvent[]=[];','let events=[];')
+ .replace('let cached:PunchState|null=null;','let cached=null;')
  .replace(' as PunchState','')
  .replace('const list=sessions as PunchSession[]||[];','const list=sessions||[];')
  .replace('const sorted=(segments||[]) as PunchSegment[];','const sorted=segments||[];');

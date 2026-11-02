@@ -37,7 +37,7 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
  // A missing or corrupt cache is UNKNOWN attendance, not a verified empty day.
  // Keep damaged bytes intact and retain pending journal projections for review.
  const offlineState=async()=>{
-  let cached=null;
+  let cached:PunchState|null=null;
   try{
    const raw=await AsyncStorage.getItem(cacheKey);
    if(raw)cached=JSON.parse(raw);
