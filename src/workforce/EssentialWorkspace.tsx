@@ -30,7 +30,7 @@ const duration=(ms:number)=>{const n=Math.max(0,Math.floor(ms/1000));return [Mat
 const hm=(ms:number)=>{const n=Math.floor(ms/60000);return Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')};
 export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const breakPolicy=useBreakPolicy(account),canApproveTeam=useSupervisorApprovalAccess(account);
- const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[conflicts,setConflicts]=useState(0),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
+ const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[conflicts,setConflicts]=useState(0),[pendingItems,setPendingItems]=useState<{label:string;occurredAt:string|null}[]>([]),[conflictItems,setConflictItems]=useState<{label:string;occurredAt:string|null}[]>([]),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
  const dimensions=useWindowDimensions(),compact=dimensions.height<850;
  const [language,setLanguage]=useState('fr'),[languageMenu,setLanguageMenu]=useState(false);
  const [missionWorker,setMissionWorker]=useState<{key:string;id:string}|null>(null);
@@ -90,6 +90,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   const summary=await journalSummary(account.companyId);
   if(visitContext.current!==requestedFor)return;
   setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
+  setPendingItems(summary.pendingItems);setConflictItems(summary.conflictItems);
   if(updated.localJournalBlocked||summary.blocked)
    setNotice('Journal local à vérifier : pointage bloqué sur cet appareil. Heures serveur consultables.');
   else setNotice(previous=>previous.startsWith('Journal local à vérifier :')?'':previous);
@@ -114,6 +115,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
    const summary=await journalSummary(account.companyId);
    if(visitContext.current!==requestedFor)return;
    setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
+  setPendingItems(summary.pendingItems);setConflictItems(summary.conflictItems);
    setNotice(updated.localJournalBlocked||summary.blocked?
     'Journal local à vérifier : aucun envoi possible. Contactez votre responsable.':
     summary.pending&&summary.conflicts?
@@ -211,6 +213,20 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   (pending?pending+' en attente de transmission. ':'')+(conflicts?conflicts+' conflit(s) à vérifier. ':'')+
   'Ces événements ne constituent pas une validation officielle des heures.',
   {fontSize:12,color:Z.muted})}
+ {!punch.localJournalBlocked?<>
+  {pendingItems.map((item,i)=><View key={'pending-'+i} style={{paddingVertical:3}}>
+   {txt('À transmettre · '+item.label+' · '+(item.occurredAt?
+    new Date(item.occurredAt).toLocaleString('fr-CA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):
+    'Heure indisponible'),{fontSize:11,color:Z.muted})}
+  </View>)}
+  {pending>pendingItems.length?txt('Et '+(pending-pendingItems.length)+' autre(s) pointage(s) en attente.',{fontSize:11,color:Z.muted}):null}
+  {conflictItems.map((item,i)=><View key={'conflict-'+i} style={{paddingVertical:3}}>
+   {txt('Conflit à vérifier · '+item.label+' · '+(item.occurredAt?
+    new Date(item.occurredAt).toLocaleString('fr-CA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):
+    'Heure indisponible'),{fontSize:11,color:Z.muted})}
+  </View>)}
+  {conflicts>conflictItems.length?txt('Et '+(conflicts-conflictItems.length)+' autre(s) conflit(s).',{fontSize:11,color:Z.muted}):null}
+ </>:null}
  {pending>0&&!punch.localJournalBlocked?<Pressable accessibilityRole="button" accessibilityState={{disabled:busy}}
   disabled={busy} onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:9}}>
   {txt(busy?'Synchronisation…':'Synchroniser maintenant',{color:Z.sage,fontWeight:'700'})}

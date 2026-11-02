@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import {supabase} from '../lib/supabase';
 import {PunchJournal,hasUnsafePunchJournalEntries} from '../../web/live/journal.js';
+import {localPunchSyncState} from '../../web/live/punch-sync-state.js';
 const journals=new Map<string,PunchJournal>();
 export async function getPunchJournal(company:string){
  const identity=await getLocalIdentity();
@@ -17,9 +18,12 @@ export async function getPunchJournal(company:string){
 }
 export async function journalSummary(company:string){
  const j=await getPunchJournal(company);
+ const blocked={pending:0,conflicts:0,blocked:true,pendingItems:[],conflictItems:[]};
  let events;
- try{events=await j.read()}catch{return {pending:0,conflicts:0,blocked:true}}
- if(hasUnsafePunchJournalEntries(events,j.company,j.user))return {pending:0,conflicts:0,blocked:true};
- return {pending:events.filter(e=>e.status==='pending').length,
-  conflicts:events.filter(e=>e.status==='conflict').length,blocked:false};
+ try{events=await j.read()}catch{return blocked}
+ if(hasUnsafePunchJournalEntries(events,j.company,j.user))return blocked;
+ // Reuse the sanitized Web projection: never expose GPS, job, server payloads.
+ const visible=localPunchSyncState(events,j.company,j.user);
+ return {pending:visible.pending.length,conflicts:visible.conflicts.length,blocked:false,
+  pendingItems:visible.pending.slice(-5),conflictItems:visible.conflicts.slice(-5)};
 }
