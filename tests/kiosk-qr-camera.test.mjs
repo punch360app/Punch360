@@ -2,8 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createKioskQrCamera,kioskQrCopy,kioskQrText} from '../web/live/kiosk-qr-camera.js';
 
-const kit=({codes=[],permission,clock=()=>0}={})=>{
- const notices=[],scheduled=[],tracks=[{stops:0,stop(){this.stops++}}],media={getTracks:()=>tracks};
+const kit=({codes=[],permission,clock=()=>0,decode}={})=>{
+ const notices=[],scheduled=[],expiryQueue=[],tracks=[{stops:0,stop(){this.stops++}}],media={getTracks:()=>tracks};
  let detected=0;
  const camera=createKioskQrCamera({
   mediaDevices:{getUserMedia:permission|| (async request=>{
@@ -13,15 +13,17 @@ const kit=({codes=[],permission,clock=()=>0}={})=>{
   })},
   BarcodeDetector:class{
    constructor(opts){assert.deepEqual(opts,{formats:['qr_code']})}
-   async detect(){detected++;return codes;}
+   async detect(){detected++;return decode?decode():codes;}
   },
   notify:code=>notices.push(code),
   schedule:fn=>{scheduled.push(fn);return scheduled.length;},
   cancel(){},
+  expire:fn=>{expiryQueue.push(fn);return expiryQueue.length;},
+  cancelExpire(){},
   now:clock
  });
  const video={srcObject:null,playing:0,paused:0,async play(){this.playing++},pause(){this.paused++}};
- return {camera,video,tracks,notices,scheduled,flush:async()=>{const next=scheduled.shift();if(next)await next()},get detected(){return detected}};
+ return {camera,video,tracks,notices,scheduled,expiryQueue,flush:async()=>{const next=scheduled.shift();if(next)await next()},expireNow:()=>expiryQueue.shift()?.(),get detected(){return detected}};
 };
 
 test('camera preview reads employee-presented QR but does not transmit or return the raw value',async()=>{
@@ -95,4 +97,38 @@ test('camera instructions are complete for the ten kiosk locales',()=>{
   for(const key of ['open','help','title','scanning','close','unsupported','camera','decode','expired','read'])
    assert.equal(typeof kioskQrText(language,key),'string')&&assert.ok(kioskQrText(language,key).length>4);
  assert.equal(kioskQrText('unknown','close'),kioskQrCopy.en.close);
+});
+
+test('watchdog turns camera off even when native QR decode promise never resolves',async()=>{
+ let complete;
+ const pending=new Promise(resolve=>{complete=resolve});
+ const k=kit({decode:()=>pending});
+ assert.equal(await k.camera.start(k.video),true);
+ const decode=k.flush();
+ assert.equal(k.detected,1);
+ k.expireNow();
+ assert.equal(k.camera.active,false);
+ assert.equal(k.video.srcObject,null);
+ assert.equal(k.tracks[0].stops,1);
+ assert.deepEqual(k.notices,['expired']);
+ complete([{format:'qr_code',rawValue:'private-after-expiry'}]);
+ await decode;
+ assert.deepEqual(k.notices,['expired'],'stale scan cannot report a QR after expiry');
+ assert.equal(k.tracks[0].stops,1);
+});
+
+test('closing camera invalidates old watchdog without touching replacement session',async()=>{
+ const k=kit();
+ assert.equal(await k.camera.start(k.video),true);
+ const oldExpiry=k.expiryQueue.shift();
+ k.camera.stop();
+ assert.equal(await k.camera.start(k.video),true);
+ const newExpiry=k.expiryQueue.shift();
+ oldExpiry();
+ assert.equal(k.camera.active,true);
+ assert.deepEqual(k.notices,[]);
+ newExpiry();
+ assert.equal(k.camera.active,false);
+ assert.deepEqual(k.notices,['expired']);
+ assert.equal(k.tracks[0].stops,2);
 });
