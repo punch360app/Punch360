@@ -37,6 +37,18 @@ export function essentialMobileSnapshotLabel({readSource,snapshotFetchedAt=null,
   (now-seenAt>=86400000?' · relevé de plus de 24 h':'');
 }
 
+/** A saved open session is not proof that the worker is still clocked in.
+ * Only a fresh server read can show "En cours" without qualification.
+ * Local projections remain explicitly unofficial, even if the cache has a timestamp.
+ * @param {{readSource?:'server'|'cache',hasAppliedLocalProjection?:boolean,excludeOpen?:boolean}} [options]
+ * @returns {string}
+ */
+export function essentialMobileOpenShiftLabel({readSource,hasAppliedLocalProjection=false,excludeOpen=false}={}){
+ if(excludeOpen===true)return 'Fin non vérifiée';
+ if(hasAppliedLocalProjection===true)return 'En cours · estimation locale non confirmée';
+ return readSource==='server'?'En cours':'Fin non vérifiée';
+}
+
 /** Limit display time to the last complete server fetch, without changing
  * pending local events. Legacy caches without a fetch timestamp can still
  * display closed shifts, but must not infer how long an open shift lasted.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {essentialMobileDailyHours,essentialMobileHoursLimit,essentialMobileDailyComparison,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,essentialMobileDailyComparison,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel,essentialMobileOpenShiftLabel} from '../web/live/essential-hours-view.js';
 
 const companyId='A',userId='U';
 const time=(day,hour=0,minute=0)=>new Date(2026,10,day,hour,minute).getTime();
@@ -202,7 +202,7 @@ test('Expo daily-hours TypeScript contract stays attached to its function',()=>{
  assert.match(source,/export function essentialMobileHoursLimit/);
  const native=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
  assert.match(native,/Fin non vérifiée/);
- assert.match(native,/hoursLimit\.excludeOpen\?'Fin non vérifiée':'En cours'/);
+ assert.match(native,/openShiftLabel=essentialMobileOpenShiftLabel/);
 });
 
 test('cached-hours refresh is offered with no pending punches, never from a blocked journal',()=>{
@@ -305,4 +305,28 @@ test('native My Hours compares personal daily rows without labeling offline even
  assert.match(page,/Écart local : /);
  assert.match(page,/comparePendingHours\?txt/);
  assert.match(page,/Non approuvé/);
+});
+
+test('saved open sessions never claim a live clock-in from a stale cache',()=>{
+ assert.equal(essentialMobileOpenShiftLabel({readSource:'cache',excludeOpen:false}),'Fin non vérifiée');
+ assert.equal(essentialMobileOpenShiftLabel({readSource:'cache',excludeOpen:true}),'Fin non vérifiée');
+ assert.equal(essentialMobileOpenShiftLabel({readSource:'server',excludeOpen:true}),'Fin non vérifiée');
+ assert.equal(essentialMobileOpenShiftLabel({readSource:'server',excludeOpen:false}),'En cours');
+ assert.equal(essentialMobileOpenShiftLabel({}),'Fin non vérifiée');
+});
+test('a local ongoing shift is always labeled as an unofficial estimate',()=>{
+ for(const readSource of ['cache','server']){
+  assert.equal(essentialMobileOpenShiftLabel({readSource,hasAppliedLocalProjection:true,excludeOpen:false}),
+   'En cours · estimation locale non confirmée');
+ }
+ assert.equal(essentialMobileOpenShiftLabel({readSource:'cache',hasAppliedLocalProjection:true,excludeOpen:true}),
+  'Fin non vérifiée');
+});
+test('native My Hours uses scoped open-shift labels instead of treating cache as live',()=>{
+ const ui=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(ui,/openShiftLabel=essentialMobileOpenShiftLabel/);
+ assert.match(ui,/hasAppliedLocalProjection:punch\.hasAppliedLocalProjection,excludeOpen:hoursLimit\.excludeOpen/);
+ const hours=ui.slice(ui.indexOf("page==='hours'?"),ui.indexOf("page==='schedule'?"));
+ assert.match(hours,/new Date\(s\.ended_at\).*:openShiftLabel/);
+ assert.doesNotMatch(hours,/hoursLimit\.excludeOpen\?'Fin non vérifiée':'En cours'/);
 });

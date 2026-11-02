@@ -17,7 +17,7 @@ import type {WorkspaceAccount} from '../auth/AuthGate';
 import {loadPunchState,punchIn,punchOut,punchBreak,hoursFor,PunchState} from '../punch/api';
 import {personalUpcomingClientVisit} from '../../web/live/personal-client-visit.js';
 import {essentialWorkerPunchJobId} from '../../web/live/essential-mobile-punch.js';
-import {essentialMobileDailyHours,essentialMobileHoursLimit,essentialMobileDailyComparison,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel} from '../../web/live/essential-hours-view.js';
+import {essentialMobileDailyHours,essentialMobileHoursLimit,essentialMobileDailyComparison,shouldOfferEssentialCachedRefresh,essentialMobileSnapshotLabel,essentialMobileOpenShiftLabel} from '../../web/live/essential-hours-view.js';
 import {PersonalMissionCard} from './MissionsPanel';
 import {navigationProviders,navigationUrl,navigationDestination,navigationPreferenceKey,chooseNavigationPreference,writeNavigationPreference} from '../../web/live/navigation-choices.js';
 import {journalSummary} from '../punch/journal';
@@ -175,6 +175,8 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const visibleSegments=hoursLimit.excludeOpen
   ?punch.segments.filter(segment=>segment.ended_at!=null):punch.segments;
  const displayNow=hoursLimit.until;
+ const openShiftLabel=essentialMobileOpenShiftLabel({readSource:punch.readSource,
+  hasAppliedLocalProjection:punch.hasAppliedLocalProjection,excludeOpen:hoursLimit.excludeOpen});
  const worked=hoursFor(visibleSegments,displayNow,day,displayNow,punch.breaks||[]),
   weekly=hoursFor(visibleSegments,displayNow,week,displayNow,punch.breaks||[]),paused=!!punch.active&&(punch.breaks||[]).some(b=>b.session_id===punch.active?.id&&b.ended_at===null);
  // Local projections and offline snapshots are never payroll-approved hours.
@@ -409,7 +411,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   </View>)}
   {txt('Inclut les pointages locaux en attente, le cas échéant. Non approuvé.',{fontSize:10,color:Z.muted})}
  </View>:<View style={styles.card}>{txt('Aucune journée dans le relevé chargé pour cette semaine.',{fontSize:12,color:Z.muted})}</View>}
- {punch.sessions.filter(s=>s.company_id===account.companyId&&s.user_id===account.userId&&Date.parse(s.started_at)<viewWeekEnd&&(s.ended_at==null||Date.parse(s.ended_at)>viewWeekStart.getTime())).map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):hoursLimit.excludeOpen?'Fin non vérifiée':'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(visibleSegments.filter(p=>p.session_id===s.id),displayNow,viewWeekStart.getTime(),viewWeekEnd,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
+ {punch.sessions.filter(s=>s.company_id===account.companyId&&s.user_id===account.userId&&Date.parse(s.started_at)<viewWeekEnd&&(s.ended_at==null||Date.parse(s.ended_at)>viewWeekStart.getTime())).map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):openShiftLabel),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(visibleSegments.filter(p=>p.session_id===s.id),displayNow,viewWeekStart.getTime(),viewWeekEnd,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
  <Pressable accessibilityRole="button" accessibilityLabel={tr('language')} accessibilityState={{expanded:languageMenu}} onPress={()=>setLanguageMenu(v=>!v)} style={[styles.menu,rtl&&{flexDirection:'row-reverse'}]}>
  {txt(tr('language')+' : '+(nativeEssentialLanguages.find(x=>x.code===language)?.name||'Français'),{textAlign:rtl?'right':'left'})}
  <Ionicons name="chevron-down" size={17} color={Z.muted}/>
