@@ -75,3 +75,39 @@ test('employee QR camera remains a non-authenticating preview and recovers PIN f
  assert.equal(w.__qrUi.state.pin,'');
  await w.happyDOM.close();
 });
+
+
+test('employee QR scanner releases tablet camera when closing preview',async()=>{
+ const w=new Window({url:'https://punch.test/kiosk.html',
+  settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});
+ w.document.body.innerHTML='<main id="kiosk"></main>';
+ const track={stops:0,stop(){this.stops++}};
+ const stream={getTracks(){return [track]}};
+ const requests=[];
+ Object.defineProperty(w.navigator,'mediaDevices',{configurable:true,value:{
+  async getUserMedia(constraints){requests.push(constraints);return stream}
+ }});
+ Object.defineProperty(w.HTMLMediaElement.prototype,'play',{configurable:true,value:async()=>{}});
+ Object.defineProperty(w.HTMLMediaElement.prototype,'pause',{configurable:true,value:()=>{}});
+ w.BarcodeDetector=class{constructor(options){this.formats=options.formats}async detect(){return []}};
+ const calls=[];
+ w.fetch=async(_url,options)=>{calls.push(JSON.parse(options.body));throw Error('QR scan must not request a punch')};
+ w.eval(src.slice(0,src.indexOf('(async()=>{try{state.device='))+
+  `state.device={device_id:'synthetic-tablet',token:'limited',company_name:'Fictive',name:'Réception'};draw();window.__qrUi={state};`);
+ w.document.querySelector('[data-action="scan-qr"]').click();
+ await wait();
+ assert.equal(w.__qrUi.state.qrOpen,true,'Preview remains open while the camera is active');
+ assert.ok(w.document.querySelector('#kiosk-qr-video'),'Uses tablet camera instead of asking employee to scan');
+ assert.equal(requests.length,1,'Camera permission requested once');
+ assert.equal(requests[0].audio,false,'Microphone is never requested');
+ assert.equal(requests[0].video.facingMode.ideal,'environment','Back camera preferred');
+ assert.equal(track.stops,0,'Camera stays available while preview is visible');
+ w.document.querySelector('[data-action="close-qr"]').click();
+ await wait();
+ assert.equal(w.__qrUi.state.qrOpen,false);
+ assert.equal(track.stops,1,'Physical video track is stopped when preview closes');
+ assert.equal(w.document.querySelector('#kiosk-qr-video'),null);
+ assert.ok(w.document.querySelector('#pin'),'Existing employee PIN fallback is restored');
+ assert.equal(calls.length,0,'No scanner action can record a punch or submit QR contents');
+ await w.happyDOM.close();
+});
