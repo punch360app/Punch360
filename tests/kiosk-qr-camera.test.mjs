@@ -76,6 +76,87 @@ test('tablet ignores unrelated QR first and detects a valid employee card later'
  assert.equal(k.tracks[0].stops,1);
 });
 
+test('unsupported native QR format does not request tablet camera permission',async()=>{
+ const notices=[];let permissions=0;
+ const Detector=class{
+  static async getSupportedFormats(){return ['ean_13','code_128']}
+  constructor(){throw Error('QR constructor must not run')}
+ };
+ const camera=createKioskQrCamera({
+  BarcodeDetector:Detector,
+  mediaDevices:{async getUserMedia(){permissions++;throw Error('must not request camera')}},
+  notify:code=>notices.push(code),
+  expire:()=>1,cancelExpire(){}
+ });
+ assert.equal(await camera.start({}),false);
+ assert.equal(camera.active,false);
+ assert.equal(permissions,0);
+ assert.deepEqual(notices,['unsupported']);
+});
+
+test('supported native QR format starts local preview and retains ordinary cancellation',async()=>{
+ const notices=[],tracks=[{stops:0,stop(){this.stops++}}];let permissions=0;
+ const Detector=class{
+  static async getSupportedFormats(){return ['ean_13','qr_code']}
+  async detect(){return []}
+ };
+ const video={srcObject:null,async play(){},pause(){}};
+ const camera=createKioskQrCamera({
+  BarcodeDetector:Detector,
+  mediaDevices:{async getUserMedia(){permissions++;return {getTracks:()=>tracks}}},
+  notify:code=>notices.push(code),
+  schedule:()=>1,cancel(){},expire:()=>2,cancelExpire(){}
+ });
+ assert.equal(await camera.start(video),true);
+ assert.equal(permissions,1);
+ assert.equal(camera.active,true);
+ camera.stop();
+ assert.equal(camera.active,false);
+ assert.equal(video.srcObject,null);
+ assert.equal(tracks[0].stops,1);
+ assert.deepEqual(notices,[]);
+});
+
+test('stale native QR format check cannot ask for camera permission after close',async()=>{
+ let resolveFormats;const formats=new Promise(resolve=>{resolveFormats=resolve});
+ let permissions=0;const notices=[];
+ const Detector=class{static getSupportedFormats(){return formats}};
+ const camera=createKioskQrCamera({
+  BarcodeDetector:Detector,
+  mediaDevices:{async getUserMedia(){permissions++;throw Error('must never open camera')}},
+  notify:code=>notices.push(code),expire:()=>1,cancelExpire(){}
+ });
+ const opening=camera.start({});
+ camera.stop();
+ resolveFormats(['qr_code']);
+ assert.equal(await opening,false);
+ assert.equal(permissions,0);
+ assert.equal(camera.active,false);
+ assert.deepEqual(notices,[]);
+});
+
+test('privacy deadline expires pending native QR capability check before camera access',async()=>{
+ let resolveFormats;const formats=new Promise(resolve=>{resolveFormats=resolve});
+ const expirations=[],notices=[];let permissions=0;
+ const Detector=class{static getSupportedFormats(){return formats}};
+ const camera=createKioskQrCamera({
+  BarcodeDetector:Detector,
+  mediaDevices:{async getUserMedia(){permissions++;throw Error('must never open camera')}},
+  notify:code=>notices.push(code),
+  expire:callback=>{expirations.push(callback);return expirations.length},
+  cancelExpire(){}
+ });
+ const opening=camera.start({});
+ assert.equal(expirations.length,1);
+ expirations.shift()();
+ assert.deepEqual(notices,['expired']);
+ resolveFormats(['qr_code']);
+ assert.equal(await opening,false);
+ assert.equal(permissions,0);
+ assert.equal(camera.active,false);
+ assert.deepEqual(notices,['expired'],'stale capability response must not notify twice');
+});
+
 test('explicit stop closes the video track and prevents stale queued decode',async()=>{
  const k=kit({codes:[{format:'qr_code',rawValue:'opaque'}]});
  await k.camera.start(k.video);
