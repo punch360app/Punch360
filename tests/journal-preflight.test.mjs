@@ -164,3 +164,35 @@ test('malformed new events fail before storage or upload, without corrupting cle
  }
  assert.deepEqual(await h.journal.read(),[]);
 });
+
+test('new offline IN and transfer must include a nonempty workplace without poisoning the queue',async()=>{
+ const sent=[],h=setup([],async e=>{sent.push(e.action);return {sync_status:'synced'}});
+ let next=0;h.journal.uuid=()=>String(++next);
+ const original=h.memory.get(h.key);
+ for(const action of ['in','transfer']){
+  for(const invalid of [undefined,null,'','   ',42]){
+   await assert.rejects(h.journal.append(action,invalid),/Établissement de pointage requis/);
+   assert.equal(h.memory.get(h.key),original,'Invalid workplace cannot be persisted');
+  }
+ }
+ assert.deepEqual(sent,[]);
+ const entered=await h.journal.append('in','JOB-123',null,'2026-11-02T08:00:00Z',false,true);
+ assert.equal(entered.job,'JOB-123');
+ assert.equal(entered.id,'1','Rejected validation does not consume UUID');
+ const moved=await h.journal.append('transfer','JOB-456',null,'2026-11-02T09:00:00Z',false,true);
+ assert.equal(moved.job,'JOB-456');
+ const out=await h.journal.append('out',null,null,'2026-11-02T17:00:00Z',false,true);
+ assert.equal(out.job,null);
+ assert.equal(hasUnsafePunchJournalEntries(await h.journal.read(),'company-A','employee-A'),false);
+ await h.journal.flush();
+ assert.deepEqual(sent,['in','transfer','out']);
+});
+test('breaks and closing an existing shift remain independent of workplace argument',async()=>{
+ const h=setup([]);
+ h.journal.uuid=(() => {let n=0;return ()=>String(++n)})();
+ for(const action of ['break_start','break_end','out']){
+  const event=await h.journal.append(action,null,null,'2026-11-02T12:00:00Z',false,true);
+  assert.equal(event.job,null);
+ }
+ assert.deepEqual((await h.journal.read()).map(e=>e.action),['break_start','break_end','out']);
+});
