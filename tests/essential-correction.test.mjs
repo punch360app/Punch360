@@ -83,7 +83,7 @@ test('Essentiel correction entry opens a dedicated scoped screen with a real ret
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/function essentialCorrectionPage\(\)/);
  assert.match(app,/if\(state\.sub==='essentialCorrection'\)return essentialCorrectionPage\(\)/);
- assert.match(app,/button\('Demander une correction','subpage','full','data-id="essentialCorrection"'\)/);
+ assert.match(app,/button\('Corriger mes heures','subpage','full','data-id="essentialCorrection"'\)/);
  assert.match(app,/button\('← Retour à mes heures','navigate','full','data-id="hours"'\)/);
  assert.match(app,/correction\.sessions\.length>0&&!state\.correctionSubmitting/);
  assert.match(app,/button\(state\.correctionSubmitting\?'Envoi en cours…':'Soumettre pour approbation'/);
