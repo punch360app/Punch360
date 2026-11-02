@@ -7,7 +7,7 @@ import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKiosk
 import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
 import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
-import {createCompanyOnce,isCreatedCompanyVerified,savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from './company-onboarding.js';
+import {createCompanyOnce,isCreatedCompanyVerified,recoverCreatedCompanyWorkspace,savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from './company-onboarding.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -500,7 +500,20 @@ async function confirmCreatedWorkspace(){
   try{localStorage.setItem('punch-last-company:'+state.user.id,pending.companyId)}catch{}
  }
  await initialize();
- if(isCreatedCompanyVerified(pending.companyId,state.user?.id,state.account,companyContext.list)){
+ // If the create RPC response was lost, recover ONLY from exactly one newly
+ // server-verified boss membership; the stored baseline never grants access.
+ let createdCompanyId=pending.companyId;
+ if(!createdCompanyId){
+  const recovered=recoverCreatedCompanyWorkspace(pending,state.user?.id,companyContext.list);
+  if(recovered){
+   createdCompanyId=recovered.companyId;
+   if(state.account?.company_id!==createdCompanyId){
+    setVerifiedAccount(recovered);
+    await initialize();
+   }
+  }
+ }
+ if(isCreatedCompanyVerified(createdCompanyId,state.user?.id,state.account,companyContext.list)){
   state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);
   authMessage('');toast('Ton espace PUNCH est prêt');return;
  }
@@ -516,13 +529,14 @@ async function verifyCreatedCompany(){
 async function createCompany(){
  if(state.authBusy||state.pendingCompanyCreation)return;
  const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);
+ const pendingContext={previousIds:companyContext.list.map(w=>w.companyId),edition:state.creationEdition};
  state.authBusy=true;authMessage('');draw();
  try{
   let definiteError=false,accepted;
   try{accepted=await createCompanyOnce(async(name,params)=>{const r=await sb.rpc(name,params);if(r?.error)definiteError=true;return r;},n,state.creationEdition)}
-  catch(err){if(definiteError)throw err;state.pendingCompanyCreation={companyId:null};savePendingCompanyCreation(sessionStorage,state.user?.id,null);authMessage('Réponse du serveur incertaine. Vérifiez vos accès avant toute nouvelle création.',true);return;}
-  state.pendingCompanyCreation={companyId:accepted.companyId};
-  savePendingCompanyCreation(sessionStorage,state.user?.id,accepted.companyId);
+  catch(err){if(definiteError)throw err;state.pendingCompanyCreation={companyId:null,...pendingContext};savePendingCompanyCreation(sessionStorage,state.user?.id,null,pendingContext);authMessage('Réponse du serveur incertaine. Vérifiez vos accès avant toute nouvelle création.',true);return;}
+  state.pendingCompanyCreation={companyId:accepted.companyId,...pendingContext};
+  savePendingCompanyCreation(sessionStorage,state.user?.id,accepted.companyId,pendingContext);
   clearPublicPlanSelection();
   await confirmCreatedWorkspace();
  }catch(err){
