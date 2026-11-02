@@ -5,17 +5,74 @@ export function breakCorrectionPayload(form){
  const start=date(form.start),end=date(form.end);if(end<=start)throw Error('La fin doit suivre le début');
  return {p_session:form.session,p_break:form.breakId||null,p_start:start,p_end:end,p_paid:form.paid===true,p_reason:form.reason.trim()};
 }
+
+/** Summary strictly tied to the signed-in account and loaded server data. */
+export function breakCorrectionInbox({companyId,userId,role,source}={}){
+ const empty={ready:false,requests:[],pendingCount:0};
+ if(!companyId||!userId||source?.company!==companyId||source.user!==userId||
+   source.role!==role||!source.loaded||!Array.isArray(source.requests)||
+   !Array.isArray(source.pendingRequests))return empty;
+ const manager=['boss','admin'].includes(role);
+ const history=manager?[...new Map([...source.requests,...source.pendingRequests]
+  .filter(r=>typeof r?.id==='string').map(r=>[r.id,r])).values()]:source.requests;
+ const requests=history.filter(r=>r?.company_id===companyId&&
+  (manager||r.requested_by===userId)&&typeof r.id==='string'&&r.id);
+ const pendingCount=requests.filter(r=>r.status==='pending'&&
+  r.requested_by!==userId).length;
+ return {ready:true,requests,pendingCount};
+}
+
 export function createBreakCorrectionsController({sb,redraw,escape:e,document:doc=globalThis.document,storage=globalThis.localStorage,crypto=globalThis.crypto}){
  let generation=0;const empty=()=>({session:'',breakId:'',start:'',end:'',paid:false,reason:''});
- const s={company:null,user:null,role:null,sessions:[],breaks:[],requests:[],workers:[],form:empty(),error:'',busy:false};
+ const s={company:null,user:null,role:null,sessions:[],breaks:[],requests:[],pendingRequests:[],workers:[],form:empty(),error:'',busy:false,loaded:false};
  const manager=()=>['admin','boss'].includes(s.role),name=session=>{const w=s.workers.find(w=>w.id===session.worker_id);return w?w.first_name+' '+w.last_name:'Ma journée'};
- async function refresh(){const n=generation;let q=sb.from('punch_sessions').select('id,worker_id,user_id,started_at,ended_at').eq('company_id',s.company).not('ended_at','is',null);if(!manager())q=q.eq('user_id',s.user);const [sessions,requests]=await Promise.all([q.order('started_at',{ascending:false}).limit(100),sb.from('essential_break_corrections').select('*').eq('company_id',s.company).order('created_at',{ascending:false}).limit(100)]);if(n!==generation)return;if(sessions.error||requests.error)throw sessions.error||requests.error;const ids=(sessions.data||[]).map(x=>x.id);const pauses=ids.length?await sb.from('punch_breaks').select('*').eq('company_id',s.company).in('session_id',ids).order('started_at').limit(1000):{data:[]};if(n!==generation)return;if(pauses.error)throw pauses.error;s.sessions=sessions.data||[];s.requests=requests.data||[];s.breaks=pauses.data||[];}
- function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,sessions:[],breaks:[],requests:[],workers:[],form:empty(),error:'',busy:false});}
+ async function refresh(){
+  const n=generation,company=s.company,user=s.user,isManager=manager();
+  // Never continue to display formerly verified HR data after a failed reload.
+  s.loaded=false;s.sessions=[];s.breaks=[];s.requests=[];s.pendingRequests=[];
+  if(!company||!user)return;
+  let sessionsQuery=sb.from('punch_sessions')
+   .select('id,worker_id,user_id,started_at,ended_at')
+   .eq('company_id',company).not('ended_at','is',null);
+  if(!isManager)sessionsQuery=sessionsQuery.eq('user_id',user);
+  let historyQuery=sb.from('essential_break_corrections')
+   .select('*').eq('company_id',company);
+  if(!isManager)historyQuery=historyQuery.eq('requested_by',user);
+  const pendingPromise=isManager?sb.from('essential_break_corrections')
+   .select('*').eq('company_id',company).eq('status','pending')
+   .order('created_at',{ascending:false}).limit(200):
+   Promise.resolve({data:[],error:null});
+  const [sessions,requests,pending]=await Promise.all([
+   sessionsQuery.order('started_at',{ascending:false}).limit(100),
+   historyQuery.order('created_at',{ascending:false}).limit(100),
+   pendingPromise]);
+  if(n!==generation)return;
+  if(sessions.error||requests.error||pending.error)throw sessions.error||requests.error||pending.error;
+  const safeSessions=(sessions.data||[]).filter(row=>row?.id&&
+   (isManager||row.user_id===user));
+  const ids=safeSessions.map(x=>x.id);
+  const pauses=ids.length?await sb.from('punch_breaks').select('*')
+   .eq('company_id',company).in('session_id',ids)
+   .order('started_at').limit(1000):{data:[],error:null};
+  if(n!==generation)return;
+  if(pauses.error)throw pauses.error;
+  s.sessions=safeSessions;
+  s.breaks=(pauses.data||[]).filter(b=>ids.includes(b.session_id));
+  s.requests=(requests.data||[]).filter(r=>r?.company_id===company&&
+   (isManager||r.requested_by===user));
+  s.pendingRequests=isManager?(pending.data||[]).filter(r=>r?.company_id===company&&
+   r.status==='pending'):[];
+  s.loaded=true;
+ }
+ function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,sessions:[],breaks:[],requests:[],pendingRequests:[],workers:[],form:empty(),error:'',busy:false,loaded:false});}
  async function load(account,user,workers=[]){reset();const n=generation;s.company=account?.company_id;s.role=account?.role;s.user=user;s.workers=workers;if(!s.company)return;try{await refresh()}catch(err){if(n===generation)s.error=err.message;}}
- const button=(label,action,id='')=>`<button type="button" class="ess-btn" data-action="breakfix:${action}" data-id="${e(id)}" ${s.busy?'disabled':''}>${label}</button>`;
- function render(){const f=s.form;return `<h2>Corrections de pauses</h2>${s.error?`<p role="alert">${e(s.error)}</p>`:''}<p>Les heures officielles restent inchangées jusqu’à l’approbation par une autre personne.</p><section class="ess-panel"><h3>Ajouter ou corriger une pause</h3><label class="ess-field">Journée terminée<select id="breakfix-session"><option value="">Choisir une journée</option>${s.sessions.map(x=>`<option value="${e(x.id)}" ${f.session===x.id?'selected':''}>${e(name(x))} · ${e(new Date(x.started_at).toLocaleString('fr-CA'))}</option>`).join('')}</select></label><label class="ess-field">Pause<select id="breakfix-breakId"><option value="">Ajouter une pause oubliée</option>${s.breaks.filter(b=>b.session_id===f.session&&b.ended_at).map(b=>`<option value="${e(b.id)}" ${f.breakId===b.id?'selected':''}>${e(new Date(b.started_at).toLocaleTimeString('fr-CA'))} → ${e(new Date(b.ended_at).toLocaleTimeString('fr-CA'))} · ${b.is_paid?'Payée':'Non payée'}</option>`).join('')}</select></label>${[['start','Début avec fuseau'],['end','Fin avec fuseau'],['reason','Motif']].map(([id,label])=>`<label class="ess-field">${label}<input id="breakfix-${id}" value="${e(f[id])}" ${id==='reason'?'maxlength="1000"':'placeholder="2026-10-20T12:00:00-04:00"'}></label>`).join('')}<label class="ess-check"><input type="checkbox" id="breakfix-paid" ${f.paid?'checked':''}>Pause payée</label>${button('Soumettre la demande','submit')}</section><section class="ess-panel"><h3>Historique des demandes</h3><p>100 demandes récentes · 100 journées terminées proposées.</p>${s.requests.map(r=>`<article class="ess-person"><div><b>${e(r.reason)}</b><small>${e(({pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'})[r.status])}</small><small>Avant : ${r.original_break?e(new Date(r.original_break.started_at).toLocaleString('fr-CA'))+' → '+e(new Date(r.original_break.ended_at).toLocaleTimeString('fr-CA'))+' · '+(r.original_break.is_paid?'Payée':'Non payée'):'Aucune pause'}</small><small>Demande : ${e(new Date(r.requested_start).toLocaleString('fr-CA'))} → ${e(new Date(r.requested_end).toLocaleTimeString('fr-CA'))} · ${r.requested_paid?'Payée':'Non payée'}</small>${r.review_note?'<small>'+e(r.review_note)+'</small>':''}</div>${r.status==='pending'?(r.requested_by===s.user?button('Annuler','cancel',r.id):manager()?button('Approuver','approve',r.id)+button('Refuser','reject',r.id):''):''}</article>`).join('')||'<p>Aucune demande.</p>'}</section>${button('Actualiser','refresh')}`;}
+ const button=(label,action,id='')=>`<button type="button" class="ess-btn" data-action="breakfix:${action}" data-id="${e(id)}" ${s.busy||(!s.loaded&&action!=='refresh')?'disabled':''}>${label}</button>`;
+ function render(){const f=s.form;
+  const scoped=breakCorrectionInbox({companyId:s.company,userId:s.user,role:s.role,source:s});
+  const sessions=scoped.ready?s.sessions:[],breaks=scoped.ready?s.breaks:[],requests=scoped.requests;
+  return `<h2>Corrections de pauses</h2>${s.error?`<p role="alert">${e(s.error)}</p>`:''}<p>Les heures officielles restent inchangées jusqu’à l’approbation par une autre personne.</p><section class="ess-panel"><h3>Ajouter ou corriger une pause</h3><label class="ess-field">Journée terminée<select id="breakfix-session"><option value="">Choisir une journée</option>${sessions.map(x=>`<option value="${e(x.id)}" ${f.session===x.id?'selected':''}>${e(name(x))} · ${e(new Date(x.started_at).toLocaleString('fr-CA'))}</option>`).join('')}</select></label><label class="ess-field">Pause<select id="breakfix-breakId"><option value="">Ajouter une pause oubliée</option>${breaks.filter(b=>b.session_id===f.session&&b.ended_at).map(b=>`<option value="${e(b.id)}" ${f.breakId===b.id?'selected':''}>${e(new Date(b.started_at).toLocaleTimeString('fr-CA'))} → ${e(new Date(b.ended_at).toLocaleTimeString('fr-CA'))} · ${b.is_paid?'Payée':'Non payée'}</option>`).join('')}</select></label>${[['start','Début avec fuseau'],['end','Fin avec fuseau'],['reason','Motif']].map(([id,label])=>`<label class="ess-field">${label}<input id="breakfix-${id}" value="${e(f[id])}" ${id==='reason'?'maxlength="1000"':'placeholder="2026-10-20T12:00:00-04:00"'}></label>`).join('')}<label class="ess-check"><input type="checkbox" id="breakfix-paid" ${f.paid?'checked':''}>Pause payée</label>${button('Soumettre la demande','submit')}</section><section class="ess-panel"><h3>Historique des demandes</h3><p>100 demandes récentes et demandes en attente · 100 journées terminées proposées.</p>${!scoped.ready?'<p role="status">Historique non vérifié. Actualisez vos demandes.</p>':''}${requests.map(r=>`<article class="ess-person"><div><b>${e(r.reason)}</b><small>${e(({pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'})[r.status])}</small><small>Avant : ${r.original_break?e(new Date(r.original_break.started_at).toLocaleString('fr-CA'))+' → '+e(new Date(r.original_break.ended_at).toLocaleTimeString('fr-CA'))+' · '+(r.original_break.is_paid?'Payée':'Non payée'):'Aucune pause'}</small><small>Demande : ${e(new Date(r.requested_start).toLocaleString('fr-CA'))} → ${e(new Date(r.requested_end).toLocaleTimeString('fr-CA'))} · ${r.requested_paid?'Payée':'Non payée'}</small>${r.review_note?'<small>'+e(r.review_note)+'</small>':''}</div>${r.status==='pending'?(r.requested_by===s.user?button('Annuler','cancel',r.id):manager()?button('Approuver','approve',r.id)+button('Refuser','reject',r.id):''):''}</article>`).join('')||'<p>Aucune demande.</p>'}</section>${button('Actualiser','refresh')}`;}
  function input(el){if(!el.id?.startsWith('breakfix-'))return;const id=el.id.slice(9);if(!(id in s.form))return;s.form[id]=id==='paid'?el.checked:el.value;if(id==='session'){Object.assign(s.form,{breakId:'',start:'',end:'',paid:false});redraw()}else if(id==='breakId'){const b=s.breaks.find(b=>b.id===el.value);Object.assign(s.form,{start:b?.started_at||'',end:b?.ended_at||'',paid:b?.is_paid||false});redraw()}}
- async function handle(el){if(!el.dataset.action?.startsWith('breakfix:'))return false;if(s.busy)return true;const n=generation,action=el.dataset.action.slice(9);s.busy=true;s.error='';try{
+ async function handle(el){if(!el.dataset.action?.startsWith('breakfix:'))return false;if(s.busy)return true;const n=generation,action=el.dataset.action.slice(9),companyId=s.company,userId=s.user;s.busy=true;s.error='';try{
   if(action==='submit'){const payload=breakCorrectionPayload(s.form);await durableLedgerRequest({storage:{get:k=>storage.getItem(k),set:(k,v)=>storage.setItem(k,v),remove:k=>storage.removeItem(k)},key:'punch-break-request:'+s.company+':'+s.user,payload,uuid:()=>crypto.randomUUID(),digest:async v=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)))].map(b=>b.toString(16).padStart(2,'0')).join(''),send:async args=>{const r=await sb.rpc('request_essential_break_correction',args);if(r.error)throw r.error;return r.data}});if(n===generation)s.form=empty();}
   else if(action==='cancel'){const r=await sb.rpc('cancel_essential_break_correction',{p_request:el.dataset.id});if(r.error)throw r.error;}
   else if(action==='approve'||action==='reject'){const note=globalThis.prompt('Motif de décision (3 caractères minimum)');if(!note)return true;if(note.trim().length<3)throw Error('Motif requis');const r=await sb.rpc('review_essential_break_correction',{p_request:el.dataset.id,p_approve:action==='approve',p_note:note.trim()});if(r.error)throw r.error;}
