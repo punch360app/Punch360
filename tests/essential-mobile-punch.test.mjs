@@ -242,6 +242,8 @@ test('Expo Essentiel ignores stale overlapping reads and defers refresh during a
  assert.ok(start>=0&&end>start,'Native async refresh boundary changed');
  const source=native.slice(start,end)
   .replace('let cached:any=null;','let cached=null;')
+  .replace('let channel:any;','let channel;')
+  .replace('let site:any;','let site;')
   .replace('}catch(e:any){','}catch(e){');
  const params=['punchActionInFlight','syncInFlight','account','punchReadRevision','visitContext',
   'AsyncStorage','Network','supabase','loadPunchState','journalSummary',
