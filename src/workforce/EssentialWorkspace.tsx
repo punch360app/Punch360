@@ -80,11 +80,20 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  async function load(){try{
   const requestedFor=account.companyId+':'+account.userId;
   const cacheKey='essential-punch-channel:'+account.companyId+':'+account.userId;
-  const raw=await AsyncStorage.getItem(cacheKey);const cached=raw?JSON.parse(raw):null;
+  // Damaged or unreadable channel permissions cannot block the hours view.
+  // They are treated as unknown authorization, never as an active grant.
+  let cached:any=null;
+  try{const raw=await AsyncStorage.getItem(cacheKey);cached=raw?JSON.parse(raw):null}
+  catch{/* Continue loading the attendance snapshot with permissions disabled. */}
   const validCache=cached?.version===2&&Number.isFinite(cached.checkedAt)&&
+    typeof cached.allowed==='boolean'&&
+    (cached.job===null||typeof cached.job==='string')&&
     cached.checkedAt<=Date.now()&&Date.now()-cached.checkedAt<86400000;
-  const network=await Network.getNetworkStateAsync();
-  if(network.isConnected===false||network.isInternetReachable===false){
+  let offline=true;
+  try{const network=await Network.getNetworkStateAsync();
+   offline=network.isConnected===false||network.isInternetReachable===false;
+  }catch{/* Unknown connectivity never grants new mobile permissions. */}
+  if(offline){
    if(validCache){setSiteJob(cached.job);setMobileAllowed(cached.allowed)}else{setSiteJob(null);setMobileAllowed(false);setNotice('Connexion requise pour actualiser les méthodes de pointage autorisées.');}
    if(visitContext.current===requestedFor){setMissionWorker(null);setMyVisit(null);setVisitUnavailable(true);setFixedAddress('');setFixedName('');}
   }else{
