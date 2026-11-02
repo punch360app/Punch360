@@ -6,6 +6,7 @@ import {canUseEssentialMessages,essentialTabs} from './essential-message-navigat
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
 import {employeeMissingDaysSummary,managerMissingDayApprovalSummary} from './missing-days.js';
+import {breakCorrectionInbox} from './break-corrections.js';
 import {essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView} from './essential-correction.js';
 import {essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView} from './essential-leave.js';
 import {sessionIdChunks,netSegmentMilliseconds} from './essential-hours-export.js';
@@ -473,6 +474,8 @@ function essentialApprovals(){
  if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');
  const missing=managerMissingDayApprovalSummary({companyId:company(),reviewerId:state.user?.id,
   source:essentialUI.missingDays.state});
+ const pauses=breakCorrectionInbox({companyId:company(),userId:state.user?.id,
+  role:state.account?.role,source:essentialUI.breakCorrections.state});
  const missingRows=missing.ready?(missing.requests.length?missing.requests.map(r=>
   '<div class="group"><b>'+e(r.workerName)+'</b><p class="small">'+e(when(r.startsAt))+
   ' → '+(r.endsAt?e(when(r.endsAt)):'Fin à vérifier')+'</p></div>').join(''):
@@ -501,12 +504,16 @@ function essentialApprovals(){
  const notice=!navigator.onLine?'Les décisions nécessitent une connexion Internet.':
   !view.ready?'Demandes non vérifiées. Actualisez avant de prendre une décision.':'';
  return heading('Approbations','more')+
-  button('Corrections de pauses','subpage','full','data-id="breakCorrections"')+
   geofenceReviewCard()+
   card('<b>Corrections en attente</b>'+
     (!navigator.onLine?'<p class="ess-notice" role="status">Les décisions nécessitent une connexion Internet.</p>':
       !correctionView.ready?'<p class="ess-notice" role="status">Corrections non vérifiées. Actualisez avant de prendre une décision.</p>':'')+
     (correctionView.ready?correctionRows:'')+button('Actualiser les corrections','refresh','full'))+
+  card('<b>Corrections de pauses à examiner</b>'+
+    (pauses.ready?'<p class="small muted">'+pauses.pendingCount+
+    ' demande(s) de pauses en attente de décision sur ce compte. Les heures restent non confirmées avant approbation serveur.</p>':
+    '<p class="ess-notice" role="status">Demandes de pauses non vérifiées. Actualisez votre compte.</p>')+
+    button('Ouvrir les corrections de pauses','subpage','full','data-id="breakCorrections"'))+
   card('<b>Congés à approuver</b>'+(notice?'<p class="ess-notice" role="status">'+e(notice)+'</p>':'')+
     (view.ready?leaveRows:'')+button('Actualiser les demandes','refresh','full'))+
   card('<b>Journées entièrement oubliées à examiner</b>'+
