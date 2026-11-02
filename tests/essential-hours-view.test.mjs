@@ -335,7 +335,7 @@ test('Web hours navigation validates offsets and binds both arrows to scoped UI 
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/hoursWeekOffset:0,hoursWeekScope:''/);
  assert.match(app,/state\.hoursWeekScope!==hoursScope/);
- assert.match(app,/weekOffset:1/);
+ assert.match(app,/weekOffset<4/);
  assert.match(app,/data-id="older"/);
  assert.match(app,/data-id="newer"/);
  assert.match(app,/Math\.max\(0,Math\.min\(4,state\.hoursWeekOffset/);
