@@ -115,7 +115,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   const seatStatus=seatInvalid?'Indiquez un nombre entier de 1 à 100 000 membres pour calculer les tarifs.':
    'Tarifs calculés pour '+s.seats+' membre'+(s.seats>1?'s':'')+'.';
   return `<section class="ess-pricing"><div class="ess-pricing-head"><h2>Choisissez votre forfait</h2><div class="ess-switch" role="group" aria-label="Période de paiement">${btn('Mensuel','monthly',`aria-pressed="${s.cadence==='monthly'}"`)}${btn(visible.length&&visible[0].annual_discount>0&&visible.every(p=>p.annual_discount===visible[0].annual_discount)?'Annuel −'+visible[0].annual_discount+' %':'Annuel','yearly',`aria-pressed="${s.cadence==='yearly'}"`)}</div></div>${field('Nombre de membres humains','ess-seats',seatValue,'number',`min="1" max="100000" required aria-invalid="${seatInvalid}" aria-describedby="ess-seats-status"`)}<p id="ess-seats-status" class="ess-seats-status" role="status" aria-live="polite" aria-atomic="true">${seatStatus}</p><div class="ess-price-grid">${visible.map(p=>{
- const estimate=estimatePublicPlanPrice(p,s.seats,s.cadence),monthly=estimate?.monthlyCents??0,annual=estimate?.annualCents??0,yearly=s.cadence==='yearly';
+ const estimate=seatInvalid?null:estimatePublicPlanPrice(p,s.seats,s.cadence),monthly=estimate?.monthlyCents??0,annual=estimate?.annualCents??0,yearly=s.cadence==='yearly';
  return `<article class="ess-price ${p.recommended?'recommended':''}">${p.recommended?'<span class="ess-badge">Recommandé</span>':''}<h3>${e(p.title)}</h3><div class="ess-price-amount">${estimate?money(estimate.payableCents):'Tarif indisponible'}<small> / ${yearly?'an':'mois'}</small></div><p>${p.included_seats_unlimited===true?'Membres inclus : illimité · aucun supplément par membre':p.included_seats+' membres inclus · +'+money(p.extra_seat_cents)+' / membre / mois'}</p><hr><p>${p.kiosk_limit===null?'Bornes illimitées':p.kiosk_limit+' borne(s)'} · ${p.establishment_limit===null?'Plusieurs établissements':p.establishment_limit+' établissement(s)'}</p><ul><li>Pointage et heures</li><li>Compte personnel facultatif</li></ul><p>${estimate?(yearly?'Équivalent '+money(annual/12)+'/mois · économie '+money(monthly*12-annual):'Annuel : '+money(annual)+' en un versement'):'Tarification à confirmer'}</p>${btn('Choisir ce forfait','choose',`data-id="${e(p.id)}" ${seatInvalid||!estimate?'disabled':''}`)}</article>`;
  }).join('')}</div>${!visible.length?'<div class="ess-pricing-status" role="status"><span>'+(s.error?'Tarifs temporairement indisponibles. Vérifiez votre connexion.':'Chargement des tarifs…')+'</span>'+(s.error&&!s.loading?btn('Réessayer','retry-public','aria-label="Réessayer le chargement des forfaits"'):'')+'</div>':''}<p class="ess-fine">Dollars canadiens, avant taxes. Les sièges additionnels profitent du même rabais annuel. Aucun paiement confirmé à cette étape.</p>${s.checkout?`<div class="ess-notice" role="status">Forfait choisi : ${e(s.checkout)}. Le paiement Stripe n’est pas encore activé. Aucun abonnement facturé.</div>`:''}</section><details class="ess-market-details" ${comparisonOpen?'open':''}><summary>Comparer les forfaits et consulter la FAQ</summary><div class="ess-market-panel"><p class="ess-market-close">Détails des forfaits · cliquez de nouveau sur « Comparer » pour fermer.</p>${renderCommercialDetails(s.plans,e,money,{seats:seatInvalid?null:s.seats,cadence:s.cadence})}</div></details>`;}
  const nav=[['home','Accueil'],['plans','Forfaits et tarifs'],['companies','Entreprises'],['users','Utilisateurs'],['specialPrices','Tarifs particuliers'],['billing','Abonnements Stripe'],['tests','Comptes test'],['archives','Archives et récupération'],['finance','Rapports financiers'],['promotions','Codes promotionnels'],['support','Support clients'],['audit','Sécurité et audit']];
@@ -336,23 +336,17 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
    ?'Tarifs recalculés pour '+n+' membre'+(n>1?'s':'')+'.'
    :'Indiquez un nombre entier de 1 à 100 000 membres pour calculer les tarifs.';
   const grid=doc.querySelector('.ess-pricing .ess-price-grid');
-  if(!valid){
-   // The displayed prices are based on the last valid count; prevent a
-   // customer from choosing them while their input is blank or invalid.
-   for(const button of grid?.querySelectorAll('button[data-action="ess:choose"]')||[])
-    button.disabled=true;
-  }else{
-   s.seats=n;
-   // Reprice only the cards. A full SPA redraw loses the number-input
-   // insertion caret and can turn typing "12" into "21".
-   if(grid){
-    const scratch=doc.createElement('div');
-    scratch.innerHTML=renderPricing();
-    const latest=scratch.querySelector('.ess-price-grid');
-    if(latest)grid.innerHTML=latest.innerHTML;
-    else redraw();
-   }else redraw();
-  }
+  if(valid)s.seats=n;
+  // Reprice only the cards for BOTH valid and invalid drafts. Invalid input
+  // must hide every stale figure, not merely disable the purchase buttons.
+  // Keep the seat input and its caret in place during frequent edits.
+  if(grid){
+   const scratch=doc.createElement('div');
+   scratch.innerHTML=renderPricing();
+   const latest=scratch.querySelector('.ess-price-grid');
+   if(latest)grid.innerHTML=latest.innerHTML;
+   else redraw();
+  }else redraw();
   // Replace the table only; preserve open FAQ, input caret and page scroll.
   const comparison=doc.querySelector('.ess-market-panel .ess-comparison');
   if(comparison){
