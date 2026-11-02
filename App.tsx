@@ -186,7 +186,8 @@ function Workspace({account}:{account:WorkspaceAccount}){
    if(scopeRef.current===requestedFor&&punchReadRevision.current===revision)setMessage('Synchronisation non confirmée : '+(e?.message||String(e)));
   }finally{syncInFlight.current=false;setSyncBusy(false);}
  }
- useEffect(()=>{setOrders([]);setOrderListScope('');setOrderListError('');setOrderNote('');setOrderSending(false);refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected===true&&state.isInternetReachable===true)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
+ useEffect(()=>{setOrders([]);setOrderListScope('');setOrderListError('');setOrderNote('');setOrderSending(false)},[currentScope]);
+ useEffect(()=>{refresh();const retry=setInterval(refresh,30000);const network=Network.addNetworkStateListener(state=>{if(state.isConnected===true&&state.isInternetReachable===true)refresh()});const sub=AppState.addEventListener('change',v=>{if(v==='active')refresh()});return()=>{++punchReadRevision.current;sub.remove();network.remove();clearInterval(retry)}},[account.companyId,account.userId]);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
  const current=jobs.find(j=>j.id===selectedId)||jobs[0];
  const detail=jobs.find(j=>j.id===detailId)||current;
