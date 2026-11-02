@@ -99,7 +99,7 @@ test('Essentiel hours UI does not export projected local events as the server CS
  assert.match(app,/function essentialHours\(\)\{/);
  assert.match(app,/const view=essentialHoursView\(\{/);
  assert.match(app,/snapshotCompanyId:state\.serverPunchCompany,snapshot:state\.serverPunch/);
- assert.match(app,/view\.confirmedDays\.slice\(0,80\)/);
+ assert.match(app,/view\.confirmedWeekDays\.slice\(0,80\)/);
  assert.match(app,/événement\(s\) conservé\(s\) sur cet appareil/);
  assert.match(app,/Exporter le relevé serveur CSV/);
  assert.match(app,/snapshotFetchedAt:state\.serverPunchFetchedAt/);
@@ -340,4 +340,49 @@ test('Web hours navigation validates offsets and binds both arrows to scoped UI 
  assert.match(app,/data-id="newer"/);
  assert.match(app,/Math\.max\(0,Math\.min\(4,state\.hoursWeekOffset/);
  assert.match(app,/snapshotFetchedAt:state\.serverPunchFetchedAt,weekOffset/);
+});
+
+test('selected historical Web week hides sessions from adjacent weeks',()=>{
+ const local=(y,m,d,h=0)=>new Date(y,m-1,d,h).getTime(),iso=t=>new Date(t).toISOString();
+ const past=local(2026,10,29,9),present=local(2026,11,3,10),now=local(2026,11,4,16);
+ const make=(id,start)=>({id,company_id:company,user_id:user,started_at:iso(start),ended_at:iso(start+3600000)});
+ const earlier=make('previous-week',past),current=make('current-week',present);
+ const other={...earlier,id:'colleague',user_id:'colleague'};
+ const snapshot={sessions:[earlier,current,other],
+  segments:[earlier,current,other].map(s=>({session_id:s.id,company_id:company,started_at:s.started_at,ended_at:s.ended_at})),breaks:[]};
+ const args={...fixture,now,snapshotFetchedAt:now,snapshot};
+ const currentView=essentialHoursView({...args,weekOffset:0});
+ const previousView=essentialHoursView({...args,weekOffset:1});
+ assert.deepEqual(currentView.confirmedWeekDays.map(row=>row.session.id),['current-week']);
+ assert.deepEqual(previousView.confirmedWeekDays.map(row=>row.session.id),['previous-week']);
+ assert.equal(previousView.confirmedWeekDays[0].netMs,previousView.confirmedWeekMs);
+ assert.deepEqual(essentialHoursView({...args,weekOffset:2}).confirmedWeekDays,[]);
+ assert.doesNotMatch(JSON.stringify(previousView.confirmedWeekDays),/colleague|current-week/);
+});
+
+test('server weekly history splits an overnight session at Monday without double counting',()=>{
+ const local=(y,m,d,h=0,min=0)=>new Date(y,m-1,d,h,min).getTime(),iso=t=>new Date(t).toISOString();
+ const start=local(2026,11,1,23),end=local(2026,11,2,2),now=local(2026,11,4,15);
+ const night={id:'overnight',company_id:company,user_id:user,started_at:iso(start),ended_at:iso(end)};
+ const snapshot={sessions:[night],segments:[{session_id:night.id,company_id:company,started_at:night.started_at,ended_at:night.ended_at}],
+  breaks:[{session_id:night.id,company_id:company,is_paid:false,
+   started_at:iso(local(2026,11,1,23,30)),ended_at:iso(local(2026,11,1,23,45))}]};
+ const args={...fixture,now,snapshotFetchedAt:now,snapshot};
+ const last=essentialHoursView({...args,weekOffset:1}),thisWeek=essentialHoursView({...args,weekOffset:0});
+ assert.equal(last.confirmedWeekMs,45*60000);
+ assert.equal(thisWeek.confirmedWeekMs,2*3600000);
+ assert.deepEqual(last.confirmedWeekDays.map(row=>row.netMs),[45*60000]);
+ assert.deepEqual(thisWeek.confirmedWeekDays.map(row=>row.netMs),[2*3600000]);
+ assert.equal(last.confirmedWeekDays[0].netMs+thisWeek.confirmedWeekDays[0].netMs,165*60000);
+});
+
+test('Web only presents verified selected-week history and clear empty-week copy',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
+ const page=app.slice(begin,end);
+ assert.match(page,/view\\.confirmedWeekDays\\.length/);
+ assert.match(page,/view\\.confirmedWeekDays\\.slice\\(0,80\\)/);
+ assert.match(page,/Historique des journées · serveur · semaine sélectionnée/);
+ assert.match(page,/Aucune journée enregistrée pour cette semaine/);
+ assert.doesNotMatch(page,/view\\.confirmedDays\\.slice\\(0,80\\)/);
 });
