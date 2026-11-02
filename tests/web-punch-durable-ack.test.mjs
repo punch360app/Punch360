@@ -20,7 +20,10 @@ function harness({online=false,send=async()=>({sync_status:'synced',review_statu
  if(flushThrows)exposed.flush=async()=>{throw Error('Refresh unavailable')};
  if(hideEvent){exposed.flush=async()=>({events:[]});exposed.read=async()=>[]}
  if(readThrows){exposed.flush=async()=>{throw Error('Refresh unavailable')};
-  exposed.read=async()=>{throw Error('Unreadable')}}
+  // Append must first read and persist successfully. Simulate a storage
+  // read failure only during the subsequent status recovery.
+  let reads=0;
+  exposed.read=async()=>++reads===1?journal.read():Promise.reject(Error('Unreadable'))}
  const go=new Function('isEssential','essentialMobilePunchAllowed','freshPunchFix',
   'normalizeFreshPunchFix','punchJournal','navigator','hasUnsafePunchJournalEntries',
   source+'\nreturn locatedPunch;')(
