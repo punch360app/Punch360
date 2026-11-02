@@ -17,6 +17,21 @@ function netMilliseconds(segments,breaks,from,until){
   total+netSegmentMilliseconds(segment,bySession.get(segment.session_id)||[],from,until),0);
 }
 
+/** Limit display time to the last complete server fetch, without changing
+ * pending local events. Legacy caches without a fetch timestamp can still
+ * display closed shifts, but must not infer how long an open shift lasted.
+ * A short 10s clock tolerance covers state-render delays; a large clock
+ * rollback cannot turn an old snapshot into verified open time.
+ * @param {{now:number,snapshotFetchedAt?:number|null,hasLocalProjection?:boolean}} options
+ */
+export function essentialMobileHoursLimit({now,snapshotFetchedAt=null,hasLocalProjection=false}){
+ if(!Number.isFinite(now))return {until:0,excludeOpen:true};
+ if(hasLocalProjection===true)return {until:now,excludeOpen:false};
+ if(typeof snapshotFetchedAt==='number'&&Number.isFinite(snapshotFetchedAt)&&
+   snapshotFetchedAt>0&&snapshotFetchedAt<=now+10000)
+  return {until:Math.min(now,snapshotFetchedAt),excludeOpen:false};
+ return {until:now,excludeOpen:true};
+}
 /** Day-by-day native estimates: one scoped segment source and one break engine.
  * These rows may contain pending local events; they are not payroll approvals.
  * Use local civil midnights instead of fixed 24h intervals across DST.
@@ -34,21 +49,6 @@ function netMilliseconds(segments,breaks,from,until){
  *   weekAt?: number
  * }} [options]
  */
-/** Limit display time to the last complete server fetch, without changing
- * pending local events. Legacy caches without a fetch timestamp can still
- * display closed shifts, but must not infer how long an open shift lasted.
- * A short 10s clock tolerance covers state-render delays; a large clock
- * rollback cannot turn an old snapshot into verified open time.
- * @param {{now:number,snapshotFetchedAt?:number|null,hasLocalProjection?:boolean}} options
- */
-export function essentialMobileHoursLimit({now,snapshotFetchedAt=null,hasLocalProjection=false}){
- if(!Number.isFinite(now))return {until:0,excludeOpen:true};
- if(hasLocalProjection===true)return {until:now,excludeOpen:false};
- if(typeof snapshotFetchedAt==='number'&&Number.isFinite(snapshotFetchedAt)&&
-   snapshotFetchedAt>0&&snapshotFetchedAt<=now+10000)
-  return {until:Math.min(now,snapshotFetchedAt),excludeOpen:false};
- return {until:now,excludeOpen:true};
-}
 export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],companyId,userId,now=Date.now(),cutoff=now,weekAt=now}={}){
  if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
   !Number.isFinite(now)||!Number.isFinite(cutoff)||!Number.isFinite(weekAt)||!Array.isArray(sessions)||!Array.isArray(segments)||

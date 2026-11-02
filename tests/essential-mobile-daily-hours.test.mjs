@@ -190,3 +190,17 @@ test('native totals, daily rows and session cards honor the display cutoff',()=>
  assert.match(ui,/hoursFor\(visibleSegments\.filter/);
  assert.match(ui,/Date du dernier relevé indisponible/);
 });
+
+test('Expo daily-hours TypeScript contract stays attached to its function',()=>{
+ const source=readFileSync(new URL('../web/live/essential-hours-view.js',import.meta.url),'utf8');
+ const start=source.indexOf('export function essentialMobileDailyHours(');
+ const docs=source.slice(source.lastIndexOf('/**',start),start);
+ assert.match(docs,/sessions\?: Array/);
+ assert.match(docs,/segments\?: Array/);
+ assert.match(docs,/breaks\?: Array/);
+ assert.match(docs,/@param/);
+ assert.match(source,/export function essentialMobileHoursLimit/);
+ const native=readFileSync(new URL('../src/workforce/EssentialWorkspace.tsx',import.meta.url),'utf8');
+ assert.match(native,/Fin non vérifiée/);
+ assert.match(native,/hoursLimit\.excludeOpen\?'Fin non vérifiée':'En cours'/);
+});
