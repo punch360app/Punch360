@@ -162,6 +162,76 @@ begin
  if result->>'ok' is distinct from 'true' then
   raise exception 'Newly rotated QR rejected';end if;
 
+
+ -- Self-service revocation is effective immediately, and the status endpoint
+ -- must reflect the loss of access without returning the private credential.
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ execute 'set local role authenticated';
+ denied:=false;
+ begin
+  perform public.revoke_my_kiosk_qr_card(company_b);
+ exception when insufficient_privilege then denied:=true;
+ end;
+ if not denied then raise exception 'Employee could revoke in another company';end if;
+ perform public.revoke_my_kiosk_qr_card(company_a);
+ result:=public.my_kiosk_qr_card_status(company_a);
+ if result->>'active' is distinct from 'false' then
+  raise exception 'Self-revoked card still appeared active';end if;
+ execute 'reset role';
+ result:=public.kiosk_qr_execute(kiosk_a,token_a,new_card,'829471','identify');
+ if result->>'ok' is distinct from 'false' then
+  raise exception 'Self-revoked QR still passed identification';end if;
+
+ -- A fresh enrollment is required; a revoked token cannot be restored.
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ execute 'set local role authenticated';
+ challenge:=public.create_worker_qr_enrollment(worker_id);
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ execute 'set local role authenticated';
+ new_card:=public.activate_my_kiosk_qr_card(company_a,challenge,gen_random_uuid());
+ execute 'reset role';
+ result:=public.kiosk_qr_execute(kiosk_a,token_a,new_card,'829471','identify');
+ if result->>'ok' is distinct from 'true' then
+  raise exception 'Re-enrollment after self-revocation failed';end if;
+
+ -- The administrator must give a real reason, and revocation must take
+ -- effect for the current card without revealing its token in audit rows.
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ execute 'set local role authenticated';
+ denied:=false;
+ begin
+  perform public.revoke_worker_kiosk_qr_card(worker_id,'x');
+ exception when others then denied:=true;
+ end;
+ if not denied then raise exception 'Empty administrative revocation reason accepted';end if;
+ perform public.revoke_worker_kiosk_qr_card(worker_id,'Carte remplacée en personne');
+ execute 'reset role';
+ result:=public.kiosk_qr_execute(kiosk_a,token_a,new_card,'829471','identify');
+ if result->>'ok' is distinct from 'false' then
+  raise exception 'Administrator-revoked QR remained valid';end if;
+ if not exists(select 1 from public.workforce_audit
+  where company_id=company_a and action='qr_card_self_revoked' and entity_id=worker_id)
+ or not exists(select 1 from public.workforce_audit
+  where company_id=company_a and action='qr_card_admin_revoked' and entity_id=worker_id) then
+  raise exception 'QR revocation audit trail is incomplete';end if;
+ if exists(select 1 from public.workforce_audit
+  where reason like '%'||new_card||'%') then
+  raise exception 'QR credential leaked into audit trail';end if;
+
+ -- Re-enroll again before testing independent membership suspension.
+ perform set_config('request.jwt.claim.sub',boss::text,true);
+ execute 'set local role authenticated';
+ challenge:=public.create_worker_qr_enrollment(worker_id);
+ execute 'reset role';
+ perform set_config('request.jwt.claim.sub',employee::text,true);
+ execute 'set local role authenticated';
+ new_card:=public.activate_my_kiosk_qr_card(company_a,challenge,gen_random_uuid());
+ execute 'reset role';
+ result:=public.kiosk_qr_execute(kiosk_a,token_a,new_card,'829471','identify');
+ if result->>'ok' is distinct from 'true' then
+  raise exception 'Re-enrollment after admin revocation failed';end if;
+
  -- Membership suspension fires revocation trigger in the same transaction.
  update public.company_members set status='suspended'
   where company_id=company_a and user_id=employee;
@@ -172,6 +242,6 @@ begin
    join public.company_workers w on w.id=q.worker_id
    where w.auth_user_id=employee and q.revoked_at is null) then
   raise exception 'Membership trigger did not revoke active QR';end if;
- raise notice 'PASS: isolated QR registry, grants, native SQL validation, company/site gates, PIN delegation mock, event replay, rotation, suspension';
+ raise notice 'PASS: isolated QR registry, grants, company/site gates, PIN mock, event replay, rotation, self/admin revocation, suspension';
 end $test$;
 rollback;
