@@ -81,7 +81,8 @@ test('Both native workspace UI paths disable writes during journal recovery',()=
 });
 test('Journal summary and two mobile screens explicitly surface blocked status',()=>{
  assert.match(journal,/hasUnsafePunchJournalEntries\(events,j\.company,j\.user\)/);
- assert.match(journal,/catch\{return \{pending:0,conflicts:0,blocked:true\}\}/);
+ assert.match(journal,/catch\{return blocked\}/);
+ assert.match(journal,/const blocked=\{pending:0,conflicts:0,blocked:true,pendingItems:\[\],conflictItems:\[\]\}/);
  assert.match(essential,/updated\.localJournalBlocked\|\|summary\.blocked/);
  assert.match(app,/const blocked=!!punch\.localJournalBlocked\|\|local\.blocked/);
 });
