@@ -8,11 +8,41 @@ export function missingDayPayload(company,form){
  for(let i=0;i<breaks.length;i++){const p=breaks[i];if(p.start<start||p.end>end||p.end<=p.start||breaks.some((q,j)=>j<i&&p.start<q.end&&p.end>q.start))throw Error('Pauses à l’intérieur de la journée, sans chevauchement');}
  return {p_company:company,p_worker:form.worker,p_job:form.job,p_start:start,p_end:end,p_breaks:breaks,p_reason:form.reason.trim()};
 }
+/** Read-only employee summary. This does not turn a pending request into approved time. */
+export function employeeMissingDaysSummary({companyId,userId,source}={}){
+ const empty={ready:false,requests:[]};
+ if(!companyId||!userId||source?.company!==companyId||source.user!==userId||
+    source.loaded!==true||!Array.isArray(source.workers)||!Array.isArray(source.requests))return empty;
+ const workers=new Set(source.workers.filter(w=>w?.auth_user_id===userId&&typeof w.id==='string').map(w=>w.id));
+ const labels={pending:'En attente',approved:'Approuvée',rejected:'Refusée',cancelled:'Annulée'};
+ const rows=source.requests.filter(r=>r?.company_id===companyId&&workers.has(r.worker_id)&&
+  typeof r.id==='string'&&Object.hasOwn(labels,r.status)&&
+  typeof r.starts_at==='string'&&Number.isFinite(Date.parse(r.starts_at)))
+  .sort((a,b)=>Date.parse(b.created_at||b.starts_at)-Date.parse(a.created_at||a.starts_at))
+  .slice(0,8).map(r=>({id:r.id,startsAt:r.starts_at,endsAt:r.ends_at,
+   status:r.status,label:labels[r.status]}));
+ return {ready:true,requests:rows};
+}
+
 export function createMissingDaysController({sb,redraw,escape:e,storage=globalThis.localStorage,crypto=globalThis.crypto}){
- let generation=0;const s={company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,error:''},manager=()=>['boss','admin'].includes(s.role);
- function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,error:''})}
+ let generation=0;const s={company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''},manager=()=>['boss','admin'].includes(s.role);
+ function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''})}
  const rpc=async(name,args)=>{const r=await sb.rpc(name,args);if(r.error)throw r.error;return r.data};
- async function refresh(){const n=generation;const [requests,jobs]=await Promise.all([sb.from('essential_missing_days').select('*').eq('company_id',s.company).order('created_at',{ascending:false}).limit(100),sb.from('jobs').select('id,name').eq('company_id',s.company)]);if(n!==generation)return;if(requests.error||jobs.error)throw requests.error||jobs.error;s.requests=requests.data||[];s.jobs=jobs.data||[];s.form.job||=s.jobs[0]?.id||'';}
+ async function refresh(){
+  const n=generation,company=s.company,worker=s.form.worker;
+  s.loaded=false;
+  // Employees need only their own worker record, never a company-wide inbox.
+  let requestsQuery=sb.from('essential_missing_days').select('*').eq('company_id',company);
+  if(!manager()&&worker)requestsQuery=requestsQuery.eq('worker_id',worker);
+  const requestsPromise=!manager()&&!worker?Promise.resolve({data:[],error:null}):
+   requestsQuery.order('created_at',{ascending:false}).limit(100);
+  const [requests,jobs]=await Promise.all([requestsPromise,
+   sb.from('jobs').select('id,name').eq('company_id',company)]);
+  if(n!==generation)return;
+  if(requests.error||jobs.error)throw requests.error||jobs.error;
+  s.requests=requests.data||[];s.jobs=jobs.data||[];s.form.job||=s.jobs[0]?.id||'';
+  s.loaded=true;
+ }
  async function load(account,user,workers=[]){reset();const n=generation;s.company=account?.company_id;s.user=user;s.role=account?.role;s.workers=manager()?workers:workers.filter(w=>w.auth_user_id===user);s.form.worker=s.workers[0]?.id||'';if(s.company)try{await refresh()}catch(err){if(n===generation)s.error=err.message}}
  const btn=(title,action,id='')=>`<button class="ess-btn" data-action="missing:${action}" data-id="${e(id)}" ${s.busy?'disabled':''}>${title}</button>`;
  const field=(label,id,value)=>`<label class="ess-field">${label}<input id="missing-${id}" value="${e(value)}" maxlength="1000"></label>`;
