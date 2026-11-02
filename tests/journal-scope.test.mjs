@@ -106,7 +106,8 @@ test('Web and Expo always supply the worker/company to the shared overlay',()=>{
  const web=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  const native=readFileSync(new URL('../src/punch/api.ts',import.meta.url),'utf8');
  assert.equal(web.split('projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId})').length-1,2);
- assert.match(native,/projectPendingPunches\(state,await journal\.read\(\),\{company:companyId,user:user\.id\}\)/);
+ assert.match(native,/projectPendingPunches\(own,journalBlocked\?\[\]:events,\{company:companyId,user:user\.id\}\)/);
+ assert.match(native,/const ownSessions=\(state\.sessions\|\|\[\]\)\.filter\(s=>s\.company_id===companyId&&s\.user_id===user\.id\)/);
 });
 
 

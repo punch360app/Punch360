@@ -94,5 +94,5 @@ test('Web reports a contaminated journal instead of claiming sync; Expo uses sha
  const expo=readFileSync(new URL('../src/punch/journal.ts',import.meta.url),'utf8');
  assert.match(app,/hasUnsafePunchJournalEntries\(events,companyId,userId\)/);
  assert.match(app,/Journal local à vérifier : aucun pointage envoyé/);
- assert.match(expo,/import \{PunchJournal\} from '\.\.\/\.\.\/web\/live\/journal.js'/);
+ assert.match(expo,/import \{PunchJournal,hasUnsafePunchJournalEntries\} from '\.\.\/\.\.\/web\/live\/journal.js'/);
 });
