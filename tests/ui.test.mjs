@@ -21,6 +21,23 @@ import {PunchJournal,projectPendingPunches} from '../web/live/journal.js';
 import {personalUpcomingClientVisit} from '../web/live/personal-client-visit.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from '../web/live/navigation-choices.js';
 const src=await readFile(new URL('../web/live/app.js',import.meta.url),'utf8');
+
+ // Keep the evaluated Happy DOM application in sync with production ESM imports.
+ // The browser build imports these symbols automatically; the VM fixture must
+ // supply the same bindings without relying on a hand-maintained short list.
+ const appModuleDeclarations=[...src.matchAll(/^import \\{([^}]+)\\} from '(\\.[^']+)';$/gm)]
+  .filter(([, ,path])=>path!=='./vendor/supabase.js');
+ const appModuleExports=Object.assign({},...await Promise.all(
+  appModuleDeclarations.map(async([,names,path])=>{
+   const mod=await import(new URL(path,new URL('../web/live/app.js',import.meta.url)));
+   const exports={};
+   for(const field of names.split(',').map(x=>x.trim())){
+    assert.ok(Object.hasOwn(mod,field),'Missing app module export '+field+' from '+path);
+    exports[field]=mod[field];
+   }
+   return exports;
+  })));
+
 const user='00000000-0000-4000-8000-000000000001',company='00000000-0000-4000-8000-000000000002',job1='00000000-0000-4000-8000-000000000003',job2='00000000-0000-4000-8000-000000000004';
 const jobs=[{id:job1,company_id:company,number:'101',name:'A',punch_radius_m:200,latitude:46.8,longitude:-71.2},{id:job2,company_id:company,number:'102',name:'B',punch_radius_m:200,latitude:46.8,longitude:-71.2}],sessions=[],segments=[],sent=[];let online=true;
 const account={company_id:company,user_id:user,role:'boss',status:'active',companies:{name:'Test',billing_status:'active',product_edition:'construction'}};
@@ -30,7 +47,15 @@ async function boot(storage){const w=new Window({url:'https://punch.test/',setti
  w.__personalUpcomingClientVisit=personalUpcomingClientVisit;
  w.__missions=createPersonalMissionController;w.__edition=resolvePublicEdition;
  w.confirm=()=>true;w.prompt=()=>null;w.fetch=async()=>({ok:true,json:async()=>({external:{google:false,apple:false}})});Object.defineProperty(w.navigator,'onLine',{get:()=>online});Object.defineProperty(w.navigator,'geolocation',{value:{getCurrentPosition:cb=>cb({coords:{latitude:46.8,longitude:-71.2,accuracy:5}})}});if(storage)for(const [k,v] of storage)w.localStorage.setItem(k,v);
- let code=src.replace(/^import .*;\n/gm,'');code="const {validatePublicSignupPassword,togglePublicPasswordVisibility,isPublicEdition,canUseEssentialMessages,essentialTabs,canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,isCurrentCompanyChat,createChatUnreadController,beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection}=window.__appImports;const {listVerifiedWorkspaces,chooseVerifiedWorkspace}=window.__workspaces;const {createEssentialLocale,ESSENTIAL_LANGUAGES}=window.__locale;const createEssentialController=window.__essential;const createBossHandoffController=window.__boss;const {PunchJournal,projectPendingPunches}=window.__journal;const createClient=window.__createClient;const {isRestrictedManagement,canUseRestrictedManagement}=window.__restricted;const {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference}=window.__navigation;const personalUpcomingClientVisit=window.__personalUpcomingClientVisit;const createPersonalMissionController=window.__missions;const resolvePublicEdition=window.__edition;\n"+code;code=code.replace("initialize().then(()=>showOAuthCallbackError());loadProviders();",'');code+='\nwindow.__app={state,essentialUI,initialize,lookupAccount,switchCompany,companyContext,doPunch,selectJob,draw,punchJournal,geofencePage,approvalsPage,schedulePage,documentPage,doPause};';w.eval(code);await w.__app.initialize();return w;}
+ let code=src.replace(/^import .*;\n/gm,'');code="const {validatePublicSignupPassword,togglePublicPasswordVisibility,isPublicEdition,canUseEssentialMessages,essentialTabs,canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,isCurrentCompanyChat,createChatUnreadController,beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection}=window.__appImports;const {listVerifiedWorkspaces,chooseVerifiedWorkspace}=window.__workspaces;const {createEssentialLocale,ESSENTIAL_LANGUAGES}=window.__locale;const createEssentialController=window.__essential;const createBossHandoffController=window.__boss;const {PunchJournal,projectPendingPunches}=window.__journal;const createClient=window.__createClient;const {isRestrictedManagement,canUseRestrictedManagement}=window.__restricted;const {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference}=window.__navigation;const personalUpcomingClientVisit=window.__personalUpcomingClientVisit;const createPersonalMissionController=window.__missions;const resolvePublicEdition=window.__edition;\n"+code;code=code.replace("initialize().then(()=>showOAuthCallbackError());loadProviders();",'');code+='\nwindow.__app={state,essentialUI,initialize,lookupAccount,switchCompany,companyContext,doPunch,selectJob,draw,punchJournal,geofencePage,approvalsPage,schedulePage,documentPage,doPause};';const covered=new Set([
+  ...[...code.matchAll(/const\\s+\\{([^}]+)\\}=window\\.\\w+/g)].flatMap(m=>m[1].split(',').map(x=>x.trim())),
+  ...[...code.matchAll(/const\\s+(\\w+)=window\\.\\w+/g)].map(m=>m[1])
+ ]);
+ const needed=[...new Set(appModuleDeclarations.flatMap(([,names])=>names.split(',').map(x=>x.trim())))]
+  .filter(name=>!covered.has(name));
+ w.__appModuleExports=appModuleExports;
+ code='const {'+needed.join(',')+'}=window.__appModuleExports;\\n'+code;
+ w.eval(code);await w.__app.initialize();return w;}
 let w=await boot();assert.match(w.document.body.textContent,/ESPACE DIRECTION/);assert.ok(w.document.querySelector('[data-action="subpage"][data-id="admin"]'));w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();assert.match(w.document.body.textContent,/PUNCH IN/);w.__app.state.account.role='boss';w.__app.state.section='sub';w.__app.state.sub='geofence';w.__app.draw();assert.equal(w.document.querySelector('#geoRadius-'+job1).value,'200');
 online=false;w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();await w.__app.doPunch();assert.match(w.document.querySelector('.banner').textContent,/1 PUNCH/);assert.match(w.document.querySelector('[data-action="punch"]').textContent,/OUT/);await w.__app.selectJob(job2);assert.match(w.document.querySelector('.banner').textContent,/2 PUNCH/);await w.__app.doPunch();assert.match(w.document.querySelector('.banner').textContent,/3 PUNCH/);assert.equal(sent.length,0);
 const storage=Array.from({length:w.localStorage.length},(_,i)=>{const k=w.localStorage.key(i);return [k,w.localStorage.getItem(k)]});await w.happyDOM.close();w=await boot(storage);w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();assert.match(w.document.querySelector('.banner').textContent,/3 PUNCH/);assert.match(w.document.querySelector('[data-action="punch"]').textContent,/IN/);
