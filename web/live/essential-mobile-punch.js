@@ -47,3 +47,15 @@ export function firstEssentialPunchGuidance(companyId,userId,worker,snapshotComp
  if(snapshot.sessions.some(session=>session?.user_id===userId))return null;
  return workplace?'ready':'missing-workplace';
 }
+
+/** A worker assigned to a location must never silently be punched at the
+ * company's default location if their assigned location is unavailable.
+ */
+export function essentialWorkerPunchJobId(companyId,worker,locations,defaultJobId){
+ if(worker?.location_id){
+  if(!Array.isArray(locations))return null;
+  const location=locations.find(item=>item?.id===worker.location_id&&item.company_id===companyId);
+  return typeof location?.punch_job_id==='string'?location.punch_job_id:null;
+ }
+ return typeof defaultJobId==='string'?defaultJobId:null;
+}
