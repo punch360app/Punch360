@@ -5,6 +5,7 @@ import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
 import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
 import {essentialHoursView} from './essential-hours-view.js';
+import {hoursExportScope,createHoursCsv} from './hours-csv.js';
 import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
 import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
@@ -123,15 +124,57 @@ function approvalsPage(){
 async function reviewRecord(rpc,id,approve){const note=prompt('Motif de la décision (minimum 3 caractères)');if(!note||note.trim().length<3)return;try{const r=await sb.rpc(rpc,{p_request:id,p_approve:approve,p_note:note});if(r.error)throw r.error;await reload({quiet:true});toast('Décision enregistrée et historisée')}catch(err){error(err)}}
 async function advanceOrder(id,status){const note=prompt('Commentaire de suivi (minimum 3 caractères)');if(!note||note.trim().length<3)return;try{const r=await sb.rpc('advance_material_order',{p_order:id,p_status:status,p_note:note});if(r.error)throw r.error;await reload({quiet:true});toast('Commande mise à jour')}catch(err){error(err)}}
 async function setWeek(close){const week=$val('payrollWeek');if(!week)return toast('Choisis le lundi de la semaine.');const reason=prompt('Motif de '+(close?'fermeture':'réouverture'));if(!reason||reason.trim().length<3)return;try{const r=await sb.rpc('set_payroll_week',{p_company:company(),p_week:week,p_close:close,p_reason:reason});if(r.error)throw r.error;await reload({quiet:true});toast(close?'Semaine fermée':'Semaine rouverte')}catch(err){error(err)}}
-function csvCell(v){let t=String(v??'');if(/^[=+@\t\r-]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"'}
-async function exportHours(){try{
- let rows=[],offset=0;while(true){let q=sb.from('punch_segments').select('id,session_id,job_id,started_at,ended_at,punch_sessions!inner(user_id,worker_id)').eq('company_id',company()).order('id').range(offset,offset+499);if(!manager()||state.section==='hours')q=q.eq('punch_sessions.user_id',state.user.id);const r=await q;if(r.error)throw r.error;rows.push(...(r.data||[]));if(r.data.length<500)break;offset+=500;}
- let breaks=[],breakOffset=0;while(true){const b=await sb.from('punch_breaks').select('session_id,started_at,ended_at,is_paid').eq('company_id',company()).order('id').range(breakOffset,breakOffset+499);if(b.error)throw b.error;breaks.push(...b.data);if(b.data.length<500)break;breakOffset+=500;}
- const paused=r=>breaks.filter(b=>b.session_id===r.session_id&&!b.is_paid).reduce((sum,b)=>sum+Math.max(0,Math.min(Date.parse(b.ended_at||r.ended_at),Date.parse(r.ended_at))-Math.max(Date.parse(b.started_at),Date.parse(r.started_at))),0);
- const data=[['Segment',isEssential()?'Matricule':'Employé',isEssential()?'Lieu':'Job','Entrée ISO','Sortie ISO','Heures brutes','Pauses non payées (h)','Heures nettes','Anomalie'],...rows.map(r=>[r.id,(isEssential()?(essentialUI.planning.state.roster.find(w=>w.id===r.punch_sessions.worker_id)?.employee_number||r.punch_sessions.worker_id||r.punch_sessions.user_id):(r.punch_sessions.user_id||r.punch_sessions.worker_id)),isEssential()?(essentialUI.planning.state.locations.find(l=>l.punch_job_id===r.job_id)?.name||'Établissement'):getJob(r.job_id)?.number||r.job_id,r.started_at,r.ended_at||'',r.ended_at?((Date.parse(r.ended_at)-Date.parse(r.started_at))/3600000).toFixed(4):'',r.ended_at?(paused(r)/3600000).toFixed(4):'',r.ended_at?((Date.parse(r.ended_at)-Date.parse(r.started_at)-paused(r))/3600000).toFixed(4):'',!r.ended_at?'SORTIE MANQUANTE':Date.parse(r.ended_at)-Date.parse(r.started_at)>16*3600000?'PLUS DE 16H':''])];
- const blob=new Blob(['\uFEFF'+data.map(r=>r.map(csvCell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='PUNCH-heures-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
-}catch(err){error(err)}}
-
+let hoursExportRunning=false;
+async function exportHours(){
+ if(hoursExportRunning)return;
+ hoursExportRunning=true;
+ try{
+  if(!navigator.onLine)throw Error('Export serveur indisponible hors ligne. Synchronisez vos pointages avant de réessayer.');
+  const scope=hoursExportScope(company(),state.user?.id,state.account?.role,state.section);
+  const rows=[];
+  for(let offset=0;;offset+=500){
+   let q=sb.from('punch_segments')
+    .select('id,company_id,session_id,job_id,started_at,ended_at,punch_sessions!inner(company_id,user_id,worker_id)')
+    .eq('company_id',scope.companyId).eq('punch_sessions.company_id',scope.companyId)
+    .order('id').range(offset,offset+499);
+   if(scope.ownOnly)q=q.eq('punch_sessions.user_id',scope.userId);
+   const result=await q;
+   if(result.error)throw result.error;
+   if(!Array.isArray(result.data))throw Error('Segments incomplets : export annulé.');
+   rows.push(...result.data);
+   if(result.data.length<500)break;
+  }
+  const ids=[...new Set(rows.map(row=>row.session_id).filter(Boolean))];
+  const breaks=[];
+  // Fetch only breaks relevant to the sessions in the exported dataset.
+  // Bound each request and continue paging so large companies aren't truncated.
+  for(let index=0;index<ids.length;index+=75){
+   const batch=ids.slice(index,index+75);
+   for(let offset=0;;offset+=500){
+    const result=await sb.from('punch_breaks')
+     .select('id,company_id,session_id,started_at,ended_at,is_paid')
+     .eq('company_id',scope.companyId).in('session_id',batch)
+     .order('id').range(offset,offset+499);
+    if(result.error)throw result.error;
+    if(!Array.isArray(result.data))throw Error('Pauses incomplètes : export annulé.');
+    breaks.push(...result.data);
+    if(result.data.length<500)break;
+   }
+  }
+  if(scope.companyId!==company()||scope.userId!==state.user?.id)
+   throw Error('Entreprise ou compte modifié durant l’export : recommencez.');
+  const content=createHoursCsv({...scope,rows,breaks,isEssentialExport:isEssential(),
+   essential:isEssential(),roster:essentialUI.planning.state.roster,
+   locations:essentialUI.planning.state.locations,jobs:state.jobs});
+  const blob=new Blob([content.csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;
+  link.download='PUNCH-heures-'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }catch(err){error(err)}
+ finally{hoursExportRunning=false}
+}
 
 function schedulePage(){if(isEssential())return essentialSchedule();return heading('Horaire et affectations','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Employé</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+' · '+e(labelRole(m.role))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début (heure de cet appareil)','shiftStart','','datetime-local')+formfield('Fin (heure de cet appareil)','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Affecter au chantier','scheduleShift','gold full')):'')+card('<b>Quarts planifiés</b>'+state.shifts.map(x=>'<div class="group"><b>#'+e(getJob(x.job_id)?.number||'—')+' · '+e(x.user_id.slice(0,8))+'</b><p>'+when(x.starts_at)+' → '+when(x.ends_at)+'</p><p>'+e(x.note)+'</p>'+(manager()?button('Annuler le quart','cancelShift','',`data-id="${e(x.id)}"`):'')+'</div>').join(''));}
 function jobSelect(id){if(isEssential())return '<input type="hidden" id="'+id+'" value="'+e(essentialPunchJob()||state.selected)+'" />';return '<div class="group"><label>Chantier</label><select id="'+id+'" class="field">'+state.jobs.map(j=>'<option value="'+e(j.id)+'">#'+e(j.number)+' — '+e(j.name)+'</option>').join('')+'</select></div>'}
