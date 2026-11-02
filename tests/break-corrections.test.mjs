@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {Window} from 'happy-dom';
 import {breakCorrectionPayload,createBreakCorrectionsController,breakCorrectionInbox} from '../web/live/break-corrections.js';
+import {readFileSync} from 'node:fs';
 const escape=s=>String(s??'').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const form={session:'s',breakId:'b',start:'2026-10-20T12:00:00-04:00',end:'2026-10-20T12:30:00-04:00',paid:true,reason:' Correction justifiée '};
 test('break requests reject ambiguous local dates and normalize explicit offsets',()=>{const p=breakCorrectionPayload(form);assert.equal(p.p_start,'2026-10-20T16:00:00.000Z');assert.equal(p.p_paid,true);assert.equal(p.p_reason,'Correction justifiée');assert.throws(()=>breakCorrectionPayload({...form,start:'2026-10-20T12:00:00'}),/fuseau/);assert.throws(()=>breakCorrectionPayload({...form,end:form.start}),/fin/);});
@@ -100,4 +101,41 @@ test('failed manager pending inbox read shows no verified prior HR data',async()
  assert.match(ui.state.error,/Pending inbox offline/);
  assert.match(ui.render(),/Historique non vérifié/);
  assert.match(ui.render(),/breakfix:submit[^>]*data-id=""[^>]*disabled/);
+});
+
+test('break-correction inbox ignores requests from other companies and non-managers',()=>{
+ const row={id:'req-1',company_id:'company',requested_by:'employee',status:'pending'};
+ const source={company:'company',user:'boss',role:'boss',loaded:true,
+  requests:[row,{...row,id:'foreign',company_id:'other'}],
+  pendingRequests:[row,{...row,id:'self',requested_by:'boss'},{...row,id:'resolved',status:'approved'}]};
+ const allowed=breakCorrectionInbox({companyId:'company',userId:'boss',role:'boss',source});
+ assert.equal(allowed.ready,true);assert.equal(allowed.pendingCount,1);
+ assert.deepEqual(allowed.requests.map(r=>r.id),['req-1','self','resolved']);
+ assert.deepEqual(breakCorrectionInbox({companyId:'company',userId:'boss',role:'employee',source}),
+  {ready:false,requests:[],pendingCount:0});
+ assert.deepEqual(breakCorrectionInbox({companyId:'other',userId:'boss',role:'boss',source}),
+  {ready:false,requests:[],pendingCount:0});
+ assert.deepEqual(breakCorrectionInbox({companyId:'company',userId:'different',role:'boss',source}),
+  {ready:false,requests:[],pendingCount:0});
+});
+test('an employee cannot send a pause correction for another employee session',async()=>{
+ let calls=0;
+ const ui=createBreakCorrectionsController({sb:{rpc:async()=>{calls++;return {data:'ok'}}},
+  redraw(){},escape,crypto:{randomUUID:()=> 'id',subtle:{digest:async()=>new Uint8Array(32).buffer}}});
+ Object.assign(ui.state,{company:'company',user:'employee',role:'employee',loaded:true,
+  sessions:[{id:'s',user_id:'other'}],breaks:[{id:'b',session_id:'s',ended_at:form.end}],form:{...form}});
+ await ui.handle({dataset:{action:'breakfix:submit'}});
+ assert.equal(calls,0);assert.match(ui.state.error,/Journée indisponible/);
+});
+test('manager approvals show the scoped break correction queue without parallel RPC',()=>{
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('function essentialApprovals()');
+ const end=app.indexOf('function essentialPage()',start);
+ const view=app.slice(start,end);
+ assert.match(app,/import \{breakCorrectionInbox\} from '\.\/break-corrections\.js'/);
+ assert.match(view,/breakCorrectionInbox\(\{companyId:company\(\),userId:state\.user\?\.id/);
+ assert.match(view,/pauses\.pendingCount/);
+ assert.match(view,/Corrections de pauses à examiner/);
+ assert.match(view,/data-id="breakCorrections"/);
+ assert.doesNotMatch(view,/request_essential_break_correction|review_essential_break_correction/);
 });
