@@ -5,6 +5,7 @@ const path=new URL('../supabase/drafts/kiosk-qr-execute.sql',import.meta.url);
 const sql=readFileSync(path,'utf8');
 const edge=readFileSync(new URL('../supabase/functions/essential-kiosk/index.ts',import.meta.url),'utf8');
 const registry=readFileSync(new URL('../supabase/drafts/kiosk-qr-credential-registry.sql',import.meta.url),'utf8');
+const acceptance=readFileSync(new URL('../supabase/drafts/kiosk-qr-adapter-acceptance.sql',import.meta.url),'utf8');
 
 test('QR executor cannot go live: SQL exists only in drafts; Edge Function rejects it',()=>{
  assert.match(path.pathname,/\/supabase\/drafts\//);
@@ -61,4 +62,16 @@ test('SQL adapter requires independent PIN and an idempotency event for every wr
  assert.match(sql,/p_action<>'identify' and p_event is null/);
  assert.match(sql,/'identify','in','out','break_start','break_start_paid','break_end'/);
  assert.doesNotMatch(sql,/p_action='enroll'/);
+});
+
+test('QR verification refuses disabled establishment and inactive punch job',()=>{
+ const site=sql.indexOf('from public.essential_locations location');
+ const job=sql.indexOf('join public.jobs job on job.company_id=location.company_id');
+ const verify=sql.indexOf('from private.kiosk_qr_cards\n  where company_id=device.company_id');
+ assert.ok(site>0 && job>site && verify>job,'inactive site must be denied before resolving any employee QR');
+ assert.match(sql,/location\.company_id=device\.company_id/);
+ assert.match(sql,/location\.punch_job_id=device\.site_id/);
+ assert.match(sql,/location\.active and job\.active/);
+ for(const scenario of ['Inactive establishment accepted QR','Inactive punch job accepted QR','Reactivated establishment still denies valid QR'])
+  assert.ok(acceptance.includes(scenario),'Missing rollback-only SQL scenario '+scenario);
 });
