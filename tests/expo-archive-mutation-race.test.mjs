@@ -18,7 +18,7 @@ function deferred(){
  const promise=new Promise(done=>{resolve=done});
  return {promise,resolve};
 }
-function fixture({cached=[],remote=[],blockRead=false,blockFirstWrite=false,
+function fixture({cached=[],remote=[],blockRead=false,blockFirstRead=false,blockFirstWrite=false,
  mutationError=null,writeError=false}={}){
  const key='punch-archives:'+worker,storage=new Map([[key,JSON.stringify(cached)]]);
  const server=new Set(remote),readGate=deferred(),readStarted=deferred(),
@@ -65,7 +65,7 @@ function fixture({cached=[],remote=[],blockRead=false,blockFirstWrite=false,
      }
      calls.list++;const result={data:[...server].map(segment_id=>({segment_id})),error:null};
      readStarted.resolve();
-     return (blockRead?readGate.promise:Promise.resolve()).then(()=>result).then(resolve,reject);
+     return ((blockRead||(blockFirstRead&&calls.list===1))?readGate.promise:Promise.resolve()).then(()=>result).then(resolve,reject);
     }
    };
    return query;
@@ -142,5 +142,29 @@ test('local storage failure never masks a server-confirmed archive action',async
  const f=fixture({cached:[],writeError:true});
  await f.archiveSegment(segA);
  assert.equal(f.calls.archive,1);
+ assert.deepEqual(JSON.parse(f.storage.get(f.key)),[]);
+});
+
+test('second archive refresh wins when the first server response arrives late',async()=>{
+ const f=fixture({cached:[],remote:[],blockFirstRead:true});
+ const old=f.loadArchives();
+ await f.readStarted.promise;
+ f.server.add(segB);
+ const newest=await f.loadArchives();
+ assert.deepEqual(newest,[segB]);
+ f.releaseRead();
+ assert.deepEqual(await old,[segB]);
+ assert.deepEqual(JSON.parse(f.storage.get(f.key)),[segB]);
+ assert.equal(f.calls.list,2);
+});
+
+test('two simultaneous archive reads may not unhide a freshly archived item',async()=>{
+ const f=fixture({cached:[segA],remote:[segA],blockFirstRead:true});
+ const older=f.loadArchives();
+ await f.readStarted.promise;
+ f.server.delete(segA);
+ assert.deepEqual(await f.loadArchives(),[]);
+ f.releaseRead();
+ assert.deepEqual(await older,[]);
  assert.deepEqual(JSON.parse(f.storage.get(f.key)),[]);
 });
