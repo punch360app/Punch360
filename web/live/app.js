@@ -41,7 +41,7 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={requestFilter:'all',pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
 const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
@@ -424,17 +424,46 @@ function essentialHome(){const punchStatus=localPunchStatusSummary({events:state
 function essentialSchedule(){return essentialUI.planning.renderSchedule();}
 function legacyEssentialSchedule(){return heading('Horaire','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Personne</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début','shiftStart','','datetime-local')+formfield('Fin','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Planifier','scheduleShift','gold full')):'')+state.shifts.map(x=>card('<b>'+when(x.starts_at)+' → '+when(x.ends_at)+'</b><p class="muted">'+e(x.note||'Votre quart planifié')+'</p>'+(manager()?button('Annuler','cancelShift','',`data-id="${e(x.id)}"`):''))).join('');}
 
+function myRequestsTimeline(limit=8){
+ const companyId=company(),userId=state.user?.id;
+ return employeeHoursRequestTimeline({companyId,userId,limit,
+  correctionView:essentialCorrectionView({companyId,userId,
+   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections}),
+  breakView:breakCorrectionInbox({companyId,userId,role:state.account?.role,
+   source:essentialUI.breakCorrections.state}),
+  missingView:employeeMissingDaysSummary({companyId,userId,source:essentialUI.missingDays.state}),
+  leaveView:essentialLeaveView({companyId,userId,loaded:state.leavesLoaded,requests:state.leaves})
+ });
+}
+function essentialRequestsPage(){
+ const tracking=myRequestsTimeline(100);
+ const statuses=[['all','Toutes'],['pending','En attente'],['approved','Approuvées'],
+  ['rejected','Refusées'],['cancelled','Annulées']];
+ const filter=statuses.some(([key])=>key===state.requestFilter)?state.requestFilter:'all';
+ const visible=tracking.items.filter(item=>filter==='all'||item.status===filter);
+ const routes={'heures':'essentialCorrection','pauses':'breakCorrections',
+  'journée':'missingDays','congé':'leave'};
+ const items=visible.map(item=>
+  '<div class="hoursitem"><div class="grow"><b>'+e(item.title)+'</b>'+
+  '<small>'+(item.at?e(when(item.at)):'Date indisponible')+'</small>'+
+  '<span class="pill">'+e(item.label)+'</span></div>'+
+  button('Consulter','subpage','',`data-id="${e(routes[item.key.split(':')[0]])}"`)+
+  '</div>').join('');
+ return heading('Toutes mes demandes','hours')+
+  button('← Retour à mes heures','navigate','full','data-id="hours"')+
+  '<div class="ess-panel"><p class="small muted">Demandes visibles pour votre compte et entreprise, selon les derniers relevés reçus. Une décision sur une demande ne confirme pas la paie.</p>'+
+  (!tracking.complete?'<p class="ess-notice" role="status">Suivi incomplet : '+
+   e(tracking.unavailable.join(', '))+'. Actualisez en ligne pour récupérer les dossiers manquants.</p>':'')+
+  '<p class="small">'+tracking.pendingCount+' demande(s) en attente · '+tracking.total+
+   ' demande(s) dans les données chargées, dont '+tracking.items.length+' affichable(s) au maximum.</p>'+
+  '<div class="group">'+statuses.map(([key,label])=>
+   button((filter===key?'✓ ':'')+label,'requestFilter','',`data-id="${key}"`)).join('')+'</div>'+
+  (items||'<p class="small muted">'+(tracking.complete?
+   'Aucune demande pour ce filtre.':'Aucune demande vérifiée dans ce filtre.')+'</p>')+
+  '</div>';
+}
 function essentialHours(){
- const forgotten=employeeMissingDaysSummary({companyId:company(),userId:state.user?.id,
-  source:essentialUI.missingDays.state});
- const pauses=breakCorrectionInbox({companyId:company(),userId:state.user?.id,
-  role:state.account?.role,source:essentialUI.breakCorrections.state});
- const corrections=essentialCorrectionView({companyId:company(),userId:state.user?.id,
-  snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections});
- const tracking=employeeHoursRequestTimeline({companyId:company(),userId:state.user?.id,
-  correctionView:corrections,breakView:pauses,missingView:forgotten,
-  leaveView:essentialLeaveView({companyId:company(),userId:state.user?.id,
-   loaded:state.leavesLoaded,requests:state.leaves})});
+ const tracking=myRequestsTimeline();
  const trackingRows=tracking.items.map(r=>'<div class="hoursitem"><div class="grow"><b>'+
   e(r.title)+'</b><small>'+(r.at?e(when(r.at)):'Date indisponible')+
   '</small></div><span class="pill">'+e(r.label)+'</span></div>').join('');
@@ -462,7 +491,8 @@ function essentialHours(){
   button('Corriger mes heures','subpage','full','data-id="essentialCorrection"')+
   button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
   button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+
-  button('Mes congés et absences','subpage','full','data-id="leave"')+'</div>';
+  button('Mes congés et absences','subpage','full','data-id="leave"')+
+  button('Voir toutes mes demandes','subpage','full','data-id="myRequests"')+'</div>';
 }
 function essentialCorrectionPage(){
  const correction=essentialCorrectionView({companyId:company(),userId:state.user?.id,
@@ -503,7 +533,7 @@ function essentialLeavePage(){
   button(state.leaveSubmitting?'Envoi en cours…':'Soumettre ma demande','submitLeave','gold full',canSubmit?'':'disabled')+button('Actualiser les demandes','refresh','full')+'</div>'+
   '<div class="ess-panel"><b>Mes demandes</b>'+(view.ready?rows:'<p class="small muted">Historique indisponible avant la vérification serveur.</p>')+'</div>';
 }
-function essentialMore(){const items=[['profile',tr('profile')],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
+function essentialMore(){const items=[['profile',tr('profile')],['myRequests','Toutes mes demandes'],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
 function essentialApprovals(){
  if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');
  const missing=managerMissingDayApprovalSummary({companyId:company(),reviewerId:state.user?.id,
@@ -557,7 +587,7 @@ function essentialApprovals(){
   card('<b>Fermer une semaine</b>'+formfield('Lundi de la semaine','payrollWeek','','date')+
     button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));
 }
-function essentialPage(){if(state.section==='messages')return messagesPage();if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(state.section==='home')return manager()&&!state.fieldMode?adminHome():essentialHome();if(state.section==='punch')return essentialHome();if(state.section==='hours')return essentialHours();if(state.section==='schedule')return schedulePage();if(state.section==='more')return essentialMore();if(state.section==='sub'){if(state.sub==='approvals')return manager()?essentialApprovals():heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');if(state.sub==='breakCorrections')return essentialUI.breakCorrections.render();if(state.sub==='essentialCorrection')return essentialCorrectionPage();if(state.sub==='leave')return essentialLeavePage();if(['supervision','missingDays','members','profile','leave','geofence','invitations','notifications','settings','schedule','appearance','hr','communications','payroll','support'].includes(state.sub))return subPage();}return essentialHome();}
+function essentialPage(){if(state.section==='messages')return messagesPage();if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(state.section==='home')return manager()&&!state.fieldMode?adminHome():essentialHome();if(state.section==='punch')return essentialHome();if(state.section==='hours')return essentialHours();if(state.section==='schedule')return schedulePage();if(state.section==='more')return essentialMore();if(state.section==='sub'){if(state.sub==='approvals')return manager()?essentialApprovals():heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');if(state.sub==='breakCorrections')return essentialUI.breakCorrections.render();if(state.sub==='essentialCorrection')return essentialCorrectionPage();if(state.sub==='myRequests')return essentialRequestsPage();if(state.sub==='leave')return essentialLeavePage();if(['supervision','missingDays','members','profile','leave','geofence','invitations','notifications','settings','schedule','appearance','hr','communications','payroll','support'].includes(state.sub))return subPage();}return essentialHome();}
 async function doPause(paid=false){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin')return;if(state.busy||!currentSession())return;state.busy=true;try{await locatedPunch(activeBreak()?'break_end':'break_start',null,paid);await loadData();toast(state.localPending?'Pause conservée sur cet appareil':'Pause enregistrée')}catch(err){error(err)}finally{state.busy=false;draw()}}
 function breakApprovals(){if(!manager())return '';return card('<b>Pauses hors ligne à valider</b>'+state.receipts.filter(r=>r.action?.startsWith('break_')&&r.result?.review_status==='pending').map(r=>'<div class="group">'+e(r.action==='break_start'?(r.result?.is_paid?'Début de pause payée':'Début de pause non payée'):'Fin de pause')+' · '+when(r.occurred_at)+button('Valider','reviewBreak','gold',`data-id="${e(r.event_id)}" data-worker="${e(r.user_id)}"`)+'</div>').join(''));}
 async function reviewBreak(id,worker){const note=prompt('Motif de validation');if(!note)return;try{const r=await sb.rpc('review_break_event',{p_company:company(),p_worker:worker,p_event:id,p_note:note});if(r.error)throw r.error;await reload({quiet:true})}catch(err){error(err)}}
@@ -1188,6 +1218,7 @@ else if(a==='closeWeek'||a==='reopenWeek')await setWeek(a==='closeWeek');
 else if(a==='exportHours')await exportHours();
 else if(a==='correction')await submitCorrection();
 else if(a==='submitOrder')await createOrder();
+else if(a==='requestFilter'){if(['all','pending','approved','rejected','cancelled'].includes(id)){state.requestFilter=id;draw()}}
 else if(a==='subpage'){state.section='sub';state.sub=id;if(id==='supervision')await essentialUI.supervision.refresh();if(id==='bossHandoff'&&isEssential()&&manager())await bossHandoff.load(company(),state.account.role,state.user.id);draw()}
 else if(['createTeam','addTeamWorker','assignTeamJob'].includes(a))await saveTeam(a);
 else if(a==='createJob')await createJob();
