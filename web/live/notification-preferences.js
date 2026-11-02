@@ -2,7 +2,7 @@ export const notificationCategories=[['schedule','Horaires et remplacements'],['
 
 export function createNotificationPreferencesController({sb,redraw,escape:e,document:doc=null}){
  let generation=0;
- const s={company:null,devices:[],rows:[],draft:{},error:'',status:'',busy:false};
+ const s={company:null,devices:[],rows:[],draft:{},pendingDevice:null,error:'',status:'',busy:false};
  const original=category=>s.rows.find(r=>r.category===category)||{};
  const current=category=>s.draft[category]||original(category);
  const enabled=(value,channel)=>value[channel+'_enabled']===true;
@@ -10,7 +10,7 @@ export function createNotificationPreferencesController({sb,redraw,escape:e,docu
   enabled(current(category),channel)!==enabled(original(category),channel));
  function reset(){
   generation++;
-  Object.assign(s,{company:null,devices:[],rows:[],draft:{},error:'',status:'',busy:false});
+  Object.assign(s,{company:null,devices:[],rows:[],draft:{},pendingDevice:null,error:'',status:'',busy:false});
  }
  async function load(company){
   reset();s.company=company;const n=generation;
@@ -37,7 +37,10 @@ export function createNotificationPreferencesController({sb,redraw,escape:e,docu
      ` <button type="button" class="ess-btn" data-action="notification-pref:discard" data-category="${id}" ${s.busy||!dirty?'disabled':''}>Annuler les modifications</button></fieldset>`;
    }).join('')+
    '<h3>Mes appareils push</h3><p>L’autorisation d’un appareil s’effectue depuis l’application installée. Vous pouvez révoquer ici un appareil perdu.</p>'+
-   s.devices.map(d=>`<p>${e(d.platform)} · ${d.revoked_at?'Révoqué':`Autorisé <button type="button" class="ess-btn" data-action="notification-pref:revoke" data-device="${e(d.id)}" ${s.busy?'disabled':''}>Révoquer cet appareil</button>`}</p>`).join('')+
+    s.devices.map(d=>`<p>${e(d.platform)} · ${d.revoked_at?'Révoqué':
+     s.pendingDevice===d.id?
+      `<span role="status">Confirmer la révocation de cet appareil ?</span> <button type="button" class="ess-btn" data-action="notification-pref:revoke-confirm" data-device="${e(d.id)}" ${s.busy?'disabled':''}>Confirmer la révocation</button> <button type="button" class="ess-btn" data-action="notification-pref:revoke-cancel" data-device="${e(d.id)}" ${s.busy?'disabled':''}>Annuler</button>`:
+      `Autorisé <button type="button" class="ess-btn" data-action="notification-pref:revoke" data-device="${e(d.id)}" ${s.busy?'disabled':''}>Révoquer cet appareil</button>`}</p>`).join('')+
    (s.devices.length?'':'<p>Aucun appareil enregistré.</p>')+'</section>';
  }
  function input(el){
@@ -70,20 +73,40 @@ export function createNotificationPreferencesController({sb,redraw,escape:e,docu
    delete s.draft[category];s.error='';s.status='Modifications annulées.';
    redraw();return true;
   }
+  if(action==='notification-pref:revoke-cancel'){
+   if(s.busy)return true;
+   if(el.dataset.device===s.pendingDevice)s.pendingDevice=null;
+   s.status='Révocation annulée.';redraw();
+   return true;
+  }
   if(action==='notification-pref:revoke'){
    if(s.busy)return true;
-   s.busy=true;const n=generation,company=s.company;s.error='';s.status='';
+   // An old/stale DOM button cannot act on a revoked or absent device.
+   const device=s.devices.find(d=>d.id===el.dataset.device&&!d.revoked_at);
+   if(!device||!s.company)return true;
+   s.pendingDevice=device.id;s.error='';s.status='Aucun appareil révoqué. Confirmez votre choix.';
+   redraw();return true;
+  }
+  if(action==='notification-pref:revoke-confirm'){
+   if(s.busy)return true;
+   const device=s.devices.find(d=>d.id===el.dataset.device&&!d.revoked_at);
+   if(!device||s.pendingDevice!==device.id||!s.company)return true;
+   s.busy=true;const n=generation,company=s.company;
+   s.error='';s.status='';redraw();
    try{
-    const r=await sb.rpc('revoke_push_device',{p_device:el.dataset.device});
+    const r=await sb.rpc('revoke_push_device',{p_device:device.id});
     if(r.error)throw r.error;
     if(n===generation){
      await load(company);
-     if(s.company===company)s.status='La révocation de l’appareil a été demandée.';
+     if(generation===n+1&&s.company===company){
+      s.status='La révocation de l’appareil a été demandée.';
+      redraw();
+     }
     }
    }catch{
     if(n===generation)s.error='Impossible de révoquer cet appareil. Réessayez.';
    }finally{
-    if(s.company===company){s.busy=false;redraw();}
+    if(n===generation){s.busy=false;redraw();}
    }
    return true;
   }
