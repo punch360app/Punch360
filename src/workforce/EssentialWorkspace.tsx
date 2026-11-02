@@ -30,7 +30,7 @@ const duration=(ms:number)=>{const n=Math.max(0,Math.floor(ms/1000));return [Mat
 const hm=(ms:number)=>{const n=Math.floor(ms/60000);return Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')};
 export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const breakPolicy=useBreakPolicy(account),canApproveTeam=useSupervisorApprovalAccess(account);
- const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
+ const [page,setPage]=useState<'home'|'hours'|'schedule'|'more'>('home'),[detail,setDetail]=useState(''),[punch,setPunch]=useState<PunchState>({sessions:[],segments:[],active:null,lastJobId:null,breaks:[]}),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState(0),[conflicts,setConflicts]=useState(0),[mobileAllowed,setMobileAllowed]=useState(false),[siteJob,setSiteJob]=useState(account.defaultJobId);
  const dimensions=useWindowDimensions(),compact=dimensions.height<850;
  const [language,setLanguage]=useState('fr'),[languageMenu,setLanguageMenu]=useState(false);
  const [missionWorker,setMissionWorker]=useState<{key:string;id:string}|null>(null);
@@ -89,7 +89,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
   const updated=await loadPunchState(account.companyId);
   const summary=await journalSummary(account.companyId);
   if(visitContext.current!==requestedFor)return;
-  setPunch(updated);setPending(summary.pending);
+  setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
   if(updated.localJournalBlocked||summary.blocked)
    setNotice('Journal local à vérifier : pointage bloqué sur cet appareil. Heures serveur consultables.');
   else setNotice(previous=>previous.startsWith('Journal local à vérifier :')?'':previous);
@@ -99,6 +99,31 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const date=new Date(now),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),week=new Date(date.getFullYear(),date.getMonth(),date.getDate()-(date.getDay()+6)%7).getTime();
  const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=(punch.breaks||[]).some(b=>!b.ended_at);
  async function act(action:'punch'|'pause',paid=false){if(busy||!mobileAllowed||punch.localJournalBlocked)return;setBusy(true);setNotice('');try{const result=action==='pause'?await punchBreak(account.companyId,paused,paid):punch.active?await punchOut(account.companyId):await punchIn(account.companyId,(siteJob||account.defaultJobId)!);setNotice(result.queued?'Enregistré sur cet appareil. Envoi au retour du réseau.':result.review_status==='pending'?'Enregistré · validation du responsable requise':'Enregistré.');await load()}catch(e:any){setNotice(e.message)}finally{setBusy(false)}}
+ async function syncLocalPunches(){
+  if(busy||punch.localJournalBlocked)return;
+  setBusy(true);
+  try{
+   const network=await Network.getNetworkStateAsync();
+   if(network.isConnected===false||network.isInternetReachable===false){
+    setNotice('Connexion Internet requise pour transmettre les pointages.');
+    return;
+   }
+   // Reuse the same secured journal flush and server hours refresh as auto-sync.
+   const requestedFor=account.companyId+':'+account.userId;
+   const updated=await loadPunchState(account.companyId);
+   const summary=await journalSummary(account.companyId);
+   if(visitContext.current!==requestedFor)return;
+   setPunch(updated);setPending(summary.pending);setConflicts(summary.conflicts);
+   setNotice(updated.localJournalBlocked||summary.blocked?
+    'Journal local à vérifier : aucun envoi possible. Contactez votre responsable.':
+    summary.pending&&summary.conflicts?
+    summary.pending+' pointage(s) encore en attente et '+summary.conflicts+' conflit(s) à vérifier.':
+    summary.pending?summary.pending+' pointage(s) en attente. Réessayez avec une connexion stable.':
+    summary.conflicts?summary.conflicts+' conflit(s) à vérifier avec votre responsable.':
+    'Aucun pointage local en attente. Vérifiez vos heures confirmées sur le serveur.');
+  }catch(e:any){setNotice('Synchronisation non confirmée : '+(e?.message||String(e)))}
+  finally{setBusy(false)}
+ }
  const navDestination=navigationDestination({visit:myVisit,usualAddress:fixedAddress,usualName:fixedName,incomplete:visitUnavailable});
  const navOptions=navigationProviders(Platform.OS);
  const activeNav=chooseNavigationPreference(navPref,Platform.OS);
@@ -179,7 +204,18 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  </View>:null}
  <PersonalMissionCard companyId={account.companyId} workerId={missionWorker?.key===visitContext.current?missionWorker.id:null} navProvider={navPref}/>
  {visitUnavailable?txt('Adresses d’intervention : consultation en ligne indisponible ou incomplète.',{fontSize:10,color:Z.muted}):null}
- <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(pending?tr('offline'):tr('synchronized'),{fontSize:15,marginTop:15,color:Z.sage})}</View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(tr('thisWeek').toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(weekly),{fontSize:36,fontWeight:'300',marginTop:8})}</View><ScrollView contentContainerStyle={{gap:9}}>{punch.sessions.map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(punch.segments.filter(p=>p.session_id===s.id),now,0,now,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
+ <View style={{flexDirection:'row',gap:35,padding:3}}><View>{txt(tr('thisWeek').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(hm(weekly),{fontSize:27,fontWeight:'300',marginTop:10})}</View><View>{txt(tr('status').toUpperCase(),{fontSize:10,letterSpacing:1,color:Z.muted})}{txt(punch.localJournalBlocked?'Journal à vérifier':pending?pending+' en attente':conflicts?conflicts+' conflit(s)':tr('synchronized'),{fontSize:15,marginTop:15,color:Z.sage})}</View></View><View style={{marginTop:'auto',borderTopColor:Z.line,borderTopWidth:1,paddingTop:16,paddingBottom:12}}>{txt(account.companyName,{fontSize:12,fontWeight:'500'})}{txt('Votre espace de travail',{fontSize:10,color:Z.muted,marginTop:4})}</View></View>:page==='hours'?<View style={{flex:1,gap:12}}>{txt(tr('myHours'),{fontSize:26,marginVertical:14})}<View style={styles.card}>{txt(tr('thisWeek').toUpperCase(),{color:Z.muted,fontSize:10})}{txt(hm(weekly),{fontSize:36,fontWeight:'300',marginTop:8})}</View>{punch.localJournalBlocked||pending||conflicts?<View style={[styles.card,{gap:7}]}>
+ {txt(punch.localJournalBlocked?'Journal local à vérifier':pending?pending+' pointage(s) à transmettre':'Conflits de synchronisation',
+  {color:Z.sage,fontWeight:'700',fontSize:13})}
+ {txt(punch.localJournalBlocked?'Les pointages locaux sont bloqués; les heures serveur restent consultables. Contactez votre responsable.':
+  (pending?pending+' en attente de transmission. ':'')+(conflicts?conflicts+' conflit(s) à vérifier. ':'')+
+  'Ces événements ne constituent pas une validation officielle des heures.',
+  {fontSize:12,color:Z.muted})}
+ {pending>0&&!punch.localJournalBlocked?<Pressable accessibilityRole="button" accessibilityState={{disabled:busy}}
+  disabled={busy} onPress={()=>{void syncLocalPunches()}} style={{paddingVertical:9}}>
+  {txt(busy?'Synchronisation…':'Synchroniser maintenant',{color:Z.sage,fontWeight:'700'})}
+ </Pressable>:null}
+ </View>:null}<ScrollView contentContainerStyle={{gap:9}}>{punch.sessions.map(s=><View key={s.id} style={styles.card}>{txt(new Date(s.started_at).toLocaleDateString('fr-CA'),{fontWeight:'500'})}{txt(new Date(s.started_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+' → '+(s.ended_at?new Date(s.ended_at).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'}):'En cours'),{fontSize:12,color:Z.muted,marginTop:5})}{txt(hm(hoursFor(punch.segments.filter(p=>p.session_id===s.id),now,0,now,punch.breaks||[])),{marginTop:9,color:Z.sage})}</View>)}</ScrollView>{menu('Corriger une pause','breakCorrections')}{menu('Correction et export de mes heures','approvals')}</View>:page==='schedule'?<View style={{flex:1}}>{txt(tr('myCalendar'),{fontSize:26,marginVertical:18})}<EssentialPlanningPanel account={account}/></View>:<ScrollView contentContainerStyle={{gap:6,paddingBottom:16}}>{txt(tr('mySpace'),{fontSize:26,marginVertical:18})}<View style={{paddingVertical:6,gap:4}}>
  <Pressable accessibilityRole="button" accessibilityLabel={tr('language')} accessibilityState={{expanded:languageMenu}} onPress={()=>setLanguageMenu(v=>!v)} style={[styles.menu,rtl&&{flexDirection:'row-reverse'}]}>
  {txt(tr('language')+' : '+(nativeEssentialLanguages.find(x=>x.code===language)?.name||'Français'),{textAlign:rtl?'right':'left'})}
  <Ionicons name="chevron-down" size={17} color={Z.muted}/>
@@ -190,6 +226,9 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  </Pressable>)}
  </View>:null}
  </View>{menu(tr('profile'),'profile')}{menu(tr('theme')+' · 10 designs','appearance')}{menu('Réglages · Navigation','navigation')}{menu(tr('myLeave'),'leave')}{canApproveTeam?menu('Approbations de mon équipe','supervision'):null}{menu('Journée entièrement oubliée','missingDays')}{menu(tr('breakCorrections'),'breakCorrections')}{menu(tr('hrDocuments'),'hr')}{menu(tr('communications'),'communications')}{menu(tr('support'),'support')}{menu(manager?'Préparation de paie et banques':'Mes banques d’heures','payroll')}{menu(manager?'Approbations et exports':'Mes corrections et exports','approvals')}{manager?menu('Inviter une personne','invite'):null}{menu('Localisation et notifications','geofence')}<Pressable style={styles.menu} onPress={()=>supabase.auth.signOut()}>{txt(tr('logout'),{color:Z.muted})}</Pressable></ScrollView>;
- return <SafeAreaView style={{flex:1,backgroundColor:Z.bg}}><ThemeDecoration theme={t}/><StatusBar barStyle={t.dark?"light-content":"dark-content"}/><View style={styles.header}><View style={styles.mark}>{txt('p',{fontFamily:'serif',fontStyle:'italic',fontSize:27,color:Z.sage})}</View><View>{txt('PUNCH',{fontWeight:'700',fontSize:16,letterSpacing:1})}{txt('Essentiel',{fontSize:10,color:Z.muted,letterSpacing:1})}</View><Pressable onPress={()=>{setDetail('geofence')}} style={{marginLeft:'auto',padding:10}}><Ionicons name="notifications-outline" color={Z.sage} size={21}/></Pressable></View><View style={{flex:1,paddingHorizontal:24}}>{content}</View>{notice||pending?<Text style={{fontSize:10,color:Z.sage,textAlign:'center',padding:8}}>{notice||pending+' événement(s) conservé(s) sur cet appareil'}</Text>:null}<View style={[styles.nav,rtl&&{flexDirection:'row-reverse'}]}>{([{id:'home',label:'Punch',icon:'radio-button-on-outline'},{id:'hours',label:'Heures',icon:'time-outline'},{id:'schedule',label:'Horaire',icon:'calendar-outline'},{id:'more',label:'Plus',icon:'menu-outline'}] as const).map(t=><Pressable key={t.id} onPress={()=>{setPage(t.id);setDetail('')}} style={[styles.tab,page===t.id&&{backgroundColor:appearance.theme.surface}]}><Ionicons name={t.icon} size={21} color={page===t.id?Z.sage:Z.muted}/>{txt(tr(t.id==='home'?'punch':t.id==='hours'?'hours':t.id==='schedule'?'schedule':'more'),{fontSize:10,color:page===t.id?Z.sage:Z.muted,textAlign:rtl?'right':'left',writingDirection:rtl?'rtl':'ltr'})}</Pressable>)}</View></SafeAreaView>;
+ return <SafeAreaView style={{flex:1,backgroundColor:Z.bg}}><ThemeDecoration theme={t}/><StatusBar barStyle={t.dark?"light-content":"dark-content"}/><View style={styles.header}><View style={styles.mark}>{txt('p',{fontFamily:'serif',fontStyle:'italic',fontSize:27,color:Z.sage})}</View><View>{txt('PUNCH',{fontWeight:'700',fontSize:16,letterSpacing:1})}{txt('Essentiel',{fontSize:10,color:Z.muted,letterSpacing:1})}</View><Pressable onPress={()=>{setDetail('geofence')}} style={{marginLeft:'auto',padding:10}}><Ionicons name="notifications-outline" color={Z.sage} size={21}/></Pressable></View><View style={{flex:1,paddingHorizontal:24}}>{content}</View>{notice||pending||conflicts||punch.localJournalBlocked?<Text style={{fontSize:10,color:Z.sage,textAlign:'center',padding:8}}>{notice||(
+  punch.localJournalBlocked?'Journal local à vérifier':
+  (pending?pending+' en attente':'')+(pending&&conflicts?' · ':'')+(conflicts?conflicts+' conflit(s)':'')
+ )}</Text>:null}<View style={[styles.nav,rtl&&{flexDirection:'row-reverse'}]}>{([{id:'home',label:'Punch',icon:'radio-button-on-outline'},{id:'hours',label:'Heures',icon:'time-outline'},{id:'schedule',label:'Horaire',icon:'calendar-outline'},{id:'more',label:'Plus',icon:'menu-outline'}] as const).map(t=><Pressable key={t.id} onPress={()=>{setPage(t.id);setDetail('')}} style={[styles.tab,page===t.id&&{backgroundColor:appearance.theme.surface}]}><Ionicons name={t.icon} size={21} color={page===t.id?Z.sage:Z.muted}/>{txt(tr(t.id==='home'?'punch':t.id==='hours'?'hours':t.id==='schedule'?'schedule':'more'),{fontSize:10,color:page===t.id?Z.sage:Z.muted,textAlign:rtl?'right':'left',writingDirection:rtl?'rtl':'ltr'})}</Pressable>)}</View></SafeAreaView>;
 }
 const makeStyles=(Z:{bg:string;text:string;muted:string;line:string;sage:string},surface:string,compact:boolean)=>StyleSheet.create({header:{height:80,flexDirection:'row',alignItems:'center',paddingHorizontal:24,gap:10},mark:{width:36,height:40,borderRadius:12,backgroundColor:surface,alignItems:'center',justifyContent:'center'},clock:{padding:compact?10:22,borderWidth:1,borderColor:Z.line,borderRadius:24,backgroundColor:surface,alignItems:'center'},punch:{marginTop:compact?8:20,width:compact?120:160,height:compact?120:160,backgroundColor:Z.sage,borderRadius:80,padding:20,flexDirection:'column',justifyContent:'center',gap:10,alignItems:'center'},card:{padding:17,borderRadius:16,backgroundColor:surface,borderWidth:1,borderColor:Z.line},menu:{padding:16,borderRadius:13,borderWidth:1,borderColor:Z.line,backgroundColor:surface,flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginVertical:3},nav:{borderTopWidth:1,borderTopColor:Z.line,flexDirection:'row',padding:8,gap:4},tab:{flex:1,padding:10,borderRadius:13,alignItems:'center',gap:5}});
