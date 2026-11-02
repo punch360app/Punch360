@@ -204,3 +204,33 @@ test('Expo Essentiel requires an active worker with explicit mobile permissions'
  }
  assert.equal(canUseEssentialMobilePunch('A','u',worker),true);
 });
+
+test('Expo Essentiel recovers from corrupt channel cache without hiding hours or granting mobile punch',async()=>{
+ const from=native.indexOf('let cached:any=null;',native.indexOf('async function load(){try{'));
+ const to=native.indexOf('if(offline){',from);
+ assert.ok(from>=0&&to>from,'Guarded channel and network loader must be present');
+ const body=native.slice(from,to).replace('let cached:any=null;','let cached=null;');
+ const read=new Function('AsyncStorage','Network','cacheKey',body+'return {cached,validCache,offline}');
+ const run=async(raw,{readError=false,networkError=false,connected=true}={})=>
+  read({getItem:async()=>{if(readError)throw Error('storage unavailable');return raw}},
+   {getNetworkStateAsync:async()=>{if(networkError)throw Error('no network state');
+    return {isConnected:connected,isInternetReachable:connected}}},'essential-punch-channel:A:u');
+ for(const raw of ['{bad-json','null','{}',JSON.stringify({version:1,job:'job-A',allowed:true,checkedAt:Date.now()}),
+  JSON.stringify({version:2,job:'job-A',allowed:'true',checkedAt:Date.now()}),
+  JSON.stringify({version:2,job:'job-A',allowed:true,checkedAt:Date.now()+60000}),
+  JSON.stringify({version:2,job:'job-A',allowed:true,checkedAt:Date.now()-90000000})]){
+  const result=await run(raw);
+  assert.equal(result.validCache,false,'Unsafe cache should never grant authorization: '+raw);
+  assert.equal(result.offline,false,'A corrupt permission cache must not hide the online hours view');
+ }
+ const storageFailure=await run(null,{readError:true});
+ assert.equal(storageFailure.validCache,false);
+ assert.equal(storageFailure.offline,false);
+ const valid=await run(JSON.stringify({version:2,job:'job-A',allowed:true,checkedAt:Date.now()}));
+ assert.equal(valid.validCache,true);
+ assert.equal(valid.offline,false);
+ const networkFailure=await run(JSON.stringify({version:2,job:null,allowed:false,checkedAt:Date.now()}),{networkError:true});
+ assert.equal(networkFailure.offline,true);
+ assert.equal(networkFailure.validCache,true);
+ assert.match(native,/const updated=await loadPunchState\(account\.companyId\)/);
+});
