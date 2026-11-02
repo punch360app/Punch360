@@ -41,9 +41,9 @@ test('My Hours links to missing-day workflow without treating requests as payabl
  assert.match(app,/import \{employeeMissingDaysSummary,managerMissingDayApprovalSummary\} from '\.\/missing-days\.js'/);
  assert.match(hours,/employeeMissingDaysSummary\(\{companyId:company\(\),userId:state\.user\?\.id/);
  assert.match(hours,/data-id="missingDays"/);
- assert.match(hours,/Une demande en attente ne constitue pas des heures confirmées/);
- assert.match(hours,/Suivi de mes demandes/);
- assert.match(hours,/forgotten\.ready/);
+ assert.match(hours,/Une demande approuvée ne confirme pas, à elle seule, votre paie/);
+ assert.match(hours,/Mes demandes d’ajustement/);
+ assert.match(hours,/missingView:forgotten/);
 });
 
 test('employee form rejects an unrelated worker or unavailable facility before mutation',async()=>{
