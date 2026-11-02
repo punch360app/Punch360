@@ -17,6 +17,7 @@ import {isRestrictedManagement,canUseRestrictedManagement} from '../web/live/res
 import {Window} from 'happy-dom';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {PunchJournal,projectPendingPunches} from '../web/live/journal.js';
 import {personalUpcomingClientVisit} from '../web/live/personal-client-visit.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from '../web/live/navigation-choices.js';
@@ -38,11 +39,12 @@ const src=await readFile(new URL('../web/live/app.js',import.meta.url),'utf8');
    return exports;
   })));
 
+const openWindows=new Set();
 const user='00000000-0000-4000-8000-000000000001',company='00000000-0000-4000-8000-000000000002',job1='00000000-0000-4000-8000-000000000003',job2='00000000-0000-4000-8000-000000000004';
 const jobs=[{id:job1,company_id:company,number:'101',name:'A',punch_radius_m:200,latitude:46.8,longitude:-71.2},{id:job2,company_id:company,number:'102',name:'B',punch_radius_m:200,latitude:46.8,longitude:-71.2}],sessions=[],segments=[],sent=[];let online=true;
 const account={company_id:company,user_id:user,role:'boss',status:'active',companies:{name:'Test',billing_status:'active',product_edition:'construction'}};
 let memberships=[account];const sb={auth:{getUser:async()=>({data:{user:{id:user,email:'test@test.invalid'}},error:null}),getSession:async()=>({data:{session:{user:{id:user,email:'test@test.invalid'}}}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},from(table){const q={then(resolve){let data=table==='jobs'?jobs:table==='company_members'?memberships:table==='punch_sessions'?sessions:table==='punch_segments'?segments:[];return Promise.resolve(online?{data,error:null}:{data:null,error:{message:'offline'}}).then(resolve)}};for(const method of ['select','eq','is','order','limit','in','range','insert','update','delete'])q[method]=()=>q;q.maybeSingle=()=>{q.then=resolve=>Promise.resolve(online?{data:table==='company_members'?memberships[0]:null,error:null}:{data:null,error:{message:'offline'}}).then(resolve);return q};return q;},rpc(name,p){const promise=async()=>{if(!online)throw Error('offline');if(name!=='sync_punch_event')return {data:{},error:null};sent.push(p);let active=sessions.find(s=>!s.ended_at);if(p.p_action==='in'){active={id:'server-session',company_id:company,user_id:user,started_at:p.p_occurred_at,ended_at:null};sessions.unshift(active);segments.unshift({id:'s1',company_id:company,session_id:active.id,job_id:p.p_job,started_at:p.p_occurred_at,ended_at:null})}if(p.p_action==='transfer'){segments.find(s=>!s.ended_at).ended_at=p.p_occurred_at;segments.unshift({id:'s2',company_id:company,session_id:active.id,job_id:p.p_job,started_at:p.p_occurred_at,ended_at:null})}if(p.p_action==='out'){active.ended_at=p.p_occurred_at;segments.find(s=>!s.ended_at).ended_at=p.p_occurred_at;}return {data:{sync_status:'synced',session_id:active?.id,review_status:'pending',location_status:'inside'},error:null}};return {abortSignal:()=>promise(),then:(...args)=>promise().then(...args)}}};
-async function boot(storage){const w=new Window({url:'https://punch.test/',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});w.document.body.innerHTML='<div id="root"></div>';w.__appImports={validatePublicSignupPassword,togglePublicPasswordVisibility,isPublicEdition,canUseEssentialMessages,essentialTabs,canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,isCurrentCompanyChat,createChatUnreadController,beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection};w.__journal={PunchJournal,projectPendingPunches};w.__locale={createEssentialLocale,ESSENTIAL_LANGUAGES};w.__workspaces={listVerifiedWorkspaces,chooseVerifiedWorkspace};w.__essential=createEssentialController;w.__boss=createBossHandoffController;w.__restricted={isRestrictedManagement,canUseRestrictedManagement};w.__createClient=()=>sb;
+async function boot(storage){const w=new Window({url:'https://punch.test/',settings:{enableJavaScriptEvaluation:true,suppressInsecureJavaScriptEnvironmentWarning:true}});openWindows.add(w);w.document.body.innerHTML='<div id="root"></div>';w.__appImports={validatePublicSignupPassword,togglePublicPasswordVisibility,isPublicEdition,canUseEssentialMessages,essentialTabs,canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,isCurrentCompanyChat,createChatUnreadController,beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection};w.__journal={PunchJournal,projectPendingPunches};w.__locale={createEssentialLocale,ESSENTIAL_LANGUAGES};w.__workspaces={listVerifiedWorkspaces,chooseVerifiedWorkspace};w.__essential=createEssentialController;w.__boss=createBossHandoffController;w.__restricted={isRestrictedManagement,canUseRestrictedManagement};w.__createClient=()=>sb;
  w.__navigation={navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference};
  w.__personalUpcomingClientVisit=personalUpcomingClientVisit;
  w.__missions=createPersonalMissionController;w.__edition=resolvePublicEdition;
@@ -56,7 +58,9 @@ async function boot(storage){const w=new Window({url:'https://punch.test/',setti
  w.__appModuleExports=appModuleExports;
  code='const {'+needed.join(',')+'}=window.__appModuleExports;\n'+code;
  w.eval(code);await w.__app.initialize();return w;}
-let w=await boot();assert.match(w.document.body.textContent,/ESPACE DIRECTION/);assert.ok(w.document.querySelector('[data-action="subpage"][data-id="admin"]'));w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();assert.match(w.document.body.textContent,/PUNCH IN/);w.__app.state.account.role='boss';w.__app.state.section='sub';w.__app.state.sub='geofence';w.__app.draw();assert.equal(w.document.querySelector('#geoRadius-'+job1).value,'200');
+test('DOM integration: offline and isolated multi-company selection',async()=>{
+ try{
+ let w=await boot();assert.match(w.document.body.textContent,/ESPACE DIRECTION/);assert.ok(w.document.querySelector('[data-action="subpage"][data-id="admin"]'));w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();assert.match(w.document.body.textContent,/PUNCH IN/);w.__app.state.account.role='boss';w.__app.state.section='sub';w.__app.state.sub='geofence';w.__app.draw();assert.equal(w.document.querySelector('#geoRadius-'+job1).value,'200');
 online=false;w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();await w.__app.doPunch();assert.match(w.document.querySelector('.banner').textContent,/1 PUNCH/);assert.match(w.document.querySelector('[data-action="punch"]').textContent,/OUT/);await w.__app.selectJob(job2);assert.match(w.document.querySelector('.banner').textContent,/2 PUNCH/);await w.__app.doPunch();assert.match(w.document.querySelector('.banner').textContent,/3 PUNCH/);assert.equal(sent.length,0);
 const storage=Array.from({length:w.localStorage.length},(_,i)=>{const k=w.localStorage.key(i);return [k,w.localStorage.getItem(k)]});await w.happyDOM.close();w=await boot(storage);w.__app.state.account.role='employee';w.__app.state.section='punch';w.__app.draw();assert.match(w.document.querySelector('.banner').textContent,/3 PUNCH/);assert.match(w.document.querySelector('[data-action="punch"]').textContent,/IN/);
 online=true;await w.__app.initialize();assert.equal(sent.length,3);assert.deepEqual(sent.map(p=>p.p_action),['in','transfer','out']);assert.ok(sent.every(p=>p.p_offline));assert.equal(segments.length,2);assert.ok(sessions[0].ended_at);assert.equal(w.__app.state.localPending,0);
@@ -120,4 +124,10 @@ w2.__app.state.localPending=0;
 await assert.rejects(()=>w2.__app.switchCompany(secondId),/Entreprise inaccessible/);
 assert.equal(w2.__app.state.account.company_id,secondId,'revoked target never silently opens another tenant');
 await w2.happyDOM.close();
-console.log('PASS DOM integration: offline and isolated multi-company selection');
+ }finally{
+  // Assertions may throw halfway through; always stop Happy DOM timers and
+  // close windows rather than leaving Node's test runner hung indefinitely.
+  await Promise.allSettled([...openWindows].map(w=>w.happyDOM.close()));
+  openWindows.clear();
+ }
+});
