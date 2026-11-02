@@ -53,9 +53,12 @@ export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],com
   const dayStart=new Date(week.getFullYear(),week.getMonth(),week.getDate()+n).getTime();
   if(dayStart>now)break;
   const until=Math.min(now,new Date(week.getFullYear(),week.getMonth(),week.getDate()+n+1).getTime());
+  const grossMs=parts.reduce((sum,s)=>sum+
+   netSegmentMilliseconds(s,[],dayStart,until),0);
   const netMs=parts.reduce((sum,s)=>sum+
    netSegmentMilliseconds(s,pauses.get(s.session_id)||[],dayStart,until),0);
-  if(netMs>0)rows.unshift({dayStart,netMs});
+  // Even a full-day unpaid pause needs a visible daily record (zero net).
+  if(grossMs>0)rows.unshift({dayStart,netMs,grossMs,unpaidMs:Math.max(0,grossMs-netMs)});
  }
  return rows;
 }

@@ -166,7 +166,7 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  const date=new Date(now),day=new Date(date.getFullYear(),date.getMonth(),date.getDate()).getTime(),week=new Date(date.getFullYear(),date.getMonth(),date.getDate()-(date.getDay()+6)%7).getTime();
  const worked=hoursFor(punch.segments,now,day,now,punch.breaks||[]),weekly=hoursFor(punch.segments,now,week,now,punch.breaks||[]),paused=!!punch.active&&(punch.breaks||[]).some(b=>b.session_id===punch.active?.id&&b.ended_at===null);
  // Local projections and offline snapshots are never payroll-approved hours.
- const dailyHours:{dayStart:number;netMs:number}[]=essentialMobileDailyHours({
+ const dailyHours:{dayStart:number;netMs:number;grossMs:number;unpaidMs:number}[]=essentialMobileDailyHours({
   sessions:punch.sessions,segments:punch.segments,breaks:punch.breaks||[],
   companyId:account.companyId,userId:account.userId,now
  });
@@ -324,9 +324,13 @@ export function EssentialWorkspace({account}:{account:WorkspaceAccount}){
  </View>:null}<ScrollView contentContainerStyle={{gap:9}}>
  {dailyHours.length?<View style={[styles.card,{gap:9}]}>
   {txt('Détail quotidien · temps indicatif',{fontWeight:'700',fontSize:13})}
-  {dailyHours.map(row=><View key={row.dayStart} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:4}}>
-   {txt(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}),{fontSize:12,color:Z.muted})}
-   {txt(hm(row.netMs),{fontSize:12,fontWeight:'600',color:Z.sage})}
+  {dailyHours.map(row=><View key={row.dayStart} style={{paddingVertical:4,gap:3}}>
+   <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+    {txt(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}),{fontSize:12,color:Z.muted})}
+    {txt(hm(row.netMs)+' net',{fontSize:12,fontWeight:'600',color:Z.sage})}
+   </View>
+   {txt('Brut '+hm(row.grossMs)+' · Pause non payée '+hm(row.unpaidMs),
+    {fontSize:10,color:Z.muted})}
   </View>)}
   {txt('Inclut les pointages locaux en attente, le cas échéant. Non approuvé.',{fontSize:10,color:Z.muted})}
  </View>:null}
