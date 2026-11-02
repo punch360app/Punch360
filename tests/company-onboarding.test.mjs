@@ -110,6 +110,7 @@ test('public app guards repeat creation and checks the server membership',()=>{
  assert.match(app,/verifyCreatedCompany/);
  assert.match(app,/recoverCreatedCompanyWorkspace\(pending,state\.user\?\.id,companyContext\.list\)/);
  assert.match(app,/previousIds:companyContext\.list\.map\(w=>w\.companyId\)/);
- assert.match(app,/if\(definiteError\)throw err;state\.pendingCompanyCreation=\{companyId:null\}/);
+ assert.match(app,/if\(definiteError\)throw err;state\.pendingCompanyCreation=\{companyId:null,\.\.\.pendingContext\}/);
+ assert.match(app,/savePendingCompanyCreation\(sessionStorage,state\.user\?\.id,null,pendingContext\)/);
  assert.match(app,/readPendingCompanyCreation\(sessionStorage,state\.user\.id\)/);
 });
