@@ -98,3 +98,30 @@ test('QR expiration and revocation timestamps refresh only after acquiring row l
  assert.match(self,/for update;\s*now_at:=clock_timestamp\(\);/);
  assert.match(admin,/for update;\s*now_at:=clock_timestamp\(\);/);
 });
+
+test('QR status views report flags without leaking token hash, challenge or installation',()=>{
+ const employee=fn('my_kiosk_qr_card_status');
+ const manager=fn('list_kiosk_qr_card_status');
+ assert.match(employee,/auth\.uid\(\) is null/);
+ assert.match(employee,/company_id=p_company and auth_user_id=auth\.uid\(\)/);
+ assert.match(employee,/m\.company_id=p_company and m\.user_id=auth\.uid\(\) and m\.status='active'/);
+ assert.match(employee,/kiosk_qr_cards/);
+ assert.match(employee,/revoked_at is null and expires_at>now\(\)/);
+ assert.match(employee,/'active',found/);
+ assert.match(manager,/private\.can_administer\(p_company\)/);
+ assert.match(manager,/w\.company_id=p_company/);
+ assert.match(manager,/k\.enrolled_user_id=w\.auth_user_id/);
+ assert.match(manager,/'worker_id',w\.id/);
+ for(const call of [employee,manager]){
+  assert.match(call,/security definer set search_path=''/);
+  assert.doesNotMatch(call,/jsonb_build_object\([\s\S]*?['"](?:token|token_hash|card_code|installation_id|enrollment)['"]\s*,/i);
+  assert.doesNotMatch(call,/return\s+(?:token|card_code|card_secret)/i);
+ }
+ for(const name of ['my_kiosk_qr_card_status','list_kiosk_qr_card_status'])
+  assert.match(sql,new RegExp('revoke all on function public\\.'+name+'\\(uuid\\) from public,anon,authenticated;'));
+ assert.ok(acceptance.includes('Employee read foreign QR status'));
+ assert.ok(acceptance.includes('Employee read manager QR status'));
+ assert.ok(acceptance.includes('Card secret exposed in own status'));
+ assert.ok(acceptance.includes('Manager status leaked card secret'));
+ assert.ok(acceptance.includes('Revoked card still reported active'));
+});
