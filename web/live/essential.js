@@ -19,7 +19,7 @@ import {createPlatformAuditController} from './platform-audit.js';
 import {createSupportController} from './support.js';
 import {createPlatformTestsController} from './platform-tests.js';
 import {createBreakCorrectionsController} from './break-corrections.js';
-import {renderCommercialDetails,estimatePublicPlanPrice,isPublicPlanOfferComplete,publicPlanHighlights} from './commercial.js';
+import {renderCommercialDetails,quotePublicPlanOffer,isPublicPlanOfferComplete,publicPlanHighlights} from './commercial.js';
 import {createPayrollController} from './payroll.js';
 import {createCommunicationsController} from './communications.js';
 import {createHrController} from './hr.js';
@@ -128,7 +128,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   const seatStatus=seatInvalid?'Indiquez un nombre entier de 1 à 100 000 membres pour calculer les tarifs.':
    'Tarifs calculés pour '+s.seats+' membre'+(s.seats>1?'s':'')+'.';
   return `<section class="ess-pricing"><div class="ess-pricing-head"><h2>Choisissez votre forfait</h2><div class="ess-switch" role="group" aria-label="Période de paiement">${btn('Mensuel','monthly',`aria-pressed="${s.cadence==='monthly'}"`)}${btn(visible.length&&visible[0].annual_discount>0&&visible.every(p=>p.annual_discount===visible[0].annual_discount)?'Annuel −'+visible[0].annual_discount+' %':'Annuel','yearly',`aria-pressed="${s.cadence==='yearly'}"`)}</div></div>${field('Nombre de membres humains','ess-seats',seatValue,'number',`min="1" max="100000" required aria-invalid="${seatInvalid}" aria-describedby="ess-seats-status"`)}<p id="ess-seats-status" class="ess-seats-status" role="status" aria-live="polite" aria-atomic="true">${seatStatus}</p><div class="ess-price-grid">${visible.map(p=>{
- const estimate=seatInvalid?null:estimatePublicPlanPrice(p,s.seats,s.cadence),monthly=estimate?.monthlyCents??0,annual=estimate?.annualCents??0,yearly=s.cadence==='yearly';
+ const estimate=seatInvalid?null:quotePublicPlanOffer(p,s.seats,s.cadence),monthly=estimate?.monthlyCents??0,annual=estimate?.annualCents??0,yearly=s.cadence==='yearly';
  // Do not describe an incomplete catalog entry as a valid offer. Even if
  // its seat estimate is missing, the card stays visible but unselectable.
  const membersLabel=!estimate?'Membres et suppléments à confirmer':
@@ -271,7 +271,7 @@ export function createEssentialController({sb,redraw,notify,escape:e,document:do
   const seatsInput=doc.getElementById('ess-seats');
   const seats=validSeatCount(seatsInput?seatsInput.value:(s.seatDraft??s.seats));
   if(seats===null)throw Error('Indiquez un nombre entier de 1 à 100 000 membres avant de choisir.');
-  if(s.loading||!plan||!estimatePublicPlanPrice(plan,seats,s.cadence)||!isPublicPlanOfferComplete(plan))
+  if(s.loading||!plan||!quotePublicPlanOffer(plan,seats,s.cadence))
    throw Error('Ce forfait n’est plus disponible ou ses détails sont incomplets. Actualisez les tarifs.');
   s.seats=seats;s.seatDraft=String(seats);
   s.checkout=plan.title;
