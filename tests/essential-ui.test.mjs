@@ -11,6 +11,81 @@ test('worker creation calls the checked RPC, permits no email and never creates 
 test('price edits send expected version and a reason, and surface server denial',async()=>{const {w,ui,calls}=setup(async()=>({error:{message:'MFA required'}}));ui.state.mfaRequired=false;ui.state.tab='plans';w.document.body.innerHTML=ui.renderPlatform();w.document.getElementById('ess-base').value='45.50';w.document.getElementById('ess-reason').value='Nouveaux clients seulement';await ui.handle({dataset:{action:'ess:save-plan'}});assert.equal(calls[0].name,'platform_save_essential_plan');assert.equal(calls[0].args.p_expected_version,1);assert.equal(calls[0].args.p_values.base_cents,4550);assert.match(ui.state.error,/MFA required/);assert.equal(ui.state.plans[0].base_cents,3900);await w.happyDOM.close();});
 test('personnel names are escaped and private platform state is cleared at signout',async()=>{const {w,ui}=setup();ui.state.workers=[{id:'x',first_name:'<script>alert(1)</script>',last_name:'',employee_number:'AB',status:'active',auth_user_id:null}];w.document.body.innerHTML=ui.renderWorkers();assert.equal(w.document.querySelector('script'),null);ui.state.platform=true;ui.state.snapshot={companies_list:[{name:'private'}]};ui.reset();assert.equal(ui.state.platform,false);assert.equal(ui.state.snapshot,null);assert.equal(ui.state.workers.length,0);await w.happyDOM.close();});
 test('choosing a public plan calls signup navigation without claiming payment',async()=>{const w=new Window();let chosen;const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,onChoose:p=>{chosen=p}});ui.state.plans=[plan];await ui.handle({dataset:{action:'ess:choose',id:'essential_plus'}});assert.equal(chosen.id,'essential_plus');assert.equal(ui.state.checkout,'Essentiel Plus');assert.equal(ui.state.paymentConfirmed,undefined);await w.happyDOM.close();});
+test('Bento rejects previously cached offers when the catalog refresh fails and safely recovers',async()=>{
+ const w=new Window();let fail=true,chosen=0,reads=0;
+ const sb={from(table){
+  assert.equal(table,'essential_plans');
+  return {select(){return {order:async()=>{
+   reads++;
+   return fail?{data:null,error:{message:'Catalogue hors ligne'}}:{data:[{...plan}],error:null};
+  }}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document,onChoose:()=>chosen++});
+ try{
+  ui.state.plans=[{...plan}];
+  ui.state.checkout=plan.title;
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelectorAll('[data-action="ess:choose"]').length,1);
+  await ui.handle({dataset:{action:'ess:retry-public'}});
+  assert.equal(reads,1);
+  assert.deepEqual(ui.state.plans,[],'unverified cached prices must not remain selectable');
+  assert.equal(ui.state.checkout,null);
+  assert.match(ui.state.error,/hors ligne/);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.match(w.document.body.textContent,/Tarifs temporairement indisponibles/);
+  assert.ok(w.document.querySelector('[data-action="ess:retry-public"]'));
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosen,0,'forged old offer must not navigate while offline');
+  fail=false;
+  await ui.handle({dataset:{action:'ess:retry-public'}});
+  assert.equal(reads,2);
+  assert.equal(ui.state.plans.length,1);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosen,1,'successful reload restores the real signup path');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento selection reads restored seat input even without input events',async()=>{
+ const w=new Window();let chosenSeats=null;
+ const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,
+  onChoose:()=>{chosenSeats=ui.state.seats}});
+ try{
+  ui.state.plans=[{...plan}];ui.state.seats=5;
+  w.document.body.innerHTML=ui.renderPricing();
+  const input=w.document.getElementById('ess-seats');
+  input.value='8'; // browser autofill or bfcache restore can skip an input event
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosenSeats,8);
+  assert.equal(ui.state.seats,8);
+  assert.equal(ui.state.seatDraft,'8');
+  assert.equal(ui.state.checkout,plan.title);
+  input.value='0';
+  chosenSeats=null;
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosenSeats,null,'an invalid restored count must never navigate');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento removes an obsolete chosen-plan message when seats or billing period change',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.checkout=plan.title;
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.match(w.document.querySelector('.ess-pricing .ess-notice').textContent,/Forfait choisi/);
+  const input=w.document.getElementById('ess-seats');input.value='6';
+  ui.input(input);
+  assert.equal(ui.state.checkout,null);
+  assert.equal(w.document.querySelector('.ess-pricing .ess-notice'),null);
+  ui.state.checkout=plan.title;
+  await ui.handle({dataset:{action:'ess:yearly'}});
+  assert.equal(ui.state.checkout,null);
+  assert.doesNotMatch(ui.renderPricing(),/Forfait choisi/);
+ }finally{await w.happyDOM.close();}
+});
+
 test('late personnel responses cannot repopulate private state after signout',async()=>{const w=new Window();let release;const pending=new Promise(resolve=>{release=resolve});const sb={rpc:async()=>({data:false}),from(table){const q={select(){return q},eq(){return q},order(){return table==='company_workers'?pending:Promise.resolve({data:[plan]})}};return q;}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});const loading=ui.load({id:'old-user'},{company_id:'tenant',role:'employee',companies:{product_edition:'essential'}});await new Promise(r=>setTimeout(r,0));ui.reset();release({data:[{id:'private-worker',auth_user_id:'old-user',first_name:'Private'}]});await loading;assert.equal(ui.state.worker,null);assert.deepEqual(ui.state.workers,[]);assert.equal(ui.state.platform,false);await w.happyDOM.close();});
 test('kiosk navigation uses a static public URL without pairing secrets',async()=>{const {w,ui}=setup();ui.state.devices=[{id:'device',name:'Reception',paired_at:null,revoked_at:null}];ui.state.pairCode='secret-code';w.document.body.innerHTML=ui.renderKiosks();const links=[...w.document.querySelectorAll('a')].filter(a=>a.textContent==='Ouvrir la pointeuse');assert.equal(links.length,1);assert.equal(links[0].getAttribute('href'),'https://punch360app.github.io/Punch360/kiosk.html');assert.equal(new URL(links[0].href).search,'');assert.equal(new URL(links[0].href).hash,'');assert.ok(w.document.querySelector('[data-action="ess:copy-kiosk-link"]'));await w.happyDOM.close();});
 
