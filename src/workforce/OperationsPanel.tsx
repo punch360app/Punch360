@@ -24,10 +24,21 @@ export function OperationsPanel({account,mode}:{account:WorkspaceAccount;mode:'s
   const requestedScope=scope;
   if(scopeRef.current!==requestedScope)return;
   const revision=++readRevision.current;
-  const queries=await Promise.all([
-   supabase.from('jobs').select('id,number,name').eq('company_id',account.companyId),
+  // Invitations must remain accessible even if private operations tables are
+  // unavailable. Other screens read only the tables their content requires.
+  if(mode==='invite'){
+   if(scopeRef.current!==requestedScope||readRevision.current!==revision)return;
+   setJobs([]);setMembers([]);setShifts([]);setDocs([]);setAcks([]);
+   setLoadedScope(requestedScope);
+   return;
+  }
+  const jobQuery=supabase.from('jobs').select('id,number,name').eq('company_id',account.companyId);
+  const queries=mode==='schedule'?await Promise.all([
+   jobQuery,
    supabase.from('company_members').select('user_id,role').eq('company_id',account.companyId).eq('status','active'),
-   supabase.from('scheduled_shifts').select('*').eq('company_id',account.companyId).is('cancelled_at',null).order('starts_at'),
+   supabase.from('scheduled_shifts').select('*').eq('company_id',account.companyId).is('cancelled_at',null).order('starts_at')
+  ]):await Promise.all([
+   jobQuery,
    supabase.from('job_documents').select('*').eq('company_id',account.companyId).order('created_at',{ascending:false}),
    supabase.from('document_acknowledgements').select('document_id').eq('user_id',account.userId)
   ]);
@@ -36,10 +47,17 @@ export function OperationsPanel({account,mode}:{account:WorkspaceAccount;mode:'s
    if(result.error)throw result.error;
    if(!Array.isArray(result.data))throw Error('Relevé des opérations incomplet. Réessayez.');
   }
-  // All null/partial responses were rejected above; satisfy Supabase's
-  // nullable type without treating incomplete data as a successful load.
-  setJobs(queries[0].data||[]);setMembers(queries[1].data||[]);setShifts(queries[2].data||[]);
-  setDocs(queries[3].data||[]);setAcks(queries[4].data||[]);
+  // Supabase types remain nullable even after the strict response check.
+  setJobs((queries[0].data||[]) as Row[]);
+  if(mode==='schedule'){
+   setMembers((queries[1].data||[]) as Row[]);
+   setShifts((queries[2].data||[]) as Row[]);
+   setDocs([]);setAcks([]);
+  }else{
+   setMembers([]);setShifts([]);
+   setDocs((queries[1].data||[]) as Row[]);
+   setAcks((queries[2].data||[]) as Row[]);
+  }
   setLoadedScope(requestedScope);
  }
  useEffect(()=>{
@@ -53,7 +71,7 @@ export function OperationsPanel({account,mode}:{account:WorkspaceAccount;mode:'s
    if(scopeRef.current===requestedScope)setError(e?.message||'Lecture des opérations impossible.');
   });
   return()=>{++readRevision.current};
- },[scope]);
+ },[scope,mode]);
  async function run(fn:()=>Promise<void>){
   if(busy||loadedScope!==scope||scopeRef.current!==scope)return;
   const requestedScope=scope;
