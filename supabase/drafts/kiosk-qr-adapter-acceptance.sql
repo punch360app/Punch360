@@ -90,6 +90,42 @@ begin
   '829471','identify');
  if result->>'ok'<>'true' then raise exception 'Valid QR and PIN identification failed';end if;
 
+ -- A previously paired tablet is not authorization to punch at a
+ -- disabled establishment. Closing its punch job must also deny the QR.
+ update public.essential_locations set active=false
+  where company_id=company_a
+   and punch_job_id=(select site_id from private.kiosk_devices
+     where id=(kiosk_a->>'device_id')::uuid);
+ result:=public.kiosk_qr_execute(
+  (kiosk_a->>'device_id')::uuid,kiosk_a->>'token',qr_code,
+  '829471','identify');
+ if result->>'ok'='true' then
+  raise exception 'Inactive establishment accepted QR';end if;
+ update public.essential_locations set active=true
+  where company_id=company_a
+   and punch_job_id=(select site_id from private.kiosk_devices
+     where id=(kiosk_a->>'device_id')::uuid);
+
+ update public.jobs set active=false
+  where company_id=company_a
+   and id=(select site_id from private.kiosk_devices
+     where id=(kiosk_a->>'device_id')::uuid);
+ result:=public.kiosk_qr_execute(
+  (kiosk_a->>'device_id')::uuid,kiosk_a->>'token',qr_code,
+  '829471','identify');
+ if result->>'ok'='true' then
+  raise exception 'Inactive punch job accepted QR';end if;
+ update public.jobs set active=true
+  where company_id=company_a
+   and id=(select site_id from private.kiosk_devices
+     where id=(kiosk_a->>'device_id')::uuid);
+
+ result:=public.kiosk_qr_execute(
+  (kiosk_a->>'device_id')::uuid,kiosk_a->>'token',qr_code,
+  '829471','identify');
+ if result->>'ok'<>'true' then
+  raise exception 'Reactivated establishment still denies valid QR';end if;
+
  -- An event is obligatory for writes. The existing kiosk ledger remains
  -- idempotent: no second session is created by replay.
  result:=public.kiosk_qr_execute(
