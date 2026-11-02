@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createKioskQrCamera,kioskQrCopy,kioskQrText} from '../web/live/kiosk-qr-camera.js';
 
 const kit=({codes=[],permission,clock=()=>0,decode}={})=>{
@@ -233,4 +234,11 @@ test('old track-ended callback cannot stop a replacement camera session',async()
  camera.stop();
  assert.equal(streams[1].handlers.size,0);
  assert.equal(streams[1].track.stops,1);
+});
+
+test('QR scanner owns its own timeout instead of inheriting an earlier PIN form idle timer',()=>{
+ const kiosk=readFileSync(new URL('../web/live/kiosk.js',import.meta.url),'utf8');
+ assert.match(kiosk,/if\(action==='scan-qr'\)\{[^\n]*clearTimeout\(timer\);state\.qrOpen=true/);
+ assert.match(kiosk,/if\(action==='close-qr'\)\{[^\n]*qrCamera\.stop\(\);arm\(\);draw\(\)/);
+ assert.match(kiosk,/notify:reason=>\{if\(!state\.qrOpen\)return;state\.qrOpen=false;state\.notice=qrLabel\(reason\);arm\(\);draw\(\)/);
 });
