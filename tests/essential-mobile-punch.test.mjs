@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch} from '../web/live/essential-mobile-punch.js';
+import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,firstEssentialPunchGuidance} from '../web/live/essential-mobile-punch.js';
 const worker={company_id:'A',auth_user_id:'u',status:'active',personal_access:true,can_mobile_punch:true};
 const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
 test('An explicitly authorized, current worker may use mobile punch',()=>{
@@ -29,6 +29,47 @@ test('All three local entry points block Essentiel mobile punch, without hiding 
  assert.match(app,/async function doPause\(paid=false\)\{if\(isEssential\(\)&&!essentialMobilePunchAllowed\(\)\)/);
  assert.match(app,/function essentialHours\(\)/);
  assert.match(app,/function essentialSchedule\(\)/);
+});
+
+test('first mobile punch requires the exact active workplace in the current company',()=>{
+ const jobs=[
+  {id:'site-1',company_id:'A',active:true,name:'Atelier central'},
+  {id:'site-2',company_id:'B',active:true,name:'Autre compagnie'},
+  {id:'site-3',company_id:'A',active:false,name:'Fermé'}
+ ];
+ assert.equal(resolveEssentialPunchJob('A','site-1',jobs),jobs[0]);
+ for(const id of ['site-2','site-3','missing',null]){
+  assert.equal(resolveEssentialPunchJob('A',id,jobs),null);
+ }
+ assert.equal(resolveEssentialPunchJob('A','site-2',jobs.slice(1)),null);
+ assert.equal(resolveEssentialPunchJob('A','site-1',null),null);
+ assert.equal(resolveEssentialPunchJob('B','site-1',jobs),null);
+});
+
+test('first punch guidance uses acknowledged company sessions and never optimistic offline events',()=>{
+ const job={id:'site-1',company_id:'A',active:true};
+ const first=(company,snapshotCompany,record,snapshot,pending,workplace)=>
+  firstEssentialPunchGuidance(company,'u',record,snapshotCompany,snapshot,pending,workplace);
+ const empty={sessions:[]};
+ assert.equal(first('A','A',worker,empty,0,job),'ready');
+ assert.equal(first('A','A',worker,empty,0,null),'missing-workplace');
+ assert.equal(first('A','A',worker,empty,1,job),null);
+ assert.equal(first('A','B',worker,empty,0,job),null);
+ assert.equal(first('A','A',worker,{sessions:[{user_id:'u'}]},0,job),null);
+ assert.equal(first('A','A',worker,{sessions:[{user_id:'other'}]},0,job),'ready');
+ assert.equal(first('A','A',{...worker,can_mobile_punch:false},empty,0,job),null);
+ assert.equal(first('A','A',{...worker,company_id:'B'},empty,0,job),null);
+ assert.equal(first('A','A',worker,{sessions:null},0,job),null);
+ assert.equal(first('A','A',worker,empty,undefined,job),null);
+});
+
+test('public first-punch action does not fall back to a selected unrelated Job',()=>{
+ assert.match(app,/resolveEssentialPunchJob\(company\(\),activeJobId,state\.jobs\)/);
+ assert.match(app,/firstEssentialPunchGuidance\(company\(\),state\.user\?\.id,essentialUI\.state\.worker,state\.serverPunchCompany,state\.serverPunch,state\.localPending,punchWorkplace\)/);
+ assert.match(app,/state\.busy\|\|mobile&&!punchWorkplace\?'disabled aria-disabled="true"'/);
+ assert.match(app,/if\(!j\)\{if\(isEssential\(\)\)toast\('Aucun établissement actif confirmé/);
+ assert.doesNotMatch(app,/getJob\(essentialPunchJob\(\)\)\|\|selectedJob\(\)/);
+ assert.match(app,/Votre premier PUNCH IN/);
 });
 
 test('Kiosk-only home reports only last acknowledged server session for current company and user',()=>{
