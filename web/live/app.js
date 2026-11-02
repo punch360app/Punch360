@@ -499,7 +499,14 @@ let punchLoadRevision=0;
 async function loadData(){if(!member())return;
  const companyId=company(),userId=state.user?.id,revision=++punchLoadRevision,journal=punchJournal();
  const scopeCurrent=()=>revision===punchLoadRevision&&member()&&company()===companyId&&state.user?.id===userId;
- await journal.flush();if(!scopeCurrent())return;
+ const flushed=await journal.flush();if(!scopeCurrent())return;
+ // Journal acknowledgement is independent from the subsequent Supabase reads.
+ // Keep local pending/conflict indicators accurate even if another read fails.
+ if(Array.isArray(flushed?.events)){
+  const syncState=localPunchSyncState(flushed.events,companyId,userId);
+  state.localPunchEvents=flushed.events;
+  state.localPending=syncState.pending.length;
+ }
  if(!navigator.onLine){
   state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
   state.correctionApprovalsLoaded=false;state.correctionApprovals=[];
