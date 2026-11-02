@@ -11,7 +11,9 @@ const code=ts.transpileModule(source.slice(start).replace(/^export /gm,''),{
 }).outputText;
 function fixture({online=true,unknown=false,probeError=false,identity=['worker-A'],
  verifiedUser='worker-A',authError=null,reply={data:{id:'job-new'},error:null},
- insertError=null}={}){
+ insertError=null,holdInsert=false}={}){
+ let releaseInsert=()=>{};
+ const insertGate=new Promise(resolve=>{releaseInsert=resolve;});
  let reads=0,net=0,auth=0,inserts=0,submitted=null;
  const Network={getNetworkStateAsync:async()=>{
   net++;
@@ -28,7 +30,7 @@ function fixture({online=true,unknown=false,probeError=false,identity=['worker-A
     inserts++;submitted=value;
     return {select:fields=>{
      assert.equal(fields,'id');
-     return {single:async()=>insertError?{data:null,error:insertError}:reply};
+     return {single:async()=>{if(holdInsert)await insertGate;return insertError?{data:null,error:insertError}:reply}};
     }};
    }};
   }
@@ -37,6 +39,7 @@ function fixture({online=true,unknown=false,probeError=false,identity=['worker-A
   '\nreturn {createJob,validatedJobDraft};')(Network,getLocalIdentity,supabase);
  return {...native,submit:(company='tenant-A',number='  JOB-214  ',name='  Résidence  ',address='  10 rue A  ')=>
   native.createJob(company,number,name,address),
+  releaseInsert,
   get calls(){return {reads,net,auth,inserts,submitted}}};
 }
 
@@ -125,4 +128,38 @@ test('job creation remains separated from cached offline job listing',()=>{
  assert.match(code,/Réponse de création non confirmée/);
  const ast=ts.createSourceFile('api.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  assert.deepEqual(ast.parseDiagnostics,[]);
+});
+
+test('two rapid create taps cannot submit two jobs in the same workspace',async()=>{
+ const f=fixture({holdInsert:true});
+ const first=f.submit();
+ // Flush microtasks for the preflight to reach the suspended insert.
+ for(let i=0;i<12&&f.calls.inserts===0;i++)await Promise.resolve();
+ assert.equal(f.calls.inserts,1);
+ await assert.rejects(
+  f.submit('tenant-A','JOB-215','Autre chantier','2 rue Test'),
+  /Création déjà en cours/
+ );
+ assert.equal(f.calls.inserts,1,'Never submit a second insert while the first is unconfirmed');
+ f.releaseInsert();
+ assert.equal(await first,'job-new');
+ assert.equal(f.calls.inserts,1);
+});
+
+test('creation lock is released after server rejection and allows a later explicit retry',async()=>{
+ const f=fixture({insertError:{code:'23505',message:'Duplicate'}});
+ await assert.rejects(f.submit(),e=>e?.code==='23505');
+ await assert.rejects(f.submit(),e=>e?.code==='23505');
+ assert.equal(f.calls.inserts,2);
+});
+
+test('separate workspaces may each submit their own job without inheriting a global busy lock',async()=>{
+ const f=fixture({holdInsert:true});
+ const first=f.submit('tenant-A','A','Job A','');
+ for(let i=0;i<12&&f.calls.inserts===0;i++)await Promise.resolve();
+ const second=f.submit('tenant-B','B','Job B','');
+ for(let i=0;i<12&&f.calls.inserts<2;i++)await Promise.resolve();
+ assert.equal(f.calls.inserts,2,'Different company scopes must not block each other');
+ f.releaseInsert();
+ await Promise.all([first,second]);
 });
