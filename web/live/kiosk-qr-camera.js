@@ -46,14 +46,27 @@ export function createKioskQrCamera({mediaDevices,BarcodeDetector,notify,schedul
   if(!element||!mediaDevices?.getUserMedia||typeof BarcodeDetector!=='function'){
    notify?.('unsupported');return false;
   }
-  let reader;
-  try{reader=new BarcodeDetector({formats:['qr_code']});}
-  catch{notify?.('unsupported');return false;}
-  // Bound the WHOLE camera attempt: permissions and video.play() may remain
-  // unresolved indefinitely. If media arrives after expiry, release it
-  // immediately instead of reviving a discarded shared-tablet session.
+  // Bound the WHOLE attempt, including a stalled native capability check:
+  // permissions and video.play() may also remain unresolved indefinitely.
+  // Late results must never revive a discarded shared-tablet session.
   started=now();
   expirationTimer=expire(()=>{if(token!==generation)return;stop();notify?.('expired');});
+  let reader;
+  try{
+   // Some browsers expose BarcodeDetector but cannot decode QR. Check the
+   // advertised formats before requesting any camera permission.
+   if(typeof BarcodeDetector.getSupportedFormats==='function'){
+    const supported=await BarcodeDetector.getSupportedFormats();
+    if(token!==generation)return false;
+    if(!Array.isArray(supported)||!supported.includes('qr_code')){
+     stop();notify?.('unsupported');return false;
+    }
+   }
+   reader=new BarcodeDetector({formats:['qr_code']});
+  }catch{
+   if(token!==generation)return false;
+   stop();notify?.('unsupported');return false;
+  }
   let acquired;
   try{
    acquired=await mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
