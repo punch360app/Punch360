@@ -14,9 +14,16 @@ export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:
 export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
  const journal=await getPunchJournal(companyId);
+ // Decide before touching the durable queue. Offline refresh is read-only:
+ // failed sends must not rewrite event metadata on every foreground tick.
+ let networkAvailable=false;
+ try{
+  const network=await Network.getNetworkStateAsync();
+  networkAvailable=network.isConnected!==false&&network.isInternetReachable!==false;
+ }catch{/* Unknown connectivity is not permission to upload saved punches. */}
  // A blocked local queue must not prevent official hours from loading.
  let journalBlocked=false;
- try{await journal.flush()}catch{journalBlocked=true}
+ try{await (networkAvailable?journal.flush():journal.inspect())}catch{journalBlocked=true}
  const cacheKey='punch-state:'+user.id+':'+companyId;
  let snapshotUnverified=false;
  const overlay=async(state:PunchState,readSource:'server'|'cache',cacheWriteFailed=false)=>{
@@ -100,13 +107,8 @@ export async function loadPunchState(companyId:string):Promise<PunchState>{
   }
   return overlay(cached,'cache');
  };
- // If Expo cannot read network state, retain access to the last locally
- // saved, identity-scoped snapshot instead of hiding the worker's hours.
- let networkAvailable=false;
- try{
-  const network=await Network.getNetworkStateAsync();
-  networkAvailable=network.isConnected!==false&&network.isInternetReachable!==false;
- }catch{/* The cached snapshot is the safe fallback on network-state failure. */}
+ // With unavailable or unverified connectivity, show the scoped cache
+ // instead of making server requests or treating the queue as official hours.
  if(!networkAvailable)return offlineState();
  // Supabase can reject a request promise or throw before returning a result.
  // A transport failure must retain the last complete scoped snapshot, not hide hours.
@@ -180,7 +182,7 @@ async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'
  // The append was persisted before network. A failed flush may still leave
  // a valid pending or already acknowledged event; inspect that exact event.
  let events:LocalPunchEvent[]|null=null;
- try{events=(await journal.flush()).events}catch{/* Inspect persisted journal. */}
+ try{events=(await (offline?journal.inspect():journal.flush())).events}catch{/* Inspect persisted journal. */}
  if(!events||!events.some(e=>e.id===event.id)){
   try{events=await journal.read()}catch{
    throw Error('Pointage enregistré localement, mais journal illisible : vérifiez Mes heures avant de repointer.');
