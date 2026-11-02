@@ -25,11 +25,26 @@ export function renderCommercialDetails(plans,escape,money,{seats=null,cadence='
   (cadence==='yearly'?' · paiement annuel':' · paiement mensuel'):
   'Tarif estimé · nombre de membres à confirmer';
  const quote=plan=>validCount?estimatePublicPlanPrice(plan,seats,cadence):null;
+ // Keep the breakdown derived from exactly the same catalog quote as the
+ // public cards. For annual payments, subtract the discounted base after
+ // rounding so base + supplement always reconciles to the displayed total.
+ const extraSeats=plan=>plan.included_seats_unlimited===true?0:
+  Math.max(0,seats-plan.included_seats);
+ const supplement=plan=>{
+  const price=quote(plan);
+  if(!price)return 'À confirmer';
+  const base=cadence==='yearly'
+   ?Math.round(plan.base_cents*12*(100-plan.annual_discount)/100)
+   :plan.base_cents;
+  return money(price.payableCents-base);
+ };
  const rows=[
   [priceLabel,p=>{const price=quote(p);return price?money(price.payableCents):'À confirmer';}],
   ...(cadence==='yearly'?[['Économie sur 12 mois',p=>{
    const price=quote(p);return price?money(price.monthlyCents*12-price.annualCents):'À confirmer';
   }]]:[]),
+  ['Membres facturés en supplément',p=>quote(p)?String(extraSeats(p)):'À confirmer'],
+  [cadence==='yearly'?'Supplément pour 12 mois':'Supplément mensuel',p=>supplement(p)],
   ['Prix de base mensuel',p=>money(p.base_cents)],
   ['Membres inclus',p=>p.included_seats_unlimited===true?'Illimité':String(p.included_seats)],
   ['Membre supplémentaire / mois',p=>p.included_seats_unlimited===true?'Aucun supplément':money(p.extra_seat_cents)],
