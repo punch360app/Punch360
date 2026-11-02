@@ -553,6 +553,31 @@ test('Bento cards refuse broken catalog prices and unknown limits without implyi
 });
 
 
+test('Bento rejects visible prices on incomplete offers while a verified offer remains selectable',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  ui.state.plans=[
+   {...plan,id:'missing-entitlement',title:'À vérifier',features:null},
+   {...plan,id:'verified',title:'Offre vérifiée'}
+  ];
+  w.document.body.innerHTML=ui.renderPricing();
+  const cards=[...w.document.querySelectorAll('.ess-price')];
+  assert.equal(cards.length,2);
+  assert.match(cards[0].querySelector('.ess-price-amount').textContent,/Tarif indisponible/);
+  assert.equal(cards[0].querySelector('[data-action="ess:choose"]').disabled,true);
+  assert.match(cards[1].querySelector('.ess-price-amount').textContent,/51,00/);
+  assert.equal(cards[1].querySelector('[data-action="ess:choose"]').disabled,false);
+  const quote=w.document.querySelector('.ess-comparison tbody tr');
+  assert.deepEqual([...quote.querySelectorAll('td')].map(x=>x.textContent),['À confirmer',
+   new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(51)]);
+  await ui.handle({dataset:{action:'ess:choose',id:'missing-entitlement'}});
+  assert.equal(ui.state.checkout,undefined);
+  await ui.handle({dataset:{action:'ess:choose',id:'verified'}});
+  assert.equal(ui.state.checkout,'Offre vérifiée');
+ }finally{await w.happyDOM.close();}
+});
+
 test('Bento rejects selection of an offer with a valid price but unverified rights and quotas',async()=>{
  const {w,ui}=setup();
  try{
@@ -560,7 +585,8 @@ test('Bento rejects selection of an offer with a valid price but unverified righ
   ui.state.plans=[{...plan,id:'unknown-terms',kiosk_limit:undefined,features:null}];
   w.document.body.innerHTML=ui.renderPricing();
   const card=w.document.querySelector('.ess-price');
-  assert.match(card.querySelector('.ess-price-amount').textContent,/51,00/);
+  assert.match(card.querySelector('.ess-price-amount').textContent,/Tarif indisponible/);
+  assert.doesNotMatch(w.document.querySelector('.ess-comparison tbody tr').textContent,/51,00/);
   assert.match(card.textContent,/Bornes à confirmer/);
   assert.match(card.textContent,/Détails du forfait à confirmer/);
   assert.equal(card.querySelector('[data-action="ess:choose"]').disabled,true);
