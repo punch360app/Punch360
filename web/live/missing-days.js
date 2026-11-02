@@ -24,6 +24,34 @@ export function employeeMissingDaysSummary({companyId,userId,source}={}){
  return {ready:true,requests:rows};
 }
 
+/**
+ * Summary for the existing manager approval page. Read-only: all decisions
+ * remain in the established missing-days controller and the server RPC/RLS.
+ * Never show a row from another company, another account or an unknown worker.
+ */
+export function managerMissingDayApprovalSummary({companyId,reviewerId,source}={}){
+ const empty={ready:false,count:0,requests:[]};
+ if(typeof companyId!=='string'||!companyId||typeof reviewerId!=='string'||!reviewerId||
+    source?.company!==companyId||source.user!==reviewerId||
+    !['boss','admin'].includes(source.role)||source.loaded!==true||
+    !Array.isArray(source.workers)||!Array.isArray(source.requests))return empty;
+ const workers=new Map(source.workers.filter(w=>typeof w?.id==='string'&&w.id&&
+  typeof w.auth_user_id==='string').map(w=>[w.id,w]));
+ const pending=source.requests.filter(r=>r?.company_id===companyId&&
+  r.status==='pending'&&typeof r.id==='string'&&r.id&&
+  typeof r.worker_id==='string'&&workers.has(r.worker_id)&&
+  workers.get(r.worker_id).auth_user_id!==reviewerId&&
+  r.requested_by!==reviewerId&&typeof r.starts_at==='string'&&
+  Number.isFinite(Date.parse(r.starts_at)))
+  .sort((a,b)=>Date.parse(b.created_at||b.starts_at)-Date.parse(a.created_at||a.starts_at));
+ return {ready:true,count:pending.length,requests:pending.slice(0,5).map(r=>({
+  id:r.id,startsAt:r.starts_at,endsAt:typeof r.ends_at==='string'&&
+   Number.isFinite(Date.parse(r.ends_at))?r.ends_at:null,
+  workerName:[workers.get(r.worker_id).first_name,workers.get(r.worker_id).last_name]
+   .filter(x=>typeof x==='string'&&x.trim()).join(' ')||'Salarié'
+ }))};
+}
+
 export function createMissingDaysController({sb,redraw,escape:e,storage=globalThis.localStorage,crypto=globalThis.crypto}){
  let generation=0;const s={company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''},manager=()=>['boss','admin'].includes(s.role);
  function reset(){generation++;Object.assign(s,{company:null,user:null,role:null,workers:[],jobs:[],requests:[],form:blankMissingDay(),note:'',busy:false,loaded:false,error:''})}
