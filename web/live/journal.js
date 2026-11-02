@@ -3,8 +3,8 @@ export class PunchJournal {
  constructor({storage,send,uuid,company,user,withLock}){this.storage=storage;this.send=send;this.uuid=uuid;this.company=company;this.user=user;this.key=`punch-journal-v1:${user}:${company}`;this.withLock=withLock||((fn)=>fn());this.serial=Promise.resolve();this.flushing=null;}
  async read(){const raw=await this.storage.get(this.key);if(!raw)return [];const events=JSON.parse(raw);if(!Array.isArray(events))throw Error('Journal local illisible : conservation des données pour récupération');return events;}
  exclusive(fn){const task=this.serial.then(()=>this.withLock(fn));this.serial=task.catch(()=>{});return task;}
- async append(action,job,fix,occurredAt=new Date().toISOString(),paid=false){
-  return this.exclusive(async()=>{const queue=await this.read();const event={id:this.uuid(),company:this.company,user:this.user,action,job:job||null,fix:fix||null,occurredAt,...(paid?{paid:true}:{}),offline:queue.some(e=>e.status==='pending'),status:'pending',previous:queue.at(-1)?.id||null};queue.push(event);await this.storage.set(this.key,JSON.stringify(queue));return event;});
+ async append(action,job,fix,occurredAt=new Date().toISOString(),paid=false,offline=false){
+  return this.exclusive(async()=>{const queue=await this.read();const event={id:this.uuid(),company:this.company,user:this.user,action,job:job||null,fix:fix||null,occurredAt,...(paid?{paid:true}:{}),offline:offline===true||queue.some(e=>e.status==='pending'),status:'pending',previous:queue.at(-1)?.id||null};queue.push(event);await this.storage.set(this.key,JSON.stringify(queue));return event;});
  }
  async flush(){
   if(this.flushing)return this.flushing;
@@ -19,12 +19,20 @@ export class PunchJournal {
 export function projectPendingPunches(snapshot,events){
  const sessions=snapshot.sessions.map(s=>({...s})),segments=snapshot.segments.map(s=>({...s})),breaks=(snapshot.breaks||[]).map(s=>({...s}));
  for(const event of events.filter(e=>e.status==='pending')){
-  const active=sessions.find(s=>!s.ended_at);
+  // A stale or contaminated snapshot must never let one employee's
+  // offline event edit a different employee/company session.
+  const active=sessions.find(s=>!s.ended_at&&
+   (s.company_id==null||s.company_id===event.company)&&
+   (s.user_id==null||s.user_id===event.user));
   if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
   if(event.action==='break_start'&&active)breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});
   if(event.action==='break_end'&&active)for(const pause of breaks)if(pause.session_id===active.id&&!pause.ended_at)pause.ended_at=event.occurredAt;
   if(event.action==='out'&&active){for(const pause of breaks)if(pause.session_id===active.id&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(seg.session_id===active.id&&!seg.ended_at)seg.ended_at=event.occurredAt;}
   if(event.action==='transfer'&&active){for(const seg of segments)if(seg.session_id===active.id&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
  }
- return {sessions,segments,breaks,active:sessions.find(s=>!s.ended_at)||null,lastJobId:segments[0]?.job_id||null};
+ const pending=events.filter(e=>e.status==='pending'),latest=pending.at(-1);
+ const active=sessions.find(s=>!s.ended_at&&(!latest||
+  (s.company_id==null||s.company_id===latest.company)&&
+  (s.user_id==null||s.user_id===latest.user)))||null;
+ return {sessions,segments,breaks,active,lastJobId:segments[0]?.job_id||null};
 }
