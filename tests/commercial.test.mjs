@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
-import {renderCommercialDetails,estimatePublicPlanPrice,isPublicPlanOfferComplete} from '../web/live/commercial.js';
+import {renderCommercialDetails,estimatePublicPlanPrice,isPublicPlanOfferComplete,publicPlanHighlights} from '../web/live/commercial.js';
 const escape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const money=cents=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(cents/100);
 const plan={active:true,public_visible:true,title:'Essentiel',base_cents:1900,extra_seat_cents:300,included_seats:5,annual_discount:15,kiosk_limit:1,establishment_limit:1,features:[]};
@@ -89,4 +89,15 @@ test('public offer selection requires known limits and feature entitlements',()=
    'estimated price may remain calculable while legal offer terms are incomplete');
  }
  assert.equal(isPublicPlanOfferComplete(null),false);
+});
+
+
+test('public pricing cards list only verifiable feature flags, never invented entitlements',()=>{
+ assert.deepEqual(publicPlanHighlights({...plan,features:['messages']}),['Messagerie']);
+ assert.deepEqual(publicPlanHighlights({...plan,features:['punch','hours','personal_account']}),[
+  'Pointage des employés','Suivi des heures'
+ ]);
+ assert.deepEqual(publicPlanHighlights({...plan,features:[]}),[]);
+ assert.deepEqual(publicPlanHighlights({...plan,features:null}),[]);
+ assert.deepEqual(publicPlanHighlights({...plan,features:['unknown_future_flag','<img src=x>','messages']}),['Messagerie']);
 });
