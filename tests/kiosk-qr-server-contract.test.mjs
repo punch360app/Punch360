@@ -67,7 +67,9 @@ test('a copied credential with revoked phone, foreign company or PIN failure nev
 test('legacy kiosk Edge Function cannot accept or execute QR authorization before database transaction is implemented',()=>{
  const server=readFileSync(new URL('../supabase/functions/essential-kiosk/index.ts',import.meta.url),'utf8');
  assert.match(server,/\['identify','enroll','in','out','break_start','break_start_paid','break_end'\]\.includes\(p\.action\)/);
- assert.doesNotMatch(server,/['"]qr_identify['"]\s*,\s*['"]qr_execute['"]/);
+ assert.match(server,/parseKioskQrEnvelope\(p\)\.ok/);
+ assert.match(server,/return reply\(403,\{ok:false,error:'OPERATION_REFUSED'\}\);/);
+ assert.ok(server.indexOf("parseKioskQrEnvelope(p).ok")<server.indexOf("const client=createClient("),"QR must be rejected before privileged RPC");
  assert.doesNotMatch(server,/rpc\(['"]kiosk_qr_execute['"]/);
  const camera=readFileSync(new URL('../web/live/kiosk-qr-camera.js',import.meta.url),'utf8');
  assert.doesNotMatch(camera,/(?:fetch\(|\.rpc\(|localStorage|sessionStorage|console\.log|sendBeacon)/);
