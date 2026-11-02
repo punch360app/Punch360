@@ -22,7 +22,16 @@ test('installed PWA precaches all static JavaScript modules used by the app',()=
    if(child.pathname.endsWith('.js'))check(child);
   }
  }
+ // The kiosk has its own entrypoint and nested imports. Checking app.js alone
+ // can leave the employee PWA usable while the offline kiosk fails to boot.
  check(new URL('app.js',root));
- assert.deepEqual([...missing].sort(),[],'Offline boot is missing one or more imported JS modules');
- assert.ok(seen.size>=20,'Expected real app dependency graph rather than a trivial sample');
+ const appCount=seen.size;
+ check(new URL('kiosk.js',root));
+ assert.ok(seen.has(new URL('kiosk-offline.js',root).pathname),
+  'Kiosk offline queue must be part of the verified dependency graph');
+ assert.ok(seen.has(new URL('kiosk-locale.js',root).pathname),
+  'Kiosk localization must be part of the verified dependency graph');
+ assert.deepEqual([...missing].sort(),[],'Offline app or kiosk boot is missing imported JS modules');
+ assert.ok(appCount>=20,'Expected real app dependency graph rather than a trivial sample');
+ assert.ok(seen.size>appCount,'Kiosk must contribute to the checked dependency graph');
 });
