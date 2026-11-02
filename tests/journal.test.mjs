@@ -8,6 +8,36 @@ test('persist before network; failed network survives restart and replays in ord
  const local=projectPendingPunches({sessions:[],segments:[]},await journal.read());assert.equal(local.active,null);assert.equal(local.segments.length,2);assert.equal(local.sessions[0].ended_at,'2026-10-24T13:00:00Z');
  online=true;const restarted=new PunchJournal({company:'c',user:'u',uuid:()=>'',storage:journal.storage,send:journal.send});const result=await restarted.flush();assert.equal(result.pending,0);assert.deepEqual(received,['in','transfer','out']);assert.ok(result.events.every(e=>e.offline));assert.equal(result.events[1].previous,'1');
 });
+test('offline inspection reads pending punches without sending or rewriting saved bytes',async()=>{
+ const memory=new Map();let writes=0,sends=0;
+ const storage={get:async key=>memory.get(key)||null,set:async(key,value)=>{writes++;memory.set(key,value)}};
+ const journal=new PunchJournal({company:'c',user:'u',uuid:()=> 'offline-1',storage,
+  send:async()=>{sends++;return {sync_status:'synced'}}});
+ await journal.append('in','A',null,'2026-11-02T08:00:00Z',false,true);
+ const key=journal.key,before=memory.get(key),writeCount=writes;
+ const inspection=await journal.inspect();
+ assert.deepEqual({sent:inspection.sent,pending:inspection.pending}, {sent:0,pending:1});
+ assert.equal(inspection.events[0].status,'pending');
+ assert.equal(sends,0);assert.equal(writes,writeCount);
+ assert.equal(memory.get(key),before,'Offline inspection must not change durable bytes');
+ const synced=await journal.flush();
+ assert.equal(synced.pending,0);assert.equal(sends,1);
+ assert.equal((await journal.read())[0].id,'offline-1');
+});
+
+test('offline inspection refuses a damaged journal without uploading or deleting it',async()=>{
+ const memory=new Map(),original=JSON.stringify([{id:'evt',company:'other',user:'u',action:'in',
+  job:'A',occurredAt:'2026-11-02T08:00:00Z',status:'pending'}]);
+ let sends=0,writes=0;
+ const journal=new PunchJournal({company:'c',user:'u',uuid:()=> 'new-id',
+  storage:{get:async key=>memory.get(key)||null,set:async(key,value)=>{writes++;memory.set(key,value)}},
+  send:async()=>{sends++;return {sync_status:'synced'}}});
+ memory.set(journal.key,original);
+ await assert.rejects(journal.inspect(),/non vérifiable/);
+ assert.equal(sends,0);assert.equal(writes,0);
+ assert.equal(memory.get(journal.key),original);
+});
+
 test('concurrent append and flush cannot drop an event',async()=>{const {journal}=fixture(async()=>({sync_status:'synced'}));await Promise.all([journal.append('in','A'),journal.append('transfer','B'),journal.append('out')]);await Promise.all([journal.flush(),journal.flush()]);assert.equal((await journal.read()).length,3);assert.equal((await journal.pending()).length,0);});
 test('lost response preserves immutable event id and payload for idempotent retry',async()=>{let calls=0;const ids=[];const {journal}=fixture(async e=>{ids.push(e.id);if(!calls++)throw Error('response lost');return {sync_status:'synced'}});await journal.append('in','A');await journal.flush();await journal.flush();assert.deepEqual(ids,['1','1']);assert.equal((await journal.read())[0].status,'synced');});
 test('all dependent conflicts reach admin while remaining durably stored locally',async()=>{const {journal}=fixture(async()=>({sync_status:'conflict',message:'review'}));await journal.append('in','A');await journal.append('out');await journal.flush();assert.equal((await journal.read()).filter(e=>e.status==='conflict').length,2);});
