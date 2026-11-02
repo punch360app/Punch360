@@ -181,7 +181,7 @@ test('Expo Essentiel reuses server-scoped assignment and never redirects a missi
 test('Expo Essentiel blocks PUNCH IN without verified job, retains PUNCH OUT',()=>{
  assert.match(native,/if\(action==='punch'&&!punch\.active&&!siteJob\)/);
  assert.match(native,/punch\.active\?await punchOut\(account\.companyId\):await punchIn\(account\.companyId,siteJob!\)/);
- assert.match(native,/disabled=\{busy\|\|!mobileAllowed\|\|punch\.localJournalBlocked\|\|\(!punch\.active&&!siteJob\)\}/);
+ assert.match(native,/disabled=\{busy\|\|!mobileAllowed\|\|journalBlocked\|\|\(!punch\.active&&!siteJob\)\}/);
  assert.match(native,/Établissement à vérifier/);
  assert.match(native,/Établissement de pointage non confirmé/);
 });
@@ -206,7 +206,7 @@ test('Expo Essentiel requires an active worker with explicit mobile permissions'
 });
 
 test('Expo Essentiel recovers from corrupt channel cache without hiding hours or granting mobile punch',async()=>{
- const from=native.indexOf('let cached:any=null;',native.indexOf('async function load(){try{'));
+ const from=native.indexOf('let cached:any=null;',native.indexOf('async function load(){'));
  const to=native.indexOf('if(offline){',from);
  assert.ok(from>=0&&to>from,'Guarded channel and network loader must be present');
  const body=native.slice(from,to).replace('let cached:any=null;','let cached=null;');
@@ -246,19 +246,20 @@ test('Expo Essentiel ignores stale overlapping reads and defers refresh during a
  const params=['punchActionInFlight','syncInFlight','account','punchReadRevision','visitContext',
   'AsyncStorage','Network','supabase','loadPunchState','journalSummary',
   'setSiteJob','setMobileAllowed','setNotice','setMissionWorker','setMyVisit',
-  'setVisitUnavailable','setFixedAddress','setFixedName','setPunch','setPending',
+  'setVisitUnavailable','setFixedAddress','setFixedName','setPunch','setJournalBlocked','setPending',
   'setConflicts','setPendingItems','setConflictItems','personalUpcomingClientVisit'];
  const builder=new Function(...params,source+'\nreturn load;');
  const revision={current:0},action={current:false},sync={current:false},scope={current:'A:u'};
- const held=[],updates=[];
- const setter=key=>value=>{if(key==='punch')updates.push(value.sessions[0]?.id)};
+ const held=[],updates=[],blocked=[];
+ let summaryBlocked=false;
+ const setter=key=>value=>{if(key==='punch')updates.push(value.sessions[0]?.id);if(key==='journalBlocked')blocked.push(value)};
  const load=builder(action,sync,{companyId:'A',userId:'u'},revision,scope,
   {getItem:async()=>JSON.stringify({version:2,job:'J',allowed:true,checkedAt:Date.now()})},
   {getNetworkStateAsync:async()=>({isConnected:false,isInternetReachable:false})},
   null,async()=>new Promise(resolve=>held.push(resolve)),
-  async()=>({pending:0,conflicts:0,pendingItems:[],conflictItems:[],blocked:false}),
+  async()=>({pending:0,conflicts:0,pendingItems:[],conflictItems:[],blocked:summaryBlocked}),
   ...['siteJob','mobileAllowed','notice','missionWorker','myVisit','visitUnavailable',
-   'fixedAddress','fixedName','punch','pending','conflicts','pendingItems','conflictItems'].map(setter),
+   'fixedAddress','fixedName','punch','journalBlocked','pending','conflicts','pendingItems','conflictItems'].map(setter),
   ()=>null);
  const snapshot=id=>({sessions:[{id}],segments:[],breaks:[],active:null,lastJobId:null,readSource:'cache'});
  const first=load();
@@ -273,7 +274,24 @@ test('Expo Essentiel ignores stale overlapping reads and defers refresh during a
  action.current=true;await load();action.current=false;
  sync.current=true;await load();sync.current=false;
  assert.equal(held.length,2,'Refresh must not race with punch submission or manual sync');
+ summaryBlocked=true;
+ const afterBlocked=load();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(held.length,3);
+ held[2](snapshot('still-visible'));await afterBlocked;
+ assert.deepEqual(updates,['new','still-visible'],'Hours remain readable with blocked journal');
+ assert.equal(blocked.at(-1),true,'Unreadable journal blocks new mobile punches');
  assert.match(native,/const revision=\+\+punchReadRevision\.current/);
  assert.match(native,/const current=\(\)=>visitContext\.current===requestedFor&&punchReadRevision\.current===revision/);
  assert.match(native,/\[account\.companyId,account\.userId\]/);
+});
+
+test('Expo Essentiel blocks all new punch and pause controls when journal summary fails',()=>{
+ assert.match(native,/setJournalBlocked\(!!updated\.localJournalBlocked\|\|summary\.blocked\)/);
+ assert.match(native,/if\(busy\|\|punchActionInFlight\.current\|\|syncInFlight\.current\|\|!mobileAllowed\|\|journalBlocked\)return/);
+ assert.match(native,/disabled=\{busy\|\|!mobileAllowed\|\|journalBlocked\|\|\(!punch\.active&&!siteJob\)\}/);
+ assert.match(native,/punch\.active&&mobileAllowed&&!journalBlocked\?<Pressable/);
+ assert.match(native,/if\(busy\|\|punchActionInFlight\.current\|\|syncInFlight\.current\|\|journalBlocked\)return/);
+ assert.match(native,/setJournalBlocked\(true\);setNotice\(e\?\.message\|\|String\(e\)\)/);
+ assert.match(native,/useEffect\(\(\)=>\{setMobileAllowed\(false\);setSiteJob\(null\);setJournalBlocked\(true\);load\(\)/);
 });
