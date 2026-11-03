@@ -37,7 +37,7 @@ export function createHoursCsv({companyId,userId,ownOnly=true,rows=[],breaks=[],
  const output=allowed.map(r=>{
   const worker=r.punch_sessions;
   const duration=segmentExportDuration(r,indexed.get(r.session_id)||[],worker);
-  const person=essential?(roster.find(w=>w.id===worker.worker_id)?.employee_number||
+  const person=essential?(roster.find(w=>w.id===worker.worker_id&&w.company_id===companyId)?.employee_number||
     worker.worker_id||worker.user_id):worker.user_id||worker.worker_id;
   const location=essential?(locations.find(w=>w.punch_job_id===r.job_id&&w.company_id===companyId)?.name||'Établissement'):
    (jobs.find(j=>j.id===r.job_id&&j.company_id===companyId)?.number||r.job_id);
