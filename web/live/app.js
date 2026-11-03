@@ -252,7 +252,10 @@ async function exportHours(){
  if(!member())return toast('Connexion requise pour exporter les heures.');
  if(!navigator.onLine)return toast('Export serveur indisponible hors ligne. Synchronisez avant de réessayer.');
  hoursExportRunning=true;
- const {companyId,userId,ownOnly:selfOnly}=hoursExportScope(company(),state.user.id,state.account?.role,state.section);
+ const roleAtStart=state.account?.role,sectionAtStart=state.section,
+  editionAtStart=isEssential();
+ const {companyId,userId,ownOnly:selfOnly}=hoursExportScope(
+  company(),state.user.id,roleAtStart,sectionAtStart);
  try{
   // Always query server records. Projected offline entries are never exported.
   let rows=[],offset=0;
@@ -284,7 +287,10 @@ async function exportHours(){
    }
   }
   // A tenant switch or signout during an asynchronous export must fail closed.
-  if(company()!==companyId||state.user?.id!==userId)throw Error('Compte ou entreprise changé pendant l’export. Réessayez.');
+  if(company()!==companyId||state.user?.id!==userId||!member()||
+   state.account?.role!==roleAtStart||state.section!==sectionAtStart||
+   isEssential()!==editionAtStart)
+   throw Error('Compte, droits ou contexte changés pendant l’export. Réessayez.');
   const data=createHoursCsv({
    companyId,userId,ownOnly:selfOnly,rows,breaks,essential:isEssential(),
    roster:essentialUI.planning.state.roster,locations:essentialUI.planning.state.locations,
