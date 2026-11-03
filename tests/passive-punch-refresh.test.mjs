@@ -98,6 +98,64 @@ test('failed verification or network error never reports successful sync',async(
  reject=false;assert.equal(await h.retry(),true);
  assert.deepEqual(h.calls,['auth','auth','membership','refresh']);
 });
+
+test('a different company starts a new verification without inheriting the old promise',async()=>{
+ const release=[];
+ const h=harness({getUser:()=>new Promise(resolve=>release.push(resolve))});
+ const old=h.retry();
+ h.setScope({companyId:'company-B'});
+ const current=h.retry();
+ assert.notStrictEqual(current,old);
+ assert.deepEqual(h.calls,['auth','auth']);
+ release[0]('user-A');
+ assert.equal(await old,false,'Old company must not report a successful sync');
+ assert.strictEqual(h.retry(),current,'Old cleanup must not clear newer in-flight task');
+ release[1]('user-A');
+ assert.equal(await current,true);
+ assert.deepEqual(h.calls,['auth','auth','membership','refresh']);
+});
+test('switching accounts while verification is pending verifies the new user separately',async()=>{
+ const release=[];
+ const h=harness({getUser:()=>new Promise(resolve=>release.push(resolve))});
+ const first=h.retry();
+ h.setScope({userId:'user-B'});
+ const second=h.retry();
+ assert.notStrictEqual(first,second);
+ release[0]('user-A');
+ assert.equal(await first,false);
+ release[1]('user-B');
+ assert.equal(await second,true);
+ assert.deepEqual(h.calls,['auth','auth','membership','refresh']);
+});
+test('switching A to B and back never revives the first A verification',async()=>{
+ const release=[];
+ const h=harness({getUser:()=>new Promise(resolve=>release.push(resolve))});
+ const firstA=h.retry();
+ h.setScope({companyId:'company-B'});
+ const forB=h.retry();
+ h.setScope({companyId:'company-A'});
+ const newA=h.retry();
+ assert.notStrictEqual(firstA,newA);
+ assert.notStrictEqual(forB,newA);
+ release[0]('user-A');
+ release[1]('user-A');
+ assert.deepEqual(await Promise.all([firstA,forB]),[false,false]);
+ release[2]('user-A');
+ assert.equal(await newA,true);
+ assert.deepEqual(h.calls,['auth','auth','auth','membership','refresh']);
+});
+test('same-workspace callbacks share the active refresh even after busy begins',async()=>{
+ let finish;
+ const h=harness({refresh:()=>new Promise(resolve=>{finish=resolve})});
+ const task=h.retry();
+ for(let i=0;i<8&&!finish;i++)await Promise.resolve();
+ assert.equal(typeof finish,'function');
+ h.setBusy(true);
+ assert.strictEqual(h.retry(),task);
+ finish();
+ assert.equal(await task,true);
+ assert.deepEqual(h.calls,['auth','membership','refresh']);
+});
 test('Web online, foreground and periodic refresh paths all go through scoped gate',()=>{
  const start=app.indexOf('const passivePunchRefresh=');
  const end=app.indexOf('const locationLabel=',start);
