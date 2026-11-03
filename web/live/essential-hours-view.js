@@ -87,8 +87,10 @@ export function essentialMobileDailyHours({sessions=[],segments=[],breaks=[],com
   !Array.isArray(breaks))return [];
  const ids=new Set(sessions.filter(s=>s?.company_id===companyId&&s.user_id===userId&&
   typeof s.id==='string'&&s.id).map(s=>s.id));
- const parts=segments.filter(s=>s&&ids.has(s.session_id)&&s.company_id===companyId&&
-  (s.user_id==null||s.user_id===userId));
+ // Enforce parent shift boundaries for native daily totals just as in Web.
+ // A stale segment cannot accumulate hours before IN or after confirmed OUT.
+ const parts=boundedHourSegments(segments.filter(s=>s?.company_id===companyId&&
+  (s.user_id==null||s.user_id===userId)),sessions,companyId,userId);
  const pauses=new Map();
  for(const b of breaks)if(b&&ids.has(b.session_id)&&
   (b.company_id==null||b.company_id===companyId)&&
