@@ -6,18 +6,20 @@ import {runInNewContext} from 'node:vm';
 const source=readFileSync(new URL('../web/live/sw.js',import.meta.url),'utf8');
 const scope='https://punch.example/Punch360/web/live/';
 
-function workerHarness({offline=true}={}){
+function workerHarness({offline=true,httpStatus=200}={}){
  const listeners={};
  const requests=[];
  const writes=[];
  const home={shell:'home'};
  const kiosk={shell:'kiosk'};
- const networkResponse={ok:true,clone:()=>({copied:true})};
+ const asset={shell:'public-asset'};
+ const networkResponse={ok:httpStatus>=200&&httpStatus<300,status:httpStatus,clone:()=>({copied:true})};
  const caches={
   open:async()=>({put:async(request,response)=>{writes.push({request,response});}}),
   match:async request=>{
    if(request==='./index.html')return home;
    if(request==='./kiosk.html')return kiosk;
+   if(request?.url?.endsWith('/essential.js'))return asset;
    return undefined;
   }
  };
@@ -46,7 +48,7 @@ function workerHarness({offline=true}={}){
   });
   return {response,lifetime,request};
  }
- return {dispatch,requests,writes,home,kiosk,networkResponse};
+ return {dispatch,requests,writes,home,kiosk,asset,networkResponse};
 }
 
 test('unknown same-origin navigation is never rewritten into the offline employee shell',()=>{
@@ -96,4 +98,32 @@ test('a successful public precached asset update is attached to the fetch lifeti
  assert.equal(worker.writes[0].request.url,event.request.url);
  assert.equal(worker.writes[0].response.copied,true);
  assert.equal(worker.requests[0].options.cache,'no-cache');
+});
+
+test('upstream gateway errors use the installed public shell and asset, never cache the outage page',async()=>{
+ for(const status of [502,503,504]){
+  const worker=workerHarness({offline:false,httpStatus:status});
+  const home=worker.dispatch('./index.html?from=installed');
+  const kiosk=worker.dispatch('./kiosk.html?device=tablet');
+  const asset=worker.dispatch('./essential.js',{mode:'cors'});
+  assert.equal(await home.response,worker.home,'HTTP '+status+' must use public home fallback');
+  assert.equal(await kiosk.response,worker.kiosk,'HTTP '+status+' must use public kiosk fallback');
+  assert.equal(await asset.response,worker.asset,'HTTP '+status+' must use precached public JS');
+  await Promise.all([...home.lifetime,...kiosk.lifetime,...asset.lifetime]);
+  assert.equal(worker.writes.length,0,'a gateway error must not poison the public cache');
+ }
+});
+
+test('HTTP authorization and not-found responses remain visible, without a stale shell override',async()=>{
+ for(const status of [401,403,404]){
+  const worker=workerHarness({offline:false,httpStatus:status});
+  const home=worker.dispatch('./index.html?from=installed');
+  const asset=worker.dispatch('./essential.js',{mode:'cors'});
+  assert.equal(await home.response,worker.networkResponse,'HTTP '+status+' must not be masked');
+  assert.equal(await asset.response,worker.networkResponse,'HTTP '+status+' must not be masked');
+  await Promise.all([...home.lifetime,...asset.lifetime]);
+  assert.equal(worker.writes.length,0);
+  const privateRoute=worker.dispatch('./private/reports');
+  assert.equal(privateRoute.response,undefined);
+ }
 });
