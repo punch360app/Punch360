@@ -191,7 +191,7 @@ test('My Hours links every adjustment type and never treats reviewed requests as
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  const begin=app.indexOf('function essentialHours()'),end=app.indexOf('function essentialCorrectionPage()',begin);
  const view=app.slice(begin,end);
- assert.match(app,/import \{essentialHoursView,employeeHoursRequestTimeline\} from '\.\/essential-hours-view\.js'/);
+ assert.match(app,/import \{essentialHoursView,essentialHomeWeekSummary,employeeHoursRequestTimeline\} from '\.\/essential-hours-view\.js'/);
  assert.match(app,/function myRequestsTimeline\(limit=8\)/);
  assert.match(app,/employeeHoursRequestTimeline\(\{companyId,userId,limit/);
  assert.match(view,/myRequestsTimeline\(\)/);
