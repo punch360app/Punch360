@@ -298,3 +298,17 @@ export function employeeHoursRequestTimeline({companyId,userId,correctionView,br
   pendingCount:found.filter(r=>r.status==='pending').length,total:found.length,
   items:found.slice(0,max),unavailable};
 }
+
+
+/** Accueil Essentiel: the weekly card has the same verified, bounded source
+ * as Mes heures. Never silently promote a pending local projection to a
+ * server total. An unavailable snapshot is unknown, not zero hours.
+ */
+export function essentialHomeWeekSummary(options={}){
+ const view=essentialHoursView({...options,weekOffset:0});
+ return {
+  ready:view.ready,
+  confirmedMs:view.ready?view.confirmedWeekMs:null,
+  estimatedMs:view.ready&&view.hasPending?view.projectedWeekMs:null
+ };
+}
