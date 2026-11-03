@@ -36,7 +36,7 @@ export function createHoursCsv({companyId,userId,ownOnly=true,rows=[],breaks=[],
   'Entrée ISO','Sortie ISO','Heures brutes','Pauses non payées (h)','Heures nettes','Anomalie'];
  const output=allowed.map(r=>{
   const worker=r.punch_sessions;
-  const duration=segmentExportDuration(r,indexed.get(r.session_id)||[]);
+  const duration=segmentExportDuration(r,indexed.get(r.session_id)||[],worker);
   const person=essential?(roster.find(w=>w.id===worker.worker_id)?.employee_number||
     worker.worker_id||worker.user_id):worker.user_id||worker.worker_id;
   const location=essential?(locations.find(w=>w.punch_job_id===r.job_id&&w.company_id===companyId)?.name||'Établissement'):
