@@ -26,14 +26,22 @@ self.addEventListener('fetch',event=>{
   const copy=response.clone();
   return caches.open(CACHE).then(cache=>cache.put(request,copy));
  }).catch(()=>{}));
- event.respondWith(network.catch(async()=>{
+ // A gateway can return an HTTP error without rejecting fetch().
+ // Offer the installed public shell only for transient gateway outages.
+ // Authorization/not-found responses stay visible and never become cached success.
+ const installedFallback=async()=>{
   if(precached){
    const cached=await caches.match(request);
    if(cached)return cached;
   }
   if(publicNavigation&&url.pathname===kioskPath)
-   return await caches.match('./kiosk.html')||Response.error();
-  if(publicNavigation)return await caches.match('./index.html')||Response.error();
-  return Response.error();
- }));
+   return await caches.match('./kiosk.html')||null;
+  if(publicNavigation)return await caches.match('./index.html')||null;
+  return null;
+ };
+ event.respondWith(network.then(async response=>{
+  if(response.status===502||response.status===503||response.status===504)
+   return await installedFallback()||response;
+  return response;
+ }).catch(async()=>await installedFallback()||Response.error()));
 });
