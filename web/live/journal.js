@@ -1,30 +1,151 @@
 // Shared by Expo and Web. Every event is persisted BEFORE the first network request.
+// A contaminated local journal must be preserved for recovery, never uploaded.
+const JOURNAL_ACTIONS=new Set(['in','out','transfer','break_start','break_end']);
+const JOURNAL_STATUSES=new Set(['pending','synced','conflict']);
+// Persisted GPS is untrusted input on restart. Missing GPS is allowed
+// for server review, but impossible coordinates may never be uploaded.
+function validPunchFix(fix){
+ if(fix==null)return true;
+ if(typeof fix!=='object'||Array.isArray(fix))return false;
+ const {latitude,longitude,accuracy}=fix;
+ return typeof latitude==='number'&&Number.isFinite(latitude)&&
+  latitude>=-90&&latitude<=90&&
+  typeof longitude==='number'&&Number.isFinite(longitude)&&
+  longitude>=-180&&longitude<=180&&
+  (accuracy==null||(typeof accuracy==='number'&&
+   Number.isFinite(accuracy)&&accuracy>=0));
+}
+/** Never let a failed device GPS sample block recording worked time.
+ * New samples are normalized to no GPS for server review; stored malformed
+ * events are still quarantined by hasUnsafePunchJournalEntries.
+ */
+export function normalizeFreshPunchFix(fix){
+ if(fix==null||!validPunchFix(fix))return null;
+ return {latitude:fix.latitude,longitude:fix.longitude,accuracy:fix.accuracy??null};
+}
+export function hasUnsafePunchJournalEntries(events,company,user){
+ if(!Array.isArray(events)||typeof company!=='string'||!company||
+  typeof user!=='string'||!user)return true;
+ // A duplicated id is ambiguous for server idempotency and local ACK lookup.
+ // Preserve the entire queue for recovery; never upload or silently rewrite it.
+ const seen=new Set();
+ return events.some((event,index)=>{
+  // A non-null dependency must be the preceding durable event in this
+  // same journal. Preserve older standalone legacy entries with no link.
+  // Broken or self-referential chains are quarantined, never uploaded.
+  if(event?.previous!=null&&(index===0||
+   event.previous!==events[index-1]?.id))return true;
+  if(!event||typeof event!=='object'||event.company!==company||
+   event.user!==user||typeof event.id!=='string'||!event.id||
+   !JOURNAL_ACTIONS.has(event.action)||!JOURNAL_STATUSES.has(event.status)||
+   // Old saved entries are validated too; no legacy unassigned IN/transfer.
+   ((event.action==='in'||event.action==='transfer')&&
+    (typeof event.job!=='string'||!event.job.trim()))||
+   typeof event.occurredAt!=='string'||!Number.isFinite(Date.parse(event.occurredAt))||
+   (event.previous!=null&&(typeof event.previous!=='string'||!event.previous))||
+   (event.paid!=null&&typeof event.paid!=='boolean')||
+   (event.offline!=null&&typeof event.offline!=='boolean')||
+   !validPunchFix(event.fix)||
+   seen.has(event.id))return true;
+  seen.add(event.id);
+  return false;
+ });
+}
 export class PunchJournal {
  constructor({storage,send,uuid,company,user,withLock}){this.storage=storage;this.send=send;this.uuid=uuid;this.company=company;this.user=user;this.key=`punch-journal-v1:${user}:${company}`;this.withLock=withLock||((fn)=>fn());this.serial=Promise.resolve();this.flushing=null;}
  async read(){const raw=await this.storage.get(this.key);if(!raw)return [];const events=JSON.parse(raw);if(!Array.isArray(events))throw Error('Journal local illisible : conservation des données pour récupération');return events;}
  exclusive(fn){const task=this.serial.then(()=>this.withLock(fn));this.serial=task.catch(()=>{});return task;}
- async append(action,job,fix,occurredAt=new Date().toISOString(),paid=false){
-  return this.exclusive(async()=>{const queue=await this.read();const event={id:this.uuid(),company:this.company,user:this.user,action,job:job||null,fix:fix||null,occurredAt,...(paid?{paid:true}:{}),offline:queue.some(e=>e.status==='pending'),status:'pending',previous:queue.at(-1)?.id||null};queue.push(event);await this.storage.set(this.key,JSON.stringify(queue));return event;});
+ async append(action,job,fix,occurredAt=new Date().toISOString(),paid=false,offline=false){
+  return this.exclusive(async()=>{const queue=await this.read();if(hasUnsafePunchJournalEntries(queue,this.company,this.user))throw Error('Journal local non vérifiable : aucune nouvelle opération ajoutée.');
+   // A new shift or job transfer must never create an unassigned local segment.
+   // Keep OUT and breaks usable without requiring a job argument.
+   if((action==='in'||action==='transfer')&&(typeof job!=='string'||!job.trim()))
+    throw Error('Établissement de pointage requis : aucun ajout enregistré.');
+   const event={id:this.uuid(),company:this.company,user:this.user,action,job:job||null,fix:fix||null,occurredAt,...(paid?{paid:true}:{}),offline:offline===true||queue.some(e=>e.status==='pending'),status:'pending',previous:queue.at(-1)?.id||null};if(hasUnsafePunchJournalEntries([...queue,event],this.company,this.user))throw Error('Nouveau pointage non vérifiable : aucun ajout enregistré.');queue.push(event);await this.storage.set(this.key,JSON.stringify(queue));return event;});
  }
  async flush(){
   if(this.flushing)return this.flushing;
-  this.flushing=this.exclusive(async()=>{const queue=await this.read();let sent=0;for(const event of queue){if(event.status!=='pending')continue;
-   try{const result=await this.send(event);if(!['synced','conflict'].includes(result?.sync_status))throw Error('Accusé serveur invalide');event.status=result.sync_status;event.result=result;sent++;await this.storage.set(this.key,JSON.stringify(queue));
+  this.flushing=this.exclusive(async()=>{const queue=await this.read();if(hasUnsafePunchJournalEntries(queue,this.company,this.user))throw Error('Journal local non vérifiable : aucun envoi effectué.');let sent=0;for(const event of queue){if(event.status!=='pending')continue;
+   try{const result=await this.send(event);if(!['synced','conflict'].includes(result?.sync_status)||
+    (Object.prototype.hasOwnProperty.call(result,'event_id')&&result.event_id!==event.id))
+     throw Error('Accusé serveur invalide ou lié à un autre événement');event.status=result.sync_status;event.result=result;sent++;await this.storage.set(this.key,JSON.stringify(queue));
     // Server records dependent conflicts without applying them to official time.
    }catch(err){event.offline=true;event.error=String(err?.message||err);await this.storage.set(this.key,JSON.stringify(queue));break;}
   }return {sent,events:queue,pending:queue.filter(e=>e.status==='pending').length};}).finally(()=>{this.flushing=null});return this.flushing;
  }
- async pending(){return (await this.read()).filter(e=>e.status==='pending');}
+ /** Inspect saved punches without uploading, changing statuses or rewriting local data. */
+ async inspect(){return this.exclusive(async()=>{
+  const events=await this.read();
+  if(hasUnsafePunchJournalEntries(events,this.company,this.user))
+   throw Error('Journal local non vérifiable : aucun envoi effectué.');
+  return {sent:0,events,pending:events.filter(e=>e.status==='pending').length};
+ });}
+ async pending(){return (await this.read()).filter(e=>e?.status==='pending');}
 }
-export function projectPendingPunches(snapshot,events){
+export function projectPendingPunches(snapshot,events,scope=null){
+ const identity=typeof scope?.company==='string'&&scope.company&&
+  typeof scope?.user==='string'&&scope.user?scope:null;
  const sessions=snapshot.sessions.map(s=>({...s})),segments=snapshot.segments.map(s=>({...s})),breaks=(snapshot.breaks||[]).map(s=>({...s}));
- for(const event of events.filter(e=>e.status==='pending')){
-  const active=sessions.find(s=>!s.ended_at);
-  if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
-  if(event.action==='break_start'&&active)breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});
-  if(event.action==='break_end'&&active)for(const pause of breaks)if(pause.session_id===active.id&&!pause.ended_at)pause.ended_at=event.occurredAt;
-  if(event.action==='out'&&active){for(const pause of breaks)if(pause.session_id===active.id&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(seg.session_id===active.id&&!seg.ended_at)seg.ended_at=event.occurredAt;}
-  if(event.action==='transfer'&&active){for(const seg of segments)if(seg.session_id===active.id&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});}
+ // Damaged legacy journal rows are kept on disk for recovery, but
+ // must not become apparent attendance or a selected workplace.
+ const pending=Array.isArray(events)?events.filter(e=>e?.status==='pending'&&
+  typeof e.id==='string'&&e.id&&typeof e.company==='string'&&e.company&&
+  typeof e.user==='string'&&e.user&&JOURNAL_ACTIONS.has(e.action)&&
+  typeof e.occurredAt==='string'&&Number.isFinite(Date.parse(e.occurredAt))&&
+  ((e.action!=='in'&&e.action!=='transfer')||
+   (typeof e.job==='string'&&!!e.job.trim()))&&(!identity||
+  e.company===identity.company&&e.user===identity.user)):[];
+ let appliedLocalEvents=0;
+ for(const event of pending){
+  // A stale or contaminated snapshot must never let one employee's
+  // offline event edit a different employee/company session.
+  // Under a known login, missing ownership is not authorization to
+  // reuse an old session. Legacy permissive projection is only unscoped.
+  const active=sessions.find(s=>!s.ended_at&&
+   (identity?s.company_id===event.company&&s.user_id===event.user:
+    (s.company_id==null||s.company_id===event.company)&&
+    (s.user_id==null||s.user_id===event.user)));
+  const ownsRecord=record=>record?.session_id===active?.id&&
+   (identity?record.company_id===event.company:
+    (record.company_id==null||record.company_id===event.company))&&
+   (record.user_id==null||record.user_id===event.user);
+  // A device clock rollback cannot place an action before any verified
+  // segment or break boundary already recorded in this employee's shift.
+  // Keep the pending journal event unchanged for review, not invented hours.
+  const at=Date.parse(event.occurredAt);
+  const laterBoundary=record=>at<Date.parse(record.started_at)||
+   (record.ended_at!=null&&at<Date.parse(record.ended_at));
+  if(active&&(at<Date.parse(active.started_at)||
+   segments.some(s=>ownsRecord(s)&&laterBoundary(s))||
+   breaks.some(b=>ownsRecord(b)&&laterBoundary(b))))continue;
+  if(event.action==='in'&&!active){const id='local-'+event.id;sessions.unshift({id,company_id:event.company,user_id:event.user,started_at:event.occurredAt,ended_at:null});segments.unshift({id,company_id:event.company,session_id:id,job_id:event.job,started_at:event.occurredAt,ended_at:null});appliedLocalEvents++;}
+  if(event.action==='break_start'&&active){breaks.unshift({id:'local-'+event.id,company_id:event.company,user_id:event.user,session_id:active.id,started_at:event.occurredAt,ended_at:null,is_paid:event.paid===true});appliedLocalEvents++;}
+  if(event.action==='break_end'&&active){let closed=0;for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at){pause.ended_at=event.occurredAt;closed++;}if(closed)appliedLocalEvents++;}
+  if(event.action==='out'&&active){for(const pause of breaks)if(ownsRecord(pause)&&!pause.ended_at)pause.ended_at=event.occurredAt;active.ended_at=event.occurredAt;for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;appliedLocalEvents++;}
+  if(event.action==='transfer'&&active){for(const seg of segments)if(ownsRecord(seg)&&!seg.ended_at)seg.ended_at=event.occurredAt;segments.unshift({id:'local-'+event.id,company_id:event.company,session_id:active.id,job_id:event.job,started_at:event.occurredAt,ended_at:null});appliedLocalEvents++;}
  }
- return {sessions,segments,breaks,active:sessions.find(s=>!s.ended_at)||null,lastJobId:segments[0]?.job_id||null};
+ const latest=pending.at(-1);
+ const owner=identity||latest&&{company:latest.company,user:latest.user};
+ const active=sessions.find(s=>!s.ended_at&&(!owner||
+  (s.company_id==null&&!identity||s.company_id===owner.company)&&
+  (s.user_id==null&&!identity||s.user_id===owner.user)))||null;
+ // A pending local event supplies the identity for the last selected job.
+ // Do not display or reuse another tenant's job from a mixed old cache.
+ const ownSessionIds=owner?new Set(sessions.filter(s=>
+  s.company_id===owner.company&&s.user_id===owner.user).map(s=>s.id)):null;
+ // Server order and legacy offline cache order are not guaranteed.
+ // Pick the actual most recent job for this worker, preferring the currently
+ // active shift. Never fall back to an older shift if the active one has no
+ // verifiable segment (a different job could be selected for PUNCH IN).
+ const ownSegments=owner?segments.filter(s=>
+  s.company_id===owner.company&&ownSessionIds.has(s.session_id)&&
+  (s.user_id==null||s.user_id===owner.user)&&
+  typeof s.job_id==='string'&&!!s.job_id.trim()):[];
+ const currentSegments=active?ownSegments.filter(s=>s.session_id===active.id):ownSegments;
+ const lastSegment=owner?currentSegments.reduce((latest,s)=>{
+  const at=Date.parse(s.started_at),previous=Date.parse(latest?.started_at);
+  return !latest||(Number.isFinite(at)&&(!Number.isFinite(previous)||at>previous))||
+   (at===previous&&s.ended_at==null&&latest.ended_at!=null)?s:latest;
+ },null):segments[0];
+ return {sessions,segments,breaks,active,lastJobId:lastSegment?.job_id||null,appliedLocalEvents};
 }

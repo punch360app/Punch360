@@ -2,56 +2,239 @@ import * as Network from 'expo-network';
 import {getLocalIdentity} from '../auth/localIdentity';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getPunchJournal} from './journal';
-import {projectPendingPunches} from '../../web/live/journal.js';
+import {projectPendingPunches,hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from '../../web/live/journal.js';
+import type {LocalPunchEvent} from '../../web/live/journal.js';
+import {netSegmentMilliseconds} from '../../web/live/essential-hours-export.js';
 import * as Location from 'expo-location';
 import {supabase} from '../lib/supabase';
 export type PunchSession={id:string;company_id:string;user_id:string|null;worker_id?:string|null;started_at:string;ended_at:string|null};
-export type PunchSegment={id:string;session_id:string;company_id:string;job_id:string;started_at:string;ended_at:string|null};
-export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean};
-export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null};
+export type PunchSegment={id:string;session_id:string;company_id:string;user_id?:string|null;job_id:string;started_at:string;ended_at:string|null};
+export type PunchBreak={id:string;session_id:string;started_at:string;ended_at:string|null;is_paid?:boolean;company_id?:string;user_id?:string};
+export type PunchState={sessions:PunchSession[];segments:PunchSegment[];breaks?:PunchBreak[];active:PunchSession|null;lastJobId:string|null;localJournalBlocked?:boolean;readSource?:'server'|'cache';hasLocalProjection?:boolean;cacheWriteFailed?:boolean;snapshotUnverified?:boolean;snapshotFetchedAt?:number|null;hasAppliedLocalProjection?:boolean;baselineSnapshot?:{sessions:PunchSession[];segments:PunchSegment[];breaks:PunchBreak[]}};
 export async function loadPunchState(companyId:string):Promise<PunchState>{
  const user=await getLocalIdentity();
- const journal=await getPunchJournal(companyId);await journal.flush();
+ const journal=await getPunchJournal(companyId);
+ // Decide before touching the durable queue. Offline refresh is read-only:
+ // failed sends must not rewrite event metadata on every foreground tick.
+ let networkAvailable=false;
+ try{
+  const network=await Network.getNetworkStateAsync();
+  networkAvailable=network.isConnected===true&&network.isInternetReachable===true;
+ }catch{/* Unknown connectivity is not permission to upload saved punches. */}
+ // A blocked local queue must not prevent official hours from loading.
+ let journalBlocked=false;
+ try{await (networkAvailable?journal.flush():journal.inspect())}catch{journalBlocked=true}
  const cacheKey='punch-state:'+user.id+':'+companyId;
- const overlay=async(state:PunchState)=>projectPendingPunches(state,await journal.read()) as PunchState;
- const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false){const cached=await AsyncStorage.getItem(cacheKey);return overlay(cached?JSON.parse(cached):{sessions:[],segments:[],active:null,lastJobId:null});}
+ let snapshotUnverified=false;
+ const overlay=async(state:PunchState,readSource:'server'|'cache',cacheWriteFailed=false)=>{
+  // Prevent cross-company hours from legacy mixed offline snapshots.
+  const ownSessions=(state.sessions||[]).filter(s=>s.company_id===companyId&&s.user_id===user.id);
+  const ids=new Set(ownSessions.map(s=>s.id));
+  // Older cached segments can carry an explicit user_id; reject foreign
+  // ones even if their session_id collides with a valid personal session.
+  // A valid segment must also fit inside its verified parent shift.
+  // Legacy caches or inconsistent RPC rows may otherwise add hours before
+  // PUNCH IN or after PUNCH OUT. Clip only the displayed projection; retain
+  // the original stored snapshot for audit/recovery, not payroll approval.
+  const sessionsById=new Map(ownSessions.map(s=>[s.id,s]));
+  const ownSegments=(state.segments||[]).filter(s=>s.company_id===companyId&&
+   ids.has(s.session_id)&&(s.user_id==null||s.user_id===user.id))
+   .flatMap(s=>{
+    const parent=sessionsById.get(s.session_id);
+    if(!parent)return [];
+    const start=Date.parse(s.started_at),shiftStart=Date.parse(parent.started_at);
+    const end=s.ended_at===null?Infinity:Date.parse(s.ended_at);
+    const shiftEnd=parent.ended_at===null?Infinity:Date.parse(parent.ended_at);
+    if(!Number.isFinite(start)||!Number.isFinite(shiftStart)||
+       Number.isNaN(end)||Number.isNaN(shiftEnd))return [];
+    const clippedStart=Math.max(start,shiftStart),clippedEnd=Math.min(end,shiftEnd);
+    if(clippedEnd<clippedStart)return [];
+    if(start===clippedStart&&end===clippedEnd)return [s];
+    return [{...s,
+     started_at:new Date(clippedStart).toISOString(),
+     ended_at:Number.isFinite(clippedEnd)?new Date(clippedEnd).toISOString():null}];
+   });
+  const ownBreaks=(state.breaks||[]).filter(b=>ids.has(b.session_id)&&
+   (b.company_id==null||b.company_id===companyId)&&
+   (b.user_id==null||b.user_id===user.id));
+  const own={...state,sessions:ownSessions,segments:ownSegments,breaks:ownBreaks};
+  let events:LocalPunchEvent[]=[];
+  if(!journalBlocked)try{events=await journal.read()}catch{journalBlocked=true}
+  const projected=projectPendingPunches(own,journalBlocked?[]:events,{company:companyId,user:user.id});
+  return {...projected,
+   localJournalBlocked:journalBlocked||snapshotUnverified,readSource,cacheWriteFailed,snapshotUnverified,
+   snapshotFetchedAt:state.snapshotFetchedAt??null,
+   // Immutable, identity-filtered baseline before local queue projection:
+   // never present an offline event as server-acknowledged hours.
+   baselineSnapshot:{sessions:ownSessions,segments:ownSegments,breaks:ownBreaks},
+   hasAppliedLocalProjection:!journalBlocked&&projected.appliedLocalEvents>0,
+   hasLocalProjection:!journalBlocked&&events.some(e=>e.status==='pending'&&e.company===companyId&&e.user===user.id)} as PunchState;
+ };
+ // A missing or corrupt cache is UNKNOWN attendance, not a verified empty day.
+ // Keep damaged bytes intact and retain pending journal projections for review.
+ // Repeated IDs can count one shift or pause twice in a corrupted cache
+ // or a partial RPC read. Reject the snapshot instead of picking a winner.
+ const hasDistinctIds=(rows:Array<{id:string}>)=>
+  new Set(rows.map(row=>row.id)).size===rows.length;
+ const offlineState=async()=>{
+  let cached:PunchState|null=null;
+  try{
+   const raw=await AsyncStorage.getItem(cacheKey);
+   if(raw)cached=JSON.parse(raw);
+  }catch{/* Recover on the next successful server read. */}
+  // Validate both ends of every cached interval. A partially corrupted
+  // snapshot is UNKNOWN attendance, never a verified shift or pause.
+  const validCachedRange=(row:{started_at:string;ended_at:string|null})=>
+   typeof row?.started_at==='string'&&Number.isFinite(Date.parse(row.started_at))&&
+   (row.ended_at===null||(typeof row.ended_at==='string'&&
+    Number.isFinite(Date.parse(row.ended_at))&&
+    Date.parse(row.ended_at)>=Date.parse(row.started_at)));
+  const valid=cached&&Array.isArray(cached.sessions)&&Array.isArray(cached.segments)&&
+   (cached.breaks==null||Array.isArray(cached.breaks))&&
+   cached.sessions.every(s=>s&&typeof s.id==='string'&&!!s.id&&
+    typeof s.company_id==='string'&&typeof s.user_id==='string'&&
+    validCachedRange(s))&&
+   cached.segments.every(s=>s&&typeof s.id==='string'&&!!s.id&&
+    typeof s.company_id==='string'&&typeof s.session_id==='string'&&!!s.session_id&&
+    typeof s.job_id==='string'&&!!s.job_id&&validCachedRange(s))&&
+   (cached.breaks||[]).every(b=>b&&typeof b.id==='string'&&!!b.id&&
+    typeof b.session_id==='string'&&!!b.session_id&&validCachedRange(b))&&
+   hasDistinctIds(cached.sessions)&&hasDistinctIds(cached.segments)&&
+   hasDistinctIds(cached.breaks||[]);
+  if(!valid||!cached){
+   snapshotUnverified=true;
+   return overlay({sessions:[],segments:[],breaks:[],active:null,lastJobId:null},'cache');
+  }
+  return overlay(cached,'cache');
+ };
+ // With unavailable or unverified connectivity, show the scoped cache
+ // instead of making server requests or treating the queue as official hours.
+ if(!networkAvailable)return offlineState();
+ // Supabase can reject a request promise or throw before returning a result.
+ // A transport failure must retain the last complete scoped snapshot, not hide hours.
+ try{
  const {data:sessions,error}=await supabase.from('punch_sessions')
   .select('id,company_id,user_id,started_at,ended_at')
   .eq('company_id',companyId).eq('user_id',user.id)
   .order('started_at',{ascending:false}).limit(500);
- if(error){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached));throw error;}
- const list=sessions as PunchSession[]||[];
- if(!list.length){const empty={sessions:[],segments:[],active:null,lastJobId:null};await AsyncStorage.setItem(cacheKey,JSON.stringify(empty));return overlay(empty);}
+ // A structurally incomplete row must not masquerade as an empty or
+ // confirmed attendance record. Keep the previous cache until a complete
+ // server snapshot can be fetched; other tenant rows are filtered below.
+ const validServerRange=(row:Record<string,unknown>|null)=>typeof row?.started_at==='string'&&
+  Number.isFinite(Date.parse(row.started_at))&&
+  (row.ended_at===null||(typeof row.ended_at==='string'&&
+   Number.isFinite(Date.parse(row.ended_at))&&
+   Date.parse(row.ended_at)>=Date.parse(row.started_at)));
+ const validServerSession=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
+  typeof row.company_id==='string'&&typeof row.user_id==='string'&&validServerRange(row);
+ const validServerSegment=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
+  typeof row.company_id==='string'&&typeof row.session_id==='string'&&!!row.session_id&&
+  typeof row.job_id==='string'&&!!row.job_id&&validServerRange(row);
+ const validServerBreak=(row:Record<string,unknown>|null)=>typeof row?.id==='string'&&!!row.id&&
+  typeof row.session_id==='string'&&!!row.session_id&&validServerRange(row);
+ if(error||!Array.isArray(sessions)||!sessions.every(validServerSession)||
+    !hasDistinctIds(sessions))return offlineState();
+ // A null or malformed successful response is not a verified empty shift.
+ // Filter untrusted RPC rows before writing the offline snapshot. Filtering
+ // only during UI projection would leave another tenant's records on disk.
+ const list=((sessions||[]) as PunchSession[]).filter(s=>s&&s.company_id===companyId&&s.user_id===user.id);
+ if(!list.length){const empty={sessions:[],segments:[],breaks:[],active:null,lastJobId:null,snapshotFetchedAt:Date.now()};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(empty))}catch{cacheWriteFailed=true}return overlay(empty,'server',cacheWriteFailed);}
  const {data:segments,error:segmentsError}=await supabase.from('punch_segments')
   .select('id,company_id,session_id,job_id,started_at,ended_at')
   .eq('company_id',companyId).in('session_id',list.map(s=>s.id))
   .order('started_at',{ascending:false});
- if(segmentsError){const cached=await AsyncStorage.getItem(cacheKey);if(cached)return overlay(JSON.parse(cached));throw segmentsError;}
- const sorted=(segments||[]) as PunchSegment[];
- const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error)throw breakResult.error;
- const snapshot={breaks:breakResult.data||[],sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null};await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot));return overlay(snapshot);
+ if(segmentsError||!Array.isArray(segments)||!segments.every(validServerSegment)||
+    !hasDistinctIds(segments))return offlineState();
+ const ownSessionIds=new Set(list.map(s=>s.id));
+ const sorted=((segments||[]) as PunchSegment[]).filter(s=>s&&s.company_id===companyId&&
+  ownSessionIds.has(s.session_id)&&(s.user_id==null||s.user_id===user.id));
+ const breakResult=await supabase.from('punch_breaks').select('id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',user.id);if(breakResult.error||!Array.isArray(breakResult.data)||
+    !breakResult.data.every(validServerBreak)||!hasDistinctIds(breakResult.data))
+  return offlineState();
+ // Break rows do not select company_id/user_id on all schema versions;
+ // their session_id must belong to a verified session before caching.
+ const ownBreaks=((breakResult.data||[]) as PunchBreak[]).filter(b=>b&&ownSessionIds.has(b.session_id)&&
+  (b.company_id==null||b.company_id===companyId)&&(b.user_id==null||b.user_id===user.id));
+ const snapshot={breaks:ownBreaks,sessions:list,segments:sorted,active:list.find(s=>s.ended_at===null)||null,lastJobId:sorted[0]?.job_id||null,snapshotFetchedAt:Date.now()};let cacheWriteFailed=false;try{await AsyncStorage.setItem(cacheKey,JSON.stringify(snapshot))}catch{cacheWriteFailed=true}return overlay(snapshot,'server',cacheWriteFailed);
+ }catch{return offlineState();}
 }
 export type LocationCheckResult={session_id:string;check_id:string;location_status:string;review_status:string;distance_m:number|null;radius_m:number;queued?:boolean};
 async function punchWithLocation(companyId:string,action:'in'|'out'|'transfer'|'break_start'|'break_end',jobId?:string,paid=false):Promise<LocationCheckResult>{
  const occurredAt=new Date().toISOString();
+ // Pin the requesting identity BEFORE GPS/network awaits. A login switch
+ // during the permission prompt must not append into another user's journal.
+ const originUserId=(await getLocalIdentity()).id;
+ // Persist the network state at the point of capture, before a reconnect
+ // can make an offline event appear to be an ordinary online punch.
+ let offline=false;
+ try{
+  const network=await Network.getNetworkStateAsync();
+  offline=network.isConnected!==true||network.isInternetReachable!==true;
+ }catch{offline=true;}
  let latitude:number|null=null,longitude:number|null=null,accuracy:number|null=null;
  try{const permission=action.startsWith('break_')?null:await Location.requestForegroundPermissionsAsync();if(permission?.status==='granted'){
  const fix=await Promise.race([Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High}),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('GPS indisponible')),6000))]);latitude=fix.coords.latitude;longitude=fix.coords.longitude;accuracy=fix.coords.accuracy;
  }}catch{/* A missing fix must never erase worked time; server flags it for review. */}
- const journal=await getPunchJournal(companyId);const event=await journal.append(action,jobId,latitude===null?null:{latitude,longitude:longitude!,accuracy},occurredAt,paid);
- const sync=await journal.flush();const saved=sync.events.find(e=>e.id===event.id);
- if(saved?.status==='conflict')throw Error('Punch conservé sur le serveur, conflit transmis à l’administration : '+saved.result?.message);
- return {...saved?.result,queued:saved?.status==='pending',review_status:saved?.status==='pending'?'local':saved?.result?.review_status} as LocationCheckResult;
+ const journal=await getPunchJournal(companyId);
+ if(journal.company!==companyId||journal.user!==originUserId)
+  throw Error('Compte changé pendant la capture : aucun pointage ajouté. Reconnectez-vous pour vérifier votre entreprise.');
+ const event=await journal.append(action,jobId,normalizeFreshPunchFix(latitude===null?null:{latitude,longitude:longitude!,accuracy}),occurredAt,paid,offline);
+ // The append was persisted before network. A failed flush may still leave
+ // a valid pending or already acknowledged event; inspect that exact event.
+ let events:LocalPunchEvent[]|null=null;
+ try{events=(await (offline?journal.inspect():journal.flush())).events}catch{/* Inspect persisted journal. */}
+ if(!events||!events.some(e=>e.id===event.id)){
+  try{events=await journal.read()}catch{
+   throw Error('Pointage enregistré localement, mais journal illisible : vérifiez Mes heures avant de repointer.');
+  }
+ }
+ if(hasUnsafePunchJournalEntries(events,journal.company,journal.user))
+  throw Error('Journal local non vérifiable : pointage à vérifier avant une nouvelle opération.');
+ const saved=events.find(e=>e.id===event.id);
+ if(!saved)throw Error('Statut du pointage introuvable dans le journal local : vérifiez Mes heures avant de repointer.');
+ if(saved.status==='conflict')
+  throw Error('Conflit de pointage conservé pour vérification : '+(saved.result?.message||'contactez votre responsable.'));
+ if(saved.status==='pending')
+  return {queued:true,review_status:'local'} as LocationCheckResult;
+ if(saved.status!=='synced'||!saved.result||saved.result.sync_status!=='synced')
+  throw Error('Accusé serveur du pointage indisponible : vérifiez Mes heures avant de repointer.');
+ return {...saved.result,queued:false,review_status:saved.result.review_status} as LocationCheckResult;
 }
 export const punchIn=(companyId:string,jobId:string)=>punchWithLocation(companyId,'in',jobId);
 export const punchOut=(companyId:string)=>punchWithLocation(companyId,'out');
 export const punchBreak=(companyId:string,resume:boolean,paid=false)=>punchWithLocation(companyId,resume?'break_end':'break_start',undefined,paid);
 export const punchTransfer=(companyId:string,jobId:string)=>punchWithLocation(companyId,'transfer',jobId);
+// Server-confirmed archive actions must remain visible if Internet drops
+// before the next refresh. Serialize writes for the same worker and prevent
+// a previously started archive fetch from undoing a newer local mutation.
+const archiveRevisions=new Map<string,number>();
+// A later server read supersedes older in-flight responses for this worker.
+const archiveReadOrders=new Map<string,number>();
+const archiveWrites=new Map<string,Promise<void>>();
+async function reflectArchivePreference(userId:string,segmentId:string,archived:boolean){
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ if(!uuid.test(userId)||!uuid.test(segmentId))return;
+ const key='punch-archives:'+userId;
+ archiveRevisions.set(key,(archiveRevisions.get(key)||0)+1);
+ const previous=archiveWrites.get(key)||Promise.resolve();
+ const next=previous.catch(()=>{}).then(async()=>{
+  const raw=await AsyncStorage.getItem(key);
+  let ids:unknown=raw?JSON.parse(raw):[];
+  // Preserve damaged bytes intact. A later valid server read can recover them.
+  if(!Array.isArray(ids)||!ids.every(id=>typeof id==='string'&&uuid.test(id)))return;
+  const unique=new Set(ids as string[]);
+  if(archived)unique.add(segmentId);else unique.delete(segmentId);
+  await AsyncStorage.setItem(key,JSON.stringify([...unique]));
+ }).catch(()=>{/* A failed cache write must not turn a successful server action into an error. */});
+ archiveWrites.set(key,next);
+ await next;
+}
 export async function archiveSegment(segmentId:string){
  const {data:{user}}=await supabase.auth.getUser();
  if(!user)throw Error('Utilisateur non connecté');
  const {error}=await supabase.from('punch_archive_preferences').insert({user_id:user.id,segment_id:segmentId});
  if(error && error.code!=='23505')throw error;
+ await reflectArchivePreference(user.id,segmentId,true);
 }
 export async function restoreSegment(segmentId:string){
  const {data:{user}}=await supabase.auth.getUser();
@@ -59,20 +242,73 @@ export async function restoreSegment(segmentId:string){
  const {error}=await supabase.from('punch_archive_preferences')
   .delete().eq('user_id',user.id).eq('segment_id',segmentId);
  if(error)throw error;
+ await reflectArchivePreference(user.id,segmentId,false);
 }
-export async function loadArchives(){
+export async function loadArchives():Promise<string[]>{
  const user=await getLocalIdentity();
  const key='punch-archives:'+user.id;
- const network=await Network.getNetworkStateAsync();if(network.isConnected===false||network.isInternetReachable===false)return JSON.parse(await AsyncStorage.getItem(key)||'[]') as string[];
- const {data,error}=await supabase.from('punch_archive_preferences').select('segment_id').eq('user_id',user.id);
- if(error)return JSON.parse(await AsyncStorage.getItem(key)||'[]') as string[];
- const ids=(data||[]).map(row=>row.segment_id as string);await AsyncStorage.setItem(key,JSON.stringify(ids));return ids;
+ // Invalid local preference data must never crash the hours screen or hide
+ // a legitimate segment. Keep damaged bytes intact for recovery.
+ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ const validIds=(ids:unknown):ids is string[]=>
+  Array.isArray(ids)&&ids.every(id=>typeof id==='string'&&uuid.test(id));
+ const cached=async():Promise<string[]>=>{
+  try{const raw=await AsyncStorage.getItem(key);
+   if(!raw)return [];
+   const ids:unknown=JSON.parse(raw);
+   return validIds(ids)?Array.from(new Set(ids)):[];
+  }catch{return [];}
+ };
+ // Do not contact Supabase when Internet is unverified or the native network
+ // probe throws. Archive preferences affect visibility, not payroll totals.
+ let online=false;
+ try{const network=await Network.getNetworkStateAsync();
+  online=network.isConnected===true&&network.isInternetReachable===true;
+ }catch{/* Use only locally scoped preferences. */}
+ if(!online)return cached();
+ const requestRevision=archiveRevisions.get(key)||0;
+ const requestOrder=(archiveReadOrders.get(key)||0)+1;
+ archiveReadOrders.set(key,requestOrder);
+ let data,error;
+ try{
+  ({data,error}=await supabase.from('punch_archive_preferences')
+   .select('segment_id').eq('user_id',user.id));
+ }catch{return cached();}
+ if(error||!Array.isArray(data)||!data.every(row=>row&&validIds([row.segment_id])))
+  return cached();
+ const ids=Array.from(new Set(data.map(row=>row.segment_id as string)));
+ // Serialize a server snapshot with archive/restore writes. Checking revision
+ // only before an asynchronous setItem is not sufficient: an earlier read
+ // can finish writing AFTER a more recent confirmed archive mutation.
+ const prior=archiveWrites.get(key)||Promise.resolve();
+ const persist=prior.catch(()=>{}).then(async()=>{
+  if(requestRevision!==(archiveRevisions.get(key)||0)||
+     requestOrder!==(archiveReadOrders.get(key)||0))return;
+  try{await AsyncStorage.setItem(key,JSON.stringify(ids))}catch{}
+ });
+ archiveWrites.set(key,persist);
+ await persist;
+ if(requestRevision!==(archiveRevisions.get(key)||0)||
+    requestOrder!==(archiveReadOrders.get(key)||0)){
+  // A newer mutation or refresh wins; await its queued write before reading.
+  await (archiveWrites.get(key)||Promise.resolve()).catch(()=>{});
+  return cached();
+ }
+ return ids;
 }
+/** The mobile totals must match the web's CSV and Essential hours view:
+ * unpaid overlapping breaks are merged and clipped to each job segment.
+ * No projected event is treated as server-confirmed by this calculator.
+ */
 export function hoursFor(segments:PunchSegment[],nowMs:number,fromMs:number,toMs:number,breaks:PunchBreak[]=[]){
- return segments.reduce((acc,s)=>{
-  const begin=Math.max(Date.parse(s.started_at),fromMs);
-  const finish=Math.min(s.ended_at?Date.parse(s.ended_at):nowMs,toMs);
-  const paused=breaks.filter(b=>b.session_id===s.session_id&&!b.is_paid).reduce((n,b)=>n+Math.max(0,Math.min(b.ended_at?Date.parse(b.ended_at):nowMs,finish)-Math.max(Date.parse(b.started_at),begin)),0);
-  return acc+Math.max(0,finish-begin-paused);
- },0);
+ if(!Array.isArray(segments)||!Number.isFinite(nowMs)||!Number.isFinite(fromMs)||!Number.isFinite(toMs))return 0;
+ const until=Math.min(nowMs,toMs);
+ const bySession=new Map<string,PunchBreak[]>();
+ for(const pause of Array.isArray(breaks)?breaks:[]){
+  if(typeof pause?.session_id!=='string')continue;
+  const current=bySession.get(pause.session_id)||[];
+  current.push(pause);bySession.set(pause.session_id,current);
+ }
+ return segments.reduce((total,segment)=>
+  total+netSegmentMilliseconds(segment,bySession.get(segment.session_id)||[],fromMs,until),0);
 }

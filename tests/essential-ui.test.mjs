@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
 import {createEssentialController} from '../web/live/essential.js';
+import {rememberPublicPlanIntent,readPublicPlanIntent,clearSavedPublicPlanSelection} from '../web/live/public-plan-intent.js';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const plan={id:'essential_plus',title:'Essentiel Plus',base_cents:3900,included_seats:5,extra_seat_cents:400,annual_discount:15,kiosk_limit:3,establishment_limit:1,features:['punch','hours','csv','offline','personal_account','themes','advanced_schedules'],active:true,public_visible:true,sort_order:2,version:1,grace_days:30,description:'',recommended:true};
 function setup(rpc=async()=>({data:true})){const w=new Window();let calls=[];const sb={rpc:async(name,args)=>{calls.push({name,args});return rpc(name,args);}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});ui.state.plans=[{...plan}];return {w,ui,calls};}
@@ -11,6 +12,278 @@ test('worker creation calls the checked RPC, permits no email and never creates 
 test('price edits send expected version and a reason, and surface server denial',async()=>{const {w,ui,calls}=setup(async()=>({error:{message:'MFA required'}}));ui.state.mfaRequired=false;ui.state.tab='plans';w.document.body.innerHTML=ui.renderPlatform();w.document.getElementById('ess-base').value='45.50';w.document.getElementById('ess-reason').value='Nouveaux clients seulement';await ui.handle({dataset:{action:'ess:save-plan'}});assert.equal(calls[0].name,'platform_save_essential_plan');assert.equal(calls[0].args.p_expected_version,1);assert.equal(calls[0].args.p_values.base_cents,4550);assert.match(ui.state.error,/MFA required/);assert.equal(ui.state.plans[0].base_cents,3900);await w.happyDOM.close();});
 test('personnel names are escaped and private platform state is cleared at signout',async()=>{const {w,ui}=setup();ui.state.workers=[{id:'x',first_name:'<script>alert(1)</script>',last_name:'',employee_number:'AB',status:'active',auth_user_id:null}];w.document.body.innerHTML=ui.renderWorkers();assert.equal(w.document.querySelector('script'),null);ui.state.platform=true;ui.state.snapshot={companies_list:[{name:'private'}]};ui.reset();assert.equal(ui.state.platform,false);assert.equal(ui.state.snapshot,null);assert.equal(ui.state.workers.length,0);await w.happyDOM.close();});
 test('choosing a public plan calls signup navigation without claiming payment',async()=>{const w=new Window();let chosen;const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,onChoose:p=>{chosen=p}});ui.state.plans=[plan];await ui.handle({dataset:{action:'ess:choose',id:'essential_plus'}});assert.equal(chosen.id,'essential_plus');assert.equal(ui.state.checkout,'Essentiel Plus');assert.equal(ui.state.paymentConfirmed,undefined);await w.happyDOM.close();});
+test('Bento cards avoid promising personal accounts when the feature is absent',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.plans=[{...plan,id:'schedule-only',features:['advanced_schedules','messages']}];
+  w.document.body.innerHTML=ui.renderPricing();
+  const card=w.document.querySelector('.ess-price');
+  assert.ok(card);
+  assert.deepEqual([...card.querySelectorAll('ul li')].map(li=>li.textContent),['Horaires avancés','Messagerie']);
+  assert.doesNotMatch(card.textContent,/Pointage des employés|Compte personnel facultatif|Suivi des heures/);
+  ui.state.plans=[{...plan,features:[]}];
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.deepEqual([...w.document.querySelectorAll('.ess-price ul li')].map(li=>li.textContent),
+   ['Fonctions à vérifier dans le comparatif']);
+  ui.state.plans=[{...plan,features:['messages','<img src=x onerror=alert(1)>']}];
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('.ess-price img'),null);
+  assert.deepEqual([...w.document.querySelectorAll('.ess-price ul li')].map(li=>li.textContent),['Messagerie']);
+  ui.state.plans=[{...plan,features:null}];
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
+  assert.match(w.document.querySelector('.ess-price').textContent,/Détails du forfait à confirmer/);
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento rejects previously cached offers when the catalog refresh fails and safely recovers',async()=>{
+ const w=new Window();let fail=true,chosen=0,reads=0;
+ const sb={from(table){
+  assert.equal(table,'essential_plans');
+  return {select(){return {order:async()=>{
+   reads++;
+   return fail?{data:null,error:{message:'Catalogue hors ligne'}}:{data:[{...plan}],error:null};
+  }}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document,onChoose:()=>chosen++});
+ try{
+  ui.state.plans=[{...plan}];
+  ui.state.checkout=plan.title;
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelectorAll('[data-action="ess:choose"]').length,1);
+  await ui.handle({dataset:{action:'ess:retry-public'}});
+  assert.equal(reads,1);
+  assert.deepEqual(ui.state.plans,[],'unverified cached prices must not remain selectable');
+  assert.equal(ui.state.checkout,null);
+  assert.match(ui.state.error,/hors ligne/);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.match(w.document.body.textContent,/Tarifs temporairement indisponibles/);
+  assert.ok(w.document.querySelector('[data-action="ess:retry-public"]'));
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosen,0,'forged old offer must not navigate while offline');
+  fail=false;
+  await ui.handle({dataset:{action:'ess:retry-public'}});
+  assert.equal(reads,2);
+  assert.equal(ui.state.plans.length,1);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosen,1,'successful reload restores the real signup path');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento ignores a late superseded catalog response to keep the newest offers',async()=>{
+ const w=new Window(),pending=[];
+ const sb={from(table){
+  assert.equal(table,'essential_plans');
+  return {select(){return {order:()=>new Promise(resolve=>pending.push(resolve))}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  const first=ui.handle({dataset:{action:'ess:refresh'}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(pending.length,1);
+  const newer=ui.handle({dataset:{action:'ess:refresh'}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(pending.length,2);
+  pending[1]({data:[{...plan,title:'Tarif récent'}],error:null});
+  await newer;
+  assert.equal(ui.state.plans[0].title,'Tarif récent');
+  pending[0]({data:[{...plan,title:'Tarif périmé'}],error:null});
+  await first;
+  assert.equal(ui.state.plans[0].title,'Tarif récent',
+   'older requests must not reintroduce outdated prices into the public offer');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento selection reads restored seat input even without input events',async()=>{
+ const w=new Window();let chosenSeats=null;
+ const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,
+  onChoose:()=>{chosenSeats=ui.state.seats}});
+ try{
+  ui.state.plans=[{...plan}];ui.state.seats=5;
+  w.document.body.innerHTML=ui.renderPricing();
+  const input=w.document.getElementById('ess-seats');
+  input.value='8'; // browser autofill or bfcache restore can skip an input event
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosenSeats,8);
+  assert.equal(ui.state.seats,8);
+  assert.equal(ui.state.seatDraft,'8');
+  assert.equal(ui.state.checkout,plan.title);
+  input.value='0';
+  chosenSeats=null;
+  await ui.handle({dataset:{action:'ess:choose',id:plan.id}});
+  assert.equal(chosenSeats,null,'an invalid restored count must never navigate');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento repricing clears previous signup intent in same browser tab',async()=>{
+ const w=new Window(),data=new Map(),storage={
+  getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)
+ };
+ let cleared=0;
+ const ui=createEssentialController({sb:{},redraw(){},notify(){},escape,document:w.document,
+  onPricingChange:()=>{cleared++;clearSavedPublicPlanSelection(storage)}});
+ try{
+  ui.state.plans=[{...plan}];
+  w.document.body.innerHTML=ui.renderPricing();
+  const input=w.document.getElementById('ess-seats');
+  rememberPublicPlanIntent(storage,{planId:plan.id,seats:5,cadence:'monthly'});
+  input.value='7';ui.input(input);
+  assert.equal(cleared,1);
+  assert.equal(readPublicPlanIntent(storage),null,'signup cannot show old seat count');
+  rememberPublicPlanIntent(storage,{planId:plan.id,seats:7,cadence:'monthly'});
+  input.value='7';ui.input(input);
+  assert.equal(cleared,1,'unchanged seat input does not discard the chosen plan');
+  await ui.handle({dataset:{action:'ess:yearly'}});
+  assert.equal(cleared,2);
+  assert.equal(readPublicPlanIntent(storage),null,'signup cannot show obsolete monthly cadence');
+  rememberPublicPlanIntent(storage,{planId:plan.id,seats:7,cadence:'yearly'});
+  await ui.handle({dataset:{action:'ess:yearly'}});
+  assert.equal(cleared,2,'clicking the already-selected period retains intent');
+  assert.ok(readPublicPlanIntent(storage));
+  const {readFileSync}=await import('node:fs');
+  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+  assert.match(app,/onPricingChange:\(\)=>clearSavedPublicPlanSelection\(sessionStorage\)/,
+   'actual signup app must connect the controller to tab storage cleanup');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento removes an obsolete chosen-plan message when seats or billing period change',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.checkout=plan.title;
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.match(w.document.querySelector('.ess-pricing .ess-notice').textContent,/Forfait choisi/);
+  const input=w.document.getElementById('ess-seats');input.value='6';
+  ui.input(input);
+  assert.equal(ui.state.checkout,null);
+  assert.equal(w.document.querySelector('.ess-pricing .ess-notice'),null);
+  ui.state.checkout=plan.title;
+  await ui.handle({dataset:{action:'ess:yearly'}});
+  assert.equal(ui.state.checkout,null);
+  assert.doesNotMatch(ui.renderPricing(),/Forfait choisi/);
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento discards cached public prices and pending catalog requests after reset',async()=>{
+ const w=new Window();let resolveCatalog,requested=false;
+ const pending=new Promise(resolve=>{resolveCatalog=resolve});
+ const sb={from(table){
+  assert.equal(table,'essential_plans');
+  return {select(){return {order(){requested=true;return pending}}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  // A stale public offer must not remain in a shared tablet after signout.
+  ui.state.plans=[{...plan}];
+  ui.state.checkout=plan.title;ui.state.error='Previous error';
+  ui.reset();
+  assert.deepEqual(ui.state.plans,[]);
+  assert.equal(ui.state.checkout,null);
+  assert.equal(ui.state.error,'');
+  assert.equal(ui.state.loading,false);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+
+  const loading=ui.load(null,null);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requested,true);
+  ui.reset();
+  resolveCatalog({data:[{...plan,title:'Outdated public offer'}],error:null});
+  await loading;
+  assert.deepEqual(ui.state.plans,[],
+   'an old network reply must not restore a quoted plan after logout');
+  assert.equal(ui.state.platform,false);
+  assert.equal(ui.state.checkout,null);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+ }finally{await w.happyDOM.close();}
+});
+
+test('public catalog reload after signout restores prices without tenant calls',async()=>{
+ const w=new Window(),calls=[];
+ const sb={from(table){calls.push(table);assert.equal(table,'essential_plans');
+  return {select(){return {order(){return Promise.resolve({data:[{...plan}],error:null})}}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  ui.state.plans=[{...plan,title:'Ancien tarif'}];
+  ui.state.checkout='Ancien tarif';
+  ui.reset();
+  assert.deepEqual(ui.state.plans,[]);
+  await ui.refreshPublicCatalog();
+  assert.deepEqual(calls,['essential_plans']);
+  assert.equal(ui.state.plans.length,1);
+  assert.equal(ui.state.plans[0].title,plan.title);
+  assert.equal(ui.state.checkout,null);
+  assert.equal(ui.state.loading,false);
+  assert.equal(ui.state.error,'');
+  assert.equal(ui.state.platform,false);
+  assert.deepEqual(ui.state.workers,[]);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelectorAll('[data-action="ess:choose"]').length,1);
+ }finally{await w.happyDOM.close();}
+});
+
+test('public catalog refresh hides stale prices, rejects old replies, supports retry',async()=>{
+ const w=new Window();const resolvers=[];
+ let fail=false,calls=0;
+ const sb={from(table){assert.equal(table,'essential_plans');calls++;
+  return {select(){return {order(){if(fail)return Promise.reject(Error('Network offline'));
+   return new Promise(resolve=>resolvers.push(resolve))}}}};
+ }};
+ const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});
+ try{
+  ui.state.plans=[{...plan,title:'Prix périmé'}];
+  const first=ui.refreshPublicCatalog();
+  assert.equal(ui.state.loading,true);
+  assert.deepEqual(ui.state.plans,[],'stale selectable prices are cleared while loading');
+  await ui.refreshPublicCatalog();
+  assert.equal(calls,1,'the same public request is deduplicated');
+  ui.reset();
+  const newer=ui.refreshPublicCatalog();
+  assert.equal(calls,2);
+  resolvers[0]({data:[{...plan,title:'Ancien retour'}],error:null});
+  await first;
+  assert.equal(ui.state.loading,true,'late older request cannot stop new loading');
+  assert.deepEqual(ui.state.plans,[]);
+  resolvers[1]({data:[{...plan,title:'Nouveau tarif'}],error:null});
+  await newer;
+  assert.equal(ui.state.loading,false);
+  assert.equal(ui.state.plans[0].title,'Nouveau tarif');
+
+  fail=true;
+  await ui.refreshPublicCatalog();
+  assert.deepEqual(ui.state.plans,[]);
+  assert.match(ui.state.error,/Network offline/);
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]'),null);
+  assert.ok(w.document.querySelector('[data-action="ess:retry-public"]'),
+   'the public visitor can retry instead of seeing a blank page');
+  fail=false;
+  const retry=ui.handle({dataset:{action:'ess:retry-public'}});
+  // The shared event handler first awaits its authorized feature routers.
+  // Wait for the real catalog request, not a guessed synchronous callback.
+  await Promise.resolve();
+  assert.equal(typeof resolvers[2],'function','Retry must start a new public catalog request');
+  resolvers[2]({data:[{...plan}],error:null});
+  await retry;
+  assert.equal(ui.state.plans.length,1);
+  assert.equal(ui.state.error,'');
+  assert.equal(calls,4);
+ }finally{await w.happyDOM.close();}
+});
+
+test('signout callback schedules public-only refresh outside auth event',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
+ assert.match(app,/function restoreAnonymousPricingAfterSignout\(\)/);
+ assert.match(app,/setTimeout\(\(\)=>\{if\(!state\.user\)void essentialUI\.refreshPublicCatalog\(\)\},0\)/);
+ assert.match(app,/draw\(\);restoreAnonymousPricingAfterSignout\(\)\}else if\(event==='SIGNED_IN'\)/);
+});
+
 test('late personnel responses cannot repopulate private state after signout',async()=>{const w=new Window();let release;const pending=new Promise(resolve=>{release=resolve});const sb={rpc:async()=>({data:false}),from(table){const q={select(){return q},eq(){return q},order(){return table==='company_workers'?pending:Promise.resolve({data:[plan]})}};return q;}};const ui=createEssentialController({sb,redraw(){},notify(){},escape,document:w.document});const loading=ui.load({id:'old-user'},{company_id:'tenant',role:'employee',companies:{product_edition:'essential'}});await new Promise(r=>setTimeout(r,0));ui.reset();release({data:[{id:'private-worker',auth_user_id:'old-user',first_name:'Private'}]});await loading;assert.equal(ui.state.worker,null);assert.deepEqual(ui.state.workers,[]);assert.equal(ui.state.platform,false);await w.happyDOM.close();});
 test('kiosk navigation uses a static public URL without pairing secrets',async()=>{const {w,ui}=setup();ui.state.devices=[{id:'device',name:'Reception',paired_at:null,revoked_at:null}];ui.state.pairCode='secret-code';w.document.body.innerHTML=ui.renderKiosks();const links=[...w.document.querySelectorAll('a')].filter(a=>a.textContent==='Ouvrir la pointeuse');assert.equal(links.length,1);assert.equal(links[0].getAttribute('href'),'https://punch360app.github.io/Punch360/kiosk.html');assert.equal(new URL(links[0].href).search,'');assert.equal(new URL(links[0].href).hash,'');assert.ok(w.document.querySelector('[data-action="ess:copy-kiosk-link"]'));await w.happyDOM.close();});
 
@@ -319,4 +592,161 @@ test('public monthly, yearly, people and plan actions remain usable at 44px on S
  const {readFileSync}=await import('node:fs');
  const c=readFileSync(new URL('../web/live/essential.css',import.meta.url),'utf8');
  assert.match(c,/\.essential-public \.ess-switch \.ess-btn,\s*\.essential-public \.ess-pricing>\.ess-field input,[\s\S]*?min-height:44px/);
+});
+
+
+test('Bento comparison uses current member-count and annual quotes from real pricing calculator',async()=>{
+ const {w,ui}=setup();ui.state.seats=6;ui.state.cadence='yearly';
+ w.document.body.innerHTML=ui.renderPricing();
+ const table=w.document.querySelector('.ess-comparison');
+ assert.match(table.textContent,/Tarif estimé · 6 membres · paiement annuel/);
+ const rows=[...table.querySelectorAll('tbody tr')];
+ assert.match(rows[0].textContent,/438,60/);
+ assert.match(rows[1].textContent,/77,40/);
+ assert.match(w.document.querySelector('.ess-price-amount').textContent,/438,60/);
+ await w.happyDOM.close();
+});
+test('changing annual billing keeps comparison expanded and its seat quote',async()=>{
+ const {w,ui}=setup();ui.state.seats=7;
+ w.document.body.innerHTML=ui.renderPricing();
+ w.document.querySelector('.ess-market-details').open=true;
+ await ui.handle({dataset:{action:'ess:yearly'}});
+ w.document.body.innerHTML=ui.renderPricing();
+ assert.equal(w.document.querySelector('.ess-market-details').open,true);
+ assert.match(w.document.querySelector('.ess-comparison').textContent,/7 membres · paiement annuel/);
+ assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/479,40/);
+ await w.happyDOM.close();
+});
+test('member edits immediately update comparison without outdated quotes on invalid input',async()=>{
+ const {w,ui}=setup();w.document.body.innerHTML=ui.renderPricing();
+ const input=w.document.getElementById('ess-seats');w.document.querySelector('.ess-market-details').open=true;
+ input.value='8';ui.input(input);
+ assert.match(w.document.querySelector('.ess-comparison').textContent,/8 membres · paiement mensuel/);
+ assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/51,00/);
+ input.value='0';ui.input(input);
+ assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/À confirmer/);
+ assert.equal(w.document.querySelector('.ess-market-details').open,true);
+ assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
+ await w.happyDOM.close();
+});
+
+test('Bento shows extra seats and the exact monthly and annual supplement from current catalog',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;ui.state.cadence='monthly';
+  w.document.body.innerHTML=ui.renderPricing();
+  let rows=[...w.document.querySelectorAll('.ess-comparison tbody tr')];
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Membres facturés en supplément').textContent,/3/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Supplément mensuel').textContent,/12,00/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent.startsWith('Tarif estimé')).textContent,/51,00/);
+
+  ui.state.seats=6;ui.state.cadence='yearly';
+  w.document.body.innerHTML=ui.renderPricing();
+  rows=[...w.document.querySelectorAll('.ess-comparison tbody tr')];
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Membres facturés en supplément').textContent,/1/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Supplément pour 12 mois').textContent,/40,80/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent.startsWith('Tarif estimé')).textContent,/438,60/);
+
+  ui.state.plans=[{...plan,included_seats_unlimited:true}];
+  w.document.body.innerHTML=ui.renderPricing();
+  rows=[...w.document.querySelectorAll('.ess-comparison tbody tr')];
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Membres facturés en supplément').textContent,/0/);
+  assert.match(rows.find(row=>row.querySelector('th').textContent==='Supplément pour 12 mois').textContent,/0,00/);
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento never leaves a stale card amount visible after an invalid member count',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  w.document.body.innerHTML=ui.renderPricing();
+  const input=w.document.getElementById('ess-seats');
+  assert.match(w.document.querySelector('.ess-price-amount').textContent,/51,00/);
+  input.value='';ui.input(input);
+  assert.match(w.document.querySelector('.ess-price-amount').textContent,/Tarif indisponible/);
+  assert.doesNotMatch(w.document.querySelector('.ess-price-amount').textContent,/51,00/);
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,true);
+  assert.match(w.document.querySelector('.ess-comparison tbody tr').textContent,/À confirmer/);
+  assert.equal(w.document.getElementById('ess-seats'),input,'input/caret must stay attached');
+
+  input.value='7';ui.input(input);
+  assert.match(w.document.querySelector('.ess-price-amount').textContent,/47,00/);
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
+  assert.equal(w.document.getElementById('ess-seats'),input);
+ }finally{await w.happyDOM.close();}
+});
+
+
+test('Bento cards refuse broken catalog prices and unknown limits without implying a free offer',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  ui.state.plans=[
+   {...plan,id:'missing-base',title:'Sans prix',base_cents:null,kiosk_limit:-1,establishment_limit:undefined},
+   {...plan,id:'missing-extra',title:'Sans supplément',extra_seat_cents:undefined,kiosk_limit:null,establishment_limit:null}
+  ];
+  w.document.body.innerHTML=ui.renderPricing();
+  const cards=[...w.document.querySelectorAll('.ess-price')];
+  assert.equal(cards.length,2);
+  assert.match(cards[0].textContent,/Tarif indisponible/);
+  assert.match(cards[0].textContent,/Membres et suppléments à confirmer/);
+  assert.match(cards[0].textContent,/Bornes à confirmer/);
+  assert.match(cards[0].textContent,/Établissements à confirmer/);
+  assert.match(cards[1].textContent,/Bornes illimitées/);
+  assert.match(cards[1].textContent,/Plusieurs établissements/);
+  for(const card of cards){
+   assert.equal(card.querySelector('[data-action="ess:choose"]').disabled,true);
+   assert.doesNotMatch(card.textContent,/NaN|undefined|Infinity|null membres|0,00.*membre/);
+  }
+  assert.match(w.document.querySelector('.ess-comparison').textContent,/À confirmer/);
+ }finally{await w.happyDOM.close();}
+});
+
+
+test('Bento rejects visible prices on incomplete offers while a verified offer remains selectable',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  ui.state.plans=[
+   {...plan,id:'missing-entitlement',title:'À vérifier',features:null},
+   {...plan,id:'verified',title:'Offre vérifiée'}
+  ];
+  w.document.body.innerHTML=ui.renderPricing();
+  const cards=[...w.document.querySelectorAll('.ess-price')];
+  assert.equal(cards.length,2);
+  assert.match(cards[0].querySelector('.ess-price-amount').textContent,/Tarif indisponible/);
+  assert.equal(cards[0].querySelector('[data-action="ess:choose"]').disabled,true);
+  assert.match(cards[1].querySelector('.ess-price-amount').textContent,/51,00/);
+  assert.equal(cards[1].querySelector('[data-action="ess:choose"]').disabled,false);
+  const quote=w.document.querySelector('.ess-comparison tbody tr');
+  assert.deepEqual([...quote.querySelectorAll('td')].map(x=>x.textContent),['À confirmer',
+   new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD'}).format(51)]);
+  await ui.handle({dataset:{action:'ess:choose',id:'missing-entitlement'}});
+  assert.equal(ui.state.checkout,undefined);
+  await ui.handle({dataset:{action:'ess:choose',id:'verified'}});
+  assert.equal(ui.state.checkout,'Offre vérifiée');
+ }finally{await w.happyDOM.close();}
+});
+
+test('Bento rejects selection of an offer with a valid price but unverified rights and quotas',async()=>{
+ const {w,ui}=setup();
+ try{
+  ui.state.seats=8;
+  ui.state.plans=[{...plan,id:'unknown-terms',kiosk_limit:undefined,features:null}];
+  w.document.body.innerHTML=ui.renderPricing();
+  const card=w.document.querySelector('.ess-price');
+  assert.match(card.querySelector('.ess-price-amount').textContent,/Tarif indisponible/);
+  assert.doesNotMatch(w.document.querySelector('.ess-comparison tbody tr').textContent,/51,00/);
+  assert.match(card.textContent,/Bornes à confirmer/);
+  assert.match(card.textContent,/Détails du forfait à confirmer/);
+  assert.equal(card.querySelector('[data-action="ess:choose"]').disabled,true);
+  // Even a forged/stale action must be refused by the controller.
+  await ui.handle({dataset:{action:'ess:choose',id:'unknown-terms'}});
+  assert.equal(ui.state.checkout,undefined);
+  ui.state.plans[0]={...plan,id:'unknown-terms',kiosk_limit:3,features:['punch']};
+  w.document.body.innerHTML=ui.renderPricing();
+  assert.equal(w.document.querySelector('[data-action="ess:choose"]').disabled,false);
+  await ui.handle({dataset:{action:'ess:choose',id:'unknown-terms'}});
+  assert.equal(ui.state.checkout,plan.title);
+ }finally{await w.happyDOM.close();}
 });

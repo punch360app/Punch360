@@ -1,10 +1,11 @@
 import {OperationsPanel} from '../workforce/OperationsPanel';
 import {GeofencePanel} from '../workforce/GeofencePanel';
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {Alert,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
 import {supabase} from '../lib/supabase';
 import {createJob} from '../jobs/api';
+import {submitNativeLeaveRequest} from './leaveRequests';
 import {WorkforcePanel} from '../workforce/WorkforcePanel';
 import {TeamsPanel} from './TeamsPanel';
 import {WorkspaceAccount} from '../auth/AuthGate';
@@ -33,6 +34,14 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  const [from,setFrom]=useState('');
  const [to,setTo]=useState('');
  const [reason,setReason]=useState('');
+ const [leaveBusy,setLeaveBusy]=useState(false);
+ const leaveSubmitting=useRef(false);
+ const accountScope=account.companyId+':'+account.userId;
+ const accountScopeRef=useRef(accountScope);
+ accountScopeRef.current=accountScope;
+ const personalReadRevision=useRef(0);
+ const [loadedPersonalScope,setLoadedPersonalScope]=useState('');
+ const [personalReadError,setPersonalReadError]=useState('');
  const [leaves,setLeaves]=useState<Leave[]>([]);
  const [number,setNumber]=useState('');
  const [jobName,setJobName]=useState('');
@@ -40,6 +49,11 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
  const manager=account.role==='admin'||account.role==='boss';
  const restricted=['restricted','cancelled'].includes(account.billingStatus);
  async function reload(){
+  const requestedScope=accountScope;
+  if(accountScopeRef.current!==requestedScope)return;
+  const revision=++personalReadRevision.current;
+  setLoadedPersonalScope('');
+  setPersonalReadError('');
   try{
    const [p,c,k,l]=await Promise.all([
     supabase.from('employee_profiles').select('full_name,phone').eq('user_id',account.userId).maybeSingle(),
@@ -47,13 +61,32 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
     supabase.from('employee_credentials').select('id,credential_type,expires_on,trade').eq('user_id',account.userId),
     supabase.from('leave_requests').select('id,leave_type,begins_on,ends_on,status').eq('company_id',account.companyId).eq('user_id',account.userId).order('created_at',{ascending:false})
    ]);
-   if(p.data){setFullName(p.data.full_name||'');setPhone(p.data.phone||'');}
-   if(!c.error)setContacts((c.data||[]) as Contact[]);
-   if(!k.error)setCredentials(k.data||[]);
-   if(!l.error)setLeaves((l.data||[]) as Leave[]);
-  }catch{}
+   if(accountScopeRef.current!==requestedScope||personalReadRevision.current!==revision)return;
+   if(p.error||c.error||k.error||l.error||
+      (p.data!=null&&(typeof p.data!=='object'||Array.isArray(p.data)))||
+      !Array.isArray(c.data)||!Array.isArray(k.data)||!Array.isArray(l.data))
+    throw Error('Renseignements personnels non confirmés. Réessayez.');
+   // Publish one coherent identity-scoped snapshot, never a partial response.
+   setFullName(p.data?.full_name||'');setPhone(p.data?.phone||'');
+   setContacts(c.data as Contact[]);
+   setCredentials(k.data||[]);
+   setLeaves(l.data as Leave[]);
+   setLoadedPersonalScope(requestedScope);
+  }catch{
+   if(accountScopeRef.current===requestedScope&&personalReadRevision.current===revision)
+    setPersonalReadError('Renseignements indisponibles. Vérifiez la connexion et réessayez.');
+  }
  }
- useEffect(()=>{reload()},[account.userId,account.companyId]);
+ useEffect(()=>{
+  // A reused portal must not display another employee's private data.
+  ++personalReadRevision.current;
+  setLoadedPersonalScope('');setPersonalReadError('');
+  setFullName('');setPhone('');setContacts([]);setCredentials([]);setLeaves([]);
+  setContactName('');setContactPhone('');setContactRelation('');setContactPriority(1);
+  setFrom('');setTo('');setReason('');
+  void reload();
+  return()=>{++personalReadRevision.current};
+ },[accountScope]);
  const notify=(title:string,e:any)=>Alert.alert(title,e?.message||String(e));
  async function saveProfile(){
   const {error}=await supabase.from('employee_profiles').upsert({user_id:account.userId,full_name:fullName.trim(),phone:phone.trim()},{onConflict:'user_id'});
@@ -70,19 +103,41 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
   if(error)notify('Carte non ajoutée',error);else{setExpires('');await reload();Alert.alert('Carte ajoutée','Le téléversement privé recto/verso sera ajouté séparément.');}
  }
  async function requestLeave(){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||to<from)return Alert.alert('Dates invalides','Format requis AAAA-MM-JJ.');
-  const {error}=await supabase.from('leave_requests').insert({company_id:account.companyId,user_id:account.userId,leave_type:leaveType,begins_on:from,ends_on:to,reason:reason.trim()||null});
-  if(error)notify('Demande non envoyée',error);else{setReason('');await reload();Alert.alert('Demande enregistrée','Statut : en attente d’approbation.');}
+  if(leaveSubmitting.current)return;
+  const requestedScope=accountScope;
+  leaveSubmitting.current=true;setLeaveBusy(true);
+  try{
+   await submitNativeLeaveRequest({companyId:account.companyId,userId:account.userId,
+    leaveType,from,to,reason});
+   if(accountScopeRef.current!==requestedScope)return;
+   setReason('');setFrom('');setTo('');
+   // Confirmation of an insert is independent of reloading the list.
+   await reload();
+   if(accountScopeRef.current===requestedScope)
+    Alert.alert('Demande enregistrée','Statut : en attente d’approbation.');
+  }catch(error){
+   if(accountScopeRef.current===requestedScope)notify('Demande non envoyée',error);
+  }finally{
+   leaveSubmitting.current=false;
+   if(accountScopeRef.current===requestedScope)setLeaveBusy(false);
+  }
  }
  async function addJob(){
   if(restricted)return Alert.alert('Administration suspendue','Le boss doit régulariser l’abonnement.');
-  try{await createJob(account.companyId,number,jobName,address);setNumber('');setJobName('');setAddress('');await onRefresh();Alert.alert('Chantier créé');}
-  catch(e){notify('Création impossible',e)}
+  try{
+   await createJob(account.companyId,number,jobName,address);
+   setNumber('');setJobName('');setAddress('');
+  }catch(e){notify('Création impossible',e);return;}
+  try{await onRefresh();Alert.alert('Chantier créé');}
+  catch{Alert.alert('Chantier créé','Le serveur a confirmé la création, mais la liste n’a pas pu être actualisée. Actualisez avant de créer un autre chantier.');}
  }
- const open=(next:Section)=>{setSection(next);reload()};
+ const open=(next:Section)=>{setSection(next);if(['profile','emergency','credentials','leave'].includes(next))void reload()};
  return <View style={{flex:1,paddingHorizontal:14,paddingBottom:8,gap:10}}>
   <View style={s.header}><Pressable onPress={()=>section==='menu'?undefined:setSection('menu')}><Ionicons name={section==='menu'?'grid-outline':'arrow-back'} size={23} color={C.gold}/></Pressable><Text style={s.title}>{section==='menu'?'Plus':section==='profile'?'Mon profil':section==='emergency'?'Contacts d’urgence':section==='credentials'?'Compétences et cartes':section==='leave'?'Mes congés et absences':section==='teams'?'Mes équipes':section==='schedule'?'Horaire':section==='documents'?'Plans et documents':section==='invite'?'Invitations':section==='geofence'?'Punch GPS et alertes':section==='workforce'?'Heures et approbations':'Administration'}</Text></View>
-  {section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
+  {['profile','emergency','credentials','leave'].includes(section)&&loadedPersonalScope!==accountScope?
+   <Card><Txt color={personalReadError?'#FE8F8F':C.muted}>{personalReadError||'Chargement des renseignements de ce compte…'}</Txt>
+   {personalReadError?<Btn label="Réessayer le chargement" onPress={()=>{void reload()}}/>:null}</Card>:
+  section==='schedule'||section==='documents'||section==='invite'?<OperationsPanel account={account} mode={section}/>:section==='geofence'?<GeofencePanel account={account}/>:section==='workforce'?<WorkforcePanel account={account} managementOnly={managementOnly}/>:section==='teams'?<TeamsPanel account={account}/>:section==='menu'?<View style={{gap:10,flex:1}}>
    <Card><Txt bold>{account.companyName}</Txt><Txt small color={C.muted}>{account.email} · {account.role}</Txt><Txt small color={restricted?'#FE8F8F':C.mint}>Abonnement : {account.billingStatus}</Txt></Card>
    <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{([
     ['person-outline','Mon profil','profile'],
@@ -102,7 +157,7 @@ export function MorePortal({account,onRefresh,initialSection='menu',managementOn
    {section==='profile'?<Card><Txt bold>Informations personnelles</Txt><Field label="Nom et prénom" value={fullName} onChange={setFullName}/><Field label="Téléphone" value={phone} onChange={setPhone}/><Btn accent label="Enregistrer le profil" onPress={saveProfile}/><Txt small color={C.muted}>Les responsables autorisés peuvent consulter ces renseignements professionnels.</Txt></Card>:null}
    {section==='emergency'?<><Card><Txt bold>Deux contacts d’urgence</Txt><Txt small color={C.muted}>Accès réservé à toi et aux responsables autorisés.</Txt><Field label="Nom du contact" value={contactName} onChange={setContactName}/><Field label="Téléphone" value={contactPhone} onChange={setContactPhone}/><Field label="Lien (conjoint, parent...)" value={contactRelation} onChange={setContactRelation}/><View style={{flexDirection:'row',gap:10,marginTop:10}}><Btn label={'Priorité : '+contactPriority} onPress={()=>setContactPriority(v=>v===1?2:1)}/></View><Btn accent label="Ajouter / mettre à jour" onPress={saveContact}/></Card>{contacts.map(c=><Card key={c.id}><Txt bold>{c.priority}. {c.name}</Txt><Txt>{c.phone}</Txt><Txt small color={C.muted}>{c.relationship||'Contact d’urgence'}</Txt></Card>)}</>:null}
    {section==='credentials'?<><Card><Txt bold>Cartes et certifications</Txt><Field label="Type (CCQ, ASP, SIMDUT, nacelle…)" value={credentialType} onChange={setCredentialType}/><Field label="Métier / qualification" value={trade} onChange={setTrade}/><Field label="Expiration AAAA-MM-JJ (si applicable)" value={expires} onChange={setExpires}/><Btn accent label="Ajouter ma carte" onPress={saveCredential}/><Txt small color={C.muted}>Les photos recto/verso devront être téléversées dans un stockage privé. Aucun document sensible ne doit être déposé dans une galerie publique.</Txt></Card>{credentials.map(c=><Card key={c.id}><Txt bold>{c.credential_type}</Txt><Txt small color={C.muted}>{c.trade||'Qualification non spécifiée'} · Expire : {c.expires_on||'Non précisé'}</Txt></Card>)}</>:null}
-   {section==='leave'?<><Card><Txt bold>Faire une demande</Txt><View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginTop:10}}>{[['vacation','Vacances'],['sick','Maladie'],['personal','Personnel'],['other','Autre']].map(([val,label])=><Pressable key={val} onPress={()=>setLeaveType(val)} style={[s.chip,leaveType===val&&{backgroundColor:C.gold}]}><Txt small bold color={leaveType===val?C.bg:C.text}>{label}</Txt></Pressable>)}</View><Field label="Du (AAAA-MM-JJ)" value={from} onChange={setFrom}/><Field label="Au (AAAA-MM-JJ)" value={to} onChange={setTo}/><Field label="Commentaire (facultatif)" value={reason} onChange={setReason}/><Btn accent label="Soumettre la demande" onPress={requestLeave}/></Card><Card><Txt bold>Mes demandes</Txt>{leaves.length===0?<Txt small color={C.muted}>Aucune demande.</Txt>:leaves.map(l=><View key={l.id} style={s.leaveRow}><Txt small>{l.begins_on} → {l.ends_on} · {l.leave_type}</Txt><Txt small color={l.status==='approved'?C.mint:C.gold}>{l.status}</Txt></View>)}</Card></>:null}
+   {section==='leave'?<><Card><Txt bold>Faire une demande</Txt><View style={{flexDirection:'row',gap:8,flexWrap:'wrap',marginTop:10}}>{[['vacation','Vacances'],['sick','Maladie'],['personal','Personnel'],['other','Autre']].map(([val,label])=><Pressable key={val} onPress={()=>setLeaveType(val)} style={[s.chip,leaveType===val&&{backgroundColor:C.gold}]}><Txt small bold color={leaveType===val?C.bg:C.text}>{label}</Txt></Pressable>)}</View><Field label="Du (AAAA-MM-JJ)" value={from} onChange={setFrom}/><Field label="Au (AAAA-MM-JJ)" value={to} onChange={setTo}/><Field label="Commentaire (facultatif)" value={reason} onChange={setReason}/><Btn accent label={leaveBusy?'Envoi en cours…':'Soumettre la demande'} onPress={requestLeave}/></Card><Card><Txt bold>Mes demandes</Txt>{leaves.length===0?<Txt small color={C.muted}>Aucune demande.</Txt>:leaves.map(l=><View key={l.id} style={s.leaveRow}><Txt small>{l.begins_on} → {l.ends_on} · {l.leave_type}</Txt><Txt small color={l.status==='approved'?C.mint:C.gold}>{l.status}</Txt></View>)}</Card></>:null}
    {section==='admin'?<Card><Txt bold>Ajouter une job</Txt><Txt small color={C.muted}>Les jobs deviennent accessibles dans la liste GPS « Toutes les jobs ».</Txt>{restricted?<Txt color="#FF8A8A">Administration suspendue pour défaut de paiement.</Txt>:null}<Field label="Numéro de job" value={number} onChange={setNumber}/><Field label="Nom du chantier" value={jobName} onChange={setJobName}/><Field label="Adresse (ou coordonnées à définir)" value={address} onChange={setAddress}/><Btn accent label="Créer ce chantier" onPress={addJob}/></Card>:null}
   </ScrollView>}
  </View>;

@@ -1,12 +1,25 @@
+import {createScopedPassivePunchRefresh} from './passive-punch-refresh.js';
+import {cachedOfflineWebUser,cachedOfflineWebAccount} from './offline-identity.js';
 import {createEssentialController} from './essential.js';
 import {validatePublicSignupPassword} from './public-signup-validation.js';
 import {togglePublicPasswordVisibility} from './password-visibility.js';
 import {resolvePublicEdition,isPublicEdition} from './public-edition.js';
 import {canUseEssentialMessages,essentialTabs} from './essential-message-navigation.js';
-import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch} from './essential-mobile-punch.js';
+import {canUseEssentialMobilePunch,essentialMobilePunchNotice,lastConfirmedKioskPunch,resolveEssentialPunchJob,resolveEssentialMobilePunchAction,firstEssentialPunchGuidance,essentialWorkerPunchJobId} from './essential-mobile-punch.js';
+import {essentialHoursView,employeeHoursRequestTimeline} from './essential-hours-view.js';
+import {employeeMissingDaysSummary,managerMissingDayApprovalSummary} from './missing-days.js';
+import {breakCorrectionInbox} from './break-corrections.js';
+import {essentialManagerApprovalsSummary} from './essential-manager-approvals-summary.js';
+import {essentialCorrectionView,validateEssentialCorrection,essentialCorrectionApprovalView} from './essential-correction.js';
+import {essentialLeaveView,validateEssentialLeaveRequest,essentialLeaveApprovalView} from './essential-leave.js';
+import {sessionIdChunks,netSegmentMilliseconds} from './essential-hours-export.js';
+import {hoursExportScope,createHoursCsv} from './hours-csv.js';
 import {isCurrentCompanyChat} from './company-chat-context.js';
 import {createChatUnreadController} from './chat-unread.js';
 import {beginPublicEssentialSignup,readPublicPlanEstimate,renderPublicPlanReminder,clearSavedPublicPlanSelection} from './public-plan-intent.js';
+import {createCompanyOnce,isCreatedCompanyVerified,recoverCreatedCompanyWorkspace,savePendingCompanyCreation,readPendingCompanyCreation,clearPendingCompanyCreation} from './company-onboarding.js';
+import {isDefinitiveRpcRejection} from './rpc-rejection.js';
+import {acceptWorkerInviteOnce,validWorkerInviteToken,isWorkerActivationVerified,recoverWorkerActivation,savePendingWorkerActivation,readPendingWorkerActivation,clearPendingWorkerActivation} from './worker-onboarding.js';
 import {personalUpcomingClientVisit} from './personal-client-visit.js';
 import {createPersonalMissionController} from './missions.js';
 import {navigationPlatform,navigationProviders,navigationUrl,navigationDestination,chooseNavigationPreference,navigationPreferenceKey,writeNavigationPreference} from './navigation-choices.js';
@@ -14,7 +27,9 @@ import {createEssentialLocale,ESSENTIAL_LANGUAGES} from './essential-locale.js';
 import {listVerifiedWorkspaces,chooseVerifiedWorkspace} from './company-workspaces.js';
 import {createBossHandoffController} from './boss-handoff.js';
 import {isRestrictedManagement,canUseRestrictedManagement} from './restricted-management.js';
-import {PunchJournal,projectPendingPunches} from './journal.js';
+import {PunchJournal,projectPendingPunches,hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from './journal.js';
+import {currentOpenPunchBreak,hasConflictingOpenPunchBreak} from './active-punch-break.js';
+import {localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent} from './punch-sync-state.js';
 import {createClient} from './vendor/supabase.js';
 const PROJECT='https://mlabstdxxwjdpfaxiwmg.supabase.co';
 const OAUTH_REDIRECT='https://punch360app.github.io/Punch360/';
@@ -29,9 +44,9 @@ const tr=key=>locale.t(key);
 const $=id=>document.getElementById(id);
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img='https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop';
-const state={fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],corrections:[],documents:[],receipts:[],localPending:0,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
+const state={hoursWeekOffset:0,hoursWeekScope:'',requestFilter:'all',pendingCompanyCreation:null,pendingWorkerActivation:null,serverPunchFetchedAt:null,fieldMode:false,teamSessions:[],authMode:'welcome',authError:'',authNotice:'',confirmationEmail:'',recovery:false,authBusy:false,creationEdition:resolvePublicEdition(location.search,localStorage.getItem('punch-creation-edition')),breaks:[],user:null,account:null,section:'home',sub:'',session:null,segments:[],sessions:[],jobs:[],assignments:[],orders:[],leaves:[],leavesLoaded:false,leaveApprovals:[],leaveApprovalsLoaded:false,leaveSubmitting:false,leaveReviewSubmitting:false,corrections:[],correctionSubmitting:false,correctionApprovals:[],correctionApprovalsLoaded:false,correctionReviewSubmitting:false,documents:[],receipts:[],localPending:0,localPunchEvents:[],localJournalBlocked:null,serverPunch:{sessions:[],segments:[]},serverPunchCompany:null,locationChecks:[],notifications:[],shifts:[],acks:[],weeks:[],audit:[],conversations:[],conversationsCompany:null,messages:[],chatId:null,chatLoadRevision:0,sendingMessage:false,creatingConversation:false,teamList:[],members:[],contacts:[],credentials:[],profile:null,archived:[],selected:null,next:null,filter:'all',search:'',position:null,gpsLoading:false,busy:false,error:'',notice:'',toast:null,time:Date.now(),routeMode:'browse',detailId:null,providers:{google:null,apple:null}};
 const personalMissions=createPersonalMissionController({sb,document,escape:e,redraw:()=>draw(),notify:toast});
-const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
+const essentialUI=createEssentialController({sb,redraw:()=>draw(),notify:toast,escape:e,document,getLocale:()=>locale.code,onPricingChange:()=>clearSavedPublicPlanSelection(sessionStorage),onChoose:plan=>{if(!plan)return;beginPublicEssentialSignup(sessionStorage,localStorage,{planId:plan.id,seats:essentialUI.state.seats,cadence:essentialUI.state.cadence});state.creationEdition='essential';try{const url=new URL(location.href);url.searchParams.set('edition','essential');history.replaceState(null,'',url)}catch{}state.userEditionChoice=false;state.authMode=state.user?'setup':'signup';draw()}});
 // A reload must not change the seat estimate back to 5 / monthly while
 // the same tab still shows a different nonbinding signup preference.
 if(state.creationEdition==='essential'){
@@ -72,34 +87,71 @@ else if(mode==='login'||mode==='signup'){const signup=mode==='signup';body='<div
 else if(mode==='reset'||mode==='confirmation')body='<h2>'+(mode==='reset'?'Mot de passe oublié':'Confirme ton courriel')+'</h2><p>'+(mode==='reset'?'Reçois un lien pour choisir un nouveau mot de passe.':'Ouvre le lien reçu par courriel, puis reviens te connecter. Vérifie aussi les indésirables.')+'</p>'+formfield('Adresse courriel','email',mode==='confirmation'?state.confirmationEmail:'','email','autocomplete="email" required')+(mode==='confirmation'&&planHint?planHint:'')+button(mode==='reset'?'Envoyer le lien':'Renvoyer le lien',mode==='reset'?'resetPassword':'resendConfirmation','gold full',disabled)+button('Se connecter','openLogin','text-link');
 else if(mode==='recovery')body='<h2>Nouveau mot de passe</h2><form id="recoveryForm">'+passwordField('Nouveau mot de passe','newPassword','new-password','minlength="8" required')+passwordField('Confirmer le mot de passe','confirmPassword','new-password','required')+'<button class="btn gold full" type="submit" '+disabled+'>Enregistrer</button></form>';
 else if(mode==='invite')body='<h2>Rejoindre mon équipe</h2>'+formfield('Code d’invitation','inviteToken',sessionStorage.getItem('punch-invite')||'')+button('Rejoindre','acceptInvitation','gold full',disabled);
-else if(state.user&&sessionStorage.getItem('punch-worker-invite'))body='<h2>Activer mon espace</h2><p>Connecté avec '+e(state.user.email)+'. Le courriel ou téléphone doit correspondre au destinataire invité.</p>'+button('Activer mon dossier salarié','activateWorker','gold full')+button('Utiliser un autre compte','logout','text-link');
-else body='<h2>Votre espace</h2><p>'+e(state.user.email)+'</p><div class="setup-edition"><strong>'+ (state.creationEdition==='essential'?'PUNCH Essentiel':'PUNCH Construction')+'</strong>'+button('Changer','changeEdition','text-link')+'</div>'+planHint+(planHint?button('Modifier mon forfait','changeEdition','text-link'):'')+formfield('Nom de l’entreprise','companyName')+button('Créer mon espace','createCompany','gold full',disabled)+button('J’ai reçu une invitation','openInvite','text-link')+button('Se déconnecter','logout','text-link');
+else if(state.user&&(state.pendingWorkerActivation||sessionStorage.getItem('punch-worker-invite')))body='<h2>Activer mon espace</h2><p>Connecté avec '+e(state.user.email)+'. Le courriel ou téléphone doit correspondre au destinataire invité.</p>'+(state.pendingWorkerActivation?'<p class="notice" role="status">Activation reçue ou résultat incertain. Vérifiez le dossier salarié auprès du serveur sans réutiliser l’invitation.</p>'+button('Vérifier mon accès','verifyWorkerActivation','gold full',disabled):button('Activer mon dossier salarié','activateWorker','gold full',disabled))+button('Utiliser un autre compte','logout','text-link');
+else body='<h2>Votre espace</h2><p>'+e(state.user.email)+'</p><div class="setup-edition"><strong>'+ (state.creationEdition==='essential'?'PUNCH Essentiel':'PUNCH Construction')+'</strong>'+button('Changer','changeEdition','text-link')+'</div>'+planHint+(planHint?button('Modifier mon forfait','changeEdition','text-link'):'')+(state.pendingCompanyCreation?'<p class="notice" role="status">'+(state.pendingCompanyCreation.companyId?'La création a été confirmée. Vérifiez l’accès avant toute nouvelle création.':'Réponse de création incertaine. Vérifiez vos accès avant toute nouvelle tentative.')+'</p>'+button('Vérifier mon accès','verifyCreatedCompany','gold full',disabled):formfield('Nom de l’entreprise','companyName')+button('Créer mon espace','createCompany','gold full',disabled))+button('J’ai reçu une invitation','openInvite','text-link')+button('Se déconnecter','logout','text-link');
 return '<div class="authwrap auth-step auth-step-'+mode+'">'+body+'<div id="authError" class="notice danger" role="alert" '+(!state.authError?'hidden':'')+'>'+e(state.authError)+'</div><div id="authNotice" class="notice" role="status" '+(!state.authNotice?'hidden':'')+'>'+e(state.authNotice)+'</div></div>'}
 function authMessage(message,isError=false){state.authError=isError?message:'';state.authNotice=isError?'':message;for(const [id,text] of [['authError',state.authError],['authNotice',state.authNotice]]){const n=$(id);if(n){n.textContent=text;n.hidden=!text}}}
 function authFailure(err){const code=err?.code||'';if(code==='email_not_confirmed'){state.authMode='confirmation';draw()}const text=err?.message||'';const messages={invalid_credentials:'Courriel ou mot de passe incorrect. Si tu viens de t’inscrire, confirme ton courriel.',email_not_confirmed:'Confirme ton courriel avant de te connecter. Tu peux renvoyer le lien avec le bouton.',user_already_exists:'Ce compte existe déjà. Connecte-toi ou utilise « Mot de passe oublié ».',over_email_send_rate_limit:'Trop de courriels demandés. Patiente quelques minutes avant de réessayer.',email_address_not_authorized:'L’envoi de courriels est limité par la configuration du serveur. Le service de courriel doit être configuré.',signup_disabled:'Les inscriptions sont désactivées sur le serveur.',weak_password:'Choisis un mot de passe plus robuste (au moins 8 caractères).'};authMessage(messages[code]||(/fetch|network|abort/i.test(text)?'Connexion impossible. Vérifie ton réseau et réessaie.':text||'Impossible de terminer cette action.'),true)}
 
 function managementBase(){const boss=state.account.role==='boss',essential=isEssential(),restricted=managementIsRestricted();const links=restricted?[['home','Accès limité','navigate'],...(boss?[['billing','Abonnement et factures','subpage']]:[]),['support','Support PUNCH','subpage'],...(boss?[['punch','Mon pointage','navigate']]:[])]:[['home','Vue d’ensemble','navigate'],['members','Employés','subpage'],...(essential?[['organization','Établissements et départements','subpage'],['breakPolicies','Politiques de pauses','subpage'],['kiosks','Bornes de pointage','subpage'],['hr','Documents et formations','subpage'],['communications','Communications','subpage'],['payroll','Paie, coûts et banques','subpage'],['laborBudgets','Budgets de main-d’œuvre','subpage'],['qualifiedCoverage','Couverture par qualification','subpage'],['missingDays','Journées oubliées','subpage']]:[]),...(!essential?[['admin','Chantiers','subpage'],['teams','Équipes','subpage']]:[]),['schedule','Planification','subpage'],['companyHours','Heures de l’équipe','navigate'],['approvals','Approbations','subpage'],...(essential?[['supervision','Supervision · demandes','subpage']]:[]),['geofence','Contrôle GPS','subpage'],['invitations','Invitations','subpage'],...(!essential?[['documents','Documents','subpage']]:[]),...(!essential||essentialMessagesAllowed()?[['messages','Messagerie','navigate']]:[]),...(essential&&boss?[['billing','Abonnement et factures','subpage']]:[]),...(essential?[['support','Support PUNCH','subpage']]:[]),...(boss?[['archives','Archives et récupération','subpage']]:[]),...(essential?[['bossHandoff','Transmission de direction','subpage']]:[]),['settings','Paramètres','subpage']];return '<div class="management-shell '+(boss?'boss-shell':'office-shell')+(essential?' essential-management':'')+'"><aside class="management-sidebar"><div class="management-brand">PUNCH <b>360°</b></div><span class="management-role">'+(boss?'DIRECTION · BOSS':'ADMINISTRATION')+'</span><nav aria-label="Gestion de l’entreprise">'+links.map(([id,label,action])=>'<button type="button" data-action="'+action+'" data-id="'+id+'" class="'+((state.section==='sub'?state.sub:state.section)===id?'active':'')+'">'+label+'</button>').join('')+'</nav>'+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','text-link'):'')+button('Se déconnecter','logout','text-link')+'</aside><div class="management-content"><header class="management-header"><div><small>'+ (boss?'ESPACE DIRECTION':'ESPACE BUREAU')+'</small><strong>'+e(state.account.companies?.name)+'</strong></div><div>'+(restricted?'':button('Notifications · '+state.notifications.filter(n=>!n.read_at).length,'subpage','','data-id="notifications"'))+button('Actualiser','refresh')+'</div></header><main id="main">'+(restricted?renderRestrictedManagement():state.section==='home'?adminHome():state.section==='companyHours'?companyHoursPage():state.section==='messages'?messagesPage():state.section==='sub'?subPage():adminHome())+'</main><div class="toast" id="toast" style="display:none"></div></div></div>'}
 function companyHoursPage(){return heading('Heures de l’équipe','home')+button('Exporter les heures CSV','exportHours','gold')+card('<p>Les 500 dernières journées. Durées brutes; les pauses et les heures nettes figurent dans l’export CSV.</p>'+state.teamSessions.map(s=>'<div class="hoursitem"><div class="grow"><b>'+e(s.user_id===state.user.id?(state.profile?.full_name||state.user.email):(essentialUI.state.workers.find(w=>w.id===s.worker_id)?.employee_number||s.user_id?.slice(0,8)||s.worker_id||'Salarié'))+'</b><small>'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours')+'</small></div><strong>'+mins((s.ended_at?Date.parse(s.ended_at):Date.now())-Date.parse(s.started_at))+'</strong></div>').join('')+(!state.teamSessions.length?'<p>Aucune journée enregistrée.</p>':''))}
-function base(){if(state.user&&sessionStorage.getItem('punch-worker-invite'))return authBase();if(state.user&&companyContext.choosing&&companyContext.list.length)return renderCompanyChooser();if(essentialUI.state.platform&&essentialUI.state.platformOpen&&!state.recovery)return essentialUI.renderPlatform();if(!member()||state.recovery)return authBase();if(manager()&&!(state.account.role==='boss'&&state.fieldMode))return managementBase();if(isEssential())return essentialBase();const t=new Date();const name=state.account?.companies?.name||'PUNCH';const n=[['home','⌂',manager()?'Gestion':'Accueil'],['hours','◷','Mes heures'],['orders','🛒','Commande'],['messages','▤','Message'],['more','▦','Plus']];return '<div class="wrap"><div class="pitch"><div class="kicker">PUNCH 360° · TEST WEB</div><h1>Le chantier <b>dans ta poche.</b></h1><p>Une vraie session, de vrais chantiers et des heures de test enregistrées sur le serveur.</p><p class="small muted">Accès mobile Android / iPhone / PC</p></div><div class="phone"><div class="backdrop"></div><div class="statusline"><span id="topclock">'+t.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+'</span><span>◉ ▴ ▰</span></div><header class="header"><span style="font-size:29px">👷</span><div class="logo">PUNCH <span>360°</span><span class="date">'+t.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short',year:'numeric'})+'</span></div><button class="iconbutton" data-action="subpage" data-id="notifications" aria-label="Notifications">♧ '+state.notifications.filter(n=>!n.read_at).length+'</button><button class="iconbutton" data-action="refresh" aria-label="Actualiser">⟳</button><button class="iconbutton" data-action="profile" aria-label="Mon profil">👤</button></header><main id="main">'+(state.fieldMode?button('← Direction','navigate','full','data-id="management"'):'')+(state.recovery?authHTML():member()?page():authHTML())+'</main><div class="banner">'+(member()?(state.localPending?'● HORS LIGNE · '+state.localPending+' PUNCH(S) CONSERVÉ(S) SUR CET APPAREIL':'● ALPHA CONNECTÉE — NE PAS UTILISER POUR LA PAIE'):'● ALPHA — COMPTE DE TEST')+'</div>'+(member()?'<nav class="nav">'+n.map(a=>'<button class="'+(state.section===a[0]||(state.section==='jobs'&&a[0]==='home')||(state.section==='detail'&&a[0]==='home')||(state.section==='sub'&&a[0]==='more')?'active':'')+'" data-action="navigate" data-id="'+a[0]+'"><i>'+a[1]+'</i><span>'+a[2]+'</span></button>').join('')+'</nav>':'')+'<div class="toast" id="toast" style="display:none"></div></div></div>'}
+function base(){if(state.user&&(state.pendingWorkerActivation||sessionStorage.getItem('punch-worker-invite')))return authBase();if(state.user&&companyContext.choosing&&companyContext.list.length)return renderCompanyChooser();if(essentialUI.state.platform&&essentialUI.state.platformOpen&&!state.recovery)return essentialUI.renderPlatform();if(!member()||state.recovery)return authBase();if(manager()&&!(state.account.role==='boss'&&state.fieldMode))return managementBase();if(isEssential())return essentialBase();const t=new Date();const name=state.account?.companies?.name||'PUNCH';const n=[['home','⌂',manager()?'Gestion':'Accueil'],['hours','◷','Mes heures'],['orders','🛒','Commande'],['messages','▤','Message'],['more','▦','Plus']];return '<div class="wrap"><div class="pitch"><div class="kicker">PUNCH 360° · TEST WEB</div><h1>Le chantier <b>dans ta poche.</b></h1><p>Une vraie session, de vrais chantiers et des heures de test enregistrées sur le serveur.</p><p class="small muted">Accès mobile Android / iPhone / PC</p></div><div class="phone"><div class="backdrop"></div><div class="statusline"><span id="topclock">'+t.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})+'</span><span>◉ ▴ ▰</span></div><header class="header"><span style="font-size:29px">👷</span><div class="logo">PUNCH <span>360°</span><span class="date">'+t.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short',year:'numeric'})+'</span></div><button class="iconbutton" data-action="subpage" data-id="notifications" aria-label="Notifications">♧ '+state.notifications.filter(n=>!n.read_at).length+'</button><button class="iconbutton" data-action="refresh" aria-label="Actualiser">⟳</button><button class="iconbutton" data-action="profile" aria-label="Mon profil">👤</button></header><main id="main">'+(state.fieldMode?button('← Direction','navigate','full','data-id="management"'):'')+(state.recovery?authHTML():member()?page():authHTML())+'</main><div class="banner">'+(member()?(state.localPending?'● HORS LIGNE · '+state.localPending+' PUNCH(S) CONSERVÉ(S) SUR CET APPAREIL':'● ALPHA CONNECTÉE — NE PAS UTILISER POUR LA PAIE'):'● ALPHA — COMPTE DE TEST')+'</div>'+(member()?'<nav class="nav">'+n.map(a=>'<button class="'+(state.section===a[0]||(state.section==='jobs'&&a[0]==='home')||(state.section==='detail'&&a[0]==='home')||(state.section==='sub'&&a[0]==='more')?'active':'')+'" data-action="navigate" data-id="'+a[0]+'"><i>'+a[1]+'</i><span>'+a[2]+'</span></button>').join('')+'</nav>':'')+'<div class="toast" id="toast" style="display:none"></div></div></div>'}
 function chatDraftKey(companyId,chatId){return companyId&&chatId?companyId+':'+chatId:null}
 function saveChatDraft(){const key=chatDraftKey(company(),state.chatId),input=$('chatMessage');if(key&&input&&currentCompanyChat(state.chatId))chatDrafts.set(key,input.value.slice(0,6000))}
 function restoreChatDraft(){const key=chatDraftKey(company(),state.chatId),input=$('chatMessage');if(key&&input&&currentCompanyChat(state.chatId))input.value=chatDrafts.get(key)||''}
 function draw(){saveChatDraft();locale.setUser(state.user?.id||null);document.documentElement.lang=isEssential()?locale.code:'fr';document.documentElement.classList.toggle('essential',isEssential());document.documentElement.classList.toggle('essential-public',!member()&&state.creationEdition==='essential');document.documentElement.classList.toggle('auth-screen',!member()||state.recovery);const focus=document.activeElement,focusId=focus?.id,cursor=focus?.selectionStart??null;const draft={};if(!member()||state.recovery)for(const id of ['email','password','signupPasswordConfirm','companyName','inviteToken','newPassword','confirmPassword']){if($(id))draft[id]=$(id).value}const oldTop=$('main')?.scrollTop||0;$('root').innerHTML=base();if(isEssential()){const phone=document.querySelector('.essential .phone');phone?.setAttribute('dir',locale.dir);phone?.setAttribute('lang',locale.code);}essentialUI.appearance.apply(member()&&isEssential()&&(!manager()||state.fieldMode));for(const [id,value] of Object.entries(draft)){if($(id))$(id).value=value}const main=$('main');if(main)main.scrollTop=oldTop;restoreChatDraft(); if(focusId&&$(focusId)&&['INPUT','TEXTAREA'].includes(focus?.tagName||'')){try{$(focusId).focus();if(cursor!=null)$(focusId).setSelectionRange(cursor,cursor)}catch{}}}
 function page(){if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(isEssential())return essentialPage();switch(state.section){case 'home':return home();case 'punch':return workerHome();case 'jobs':return jobsPage();case 'detail':return detailPage();case 'hours':return hoursPage();case 'orders':return ordersPage();case 'messages':return messagesPage();case 'more':return morePage();case 'sub':return subPage();default:return home()}}
-function currentSession(){return state.sessions.find(s=>!s.ended_at)||null}
-function activeSegment(){return state.segments.find(s=>!s.ended_at)||null}
-function totals(from){const gross=state.segments.reduce((sum,s)=>sum+Math.max(0,Math.min(s.ended_at?Date.parse(s.ended_at):state.time,state.time)-Math.max(Date.parse(s.started_at),from)),0);const pauses=state.breaks.filter(b=>!b.is_paid).reduce((sum,b)=>sum+Math.max(0,Math.min(b.ended_at?Date.parse(b.ended_at):state.time,state.time)-Math.max(Date.parse(b.started_at),from)),0);return Math.max(0,gross-pauses)}
+function currentSession(){const c=company(),u=state.user?.id;return c&&u?
+ state.sessions.find(s=>s.company_id===c&&s.user_id===u&&!s.ended_at)||null:null}
+function activeSegment(){const active=currentSession();return active?
+ state.segments.find(s=>s.company_id===company()&&s.session_id===active.id&&!s.ended_at)||null:null}
+function activeBreak(){return currentOpenPunchBreak(company(),state.user?.id,currentSession(),state.breaks)}
+function activeBreakConflict(){return hasConflictingOpenPunchBreak(company(),state.user?.id,currentSession(),state.breaks)}
+function totals(from){
+ const companyId=company(),userId=state.user?.id,sessionIds=new Set(state.sessions.filter(s=>
+  s.company_id===companyId&&s.user_id===userId).map(s=>s.id));
+ const breaks=new Map();
+ for(const pause of state.breaks){
+  if(!sessionIds.has(pause.session_id)||(pause.company_id&&pause.company_id!==companyId))continue;
+  const items=breaks.get(pause.session_id)||[];items.push(pause);breaks.set(pause.session_id,items);
+ }
+ return state.segments.filter(s=>sessionIds.has(s.session_id)&&s.company_id===companyId)
+  .reduce((sum,segment)=>sum+netSegmentMilliseconds(segment,breaks.get(segment.session_id)||[],from,state.time),0);
+}
 function clockTotals(){const d=new Date(state.time),mon=(d.getDay()+6)%7;const week=new Date(d.getFullYear(),d.getMonth(),d.getDate()-mon).getTime(),yr=new Date(d.getFullYear(),0,1).getTime();return{week:totals(week),year:totals(yr)}}
 function nextJob(){const planned=state.shifts.filter(s=>s.user_id===state.user.id&&Date.parse(s.starts_at)>Date.now()&&s.job_id!==state.selected).map(s=>getJob(s.job_id)).find(Boolean);if(planned)return planned;const today=new Date().toISOString().slice(0,10);return state.assignments.filter(a=>a.planned_start>today&&a.job_id!==state.selected).sort((a,b)=>a.planned_start.localeCompare(b.planned_start)).map(a=>getJob(a.job_id)).find(Boolean)}
 function jobTile(j,label,upcoming=false){return '<div class="card jobtile" data-action="openJobs"><div class="between" style="margin-bottom:7px"><b style="font-size:13px">'+label+'</b><span class="pill '+(upcoming||!currentSession()?'':'green')+'">'+(upcoming?'À venir':currentSession()?'En cours':'Sélectionnée')+'</span></div><div class="body"><img src="'+e(j.photo_url||img)+'" alt="Photo chantier"/><div class="grow"><div class="jobname">#'+e(j.number)+' — '+e(j.name)+'</div><div class="jobaddr">'+e(j.address)+'</div><div class="small muted">'+(upcoming?'Prochaine affectation':'Plans, commandes, punchs')+'</div></div><button class="iconbutton" style="width:32px;height:32px" data-action="maps" data-id="'+j.id+'" aria-label="Itinéraire">➤</button></div></div>'}
 function home(){return manager()&&!state.fieldMode?adminHome():workerHome()}
-function adminHome(){if(isEssential())return essentialUI.renderDashboard(state.account);const essential=isEssential(),pending=state.corrections.filter(x=>x.status==='pending').length+state.leaves.filter(x=>x.status==='pending').length+state.locationChecks.filter(x=>x.review_status==='pending').length;const tiles=[['members','Employés',state.members.length+' membre(s)'],...(!essential?[['admin','Jobs et chantiers',state.jobs.length+' chantier(s)'],['teams','Équipes',state.teamList.length+' équipe(s)']]:[]),['schedule','Horaires','Planifier les quarts'],['approvals','Heures et demandes',pending+' à vérifier'],['geofence',essential?'Établissement et rayon GPS':'Rayon de punch et GPS','Configurer et valider'],['invitations','Inviter un employé','Lien d’invitation']];return '<div class="admin-home"><div class="admin-heading"><span class="eyebrow">'+(state.account.role==='boss'?'ESPACE DIRECTION':'ESPACE ADMINISTRATION')+'</span><h1>'+e(state.account?.companies?.name||'Mon entreprise')+'</h1><p>'+e(labelRole(state.account?.role))+' · '+(essential?'PUNCH Essentiel':'PUNCH Construction')+'</p></div>'+(!essential&&!state.jobs.length?card('<h3>Crée ton premier chantier</h3><p>Ajoute une job pour permettre à ton équipe de puncher.</p>'+button('Créer une job','subpage','gold full','data-id="admin"')):'')+'<div class="admin-grid">'+tiles.map(([id,title,detail])=>'<button type="button" class="admin-tile" data-action="subpage" data-id="'+id+'"><strong>'+title+'</strong><span>'+detail+'</span><b aria-hidden="true">↗</b></button>').join('')+'</div>'+(state.account.role==='boss'?button('Accéder à mon punch','navigate','full','data-id="punch"'):'')+'</div>'}
+function essentialManagerApprovalsHomePanel(){
+ if(!manager())return '';
+ const companyId=company(),reviewerId=state.user?.id,role=state.account?.role;
+ const view=essentialManagerApprovalsSummary({companyId,reviewerId,role,
+  correctionView:essentialCorrectionApprovalView({companyId,reviewerId,
+   manager:true,loaded:state.correctionApprovalsLoaded,requests:state.correctionApprovals}),
+  leaveView:essentialLeaveApprovalView({companyId,reviewerId,
+   manager:true,loaded:state.leaveApprovalsLoaded,requests:state.leaveApprovals}),
+  breakView:breakCorrectionInbox({companyId,userId:reviewerId,role,
+   source:essentialUI.breakCorrections.state}),
+  missingView:managerMissingDayApprovalSummary({companyId,reviewerId,
+   source:essentialUI.missingDays.state})});
+ if(!view.authorized||(view.complete&&view.total===0))return '';
+ const rows=view.sections.map(r=>'<div class="group"><b>'+e(r.title)+'</b>'+
+  '<span class="small muted">'+(r.ready?r.count+' en attente dans les données chargées':
+   'Demandes non vérifiées')+'</span></div>').join('');
+ return '<section class="ess-panel" role="status" aria-label="Approbations en attente">'+
+  '<b>Demandes à examiner</b><p class="small">'+
+  (view.total?view.total+' demande(s) en attente dans les files chargées.':
+   'Certaines files d’approbation doivent être actualisées.')+'</p>'+
+  (!view.complete?'<p class="small muted">Suivi partiel : certaines demandes ne sont pas vérifiées.</p>':'')+
+  rows+button('Examiner les approbations','subpage','full','data-id="approvals"')+'</section>';
+}
+function adminHome(){if(isEssential())return essentialUI.renderDashboard(state.account)+essentialManagerApprovalsHomePanel();const essential=isEssential(),pending=state.corrections.filter(x=>x.status==='pending').length+state.leaves.filter(x=>x.status==='pending').length+state.locationChecks.filter(x=>x.review_status==='pending').length;const tiles=[['members','Employés',state.members.length+' membre(s)'],...(!essential?[['admin','Jobs et chantiers',state.jobs.length+' chantier(s)'],['teams','Équipes',state.teamList.length+' équipe(s)']]:[]),['schedule','Horaires','Planifier les quarts'],['approvals','Heures et demandes',pending+' à vérifier'],['geofence',essential?'Établissement et rayon GPS':'Rayon de punch et GPS','Configurer et valider'],['invitations','Inviter un employé','Lien d’invitation']];return '<div class="admin-home"><div class="admin-heading"><span class="eyebrow">'+(state.account.role==='boss'?'ESPACE DIRECTION':'ESPACE ADMINISTRATION')+'</span><h1>'+e(state.account?.companies?.name||'Mon entreprise')+'</h1><p>'+e(labelRole(state.account?.role))+' · '+(essential?'PUNCH Essentiel':'PUNCH Construction')+'</p></div>'+(!essential&&!state.jobs.length?card('<h3>Crée ton premier chantier</h3><p>Ajoute une job pour permettre à ton équipe de puncher.</p>'+button('Créer une job','subpage','gold full','data-id="admin"')):'')+'<div class="admin-grid">'+tiles.map(([id,title,detail])=>'<button type="button" class="admin-tile" data-action="subpage" data-id="'+id+'"><strong>'+title+'</strong><span>'+detail+'</span><b aria-hidden="true">↗</b></button>').join('')+'</div>'+(state.account.role==='boss'?button('Accéder à mon punch','navigate','full','data-id="punch"'):'')+'</div>'}
 function workerHome(){const j=selectedJob(),t=clockTotals(),active=currentSession(),start=active?Date.parse(active.started_at):null,next=nextJob();return '<div class="home"><div class="weather">'+card('<span class="weathericon">🌤</span><div><b>Météo</b><div class="small muted">À connecter</div></div>')+card('<span class="weathericon">📍</span><div class="grow"><b>GPS chantier</b><div class="small muted">'+(state.position?'Position détectée':'Sur demande')+'</div></div><button class="iconbutton" data-action="gps" aria-label="Activer GPS">⌖</button>')+'</div><div class="punchblock"><button class="punch '+(active?'out':'')+'" data-action="punch" '+(!j||state.busy?'disabled':'')+'><span class="symbol">'+(active?'■':'▶')+'</span><strong>PUNCH '+(active?'OUT':'IN')+'</strong><span class="small">#'+e(j?.number||'—')+' '+e(j?.name||'Aucune job')+'</span><span class="clock" id="liveTimer">'+elapsed(active?state.time-start:0)+'</span></button><button class="jobchoose" data-action="switchJobs">⌖ Changer de job ›</button></div><div class="stats">'+card('<div class="small muted">◷ Cette semaine</div><strong id="weekTotal">'+mins(t.week)+'</strong>')+card('<div class="small muted">▥ Cette année</div><strong id="yearTotal">'+mins(t.year)+'</strong>')+'</div>'+(j?jobTile(j,'▣ Job en cours'):card('<p>Commence par créer ou choisir une job.</p>'+button('Toutes les jobs','openJobs','gold')))+(next?jobTile(next,'▦ Prochain chantier',true):'')+card('<div class="between"><div><b>📄 Documents de chantier</b><div class="small muted">'+(state.documents.filter(d=>d.job_id===state.selected).length||0)+' fichier(s) sur cette job</div></div>'+button('Ouvrir','openDetail')+'</div>')+'</div>'}
 function jobList(){let items=state.jobs.filter(j=>(state.filter!=='mine'||state.assignments.some(a=>a.job_id===j.id))&&(!state.search||[j.name,j.number,j.address].join(' ').toLowerCase().includes(state.search.toLowerCase())));if(state.filter==='near'&&state.position)items=items.filter(j=>j.latitude!=null&&j.longitude!=null).map(j=>({...j,distance:distance(state.position,{latitude:j.latitude,longitude:j.longitude})})).sort((a,b)=>a.distance-b.distance);return items}
 function distance(a,b){const r=n=>n*Math.PI/180,dx=r(b.latitude-a.latitude),dy=r(b.longitude-a.longitude);const h=Math.sin(dx/2)**2+Math.cos(r(a.latitude))*Math.cos(r(b.latitude))*Math.sin(dy/2)**2;return 6371*2*Math.asin(Math.sqrt(h))}
 function jobsPage(){const list=jobList();return heading('Toutes les jobs','home')+'<div class="group"><input id="jobSearch" class="field" placeholder="Rechercher un chantier ou numéro…" value="'+e(state.search)+'"></div><div class="tabs">'+[['all','Toutes'],['mine','Mes jobs'],['near','À proximité']].map(v=>'<button data-action="filter" data-id="'+v[0]+'" class="'+(state.filter===v[0]?'active':'')+'">'+v[1]+'</button>').join('')+'</div>'+card('<div class="between"><b>📍 Carte des chantiers</b>'+button('Actualiser GPS','gps')+'</div><div id="geoMap" class="map" style="margin-top:8px"></div><div class="small muted" style="margin-top:7px">'+(state.position?'GPS : '+state.position.latitude.toFixed(4)+', '+state.position.longitude.toFixed(4):'Autorise le GPS pour voir les chantiers proches.')+'</div>')+'<div class="between"><b>'+list.length+' chantier(s)</b><span class="small muted">'+(state.routeMode==='switch'?'Choisir pour transférer':'Ouvrir la fiche')+'</span></div>'+list.map(j=>'<button class="listitem" data-action="detail" data-id="'+j.id+'"><img src="'+e(j.photo_url||img)+'" alt="Chantier"/><span class="grow"><b>#'+e(j.number)+' — '+e(j.name)+'</b><small>'+e(j.address)+'</small><small>'+(j.id===state.selected?'Actuelle':state.assignments.some(a=>a.job_id===j.id)?'Ma job':'Disponible')+(j.distance!=null?' · '+j.distance.toFixed(1)+' km':'')+'</small></span><span class="arrow">›</span></button>').join('')+(list.length?'':'<div class="small muted center">Aucun chantier correspondant.</div>')}
 function detailPage(){const j=getJob(state.detailId);if(!j)return card('Chantier introuvable.');const ps=state.segments.filter(s=>s.job_id===j.id&&state.archived.includes(s.id)===!!state.showArchives),docs=state.documents.filter(d=>d.job_id===j.id),orders=state.orders.filter(o=>o.job_id===j.id);return heading('#'+e(j.number)+' — '+e(j.name),'jobs')+card('<div class="row"><img class="thumb" src="'+e(j.photo_url||img)+'" alt="Chantier"><div class="grow"><b>'+e(j.name)+'</b><div class="small muted">'+e(j.address)+'</div></div></div><div class="buttonrow" style="margin-top:10px">'+button('➤ Waze','waze')+button('⌖ Google Maps','googleMaps')+'</div>')+card('<div class="between"><b>Job sélectionnée</b><span class="pill '+(j.id===state.selected?'green':'')+'">'+(j.id===state.selected?'Actuelle':'Disponible')+'</span></div>'+button(currentSession()?'⇄ Transférer les heures ici':'✓ Sélectionner pour Punch IN','selectDetail','green full')+'</div>')+card('<b>📄 Plans et documents</b>'+(docs.length?docs.map(d=>'<div class="hoursitem"><div class="grow"><b>'+e(d.name)+'</b><small>'+e(d.kind)+' · Version '+d.version+(d.requires_ack?' · Lecture obligatoire':'')+'</small></div></div>').join(''):'<p class="small muted">Aucun document téléversé.</p>')+'<div class="small muted">Ouverture PDF et confirmations de lecture : à terminer.</div>')+card('<div class="between"><b>🛒 Commandes</b><span class="pill">'+orders.length+'</span></div>'+orders.slice(0,3).map(o=>'<div class="hoursitem"><span class="grow small">'+e(o.note||'Commande')+'</span><span class="pill">'+stateText(o.status)+'</span></div>').join('')+button('Faire une commande','orderPage','full') )+card('<div class="between"><b>◷ Mes punchs sur cette job</b>'+button(state.showArchives?'Actifs':'Archives','archiveToggle')+'</div>'+(ps.length?ps.map(s=>'<div class="hoursitem"><div class="grow"><b>'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours')+'</b><small>'+mins((s.ended_at?Date.parse(s.ended_at):state.time)-Date.parse(s.started_at))+'</small></div>'+button(state.showArchives?'Restaurer':'⋮ Archiver','archive:'+s.id)+'</div>').join(''):'<p class="muted small">Aucun punch à afficher.</p>'))}
-function hoursPage(){const t=clockTotals();return heading('Mes heures')+button('Exporter mes heures CSV','exportHours','full')+'<div class="stats">'+card('<div class="small muted">Cette semaine</div><strong>'+mins(t.week)+'</strong>')+card('<div class="small muted">Cette année</div><strong>'+mins(t.year)+'</strong>')+'</div>'+card('<div class="between"><b>Historique de mes journées</b><span class="pill">'+state.sessions.length+' session(s)</span></div>'+(state.sessions.length?state.sessions.slice(0,80).map(s=>'<button class="listitem" data-action="hoursDetail" data-id="'+s.id+'"><span>◷</span><span class="grow"><b>'+new Date(s.started_at).toLocaleDateString('fr-CA')+'</b><small>'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours')+'</small></span><b>'+mins((s.ended_at?Date.parse(s.ended_at):state.time)-Date.parse(s.started_at))+'</b></button>').join(''):'<p class="small muted">Aucune heure encore enregistrée.</p>'))+card('<b>Corrections d’heures</b><div class="small muted">L’employé demande; la correction attend une approbation. Aucune heure officielle ne change automatiquement.</div><div class="group"><select id="sessionCorrect" class="field"><option value="">Choisir une journée</option>'+state.sessions.map(s=>'<option value="'+s.id+'">'+new Date(s.started_at).toLocaleDateString('fr-CA')+'</option>').join('')+'</select></div>'+formfield('Nouvelle entrée (heure locale)','correctionStart','','datetime-local')+formfield('Nouvelle sortie (heure locale)','correctionEnd','','datetime-local')+'<div class="group"><textarea id="correctionReason" class="field" placeholder="Raison de la correction…"></textarea></div>'+button('Soumettre la correction','correction','gold full')+'</div>')+card('<b>Demandes de correction</b>'+(state.corrections.length?state.corrections.map(r=>'<div class="hoursitem"><div class="grow small">'+e(r.reason)+'<small>'+when(r.created_at)+'</small></div><span class="pill">'+stateText(r.status)+'</span></div>').join(''):'<p class="small muted">Aucune demande.</p>'))}
+function hoursPage(){const t=clockTotals(),correction=isEssential()?essentialCorrectionView({companyId:company(),userId:state.user?.id,snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections}):{ready:true,sessions:state.sessions,requests:state.corrections};const sessions=correction.sessions;return heading('Mes heures')+(isEssential()?'<p class="small muted">Totaux affichés comme estimations locales. Seules les journées terminées du relevé serveur peuvent faire l’objet d’une correction.</p>':'')+button('Exporter mes heures CSV','exportHours','full')+'<div class="stats">'+card('<div class="small muted">Cette semaine</div><strong>'+mins(t.week)+'</strong>')+card('<div class="small muted">Cette année</div><strong>'+mins(t.year)+'</strong>')+'</div>'+card('<div class="between"><b>Historique de mes journées</b><span class="pill">'+sessions.length+' session(s)</span></div>'+(sessions.length?sessions.slice(0,80).map(s=>'<button class="listitem" data-action="hoursDetail" data-id="'+s.id+'"><span>◷</span><span class="grow"><b>'+new Date(s.started_at).toLocaleDateString('fr-CA')+'</b><small>'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours')+'</small></span><b>'+mins((s.ended_at?Date.parse(s.ended_at):state.time)-Date.parse(s.started_at))+'</b></button>').join(''):'<p class="small muted">Aucune heure encore enregistrée.</p>'))+card('<b>Corrections d’heures</b><div class="small muted">L’employé demande; la correction attend une approbation. Aucune heure officielle ne change automatiquement.</div>'+(isEssential()&&!correction.ready?'<p class="ess-notice" role="status">Relevé serveur indisponible. Synchronisez vos heures pour demander une correction.</p>':'')+'<div class="group"><select id="sessionCorrect" class="field"><option value="">Choisir une journée</option>'+sessions.map(s=>'<option value="'+s.id+'">'+new Date(s.started_at).toLocaleDateString('fr-CA')+'</option>').join('')+'</select></div>'+formfield('Nouvelle entrée (heure locale)','correctionStart','','datetime-local')+formfield('Nouvelle sortie (heure locale)','correctionEnd','','datetime-local')+'<div class="group"><textarea id="correctionReason" class="field" placeholder="Raison de la correction…"></textarea></div>'+button('Soumettre la correction','correction','gold full',correction.ready&&(!isEssential()||navigator.onLine)?'':'disabled')+'</div>')+card('<b>Demandes de correction</b>'+(correction.requests.length?correction.requests.map(r=>'<div class="hoursitem"><div class="grow small">'+e(r.reason)+'<small>'+when(r.created_at)+'</small></div><span class="pill">'+stateText(r.status)+'</span></div>').join(''):'<p class="small muted">Aucune demande.</p>'))}
 function ordersPage(){const j=selectedJob();return heading('Commandes de matériel')+card('<b>Commande pour : '+e(j?'#'+j.number+' — '+j.name:'Aucune job')+'</b><div class="small muted">Description libre, quantités et matériel à commander. Catalogue photo et suivi complet : à développer.</div><div class="group"><textarea id="materialNote" class="field" placeholder="Exemple : 3 boîtes de vis 3 pouces, 10 feuilles de contreplaqué…"></textarea></div>'+button('Envoyer la commande','submitOrder','gold full',j?'':'disabled')+'</div>')+card('<div class="between"><b>Mes commandes</b><span class="pill">'+state.orders.length+'</span></div>'+(state.orders.length?state.orders.map(o=>'<div class="hoursitem"><div class="grow"><b>Job #'+e(getJob(o.job_id)?.number||'—')+'</b><small>'+when(o.created_at)+' · '+e(o.note||'Matériel')+'</small></div><span class="pill">'+stateText(o.status)+'</span></div>').join(''):'<p class="small muted">Aucune commande envoyée.</p>'))}
 function messagesPage(){if(isEssential()&&!essentialMessagesAllowed())return card('Messages non inclus dans ce forfait ou droits indisponibles.');if(state.chatId&&!currentCompanyChat(state.chatId))return card('Cette conversation n’est pas disponible dans cette entreprise.');if(state.chatId){const c=state.conversations.find(c=>c.id===state.chatId);return '<div class="chatbox">'+heading(e(c?.title||'Conversation'),'messages')+'<div class="small muted">'+(c?.kind==='team_private'?'🔒 Groupe privé — membres de l’équipe seulement':'Conversation réservée aux participants')+'</div><div class="messages">'+state.messages.map(m=>'<div class="bubble '+(m.sender_id===state.user.id?'mine':'')+'">'+e(m.body)+'<small>'+when(m.created_at)+'</small></div>').join('')+'</div><div class="compose"><input id="chatMessage" class="field" placeholder="Écrire un message…" maxlength="6000">'+button('➤ Envoyer','sendMessage','gold',state.sendingMessage?'disabled':'')+'</div></div>'}
 return heading('Messages')+card('<div class="between"><b>Conversations</b>'+(manager()?button('Créer un groupe','newGroup','gold'):state.account?.role==='lead'?button('Chat privé équipe','privateChat','gold'):'')+'</div>'+(state.conversations.length?state.conversations.map(c=>'<button class="listitem" data-action="chat" data-id="'+c.id+'"><span class="icon">'+(c.kind==='team_private'?'🔒':'💬')+'</span><div class="grow"><b>'+e(c.title)+'</b><small>'+e(c.kind==='team_private'?'Équipe privée':'Groupe')+'</small></div><span class="arrow">›</span>'+(chatUnread.state.company===company()&&chatUnread.count(c.id)>0?'<small class="ess-chat-unread" aria-label="'+chatUnread.count(c.id)+' messages non lus">'+chatUnread.count(c.id)+'</small>':'')+'</button>').join(''):'<div class="small muted" style="padding:12px">Aucune conversation. L’admin, le boss ou un chef peut créer les groupes autorisés.</div>'))}
@@ -118,17 +170,141 @@ function approvalsPage(){
  card('<b>Historique des décisions</b>'+state.audit.map(a=>'<div class="hoursitem"><div class="grow">'+e(a.action)+'<small>'+e(a.reason)+' · '+when(a.created_at)+'</small></div></div>').join(''));
 }
 async function reviewRecord(rpc,id,approve){const note=prompt('Motif de la décision (minimum 3 caractères)');if(!note||note.trim().length<3)return;try{const r=await sb.rpc(rpc,{p_request:id,p_approve:approve,p_note:note});if(r.error)throw r.error;await reload({quiet:true});toast('Décision enregistrée et historisée')}catch(err){error(err)}}
+async function reviewEssentialCorrection(id,approve){
+ if(!isEssential()||!manager())return toast('Approbation réservée aux responsables.');
+ if(!navigator.onLine)return toast('Connexion Internet requise pour approuver une correction.');
+ if(state.correctionReviewSubmitting)return;
+ const companyId=company(),reviewerId=state.user?.id;
+ const view=essentialCorrectionApprovalView({companyId,reviewerId,manager:manager(),
+  loaded:state.correctionApprovalsLoaded,requests:state.correctionApprovals});
+ const selected=view.requests.find(row=>row.id===id);
+ if(!view.ready||!selected)return toast('Correction non vérifiée. Actualisez la liste.');
+ const note=prompt('Motif de '+(approve?'l’approbation':'la décision de refus')+' (3 à 1 000 caractères)');
+ if(note===null)return;
+ const reason=note.trim();
+ if(reason.length<3||reason.length>1000)return toast('Motif requis : entre 3 et 1 000 caractères.');
+ const sameScope=()=>company()===companyId&&state.user?.id===reviewerId&&isEssential()&&manager();
+ state.correctionReviewSubmitting=true;
+ if(state.section==='sub'&&state.sub==='approvals')draw();
+ try{
+  const auth=await sb.auth.getUser();
+  if(auth.error||auth.data?.user?.id!==reviewerId||!sameScope())throw Error('Review identity not verified');
+  const proof=await sb.from('punch_correction_requests')
+   .select('id,company_id,session_id,requested_by,status')
+   .eq('id',id).eq('company_id',companyId).eq('status','pending').maybeSingle();
+  if(proof.error||!proof.data||proof.data.id!==id||proof.data.company_id!==companyId||
+     proof.data.session_id!==selected.session_id||proof.data.requested_by!==selected.requested_by||
+     proof.data.status!=='pending'||!sameScope())throw Error('Pending correction not verified');
+  const result=await sb.rpc('review_punch_correction',{p_request:id,p_approve:approve,p_note:reason});
+  if(result.error||!sameScope())throw Error('Correction decision not confirmed');
+  await reload({quiet:true});
+  if(sameScope())toast('Décision de correction transmise au serveur.');
+ }catch{
+  if(sameScope())toast('Décision non confirmée. Actualisez les demandes avant une nouvelle tentative.');
+ }finally{
+  state.correctionReviewSubmitting=false;
+  if(sameScope()&&state.section==='sub'&&state.sub==='approvals')draw();
+ }
+}
+async function reviewEssentialLeave(id,approve){
+ if(!isEssential()||!manager())return toast('Approbation réservée aux responsables.');
+ if(!navigator.onLine)return toast('Une connexion Internet est requise pour approuver un congé.');
+ if(state.leaveReviewSubmitting)return;
+ const companyId=company(),reviewerId=state.user?.id;
+ const view=essentialLeaveApprovalView({companyId,manager:manager(),loaded:state.leaveApprovalsLoaded,requests:state.leaveApprovals,reviewerId});
+ const selected=view.requests.find(request=>request.id===id);
+ if(!view.ready||!selected)return toast('Cette demande n’est plus vérifiée. Actualisez la liste.');
+ const note=prompt('Motif de '+(approve?'l’approbation':'la décision de refus')+' (3 à 1 000 caractères)');
+ if(note===null)return;
+ const reason=note.trim();
+ if(reason.length<3||reason.length>1000)return toast('Motif requis : entre 3 et 1 000 caractères.');
+ const sameScope=()=>company()===companyId&&state.user?.id===reviewerId&&isEssential()&&manager();
+ state.leaveReviewSubmitting=true;
+ if(state.section==='sub'&&state.sub==='approvals')draw();
+ try{
+  const auth=await sb.auth.getUser();
+  if(auth.error||auth.data?.user?.id!==reviewerId||!sameScope())throw Error('Review identity not verified');
+  // Recheck the pending record before calling the server-authorized audit RPC.
+  const proof=await sb.from('leave_requests').select('id,company_id,user_id,status')
+   .eq('id',id).eq('company_id',companyId).eq('status','pending').maybeSingle();
+  if(proof.error||!proof.data||proof.data.id!==id||proof.data.company_id!==companyId||
+     proof.data.user_id!==selected.user_id||proof.data.status!=='pending'||!sameScope())
+   throw Error('Pending request not verified');
+  const result=await sb.rpc('review_leave',{p_request:id,p_approve:approve,p_note:reason});
+  if(result.error){
+   if(String(result.error.message||'').includes('Annuler ou déplacer les quarts en conflit'))throw Error('shift_conflict');
+   throw Error('Leave decision not confirmed');
+  }
+  if(!sameScope())throw Error('Review scope changed');
+  await reload({quiet:true});
+  if(sameScope())toast('Décision transmise au serveur et enregistrée.');
+ }catch(err){
+  if(sameScope())toast(err?.message==='shift_conflict'?'Congé en conflit avec un quart planifié : déplacez ou annulez le quart avant approbation.':'Décision non confirmée. Actualisez la liste avant toute nouvelle tentative.');
+ }finally{
+  state.leaveReviewSubmitting=false;
+  if(sameScope()&&state.section==='sub'&&state.sub==='approvals')draw();
+ }
+}
 async function advanceOrder(id,status){const note=prompt('Commentaire de suivi (minimum 3 caractères)');if(!note||note.trim().length<3)return;try{const r=await sb.rpc('advance_material_order',{p_order:id,p_status:status,p_note:note});if(r.error)throw r.error;await reload({quiet:true});toast('Commande mise à jour')}catch(err){error(err)}}
 async function setWeek(close){const week=$val('payrollWeek');if(!week)return toast('Choisis le lundi de la semaine.');const reason=prompt('Motif de '+(close?'fermeture':'réouverture'));if(!reason||reason.trim().length<3)return;try{const r=await sb.rpc('set_payroll_week',{p_company:company(),p_week:week,p_close:close,p_reason:reason});if(r.error)throw r.error;await reload({quiet:true});toast(close?'Semaine fermée':'Semaine rouverte')}catch(err){error(err)}}
-function csvCell(v){let t=String(v??'');if(/^[=+@\t\r-]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"'}
-async function exportHours(){try{
- let rows=[],offset=0;while(true){let q=sb.from('punch_segments').select('id,session_id,job_id,started_at,ended_at,punch_sessions!inner(user_id,worker_id)').eq('company_id',company()).order('id').range(offset,offset+499);if(!manager()||state.section==='hours')q=q.eq('punch_sessions.user_id',state.user.id);const r=await q;if(r.error)throw r.error;rows.push(...(r.data||[]));if(r.data.length<500)break;offset+=500;}
- let breaks=[],breakOffset=0;while(true){const b=await sb.from('punch_breaks').select('session_id,started_at,ended_at,is_paid').eq('company_id',company()).order('id').range(breakOffset,breakOffset+499);if(b.error)throw b.error;breaks.push(...b.data);if(b.data.length<500)break;breakOffset+=500;}
- const paused=r=>breaks.filter(b=>b.session_id===r.session_id&&!b.is_paid).reduce((sum,b)=>sum+Math.max(0,Math.min(Date.parse(b.ended_at||r.ended_at),Date.parse(r.ended_at))-Math.max(Date.parse(b.started_at),Date.parse(r.started_at))),0);
- const data=[['Segment',isEssential()?'Matricule':'Employé',isEssential()?'Lieu':'Job','Entrée ISO','Sortie ISO','Heures brutes','Pauses non payées (h)','Heures nettes','Anomalie'],...rows.map(r=>[r.id,(isEssential()?(essentialUI.planning.state.roster.find(w=>w.id===r.punch_sessions.worker_id)?.employee_number||r.punch_sessions.worker_id||r.punch_sessions.user_id):(r.punch_sessions.user_id||r.punch_sessions.worker_id)),isEssential()?(essentialUI.planning.state.locations.find(l=>l.punch_job_id===r.job_id)?.name||'Établissement'):getJob(r.job_id)?.number||r.job_id,r.started_at,r.ended_at||'',r.ended_at?((Date.parse(r.ended_at)-Date.parse(r.started_at))/3600000).toFixed(4):'',r.ended_at?(paused(r)/3600000).toFixed(4):'',r.ended_at?((Date.parse(r.ended_at)-Date.parse(r.started_at)-paused(r))/3600000).toFixed(4):'',!r.ended_at?'SORTIE MANQUANTE':Date.parse(r.ended_at)-Date.parse(r.started_at)>16*3600000?'PLUS DE 16H':''])];
- const blob=new Blob(['\uFEFF'+data.map(r=>r.map(csvCell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='PUNCH-heures-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
-}catch(err){error(err)}}
-
+let hoursExportRunning=false;
+async function exportHours(){
+ if(hoursExportRunning)return;
+ if(!member())return toast('Connexion requise pour exporter les heures.');
+ if(!navigator.onLine)return toast('Export serveur indisponible hors ligne. Synchronisez avant de réessayer.');
+ hoursExportRunning=true;
+ try{
+  const roleAtStart=state.account?.role,sectionAtStart=state.section,
+   editionAtStart=isEssential();
+  const {companyId,userId,ownOnly:selfOnly}=hoursExportScope(
+   company(),state.user.id,roleAtStart,sectionAtStart);
+  // Always query server records. Projected offline entries are never exported.
+  let rows=[],offset=0;
+  while(true){
+   let q=sb.from('punch_segments')
+    .select('id,company_id,session_id,job_id,started_at,ended_at,punch_sessions!inner(company_id,user_id,worker_id,started_at,ended_at)')
+    .eq('company_id',companyId).eq('punch_sessions.company_id',companyId).order('id').range(offset,offset+499);
+   if(selfOnly)q=q.eq('punch_sessions.user_id',userId);
+   const result=await q;
+   if(result.error)throw result.error;
+   const page=result.data||[];rows.push(...page);
+   if(page.length<500)break;
+   offset+=500;
+  }
+  // Fetch only breaks belonging to the actually exported sessions, not
+  // every break in a tenant. Chunk IDs for reliable PostgREST URL sizes.
+  const breaks=[];
+  for(const ids of sessionIdChunks(rows)){
+   let breakOffset=0;
+   while(true){
+    const result=await sb.from('punch_breaks')
+     .select('id,company_id,session_id,started_at,ended_at,is_paid')
+     .eq('company_id',companyId).in('session_id',ids)
+     .order('id').range(breakOffset,breakOffset+499);
+    if(result.error)throw result.error;
+    const page=result.data||[];breaks.push(...page);
+    if(page.length<500)break;
+    breakOffset+=500;
+   }
+  }
+  // A tenant switch or signout during an asynchronous export must fail closed.
+  if(company()!==companyId||state.user?.id!==userId||!member()||
+   state.account?.role!==roleAtStart||state.section!==sectionAtStart||
+   isEssential()!==editionAtStart)
+   throw Error('Compte, droits ou contexte changés pendant l’export. Réessayez.');
+  const data=createHoursCsv({
+   companyId,userId,ownOnly:selfOnly,rows,breaks,essential:isEssential(),
+   roster:essentialUI.planning.state.roster,locations:essentialUI.planning.state.locations,
+   jobs:state.jobs
+  });
+  const blob=new Blob([data.csv],
+   {type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='PUNCH-heures-'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }catch(err){error(err)}
+ finally{hoursExportRunning=false}
+}
 
 function schedulePage(){if(isEssential())return essentialSchedule();return heading('Horaire et affectations','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Employé</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+' · '+e(labelRole(m.role))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début (heure de cet appareil)','shiftStart','','datetime-local')+formfield('Fin (heure de cet appareil)','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Affecter au chantier','scheduleShift','gold full')):'')+card('<b>Quarts planifiés</b>'+state.shifts.map(x=>'<div class="group"><b>#'+e(getJob(x.job_id)?.number||'—')+' · '+e(x.user_id.slice(0,8))+'</b><p>'+when(x.starts_at)+' → '+when(x.ends_at)+'</p><p>'+e(x.note)+'</p>'+(manager()?button('Annuler le quart','cancelShift','',`data-id="${e(x.id)}"`):'')+'</div>').join(''));}
 function jobSelect(id){if(isEssential())return '<input type="hidden" id="'+id+'" value="'+e(essentialPunchJob()||state.selected)+'" />';return '<div class="group"><label>Chantier</label><select id="'+id+'" class="field">'+state.jobs.map(j=>'<option value="'+e(j.id)+'">#'+e(j.number)+' — '+e(j.name)+'</option>').join('')+'</select></div>'}
@@ -147,13 +323,140 @@ const receivedInvitation=new URLSearchParams(location.search).get('invite');if(r
 
 async function freshPunchFix(){return new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude,accuracy:p.coords.accuracy}),()=>resolve(null),{enableHighAccuracy:true,timeout:12000,maximumAge:0})})}
 const journalInstances=new Map();
-function punchJournal(){const key=state.user.id+':'+company();if(!journalInstances.has(key))journalInstances.set(key,new PunchJournal({company:company(),user:state.user.id,withLock:fn=>navigator.locks?navigator.locks.request('punch-journal:'+key,fn):fn(),uuid:()=>crypto.randomUUID(),storage:{get:async key=>localStorage.getItem(key),set:async(key,value)=>localStorage.setItem(key,value)},send:async event=>{if(!navigator.onLine)throw Error('Réseau indisponible');const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const request=event.action==='break_start'&&event.paid?sb.rpc('sync_paid_break_start',{p_event:event.id,p_company:event.company,p_occurred_at:event.occurredAt,p_offline:event.offline,p_previous:event.previous}):event.action.startsWith('break_')?sb.rpc('sync_break_event',{p_event:event.id,p_company:event.company,p_action:event.action,p_occurred_at:event.occurredAt,p_offline:event.offline,p_previous:event.previous}):sb.rpc('sync_punch_event',{p_event:event.id,p_company:event.company,p_action:event.action,p_occurred_at:event.occurredAt,p_offline:event.offline,p_job:event.job,p_latitude:event.fix?.latitude??null,p_longitude:event.fix?.longitude??null,p_accuracy:event.fix?.accuracy??null,p_previous:event.previous});const r=await request.abortSignal(controller.signal);if(r.error)throw r.error;return r.data;}finally{clearTimeout(timer)}}}));return journalInstances.get(key);}
-function saveOfflineSnapshot(){if(!member())return;localStorage.setItem('punch-snapshot:'+state.user.id+':'+company(),JSON.stringify({company:company(),serverPunchCompany:state.serverPunchCompany===company()?company():null,jobs:state.jobs,assignments:state.assignments,shifts:state.shifts,serverPunch:state.serverPunch,selected:state.selected}));}
-function restoreOfflineSnapshot(){if(!state.user||!company())return;const data=JSON.parse(localStorage.getItem('punch-snapshot:'+state.user.id+':'+company())||'null');if(data?.company===company()){state.jobs=data.jobs||[];state.assignments=data.assignments||[];state.shifts=data.shifts||[];state.serverPunch=data.serverPunch||{sessions:[],segments:[],breaks:[]};state.serverPunchCompany=data.serverPunchCompany===company()?company():null;state.sessions=state.serverPunch.sessions||[];state.segments=state.serverPunch.segments||[];state.breaks=state.serverPunch.breaks||[];state.selected=data.selected;}}
-async function locatedPunch(action,job,paid=false){if(isEssential()&&!essentialMobilePunchAllowed())throw new Error('Pointage mobile non autorisé pour ce compte.');const at=new Date().toISOString(),fix=action.startsWith('break_')?null:await freshPunchFix(),journal=punchJournal();const event=await journal.append(action,job,fix,at,paid);const sync=await journal.flush(),saved=sync.events.find(e=>e.id===event.id);if(saved?.status==='conflict')toast('Événement conservé et conflit transmis à l’administration');return {...saved?.result,review_status:saved?.status==='pending'?'local':saved?.result?.review_status};}
-window.addEventListener('online',()=>{if(member())reload({quiet:true})});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&member())reload({quiet:true})});
-setInterval(()=>{if(member()&&!state.busy)reload({quiet:true})},30000);
+function punchJournal(){const key=state.user.id+':'+company();if(!journalInstances.has(key))journalInstances.set(key,new PunchJournal({company:company(),user:state.user.id,withLock:fn=>navigator.locks?navigator.locks.request('punch-journal:'+key,fn):fn(),uuid:()=>crypto.randomUUID(),storage:{get:async key=>localStorage.getItem(key),set:async(key,value)=>localStorage.setItem(key,value)},send:async event=>{if(!member()||!isOwnPunchJournalEvent(event,company(),state.user?.id))throw Error('Pointage local hors compte ou entreprise active : envoi bloqué.');if(!navigator.onLine)throw Error('Réseau indisponible');const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{const request=event.action==='break_start'&&event.paid?sb.rpc('sync_paid_break_start',{p_event:event.id,p_company:event.company,p_occurred_at:event.occurredAt,p_offline:event.offline,p_previous:event.previous}):event.action.startsWith('break_')?sb.rpc('sync_break_event',{p_event:event.id,p_company:event.company,p_action:event.action,p_occurred_at:event.occurredAt,p_offline:event.offline,p_previous:event.previous}):sb.rpc('sync_punch_event',{p_event:event.id,p_company:event.company,p_action:event.action,p_occurred_at:event.occurredAt,p_offline:event.offline,p_job:event.job,p_latitude:event.fix?.latitude??null,p_longitude:event.fix?.longitude??null,p_accuracy:event.fix?.accuracy??null,p_previous:event.previous});const r=await request.abortSignal(controller.signal);if(r.error)throw r.error;return r.data;}finally{clearTimeout(timer)}}}));return journalInstances.get(key);}
+// A saved attendance copy is not a payroll approval or permission to punch.
+// Keep invalid bytes unchanged for recovery; do not silently mix identities.
+function scopedOfflinePunchSnapshot(value,companyId,userId){
+ const date=x=>typeof x==='string'&&Number.isFinite(Date.parse(x))?Date.parse(x):null;
+ const range=row=>{const a=date(row?.started_at),b=row?.ended_at===null?Infinity:date(row?.ended_at);
+  return a!==null&&b!==null&&b>=a};
+ const distinct=rows=>new Set(rows.map(r=>r.id)).size===rows.length;
+ if(typeof companyId!=='string'||!companyId||typeof userId!=='string'||!userId||
+  !value||typeof value!=='object'||Array.isArray(value)||
+  value.company!==companyId||(value.userId!=null&&value.userId!==userId)||
+  (value.serverPunchCompany!=null&&value.serverPunchCompany!==companyId)||
+  !Array.isArray(value.jobs)||!Array.isArray(value.assignments)||
+  !Array.isArray(value.shifts))return null;
+ const p=value.serverPunch;
+ if(!p||typeof p!=='object'||Array.isArray(p)||
+  !Array.isArray(p.sessions)||!Array.isArray(p.segments)||
+  (p.breaks!=null&&!Array.isArray(p.breaks)))return null;
+ if(value.serverPunchCompany===companyId&&!Array.isArray(p.breaks))return null;
+ const sessions=p.sessions,segments=p.segments,breaks=p.breaks||[],ids=new Set(sessions.map(s=>s?.id));
+ if(!sessions.every(s=>s&&typeof s.id==='string'&&s.id&&s.company_id===companyId&&
+  s.user_id===userId&&range(s))||!distinct(sessions))return null;
+ if(!segments.every(s=>s&&typeof s.id==='string'&&s.id&&s.company_id===companyId&&
+  (s.user_id==null||s.user_id===userId)&&ids.has(s.session_id)&&
+  typeof s.job_id==='string'&&s.job_id&&range(s))||!distinct(segments))return null;
+ if(!breaks.every(b=>b&&typeof b.id==='string'&&b.id&&b.company_id===companyId&&
+  (b.user_id==null||b.user_id===userId)&&ids.has(b.session_id)&&range(b))||
+  !distinct(breaks))return null;
+ if(!value.jobs.every(j=>j&&typeof j.id==='string'&&j.id&&j.company_id===companyId)||
+  !distinct(value.jobs)||!value.shifts.every(s=>s&&s.company_id===companyId))return null;
+ const jobIds=new Set(value.jobs.map(j=>j.id));
+ if(!value.assignments.every(a=>a&&jobIds.has(a.job_id)&&
+  (a.company_id==null||a.company_id===companyId)&&
+  (a.user_id==null||a.user_id===userId)))return null;
+ const fetchedAt=typeof value.serverPunchFetchedAt==='number'&&
+  Number.isFinite(value.serverPunchFetchedAt)&&value.serverPunchFetchedAt>0&&
+  value.serverPunchFetchedAt<=Date.now()+10000?value.serverPunchFetchedAt:null;
+ return {company:companyId,userId,serverPunchCompany:
+  value.serverPunchCompany===companyId&&fetchedAt!==null?companyId:null,
+  serverPunchFetchedAt:fetchedAt,jobs:value.jobs,assignments:value.assignments,
+  shifts:value.shifts,serverPunch:{sessions,segments,breaks},
+  selected:typeof value.selected==='string'&&jobIds.has(value.selected)?value.selected:null};
+}
+function readScopedOfflineSnapshot(storage,key,companyId,userId){
+ try{return scopedOfflinePunchSnapshot(JSON.parse(storage.getItem(key)||'null'),companyId,userId)}
+ catch{return null}
+}
+function saveOfflineSnapshot(){
+ if(!member())return false;
+ const id=state.user.id,c=company(),key='punch-snapshot:'+id+':'+c;
+ const data=scopedOfflinePunchSnapshot({company:c,userId:id,
+  serverPunchCompany:state.serverPunchCompany===c?c:null,
+  serverPunchFetchedAt:state.serverPunchFetchedAt,jobs:state.jobs,
+  assignments:state.assignments,shifts:state.shifts,serverPunch:state.serverPunch,
+  selected:state.selected},c,id);
+ if(!data)return false;
+ try{
+  const existing=localStorage.getItem(key);
+  if(existing!==null&&!readScopedOfflineSnapshot(localStorage,key,c,id))return false;
+  localStorage.setItem(key,JSON.stringify(data));return true;
+ }catch{return false}
+}
+function restoreOfflineSnapshot(){
+ if(!state.user||!company())return false;
+ const data=readScopedOfflineSnapshot(localStorage,
+  'punch-snapshot:'+state.user.id+':'+company(),company(),state.user.id);
+ if(!data)return false;
+ state.jobs=data.jobs;state.assignments=data.assignments;state.shifts=data.shifts;
+ state.serverPunch=data.serverPunch;state.serverPunchFetchedAt=data.serverPunchFetchedAt;
+ state.serverPunchCompany=data.serverPunchCompany;state.sessions=data.serverPunch.sessions;
+ state.segments=data.serverPunch.segments;state.breaks=data.serverPunch.breaks;
+ state.selected=data.selected;return true;
+}
+async function locatedPunch(action,job,paid=false){if(isEssential()&&!essentialMobilePunchAllowed())throw new Error('Pointage mobile non autorisé pour ce compte.');
+ // Pin the company and employee before awaiting a potentially slow GPS
+ // permission prompt. A workspace switch must never append to a new account
+ // or report an old company's punch within the newly selected workspace.
+ const companyId=company(),userId=state.user?.id;
+ const sameScope=()=>member()&&company()===companyId&&state.user?.id===userId;
+ const at=new Date().toISOString(),fix=normalizeFreshPunchFix(action.startsWith('break_')?null:await freshPunchFix());
+ if(!sameScope())throw Error('Compte ou entreprise changé pendant la capture : aucun nouveau pointage enregistré.');
+ const journal=punchJournal();
+ // Persist before network. Failed flushes require reading the original
+ // event; never invent a successful acknowledgement from an empty response.
+ const event=await journal.append(action,job,fix,at,paid,!navigator.onLine);
+ let events=null;
+ try{events=(await (navigator.onLine?journal.flush():journal.inspect())).events}catch{/* Recover saved event below. */}
+ if(!Array.isArray(events)||!events.some(e=>e?.id===event.id)){
+  try{events=await journal.read()}catch{
+   throw Error('Pointage enregistré localement, mais journal illisible : vérifiez Mes heures avant de repointer.');
+  }
+ }
+ if(hasUnsafePunchJournalEntries(events,journal.company,journal.user))
+  throw Error('Journal local non vérifiable : pointage à vérifier avant une nouvelle opération.');
+ if(!sameScope())
+  throw Error('Compte ou entreprise changé : pointage conservé dans le journal précédent. Revenez au compte initial pour le vérifier.');
+ const saved=events.find(e=>e.id===event.id);
+ if(!saved)throw Error('Statut du pointage introuvable dans le journal local : vérifiez Mes heures avant de repointer.');
+ if(saved.status==='conflict')
+  throw Error('Conflit de pointage conservé pour vérification : contactez votre responsable.');
+ if(saved.status==='pending')return {queued:true,review_status:'local'};
+ if(saved.status!=='synced'||!saved.result||saved.result.sync_status!=='synced')
+  throw Error('Accusé serveur du pointage indisponible : vérifiez Mes heures avant de repointer.');
+ return {...saved.result,queued:false,review_status:saved.result.review_status};
+}
+let scopedPassivePunchRefresh=null;
+const passivePunchRefresh=()=>{
+ // Initialize only on the first refresh. No network or journal operation
+ // is needed merely because the Web app module is evaluated.
+ if(!scopedPassivePunchRefresh)scopedPassivePunchRefresh=createScopedPassivePunchRefresh({
+ getScope:()=>member()?{companyId:company(),userId:state.user?.id,role:state.account?.role}:null,
+ isCurrent:scope=>member()&&company()===scope.companyId&&
+  state.user?.id===scope.userId&&state.account?.role===scope.role,
+ isOnline:()=>navigator.onLine,
+ isBusy:()=>state.busy,
+ getVerifiedUser:async()=>{
+  const result=await sb.auth.getUser();
+  return result.error?null:result.data?.user?.id||null;
+ },
+ getMembership:async scope=>{
+  const result=await sb.from('company_members').select('company_id,user_id,status,role')
+   .eq('company_id',scope.companyId).eq('user_id',scope.userId)
+   .eq('status','active').maybeSingle();
+  return result.error?null:result.data;
+ },
+ refresh:async()=>reload({quiet:true})
+ });
+ return scopedPassivePunchRefresh();
+};
+window.addEventListener('online',()=>{void passivePunchRefresh()});
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden)void passivePunchRefresh();
+});
+setInterval(()=>{void passivePunchRefresh()},30000);
 
 const locationLabel={inside:'Dans le rayon',outside:'Hors rayon',missing:'GPS absent',inaccurate:'GPS imprécis',job_unconfigured:'Coordonnées chantier manquantes'};
 function geofenceReviewCard(){return breakApprovals()+card('<b>Conflits de synchronisation conservés</b>'+state.receipts.filter(r=>r.result?.sync_status==='conflict').map(r=>'<div class="group">'+e(r.user_id.slice(0,8))+' · '+e(r.action)+' · '+when(r.occurred_at)+'<p>'+e(r.result.message)+'</p></div>').join(''))+card('<b>Punchs GPS en attente</b>'+state.locationChecks.filter(c=>c.review_status==='pending').map(c=>'<div class="group"><b>#'+e(getJob(c.job_id)?.number||'—')+' · '+e(locationLabel[c.location_status])+(c.offline?' · HORS LIGNE':'')+'</b><p class="small">'+e(c.user_id.slice(0,8))+' · '+when(c.recorded_at)+' · '+e(c.action)+'</p><p class="small">Distance : '+(c.distance_m==null?'inconnue':Math.round(c.distance_m)+' m')+' / maximum '+c.radius_m+' m · précision '+(c.accuracy_m==null?'inconnue':Math.round(c.accuracy_m)+' m')+'</p>'+button('Accepter le punch','reviewLocation','gold',`data-id="${e(c.id)}"`)+button('Corriger les heures','correctLocation','',`data-id="${e(c.id)}"`)+'</div>').join(''));}
@@ -235,28 +538,286 @@ function essentialUpcomingHomeCard(){
   (visit.contact?'<small>Contact : '+e(visit.contact)+(visit.phone?' · '+e(visit.phone):'')+'</small>':'')+
   '</details></div></section>';
 }
-function essentialPunchJob(){return essentialUI.planning.state.locations.find(l=>l.id===essentialUI.state.worker?.location_id)?.punch_job_id||state.account?.companies?.default_punch_job_id;}
-function essentialHome(){const paidMode=essentialUI.breakPolicies.state.own?.paid_mode||'choice';const mobile=essentialMobilePunchAllowed();const kioskStatus=!mobile?lastConfirmedKioskPunch(company(),state.serverPunchCompany,state.user.id,state.serverPunch):null;const active=currentSession(),pause=state.breaks.find(b=>!b.ended_at),name=(state.profile?.full_name||state.user.email?.split('@')[0]||'').split(' ')[0];return '<div class="zen-home">'+(!mobile?'<p class="ess-notice" role="status">'+e(essentialMobilePunchNotice(essentialUI.state.worker))+'</p><div class="ess-panel" role="status"><b>Dernier pointage confirmé disponible</b><p>'+(kioskStatus?(kioskStatus.type==='in'?'Entrée':'Sortie')+' · '+e(when(kioskStatus.at)):'Aucun état serveur confirmé conservé sur cet appareil.')+'</p><small>État conservé lors de la dernière synchronisation. Pour pointer, utilisez la borne.</small></div>':'')+'<div class="zen-greeting"><span class="eyebrow">'+new Date().toLocaleDateString(locale.code==='fr'?'fr-CA':locale.code,{weekday:'long',day:'numeric',month:'long'})+'</span><h1>'+e(tr('greeting'))+(name?', '+e(name):'')+'.</h1><p>Une journée à votre rythme.</p></div><div class="zen-clock-card"><span class="zen-status"><span class="status-dot"></span>'+(pause?'En pause':active?'Votre journée est en cours':'Prêt pour votre journée ?')+'</span><strong class="zen-time" id="liveTimer">'+elapsed(essentialToday())+'</strong><span class="small muted">'+e(tr('workingTime'))+(locale.code==='fr'?' · pauses non payées exclues':'')+'</span><button class="zen-punch '+(active?'finish':'')+'" '+(!mobile?'hidden disabled aria-disabled="true" style="display:none"':'data-action="punch"')+' '+(state.busy?'disabled':'')+'>'+(active?tr('endDay'):tr('startDay'))+'<span>↗</span></button>'+(active&&mobile?button(pause?tr('resume'):paidMode==='paid'?'Pause payée':'Pause non payée / repas',!pause&&paidMode==='paid'?'pausePaid':'pause','full zen-pause')+(!pause&&paidMode==='choice'?button('Pause payée','pausePaid','full zen-pause'):''):'<p class="zen-help">'+(mobile?'Un geste pour commencer. Un autre pour terminer.':'Le pointage et les pauses mobiles sont désactivés pour ce compte.')+'</p>')+'</div>'+essentialUI.breakPolicies.hint()+'<div class="zen-summary"><div><span class="eyebrow">'+e(tr('thisWeek').toLocaleUpperCase(locale.code))+'</span><strong id="weekTotal">'+mins(clockTotals().week)+'</strong></div><div><span class="eyebrow">'+e(tr('status').toLocaleUpperCase(locale.code))+'</span><strong class="zen-small-status">'+(state.localPending?'Sauvegardé ici':tr('synchronized'))+'</strong></div></div>'+essentialUpcomingHomeCard()+essentialNavigationCard()+(personalMissions.state.company===company()?personalMissions.render():'')+'<div class="zen-company"><span class="zen-company-icon">▧</span><div><strong>'+e(state.account.companies.name)+'</strong><small>Votre espace de travail</small></div></div></div>'}
+function essentialPunchJob(){return essentialWorkerPunchJobId(company(),essentialUI.state.worker,essentialUI.planning.state.locations,state.account?.companies?.default_punch_job_id);}
+function essentialPunchSyncPanel(){
+ const blocked=state.localJournalBlocked?.companyId===company()&&state.localJournalBlocked?.userId===state.user?.id;
+ const {pending,conflicts}=localPunchSyncState(state.localPunchEvents,company(),state.user?.id);
+ if(!blocked&&!pending.length&&!conflicts.length)return '';
+ const entries=(items)=>items.slice(-5).map(item=>
+  '<li>'+e(item.label)+' · '+(item.occurredAt?e(when(item.occurredAt)):'heure indisponible')+'</li>').join('');
+ return '<section class="ess-panel" role="status" aria-label="Synchronisation des pointages"><b>Pointages enregistrés sur cet appareil</b>'+
+  (blocked?'<p>Journal local non vérifiable : la synchronisation et les nouveaux pointages sur cet appareil sont bloqués. Aucun événement local n\'a été effacé. Contactez votre responsable pour une vérification; les heures serveur restent consultables.</p>'+
+   (!pending.length&&!conflicts.length&&state.section!=='hours'?button('Consulter Mes heures','navigate','full','data-id="hours"'):''):'')+
+  (pending.length?'<p>'+pending.length+' événement(s) en attente de transmission. Ces pointages ne sont pas confirmés et ne figurent pas dans le relevé officiel.</p><ul>'+entries(pending)+'</ul>'+
+    (pending.length>5?'<p class="small muted">Et '+(pending.length-5)+' autre(s) événement(s) en attente.</p>':'')+
+    (blocked?(state.section==='hours'||conflicts.length?'':button('Consulter Mes heures','navigate','full','data-id="hours"')):
+     navigator.onLine?button('Synchroniser maintenant','syncPendingPunches','full',state.busy?'disabled aria-disabled="true"':''):
+     '<p class="small muted">Connexion Internet requise pour réessayer l’envoi.</p>'):'')+
+  (conflicts.length?'<p>'+conflicts.length+' événement(s) en conflit avec le serveur : non confirmés, à vérifier avec votre responsable.</p><ul>'+entries(conflicts)+'</ul>'+
+    (conflicts.length>5?'<p class="small muted">Et '+(conflicts.length-5)+' autre(s) conflit(s) à vérifier.</p>':'')+
+    (state.section==='hours'?button('Vérifier les corrections possibles','subpage','full','data-id="essentialCorrection"'):
+      button('Consulter Mes heures','navigate','full','data-id="hours"'))+
+    '<p class="small muted">Une correction d’heures doit concerner une journée vérifiée sur le serveur. Si elle n’y apparaît pas, contactez votre responsable.</p>':'')+
+  '</section>';
+}
+function essentialRequestsHomeCard(){
+ const companyId=company(),userId=state.user?.id;
+ const timeline=employeeHoursRequestTimeline({companyId,userId,
+  correctionView:essentialCorrectionView({companyId,userId,
+   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections}),
+  breakView:breakCorrectionInbox({companyId,userId,role:state.account?.role,
+   source:essentialUI.breakCorrections.state}),
+  missingView:employeeMissingDaysSummary({companyId,userId,
+   source:essentialUI.missingDays.state}),
+  leaveView:essentialLeaveView({companyId,userId,loaded:state.leavesLoaded,
+   requests:state.leaves})});
+ // Keep the punch-first home compact when there is nothing actionable.
+ // If the read is partial, never turn a missing inbox into a confirmed zero.
+ if(timeline.pendingCount===0&&(timeline.complete||timeline.items.length===0))return '';
+ return '<section class="ess-panel" role="status" aria-label="Suivi des demandes">'+
+  '<b>Mes demandes en cours</b><p class="small">'+
+  (timeline.pendingCount?timeline.pendingCount+
+   ' demande(s) en attente parmi les données chargées.':
+   'Le suivi des demandes doit être actualisé.')+'</p>'+
+  (!timeline.complete?'<p class="small muted">Suivi partiel : certaines demandes ne sont pas vérifiées sur cet appareil.</p>':'')+
+  '<p class="small muted">Aucune demande en attente ne vaut approbation des heures ou de la paie.</p>'+
+  button('Voir mes demandes','navigate','full','data-id="hours"')+'</section>';
+}
+function essentialHome(){const punchStatus=localPunchStatusSummary({events:state.localPunchEvents,companyId:company(),userId:state.user?.id,snapshotCompanyId:state.serverPunchCompany,snapshotFetchedAt:state.serverPunchFetchedAt,journalBlocked:state.localJournalBlocked?.companyId===company()&&state.localJournalBlocked?.userId===state.user?.id});const paidMode=essentialUI.breakPolicies.state.own?.paid_mode||'choice';const mobile=essentialMobilePunchAllowed();const punchAction=resolveEssentialMobilePunchAction(company(),state.user?.id,currentSession(),state.segments,essentialPunchJob(),state.jobs);const activeJobId=currentSession()?(activeSegment()?.job_id||essentialPunchJob()):essentialPunchJob();const punchWorkplace=resolveEssentialPunchJob(company(),activeJobId,state.jobs);const firstPunch=firstEssentialPunchGuidance(company(),state.user?.id,essentialUI.state.worker,state.serverPunchCompany,state.serverPunch,state.localPending,punchWorkplace);const kioskStatus=!mobile?lastConfirmedKioskPunch(company(),state.serverPunchCompany,state.user.id,state.serverPunch):null;const active=currentSession(),pause=activeBreak(),pauseConflict=activeBreakConflict(),name=(state.profile?.full_name||state.user.email?.split('@')[0]||'').split(' ')[0];return '<div class="zen-home">'+(active&&mobile&&pauseConflict?'<p class="ess-notice" role="status">Plusieurs pauses sont ouvertes pour cette session. Actualisez vos heures, puis contactez votre responsable pour correction. Aucun nouveau début ou fin de pause n’est autorisé.</p>':'')+(!mobile?'<p class="ess-notice" role="status">'+e(essentialMobilePunchNotice(essentialUI.state.worker))+'</p><div class="ess-panel" role="status"><b>Dernier pointage confirmé disponible</b><p>'+(kioskStatus?(kioskStatus.type==='in'?'Entrée':'Sortie')+' · '+e(when(kioskStatus.at)):'Aucun état serveur confirmé conservé sur cet appareil.')+'</p><small>État conservé lors de la dernière synchronisation. Pour pointer, utilisez la borne.</small></div>':'')+(active&&mobile&&!punchAction?'<p class="ess-notice" role="status">Le pointage ouvert ne peut pas être vérifié. Synchronisez vos heures ou contactez votre responsable avant de terminer.</p>':'')+(firstPunch?'<div class="ess-panel" role="status"><b>'+(firstPunch==='ready'?'Votre premier PUNCH IN':'Établissement à configurer')+'</b><p>'+(firstPunch==='ready'?'Votre établissement : '+e(punchWorkplace.name)+'. Appuyez sur « Commencer la journée » pour pointer.':'Aucun établissement actif confirmé pour votre pointage. Contactez votre responsable avant de commencer.')+'</p><small>Seuls les pointages confirmés par le serveur apparaissent dans votre historique.</small></div>':'')+'<div class="zen-greeting"><span class="eyebrow">'+new Date().toLocaleDateString(locale.code==='fr'?'fr-CA':locale.code,{weekday:'long',day:'numeric',month:'long'})+'</span><h1>'+e(tr('greeting'))+(name?', '+e(name):'')+'.</h1><p>Une journée à votre rythme.</p></div><div class="zen-clock-card"><span class="zen-status"><span class="status-dot"></span>'+(pause?'En pause':pauseConflict?'Pauses à vérifier':active?'Votre journée est en cours':'Prêt pour votre journée ?')+'</span><strong class="zen-time" id="liveTimer">'+elapsed(essentialToday())+'</strong><span class="small muted">'+e(tr('workingTime'))+(locale.code==='fr'?' · pauses non payées exclues':'')+'</span><button class="zen-punch '+(active?'finish':'')+'" '+(!mobile?'hidden disabled aria-disabled="true" style="display:none"':'data-action="punch"')+' '+(state.busy||mobile&&!punchAction?'disabled aria-disabled="true"':'')+'>'+(active?tr('endDay'):tr('startDay'))+'<span>↗</span></button>'+(active&&mobile?button(pause?tr('resume'):paidMode==='paid'?'Pause payée':'Pause non payée / repas',!pause&&paidMode==='paid'?'pausePaid':'pause','full zen-pause',pauseConflict?'disabled aria-disabled="true"':'')+(!pause&&paidMode==='choice'?button('Pause payée','pausePaid','full zen-pause',pauseConflict?'disabled aria-disabled="true"':''):''):'<p class="zen-help">'+(mobile?'Un geste pour commencer. Un autre pour terminer.':'Le pointage et les pauses mobiles sont désactivés pour ce compte.')+'</p>')+'</div>'+essentialUI.breakPolicies.hint()+'<div class="zen-summary"><div><span class="eyebrow">'+e(tr('thisWeek').toLocaleUpperCase(locale.code))+'</span><strong id="weekTotal">'+mins(clockTotals().week)+'</strong></div><div><span class="eyebrow">'+e(tr('status').toLocaleUpperCase(locale.code))+'</span><strong class="zen-small-status">'+e(punchStatus.label)+'</strong></div></div>'+essentialPunchSyncPanel()+essentialRequestsHomeCard()+essentialUpcomingHomeCard()+essentialNavigationCard()+(personalMissions.state.company===company()?personalMissions.render():'')+'<div class="zen-company"><span class="zen-company-icon">▧</span><div><strong>'+e(state.account.companies.name)+'</strong><small>Votre espace de travail</small></div></div></div>'}
 
 function essentialSchedule(){return essentialUI.planning.renderSchedule();}
 function legacyEssentialSchedule(){return heading('Horaire','more')+(manager()?card('<b>Planifier un quart</b><div class="group"><label>Personne</label><select id="shiftUser" class="field">'+state.members.map(m=>'<option value="'+e(m.user_id)+'">'+e(m.user_id.slice(0,8))+'</option>').join('')+'</select></div>'+jobSelect('shiftJob')+formfield('Début','shiftStart','','datetime-local')+formfield('Fin','shiftEnd','','datetime-local')+formfield('Note','shiftNote')+button('Planifier','scheduleShift','gold full')):'')+state.shifts.map(x=>card('<b>'+when(x.starts_at)+' → '+when(x.ends_at)+'</b><p class="muted">'+e(x.note||'Votre quart planifié')+'</p>'+(manager()?button('Annuler','cancelShift','',`data-id="${e(x.id)}"`):''))).join('');}
 
-function essentialHours(){return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+card('<span class="eyebrow">CETTE SEMAINE</span><div class="zen-total">'+mins(clockTotals().week)+'</div>'+button('Exporter mes heures','exportHours','full'))+state.sessions.map(s=>card('<b>'+new Date(s.started_at).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(s.started_at)+' → '+(s.ended_at?when(s.ended_at):'En cours')+'</p>')).join('')+button('Demander une correction','subpage','full','data-id="essentialCorrection"');}
-function essentialMore(){const items=[['profile',tr('profile')],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
-function essentialApprovals(){return heading('Approbations','more')+button('Corrections de pauses','subpage','full','data-id="breakCorrections"')+geofenceReviewCard()+card('<b>Corrections en attente</b>'+state.corrections.filter(c=>c.status==='pending').map(c=>'<div class="group">'+e(c.reason)+button('Accepter','reviewCorrection','gold',`data-id="${e(c.id)}" data-approve="true"`)+button('Refuser','reviewCorrection','',`data-id="${e(c.id)}" data-approve="false"`)+'</div>').join(''))+card('<b>Congés en attente</b>'+state.leaves.filter(l=>l.status==='pending').map(l=>'<div class="group">'+e(l.begins_on)+' → '+e(l.ends_on)+button('Accepter','reviewLeave','gold',`data-id="${e(l.id)}" data-approve="true"`)+button('Refuser','reviewLeave','',`data-id="${e(l.id)}" data-approve="false"`)+'</div>').join(''))+card('<b>Fermer une semaine</b>'+formfield('Lundi de la semaine','payrollWeek','','date')+button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));}
-function essentialPage(){if(state.section==='messages')return messagesPage();if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(state.section==='home')return manager()&&!state.fieldMode?adminHome():essentialHome();if(state.section==='punch')return essentialHome();if(state.section==='hours')return essentialHours();if(state.section==='schedule')return schedulePage();if(state.section==='more')return essentialMore();if(state.section==='sub'){if(state.sub==='approvals')return essentialApprovals();if(state.sub==='breakCorrections')return essentialUI.breakCorrections.render();if(state.sub==='essentialCorrection')return hoursPage();if(['supervision','missingDays','members','profile','leave','geofence','invitations','notifications','settings','schedule','appearance','hr','communications','payroll','support'].includes(state.sub))return subPage();}return essentialHome();}
-async function doPause(paid=false){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin')return;if(state.busy||!currentSession())return;state.busy=true;try{await locatedPunch(state.breaks.some(b=>!b.ended_at)?'break_end':'break_start',null,paid);await loadData();toast(state.localPending?'Pause conservée sur cet appareil':'Pause enregistrée')}catch(err){error(err)}finally{state.busy=false;draw()}}
+function myRequestsTimeline(limit=8){
+ const companyId=company(),userId=state.user?.id;
+ return employeeHoursRequestTimeline({companyId,userId,limit,
+  correctionView:essentialCorrectionView({companyId,userId,
+   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections}),
+  breakView:breakCorrectionInbox({companyId,userId,role:state.account?.role,
+   source:essentialUI.breakCorrections.state}),
+  missingView:employeeMissingDaysSummary({companyId,userId,source:essentialUI.missingDays.state,limit}),
+  leaveView:essentialLeaveView({companyId,userId,loaded:state.leavesLoaded,requests:state.leaves})
+ });
+}
+function essentialRequestsPage(){
+ const tracking=myRequestsTimeline(100);
+ const statuses=[['all','Toutes'],['pending','En attente'],['approved','Approuvées'],
+  ['rejected','Refusées'],['cancelled','Annulées']];
+ const filter=statuses.some(([key])=>key===state.requestFilter)?state.requestFilter:'all';
+ const visible=tracking.items.filter(item=>filter==='all'||item.status===filter);
+ const routes={'heures':'essentialCorrection','pauses':'breakCorrections',
+  'journée':'missingDays','congé':'leave'};
+ const items=visible.map(item=>
+  '<div class="hoursitem"><div class="grow"><b>'+e(item.title)+'</b>'+
+  '<small>'+(item.at?e(when(item.at)):'Date indisponible')+'</small>'+
+  '<span class="pill">'+e(item.label)+'</span></div>'+
+  button('Consulter','subpage','',`data-id="${e(routes[item.key.split(':')[0]])}"`)+
+  '</div>').join('');
+ return heading('Toutes mes demandes','hours')+
+  button('← Retour à mes heures','navigate','full','data-id="hours"')+
+  '<div class="ess-panel"><p class="small muted">Demandes visibles pour votre compte et entreprise, selon les derniers relevés reçus. Une décision sur une demande ne confirme pas la paie.</p>'+
+  (!tracking.complete?'<p class="ess-notice" role="status">Suivi incomplet : '+
+   e(tracking.unavailable.join(', '))+'. Actualisez en ligne pour récupérer les dossiers manquants.</p>':'')+
+  '<p class="small">'+tracking.pendingCount+' demande(s) en attente · '+tracking.total+
+   ' demande(s) dans les données chargées, dont '+tracking.items.length+' affichable(s) au maximum.</p>'+
+  '<div class="group">'+statuses.map(([key,label])=>
+   button((filter===key?'✓ ':'')+label,'requestFilter','',`data-id="${key}"`)).join('')+'</div>'+
+  (items||'<p class="small muted">'+(tracking.complete?
+   'Aucune demande pour ce filtre.':'Aucune demande vérifiée dans ce filtre.')+'</p>')+
+  '</div>';
+}
+function essentialHours(){
+ // Navigation is local UI state only: never change the server attendance scope.
+ const hoursScope=company()+':'+(state.user?.id||'');
+ if(state.hoursWeekScope!==hoursScope){state.hoursWeekScope=hoursScope;state.hoursWeekOffset=0}
+ const weekOffset=state.hoursWeekOffset;
+ const today=new Date(state.time);
+ const weekStart=new Date(today.getFullYear(),today.getMonth(),
+  today.getDate()-(today.getDay()+6)%7-7*weekOffset);
+ const weekNav='<div class="ess-actions" style="display:flex;gap:8px;flex-wrap:wrap" aria-label="Navigation des semaines">'+
+  (weekOffset<4?button('← Semaine précédente','hoursWeek','','data-id="older"'):'')+
+  (weekOffset>0?button('Semaine suivante →','hoursWeek','','data-id="newer"'):'')+'</div>';
+ const tracking=myRequestsTimeline();
+ const trackingRows=tracking.items.map(r=>'<div class="hoursitem"><div class="grow"><b>'+
+  e(r.title)+'</b><small>'+(r.at?e(when(r.at)):'Date indisponible')+
+  '</small></div><span class="pill">'+e(r.label)+'</span></div>').join('');
+ const trackingNotice=tracking.complete?'':'<p class="ess-notice" role="status">Suivi incomplet : '+
+  e(tracking.unavailable.join(', '))+'. Actualisez en ligne pour consulter les demandes non chargées.</p>';
+ const view=essentialHoursView({companyId:company(),userId:state.user?.id,
+  snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,
+  projectedSessions:state.sessions,projectedSegments:state.segments,
+  projectedBreaks:state.breaks,pendingCount:state.localPending,now:state.time,snapshotFetchedAt:state.serverPunchFetchedAt,weekOffset});
+ const notice=state.localPending>0?'<p class="ess-notice" role="status">'+state.localPending+' événement(s) conservé(s) sur cet appareil et en attente de synchronisation. Ils ne figurent pas dans le relevé serveur ni dans l’export CSV.</p>':'';
+ const weekly=view.ready?'<span class="eyebrow">'+(weekOffset===0?'CETTE SEMAINE':'SEMAINE DU '+e(weekStart.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'})))+' · DERNIER RELEVÉ SERVEUR REÇU</span><div class="zen-total">'+mins(view.confirmedWeekMs)+'</div><p class="small muted">Temps calculé depuis les pointages reçus du serveur, non approuvé pour la paie. '+(Number.isFinite(state.serverPunchFetchedAt)?'Dernière lecture : '+e(when(new Date(state.serverPunchFetchedAt).toISOString()))+'. ':'')+'La journée ouverte est provisoire; les données hors ligne ou une lecture réseau incomplète peuvent manquer.</p>':
+  '<p class="ess-notice" role="status">Aucun relevé serveur vérifiable pour cette entreprise. Vos heures ne sont pas confirmées sur cet appareil.</p>';
+ const estimate=view.hasPending&&view.projectedWeekMs!==null?
+  '<p class="small muted">Estimation locale avec événements en attente : '+mins(view.projectedWeekMs)+' · non confirmée.</p>':'';
+ const daily=view.ready&&view.confirmedDaily.length?
+  '<div class="ess-panel"><b>'+(weekOffset===0?'Cette semaine':'Semaine sélectionnée')+' · détail quotidien du relevé serveur</b>'+
+  '<p class="small muted">Brut, pauses non payées et net au dernier relevé reçu. Les pointages locaux en attente ne sont pas inclus. Ces heures ne constituent pas une approbation de paie.</p>'+
+  view.confirmedDaily.map(row=>'<div class="hoursitem"><div class="grow"><b>'+
+   e(new Date(row.dayStart).toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'}))+
+   '</b><small>Brut '+mins(row.grossMs)+' · Pause non payée '+mins(row.unpaidMs)+'</small></div>'+
+   '<strong>'+mins(row.netMs)+' net</strong></div>').join('')+'</div>':'';
+ const history=view.ready&&view.confirmedWeekDays.length?view.confirmedWeekDays.slice(0,80).map(({netMs,rangeStart,rangeEnd,rangeEndIsFinal})=>
+  card('<b>'+new Date(rangeStart).toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'short'})+'</b><p class="muted">'+when(rangeStart)+' → '+when(rangeEnd)+(rangeEndIsFinal?'':' · limite du relevé ou de la semaine')+'</p><strong>'+mins(netMs)+' net'+(rangeEndIsFinal?'':' · période bornée')+'</strong>')).join(''):
+  '<p class="small muted">'+(view.ready?'Aucune journée enregistrée pour cette semaine dans le relevé serveur.':'Historique serveur indisponible.')+'</p>';
+ return heading('Mes heures')+button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
+  notice+essentialPunchSyncPanel()+weekNav+card(weekly+estimate+button('Exporter le relevé serveur CSV','exportHours','full'))+
+  daily+'<div class="ess-panel"><b>Historique des journées · serveur · semaine sélectionnée</b>'+history+'</div>'+
+  '<div class="ess-panel"><b>Mes demandes et absences · dernier relevé reçu</b>'+
+  '<p class="small muted">'+tracking.pendingCount+' demande(s) en attente parmi les données vérifiées. Une demande approuvée ne confirme pas, à elle seule, votre paie.</p>'+
+  trackingNotice+(trackingRows||'<p class="small muted">'+(tracking.complete?
+   'Aucune demande d’ajustement enregistrée sur votre compte.':'Aucune demande affichable dans les données disponibles.')+'</p>')+
+  button('Corriger mes heures','subpage','full','data-id="essentialCorrection"')+
+  button('Corriger une pause','subpage','full','data-id="breakCorrections"')+
+  button('Déclarer une journée oubliée','subpage','full','data-id="missingDays"')+
+  button('Mes congés et absences','subpage','full','data-id="leave"')+
+  button('Voir toutes mes demandes','subpage','full','data-id="myRequests"')+'</div>';
+}
+function essentialCorrectionPage(){
+ const correction=essentialCorrectionView({companyId:company(),userId:state.user?.id,
+  snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections});
+ const online=navigator.onLine,canSubmit=online&&correction.ready&&correction.sessions.length>0&&!state.correctionSubmitting;
+ const sessionOptions=correction.sessions.map(s=>'<option value="'+e(s.id)+'">'+e(when(s.started_at))+' → '+e(when(s.ended_at))+'</option>').join('');
+ const notice=!online?'Connexion Internet requise pour envoyer une demande. Vos pointages hors ligne ne sont pas des heures confirmées.':
+  !correction.ready?'Relevé serveur indisponible. Synchronisez vos heures avant de demander une correction.':
+  !correction.sessions.length?'Aucune journée terminée et vérifiée ne peut être corrigée pour le moment.':'';
+ const requests=correction.requests.length?correction.requests.slice(0,30).map(r=>
+  '<div class="hoursitem"><div class="grow"><b>'+e(stateText(r.status))+'</b><small>'+e(r.created_at?when(r.created_at):'Date indisponible')+'</small><p class="small">'+e(r.reason)+'</p></div></div>').join(''):
+  '<p class="small muted">Aucune demande de correction affichée pour votre compte.</p>';
+ return heading('Demander une correction')+button('← Retour à mes heures','navigate','full','data-id="hours"')+
+  '<div class="ess-panel"><b>Correction d’une journée terminée</b>'+
+  '<p class="small muted">Choisissez une journée du relevé serveur. Cette demande sera examinée par un responsable et ne changera pas automatiquement vos heures officielles.</p>'+
+  (notice?'<p class="ess-notice" role="status">'+e(notice)+'</p>':'')+
+  '<div class="group"><label for="sessionCorrect">Journée à corriger</label><select id="sessionCorrect" class="field" '+(canSubmit?'':'disabled')+'><option value="">Choisir une journée</option>'+sessionOptions+'</select></div>'+
+  formfield('Nouvelle entrée (facultative, heure locale)','correctionStart','','datetime-local')+
+  formfield('Nouvelle sortie (facultative, heure locale)','correctionEnd','','datetime-local')+
+  '<div class="group"><label for="correctionReason">Raison de la correction</label><textarea id="correctionReason" class="field" maxlength="1000" rows="4" placeholder="Expliquez les heures à corriger…"></textarea></div>'+
+  button(state.correctionSubmitting?'Envoi en cours…':'Soumettre pour approbation','correction','gold full',canSubmit?'':'disabled')+
+  button('Actualiser mon relevé','refresh','full')+'</div>'+
+  '<div class="ess-panel"><b>Mes demandes de correction</b>'+
+  (correction.ready?requests:'<p class="small muted">Le suivi sera disponible après synchronisation du relevé serveur.</p>')+'</div>';
+}
+function essentialLeavePage(){
+ const view=essentialLeaveView({companyId:company(),userId:state.user?.id,loaded:state.leavesLoaded,requests:state.leaves});
+ const online=navigator.onLine,canSubmit=online&&view.ready&&!state.leaveSubmitting;
+ const types=[['vacation','Vacances'],['personal','Congé personnel'],['sick','Maladie'],['other','Autre']];
+ const rows=view.requests.length?view.requests.slice(0,60).map(item=>'<div class="hoursitem"><div class="grow"><b>'+e(item.begins_on)+' → '+e(item.ends_on)+'</b><small>'+e(types.find(([key])=>key===item.leave_type)?.[1]||'Congé')+'</small>'+(item.reason?'<p class="small">'+e(item.reason)+'</p>':'')+'</div><span class="pill">'+e(stateText(item.status))+'</span></div>').join(''):'<p class="small muted">Aucune demande enregistrée sur votre compte.</p>';
+ const notice=!online?'Hors ligne : impossible de transmettre une demande de congé.':!view.ready?'Impossible de vérifier les demandes pour cette entreprise. Actualisez votre espace.':'';
+ return heading('Mes congés et absences')+button('← Retour à mon espace','navigate','full','data-id="more"')+
+  '<div class="ess-panel"><b>Nouvelle demande</b><p class="small muted">Un responsable doit approuver votre demande. Aucune absence n’est automatiquement validée.</p>'+
+  (notice?'<p class="ess-notice" role="status">'+e(notice)+'</p>':'')+
+  '<div class="group"><label for="leaveType">Type de congé</label><select id="leaveType" class="field">'+types.map(([value,label])=>'<option value="'+value+'">'+e(label)+'</option>').join('')+'</select></div>'+
+  formfield('Du','leaveStart','','date')+formfield('Au','leaveEnd','','date')+
+  '<div class="group"><label for="leaveReason">Commentaire (facultatif)</label><textarea id="leaveReason" class="field" maxlength="1000" rows="3" placeholder="Précisions pour votre responsable…"></textarea></div>'+
+  button(state.leaveSubmitting?'Envoi en cours…':'Soumettre ma demande','submitLeave','gold full',canSubmit?'':'disabled')+button('Actualiser les demandes','refresh','full')+'</div>'+
+  '<div class="ess-panel"><b>Mes demandes</b>'+(view.ready?rows:'<p class="small muted">Historique indisponible avant la vérification serveur.</p>')+'</div>';
+}
+function essentialMore(){const items=[['profile',tr('profile')],['myRequests','Toutes mes demandes'],['leave',tr('myLeave')],...(manager()?[['approvals','Approbations et exports'],['geofence','Périmètre et punchs à valider'],['invitations','Inviter une personne']]:[]),...(essentialUI.supervision.state.enabled?[['supervision','Approbations de mon équipe']]:[]),['missingDays','Journée entièrement oubliée'],['breakCorrections','Corrections de pauses'],['notifications',tr('notifications')],['appearance',tr('theme')+' · 10 designs'],['hr','Documents et formations'],['communications','Communications'],['payroll',manager()?'Préparation de paie et banques':'Mes banques d’heures'],['support',tr('support')],['settings',tr('settings')]];return heading(tr('mySpace'))+card('<b>'+e(state.account.companies.name)+'</b><p class="muted">PUNCH Essentiel</p>')+(companyContext.list.length>1?button('Changer d’entreprise','chooseCompany','full'):'')+items.map(([id,title])=>'<button class="listitem" data-action="subpage" data-id="'+id+'"><span class="grow">'+title+'</span><span>›</span></button>').join('')+button(tr('logout'),'logout','full');}
+function essentialApprovals(){
+ if(!manager())return heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');
+ const missing=managerMissingDayApprovalSummary({companyId:company(),reviewerId:state.user?.id,
+  source:essentialUI.missingDays.state});
+ const pauses=breakCorrectionInbox({companyId:company(),userId:state.user?.id,
+  role:state.account?.role,source:essentialUI.breakCorrections.state});
+ const missingRows=missing.ready?(missing.requests.length?missing.requests.map(r=>
+  '<div class="group"><b>'+e(r.workerName)+'</b><p class="small">'+e(when(r.startsAt))+
+  ' → '+(r.endsAt?e(when(r.endsAt)):'Fin à vérifier')+'</p></div>').join(''):
+  '<p class="small muted">Aucune journée oubliée à examiner dans les demandes chargées.</p>'):
+  '<p class="ess-notice" role="status">Demandes de journées oubliées non vérifiées. Actualisez votre compte.</p>';
+ const view=essentialLeaveApprovalView({companyId:company(),manager:manager(),loaded:state.leaveApprovalsLoaded,requests:state.leaveApprovals,reviewerId:state.user?.id});
+ const canReview=view.ready&&navigator.onLine&&!state.leaveReviewSubmitting;
+ const correctionView=essentialCorrectionApprovalView({companyId:company(),reviewerId:state.user?.id,
+  manager:manager(),loaded:state.correctionApprovalsLoaded,requests:state.correctionApprovals});
+ const canReviewCorrection=correctionView.ready&&navigator.onLine&&!state.correctionReviewSubmitting;
+ const correctionRows=correctionView.requests.length?correctionView.requests.slice(0,100).map(c=>
+  '<div class="group"><b>'+e(c.reason||'Correction demandée')+'</b><small>Employé : '+e(c.requested_by.slice(0,8))+'</small>'+
+  '<div class="small">'+e(c.requested_start?when(c.requested_start):'Entrée inchangée')+
+  ' → '+e(c.requested_end?when(c.requested_end):'Sortie inchangée')+'</div>'+
+  button('Accepter','reviewCorrection','gold',`data-id="${e(c.id)}" data-approve="true" ${canReviewCorrection?'':'disabled'}`)+
+  button('Refuser','reviewCorrection','',`data-id="${e(c.id)}" data-approve="false" ${canReviewCorrection?'':'disabled'}`)+
+  '</div>').join(''):'<p class="small muted">Aucune correction en attente.</p>';
+ const labels={vacation:'Vacances',personal:'Congé personnel',sick:'Maladie',other:'Autre'};
+ const leaveRows=view.requests.length?view.requests.slice(0,100).map(l=>
+  '<div class="group"><b>'+e(labels[l.leave_type]||'Congé')+' · '+e(l.begins_on)+' → '+e(l.ends_on)+'</b>'+
+  '<small>Employé : '+e(l.user_id.slice(0,8))+'</small>'+
+  (l.reason?'<p class="small">'+e(l.reason)+'</p>':'')+
+  button('Accepter','reviewLeave','gold',`data-id="${e(l.id)}" data-approve="true" ${canReview?'':'disabled'}`)+
+  button('Refuser','reviewLeave','',`data-id="${e(l.id)}" data-approve="false" ${canReview?'':'disabled'}`)+
+  '</div>').join(''):'<p class="small muted">Aucun congé en attente.</p>';
+ const notice=!navigator.onLine?'Les décisions nécessitent une connexion Internet.':
+  !view.ready?'Demandes non vérifiées. Actualisez avant de prendre une décision.':'';
+ return heading('Approbations','more')+
+  geofenceReviewCard()+
+  card('<b>Corrections en attente</b>'+
+    (!navigator.onLine?'<p class="ess-notice" role="status">Les décisions nécessitent une connexion Internet.</p>':
+      !correctionView.ready?'<p class="ess-notice" role="status">Corrections non vérifiées. Actualisez avant de prendre une décision.</p>':'')+
+    (correctionView.ready?correctionRows:'')+button('Actualiser les corrections','refresh','full'))+
+  card('<b>Corrections de pauses à examiner</b>'+
+    (pauses.ready?'<p class="small muted">'+pauses.pendingCount+
+    ' demande(s) de pauses en attente de décision sur ce compte. Les heures restent non confirmées avant approbation serveur.</p>':
+    '<p class="ess-notice" role="status">Demandes de pauses non vérifiées. Actualisez votre compte.</p>')+
+    button('Ouvrir les corrections de pauses','subpage','full','data-id="breakCorrections"'))+
+  card('<b>Congés à approuver</b>'+(notice?'<p class="ess-notice" role="status">'+e(notice)+'</p>':'')+
+    (view.ready?leaveRows:'')+button('Actualiser les demandes','refresh','full'))+
+  card('<b>Journées entièrement oubliées à examiner</b>'+
+    (missing.ready?'<p class="small muted">'+missing.count+' demande(s) examinable(s) parmi les dernières demandes chargées. Les heures restent non confirmées avant décision serveur.</p>':'')+
+    missingRows+
+    button('Ouvrir les journées oubliées','subpage','full','data-id="missingDays"'))+
+  card('<b>Fermer une semaine</b>'+formfield('Lundi de la semaine','payrollWeek','','date')+
+    button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));
+}
+function essentialPage(){if(state.section==='messages')return messagesPage();if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(state.section==='home')return manager()&&!state.fieldMode?adminHome():essentialHome();if(state.section==='punch')return essentialHome();if(state.section==='hours')return essentialHours();if(state.section==='schedule')return schedulePage();if(state.section==='more')return essentialMore();if(state.section==='sub'){if(state.sub==='approvals')return manager()?essentialApprovals():heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');if(state.sub==='breakCorrections')return essentialUI.breakCorrections.render();if(state.sub==='essentialCorrection')return essentialCorrectionPage();if(state.sub==='myRequests')return essentialRequestsPage();if(state.sub==='leave')return essentialLeavePage();if(['supervision','missingDays','members','profile','leave','geofence','invitations','notifications','settings','schedule','appearance','hr','communications','payroll','support'].includes(state.sub))return subPage();}return essentialHome();}
+async function doPause(paid=false){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin')return;if(state.busy||!currentSession())return;if(activeBreakConflict()){toast('Plusieurs pauses ouvertes pour cette session. Synchronisez vos heures et contactez votre responsable.');return;}state.busy=true;try{const result=await locatedPunch(activeBreak()?'break_end':'break_start',null,paid);await loadData();toast(result.review_status==='local'?'Pause conservée sur cet appareil — en attente d’envoi':result.review_status==='pending'?'Pause transmise — validation requise':'Pause transmise au serveur')}catch(err){error(err)}finally{state.busy=false;draw()}}
 function breakApprovals(){if(!manager())return '';return card('<b>Pauses hors ligne à valider</b>'+state.receipts.filter(r=>r.action?.startsWith('break_')&&r.result?.review_status==='pending').map(r=>'<div class="group">'+e(r.action==='break_start'?(r.result?.is_paid?'Début de pause payée':'Début de pause non payée'):'Fin de pause')+' · '+when(r.occurred_at)+button('Valider','reviewBreak','gold',`data-id="${e(r.event_id)}" data-worker="${e(r.user_id)}"`)+'</div>').join(''));}
 async function reviewBreak(id,worker){const note=prompt('Motif de validation');if(!note)return;try{const r=await sb.rpc('review_break_event',{p_company:company(),p_worker:worker,p_event:id,p_note:note});if(r.error)throw r.error;await reload({quiet:true})}catch(err){error(err)}}
 
 function renderMap(){if(state.section!=='jobs')return;const map=$('geoMap');if(!map)return;const list=jobList().filter(j=>j.latitude!=null&&j.longitude!=null);if(!list.length){map.innerHTML='<small>Aucune job avec coordonnées. L’admin peut ajouter une punaise GPS.</small>';return}map.innerHTML=list.slice(0,15).map((j,i)=>'<button style="left:'+((11+i*19)%80)+'%;top:'+((17+i*31)%67)+'%" data-action="detail" data-id="'+j.id+'" title="#'+e(j.number)+'">'+(i+1)+'</button>').join('')+'<small>Points indicatifs — utilise Google Maps/Waze pour la position réelle</small>'}
-async function loadData(){if(!member())return;await punchJournal().flush();if(!navigator.onLine){const view=projectPendingPunches(state.serverPunch,await punchJournal().read());state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=(await punchJournal().pending()).length;state.selected=view.segments.find(s=>!s.ended_at)?.job_id||view.lastJobId||state.selected;saveOfflineSnapshot();return;}const companyId=company();if(!companyId)return;try{
-const calls=await Promise.all([
+let punchLoadRevision=0;
+async function loadData(){if(!member())return;
+ const companyId=company(),userId=state.user?.id,revision=++punchLoadRevision,journal=punchJournal();
+ const onlineAtStart=navigator.onLine===true;
+ const scopeCurrent=()=>revision===punchLoadRevision&&member()&&company()===companyId&&state.user?.id===userId;
+ // A blocked local journal must not prevent reading official server hours.
+ let flushed=null,journalBlocked=false;
+ try{flushed=await (onlineAtStart?journal.flush():journal.inspect())}catch{journalBlocked=true}
+ if(!scopeCurrent())return;
+ state.localJournalBlocked=journalBlocked?{companyId,userId}:null;
+ if(journalBlocked){state.localPunchEvents=[];state.localPending=0;}
+ // Journal acknowledgement is independent from the subsequent Supabase reads.
+ // Keep local pending/conflict indicators accurate even if another read fails.
+ if(Array.isArray(flushed?.events)){
+  const syncState=localPunchSyncState(flushed.events,companyId,userId);
+  state.localPunchEvents=flushed.events;
+  state.localPending=syncState.pending.length;
+ }
+ if(!onlineAtStart){
+  state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
+  state.correctionApprovalsLoaded=false;state.correctionApprovals=[];
+  if(journalBlocked){
+   const snapshot=state.serverPunchCompany===companyId?state.serverPunch:{sessions:[],segments:[],breaks:[]};
+   const safe=projectPendingPunches(snapshot,[],{company:companyId,user:userId});
+   state.sessions=safe.sessions;state.segments=safe.segments;state.breaks=safe.breaks;
+   return;
+  }
+   const events=flushed.events;
+  const snapshot=state.serverPunchCompany===companyId?state.serverPunch:{sessions:[],segments:[],breaks:[]};
+  const view=projectPendingPunches(snapshot,events,{company:companyId,user:userId});
+  state.sessions=view.sessions;state.segments=view.segments;state.breaks=view.breaks;state.localPending=localPunchSyncState(events,companyId,userId).pending.length;state.localPunchEvents=events;
+  const ownSession=currentSession(),ownSegment=ownSession?state.segments.find(s=>s.company_id===companyId&&s.session_id===ownSession.id&&!s.ended_at):null;
+  state.selected=ownSegment?.job_id||state.selected;
+  saveOfflineSnapshot();return;
+ }
+ if(!companyId)return;try{
+state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];
+ state.correctionApprovalsLoaded=false;state.correctionApprovals=[];
+ const calls=await Promise.all([
 sb.from('jobs').select('id,company_id,number,name,address,latitude,longitude,punch_radius_m,photo_url,active').eq('company_id',companyId).eq('active',true).order('number'),
 sb.from('job_assignments').select('job_id,planned_start').eq('company_id',companyId).eq('user_id',state.user.id).eq('active',true),
 sb.from('punch_sessions').select('id,started_at,ended_at,user_id,company_id').eq('company_id',companyId).eq('user_id',state.user.id).order('started_at',{ascending:false}).limit(150),
 sb.from('material_orders').select('id,created_at,created_by,job_id,status,note').eq('company_id',companyId).order('created_at',{ascending:false}).limit(100),
-sb.from('leave_requests').select('id,user_id,leave_type,begins_on,ends_on,status,reason').eq('company_id',companyId).order('created_at',{ascending:false}).limit(100),
+sb.from('leave_requests').select('id,company_id,user_id,leave_type,begins_on,ends_on,status,reason,created_at').eq('company_id',companyId).eq('user_id',userId).order('created_at',{ascending:false}).limit(100),
 sb.from('punch_correction_requests').select('id,session_id,requested_by,requested_start,requested_end,reason,status,created_at,review_note').eq('company_id',companyId).order('created_at',{ascending:false}).limit(100),
 sb.from('job_documents').select('id,name,kind,job_id,storage_path,requires_ack,version').eq('company_id',companyId),
 sb.from('conversations').select('id,title,kind,team_id').eq('company_id',companyId),
@@ -274,18 +835,55 @@ sb.from('punch_location_checks').select('*').eq('company_id',companyId).order('r
 sb.from('app_notifications').select('*').eq('company_id',companyId).eq('recipient_id',state.user.id).order('created_at',{ascending:false}).limit(100),
 sb.from('punch_event_receipts').select('event_id,user_id,action,job_id,occurred_at,offline,result').eq('company_id',companyId).order('received_at',{ascending:false}).limit(200),
 sb.from('punch_breaks').select('id,company_id,user_id,session_id,started_at,ended_at,is_paid').eq('company_id',companyId).eq('user_id',state.user.id)
-]);state.conversationsCompany=null;const names=['jobs','assignments','sessions','orders','leaves','corrections','documents','conversations','profile','contacts','credentials','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks'];const errors=[];for(let i=0;i<calls.length;i++){if(calls[i].error)errors.push(names[i]+': '+calls[i].error.message);else state[names[i]]=names[i]==='profile'?calls[i].data||null:names[i]==='archived'?(calls[i].data||[]).map(a=>a.segment_id):calls[i].data||[]}
-if(!calls[7].error){state.conversationsCompany=companyId;await chatUnread.load(companyId).catch(()=>chatUnread.reset());}else chatUnread.reset();
+]);if(!scopeCurrent())return;state.conversationsCompany=null;const names=['jobs','assignments','sessions','orders','leaves','corrections','documents','conversations','profile','contacts','credentials','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks'];const errors=[];for(let i=0;i<calls.length;i++){if(calls[i].error)errors.push(names[i]+': '+calls[i].error.message);else state[names[i]]=names[i]==='profile'?calls[i].data||null:names[i]==='archived'?(calls[i].data||[]).map(a=>a.segment_id):calls[i].data||[]}
+state.leavesLoaded=!calls[4].error;if(calls[4].error)state.leaves=[];
+ if(calls[5].error)state.corrections=[];
+ if(manager()){
+  // Keep manager approvals independent from the employee's 100-row history.
+  const queue=await sb.from('leave_requests').select('id,company_id,user_id,leave_type,begins_on,ends_on,status,reason,created_at')
+   .eq('company_id',companyId).eq('status','pending').order('created_at',{ascending:false}).limit(200);
+  if(!scopeCurrent())return;
+  state.leaveApprovalsLoaded=!queue.error;
+  state.leaveApprovals=queue.error?[]:queue.data||[];
+  if(queue.error)errors.push('congés à approuver: '+queue.error.message);
+  const correctionQueue=await sb.from('punch_correction_requests')
+   .select('id,company_id,session_id,requested_by,requested_start,requested_end,reason,status,created_at')
+   .eq('company_id',companyId).eq('status','pending').order('created_at',{ascending:false}).limit(200);
+  if(!scopeCurrent())return;
+  state.correctionApprovalsLoaded=!correctionQueue.error;
+  state.correctionApprovals=correctionQueue.error?[]:correctionQueue.data||[];
+  if(correctionQueue.error)errors.push('corrections à approuver: '+correctionQueue.error.message);
+ }
+ if(!calls[7].error){state.conversationsCompany=companyId;await chatUnread.load(companyId).catch(()=>chatUnread.reset());}else chatUnread.reset();
+if(!scopeCurrent())return;
 if(manager()){const team=await sb.from('punch_sessions').select('id,user_id,started_at,ended_at').eq('company_id',companyId).order('started_at',{ascending:false}).limit(500);if(team.error)errors.push('heures équipe: '+team.error.message);else state.teamSessions=team.data||[]}
+if(!scopeCurrent())return;
 if(state.sessions.length){const ids=state.sessions.map(s=>s.id);const q=await sb.from('punch_segments').select('id,company_id,session_id,job_id,started_at,ended_at').eq('company_id',companyId).in('session_id',ids).order('started_at',{ascending:false}).limit(1800);if(q.error)errors.push('segments: '+q.error.message);else state.segments=q.data||[]}else state.segments=[];
-if(!calls[2].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;}const projected=projectPendingPunches(state.serverPunch,await punchJournal().read());state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=(await punchJournal().pending()).length;saveOfflineSnapshot();
+if(!scopeCurrent())return;
+if(!calls[2].error&&!calls[21].error&&!errors.some(x=>x.startsWith('segments:'))){state.serverPunch={sessions:state.sessions,segments:state.segments,breaks:state.breaks};state.serverPunchCompany=companyId;state.serverPunchFetchedAt=Date.now();}const events=journalBlocked?[]:await journal.read(),pending=journalBlocked?[]:await journal.pending();if(!scopeCurrent())return;const projected=projectPendingPunches(state.serverPunch,events,{company:companyId,user:userId});state.sessions=projected.sessions;state.segments=projected.segments;state.breaks=projected.breaks;state.localPending=localPunchSyncState(events,companyId,userId).pending.length;state.localPunchEvents=events;saveOfflineSnapshot();
 const active=activeSegment();const preference=localStorage.getItem('punch360-selection-'+state.user.id+':'+company());if(active&&getJob(active.job_id))state.selected=active.job_id;else if(!state.selected||!getJob(state.selected))state.selected=getJob(preference)?.id||state.segments.find(s=>getJob(s.job_id))?.job_id||state.jobs[0]?.id||null;
 if(state.chatId&&!currentCompanyChat(state.chatId)){state.chatLoadRevision++;state.chatId=null;state.messages=[]}if(errors.length)toast('Quelques données non accessibles : '+errors[0]);
 }catch(err){error(err)}}
 async function reload({quiet=false}={}){if(state.busy)return;state.busy=true;if(!quiet)toast('Synchronisation…');try{await loadData();if(isEssential()){await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);}else personalMissions.reset();if(state.chatId)await loadChat(state.chatId)}catch(err){error(err)}finally{state.busy=false;draw();renderMap()}}
-async function initialize(){try{const cached=JSON.parse(localStorage.getItem('punch-local-user')||'null');if(!navigator.onLine&&cached){state.user=cached;const selected=localStorage.getItem('punch-last-company:'+cached.id);
- state.account=selected?JSON.parse(localStorage.getItem('punch-account:'+cached.id+':'+selected)||'null'):null;
- companyContext.list=[];companyContext.choosing=false;restoreOfflineSnapshot();if(isEssential())await essentialUI.appearance.load(cached.id);if(member())await loadData();draw();return;}const {data,error:err}=await sb.auth.getSession();if(err&&!cached)throw err;state.user=data.session?.user||(err?cached:null);if(state.user)localStorage.setItem('punch-local-user',JSON.stringify({id:state.user.id,email:state.user.email}));await lookupAccount();if(companyContext.choosing){draw();return;}if(state.account)restoreOfflineSnapshot();await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);if(isEssential()&&!manager()&&essentialUI.appearance.state.ready&&!essentialUI.appearance.state.hasPreference){state.section='sub';state.sub='appearance';}if(member())await loadData();draw();renderMap()}catch(err){state.error=err.message;draw();error(err)}}
+async function initialize(){try{const cached=cachedOfflineWebUser(localStorage);
+ if(!navigator.onLine){
+  // No verified server identity can be fetched offline. An invalid or
+  // mixed-account cache must display a signed-out view, not stale hours.
+  ++punchLoadRevision;
+  state.user=cached;state.account=cached?cachedOfflineWebAccount(localStorage,cached):null;
+  companyContext.list=[];companyContext.choosing=false;
+  state.jobs=[];state.assignments=[];state.shifts=[];state.selected=null;
+  state.sessions=[];state.segments=[];state.breaks=[];
+  state.serverPunch={sessions:[],segments:[],breaks:[]};
+  state.serverPunchCompany=null;state.serverPunchFetchedAt=null;
+  if(member()){
+   restoreOfflineSnapshot();
+   if(isEssential())await essentialUI.appearance.load(cached.id);
+   await loadData();
+  }
+  draw();return;
+ }
+ const {data,error:err}=await sb.auth.getSession();if(err&&!cached)throw err;state.user=data.session?.user||(err?cached:null);if(state.user){localStorage.setItem('punch-local-user',JSON.stringify({id:state.user.id,email:state.user.email}));if(!state.pendingCompanyCreation)state.pendingCompanyCreation=readPendingCompanyCreation(sessionStorage,state.user.id);if(!state.pendingWorkerActivation)state.pendingWorkerActivation=readPendingWorkerActivation(sessionStorage,state.user.id);}await lookupAccount();if(companyContext.choosing){draw();return;}if(state.account)restoreOfflineSnapshot();await essentialUI.load(state.user,state.account);await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);if(isEssential()&&!manager()&&essentialUI.appearance.state.ready&&!essentialUI.appearance.state.hasPreference){state.section='sub';state.sub='appearance';}if(member())await loadData();draw();renderMap()}catch(err){state.error=err.message;draw();error(err)}}
 async function lookupAccount(){
  state.account=null;companyContext.list=[];companyContext.choosing=false;
  if(!state.user)return;
@@ -332,7 +930,7 @@ async function switchCompany(companyId){
    chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();
    essentialUI.reset();bossHandoff.reset();
    for(const field of ['jobs','assignments','sessions','segments','orders','leaves','corrections','documents','conversations','messages','teamList','members','archived','weeks','audit','shifts','acks','locationChecks','notifications','receipts','breaks','teamSessions','contact'])state[field]=Array.isArray(state[field])?[]:null;
-   state.profile=null;state.serverPunch={sessions:[],segments:[],breaks:[]};state.localPending=0;state.selected=null;state.detailId=null;state.chatId=null;state.section='home';state.sub='';state.fieldMode=false;
+   state.profile=null;state.leavesLoaded=false;state.leaveApprovalsLoaded=false;state.leaveApprovals=[];state.correctionApprovalsLoaded=false;state.correctionApprovals=[];state.correctionReviewSubmitting=false;state.leaveSubmitting=false;state.leaveReviewSubmitting=false;state.serverPunch={sessions:[],segments:[],breaks:[]};state.serverPunchFetchedAt=null;state.serverPunchCompany=null;state.localPending=0;state.localPunchEvents=[];state.selected=null;state.detailId=null;state.chatId=null;state.section='home';state.sub='';state.fieldMode=false;
    setVerifiedAccount(next);
    await essentialUI.load(state.user,state.account);
    await personalMissions.load(company(),state.user?.id,essentialUI.state.worker?.id);
@@ -345,16 +943,90 @@ function navigate(s){saveChatDraft();if(s==='messages'&&isEssential()&&!essentia
 function detail(id){state.detailId=id;state.section='detail';state.showArchives=false;draw()}
 function mapRoute(j,type){if(!j)return;window.open(urls[type](j),'_blank','noopener,noreferrer')}
 async function requestGPS(){if(!navigator.geolocation){toast('GPS indisponible sur cet appareil');return}state.gpsLoading=true;navigator.geolocation.getCurrentPosition(p=>{state.position={latitude:p.coords.latitude,longitude:p.coords.longitude};state.gpsLoading=false;const nearest=state.jobs.filter(j=>j.latitude!=null&&j.longitude!=null).map(j=>({j,d:distance(state.position,j)})).sort((a,b)=>a.d-b.d)[0];if(!currentSession()&&nearest&&nearest.d<=0.5&&nearest.j.id!==state.selected&&confirm('Le GPS propose #'+nearest.j.number+' — '+nearest.j.name+'. Utiliser cette job pour le prochain PUNCH IN ?')){state.selected=nearest.j.id;localStorage.setItem('punch360-selection-'+state.user.id+':'+company(),state.selected)}draw();renderMap();toast('Position GPS disponible')},err=>{state.gpsLoading=false;toast('GPS non autorisé : '+err.message)}, {enableHighAccuracy:true,timeout:17000,maximumAge:20000})}
-async function doPunch(){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin'){toast('Le compte Admin est réservé à la gestion.');return;}const active=currentSession(),j=isEssential()&&!active?(getJob(essentialPunchJob())||selectedJob()):selectedJob();if(!j||state.busy)return;if(!confirm((isEssential()?(active?'Terminer votre journée ?':'Commencer votre journée ?'):(active?'Confirmer PUNCH OUT ?':'Confirmer PUNCH IN sur #'+j.number+' — '+j.name+' ?'))+'\nHorodatage serveur.'))return;state.busy=true;try{const result=await locatedPunch(active?'out':'in',j.id);await loadData();toast(result.review_status==='local'?'Punch enregistré sur cet appareil — envoi au retour du réseau':result.review_status==='pending'?'Punch conservé — validation de l’administration requise':result.sync_status==='conflict'?'Conflit conservé et transmis à l’administration':'Punch enregistré — position dans le rayon');}catch(err){error(err)}finally{state.busy=false;draw()}}
-async function selectJob(id){if(state.busy)return;const j=getJob(id);if(!j)return;if(currentSession()&&state.selected!==id){if(!confirm('Transférer les heures à #'+j.number+' sans interrompre le punch de la journée ?'))return;state.busy=true;try{await locatedPunch('transfer',id);await loadData();toast('Transfert de job enregistré')}catch(err){error(err)}finally{state.busy=false}}state.selected=id;localStorage.setItem('punch360-selection-'+state.user.id+':'+company(),id);navigate('home')}
-async function submitCorrection(){const sid=$val('sessionCorrect'),reason=$val('correctionReason');if(!sid||reason.length<3)return toast('Choisis une journée et écris la raison.');try{const q=await sb.from('punch_correction_requests').insert({company_id:company(),session_id:sid,requested_by:state.user.id,reason,requested_start:$val('correctionStart')?new Date($val('correctionStart')).toISOString():null,requested_end:$val('correctionEnd')?new Date($val('correctionEnd')).toISOString():null});if(q.error)throw q.error;await reload({quiet:true});toast('Correction envoyée pour approbation')}catch(err){error(err)}}
+async function doPunch(){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin'){toast('Le compte Admin est réservé à la gestion.');return;}const active=currentSession(),punchAction=isEssential()?resolveEssentialMobilePunchAction(company(),state.user?.id,active,state.segments,essentialPunchJob(),state.jobs):null,j=isEssential()?null:selectedJob();if(isEssential()&&!punchAction){toast(active?'Impossible de vérifier la journée ouverte. Synchronisez ou contactez votre responsable.':'Aucun établissement actif confirmé. Contactez votre responsable avant de pointer.');return;}if(!isEssential()&&!j)return;if(state.busy)return;if(!confirm((isEssential()?(active?'Terminer votre journée ?':'Commencer votre journée ?'):(active?'Confirmer PUNCH OUT ?':'Confirmer PUNCH IN sur #'+j.number+' — '+j.name+' ?'))+'\nHeure captée sur cet appareil, soumise à vérification du serveur.'))return;state.busy=true;try{const result=await locatedPunch(active?'out':'in',isEssential()?punchAction.jobId:j.id);await loadData();toast(result.review_status==='local'?'Punch enregistré sur cet appareil — envoi au retour du réseau':result.review_status==='pending'?'Punch conservé — validation de l’administration requise':result.sync_status==='conflict'?'Conflit conservé et transmis à l’administration':'Punch transmis au serveur — heures sujettes à validation');}catch(err){error(err)}finally{state.busy=false;draw()}}
+async function selectJob(id){if(state.busy)return;const j=getJob(id);if(!j)return;if(currentSession()&&state.selected!==id){if(!confirm('Transférer les heures à #'+j.number+' sans interrompre le punch de la journée ?'))return;state.busy=true;try{const result=await locatedPunch('transfer',id);await loadData();toast(result.review_status==='local'?'Transfert conservé sur cet appareil — en attente d’envoi':result.review_status==='pending'?'Transfert transmis — validation requise':'Transfert transmis au serveur')}catch(err){error(err);return}finally{state.busy=false}}state.selected=id;localStorage.setItem('punch360-selection-'+state.user.id+':'+company(),id);navigate('home')}
+async function submitCorrection(){
+ if(state.correctionSubmitting)return;
+ const sid=$val('sessionCorrect'),reason=$val('correctionReason');
+ const requestedStart=$val('correctionStart'),requestedEnd=$val('correctionEnd');
+ if(isEssential()){
+  if(!navigator.onLine)return toast('Connexion Internet requise pour demander une correction.');
+  const view=essentialCorrectionView({companyId:company(),userId:state.user?.id,
+   snapshotCompanyId:state.serverPunchCompany,snapshot:state.serverPunch,requests:state.corrections});
+  const checked=validateEssentialCorrection({view,sessionId:sid,reason,requestedStart,requestedEnd});
+  if(!checked.ok)return toast(checked.message);
+  const companyId=company(),userId=state.user?.id;
+  const sameIdentity=()=>company()===companyId&&state.user?.id===userId;
+  state.correctionSubmitting=true;
+  try{
+   const auth=await sb.auth.getUser();
+   if(auth.error||auth.data?.user?.id!==userId||!sameIdentity())
+    throw Error('Identité non vérifiée');
+   // Always verify the chosen completed session from the server, never from a local projection.
+   const proof=await sb.from('punch_sessions').select('id,company_id,user_id,started_at,ended_at')
+    .eq('id',checked.sessionId).eq('company_id',companyId).eq('user_id',userId).maybeSingle();
+   if(proof.error||!proof.data||proof.data.id!==checked.sessionId||
+      proof.data.company_id!==companyId||proof.data.user_id!==userId||
+      !Number.isFinite(Date.parse(proof.data.started_at))||
+      !Number.isFinite(Date.parse(proof.data.ended_at))||
+      Date.parse(proof.data.ended_at)<Date.parse(proof.data.started_at)||!sameIdentity())
+    throw Error('Journée serveur non vérifiée');
+   const result=await sb.from('punch_correction_requests').insert({
+    company_id:companyId,session_id:checked.sessionId,requested_by:userId,
+    reason:checked.reason,requested_start:checked.requestedStart,requested_end:checked.requestedEnd
+   });
+   if(result.error||!sameIdentity())throw Error('Transmission non confirmée');
+   await reload({quiet:true});
+   if(sameIdentity())toast('Demande envoyée pour approbation. Les heures officielles restent inchangées.');
+  }catch{
+   if(sameIdentity())toast('Transmission non confirmée. Vérifiez vos demandes avant toute nouvelle tentative.');
+  }finally{state.correctionSubmitting=false;}
+  return;
+ }
+ if(!sid||reason.length<3)return toast('Choisis une journée et écris la raison.');
+ try{const q=await sb.from('punch_correction_requests').insert({company_id:company(),session_id:sid,requested_by:state.user.id,reason,requested_start:requestedStart?new Date(requestedStart).toISOString():null,requested_end:requestedEnd?new Date(requestedEnd).toISOString():null});if(q.error)throw q.error;await reload({quiet:true});toast('Correction envoyée pour approbation')}catch(err){error(err)}
+}
 async function createOrder(){const j=selectedJob(),note=$val('materialNote');if(!j||!note)return toast('Choisis une job et décris le matériel.');try{const r=await sb.from('material_orders').insert({company_id:company(),job_id:j.id,created_by:state.user.id,note});if(r.error)throw r.error;await reload({quiet:true});toast('Commande enregistrée sur Supabase')}catch(err){error(err)}}
 async function archive(id){try{const archived=state.archived.includes(id);const q=archived?await sb.from('punch_archive_preferences').delete().eq('user_id',state.user.id).eq('segment_id',id):await sb.from('punch_archive_preferences').insert({user_id:state.user.id,segment_id:id});if(q.error)throw q.error;await reload({quiet:true});toast(archived?'Punch restauré':'Punch archivé sans supprimer ses heures')}catch(err){error(err)}}
 async function createJob(){if(isRestrict())return toast('Gestion bloquée : abonnement à régulariser.');const number=$val('newJobNumber'),name=$val('newJobName'),address=$val('newJobAddress'),lat=$val('newJobLat'),lon=$val('newJobLon'),photo=$val('newJobPhoto');if(!number||!name)return toast('Numéro et nom obligatoires.');if((lat&&!lon)||(!lat&&lon))return toast('Fournis latitude et longitude ensemble.');try{const q=await sb.from('jobs').insert({company_id:company(),number,name,address,latitude:lat?Number(lat):null,longitude:lon?Number(lon):null,photo_url:photo||null});if(q.error)throw q.error;await reload({quiet:true});toast('Chantier créé');navigate('jobs')}catch(err){error(err)}}
 async function saveProfile(){try{const r=await sb.from('employee_profiles').upsert({user_id:state.user.id,full_name:$val('profileName'),phone:$val('profilePhone')},{onConflict:'user_id'});if(r.error)throw r.error;await reload({quiet:true});toast('Profil enregistré')}catch(err){error(err)}}
 async function saveContact(){const priority=Number($val('contactPriority'));if(!$val('contactName')||!$val('contactPhone'))return toast('Nom et téléphone obligatoires');try{const r=await sb.from('emergency_contacts').upsert({user_id:state.user.id,priority,name:$val('contactName'),phone:$val('contactPhone'),relationship:$val('contactRelationship')},{onConflict:'user_id,priority'});if(r.error)throw r.error;await reload({quiet:true});toast('Contact sauvegardé')}catch(err){error(err)}}
 async function saveCredential(){const type=$val('certType');if(!type)return toast('Type de carte obligatoire');try{const r=await sb.from('employee_credentials').insert({user_id:state.user.id,credential_type:type,trade:$val('certTrade')||null,expires_on:$val('certExpiry')||null});if(r.error)throw r.error;await reload({quiet:true});toast('Certification enregistrée')}catch(err){error(err)}}
-async function submitLeave(){const from=$val('leaveStart'),to=$val('leaveEnd');if(!from||!to||to<from)return toast('Dates invalides');try{const r=await sb.from('leave_requests').insert({company_id:company(),user_id:state.user.id,leave_type:$val('leaveType'),begins_on:from,ends_on:to,reason:$val('leaveReason')||null});if(r.error)throw r.error;await reload({quiet:true});toast('Congé soumis — en attente')}catch(err){error(err)}}
+async function submitLeave(){
+ if(state.leaveSubmitting)return;
+ const from=$val('leaveStart'),to=$val('leaveEnd'),type=$val('leaveType'),reason=$val('leaveReason');
+ if(!isEssential()){
+  if(!from||!to||to<from)return toast('Dates invalides');
+  try{const r=await sb.from('leave_requests').insert({company_id:company(),user_id:state.user.id,leave_type:type,begins_on:from,ends_on:to,reason:reason||null});if(r.error)throw r.error;await reload({quiet:true});toast('Congé soumis — en attente')}catch(err){error(err)}return;
+ }
+ if(!navigator.onLine)return toast('Connexion Internet requise pour envoyer une demande.');
+ const companyId=company(),userId=state.user?.id;
+ const view=essentialLeaveView({companyId,userId,loaded:state.leavesLoaded,requests:state.leaves});
+ const checked=validateEssentialLeaveRequest({view,companyId,userId,type,from,to,reason});
+ if(!checked.ok)return toast(checked.message);
+ const sameIdentity=()=>company()===companyId&&state.user?.id===userId;
+ state.leaveSubmitting=true;
+ let refreshAttempted=false;
+ try{
+  const auth=await sb.auth.getUser();
+  if(auth.error||auth.data?.user?.id!==userId||!sameIdentity())throw Error('Identity verification failed');
+  const result=await sb.from('leave_requests').insert({
+   company_id:companyId,user_id:userId,leave_type:checked.type,
+   begins_on:checked.from,ends_on:checked.to,reason:checked.reason
+  });
+  if(result.error||!sameIdentity())throw Error('Unconfirmed submission');
+  refreshAttempted=true;
+  await reload({quiet:true});
+  if(sameIdentity())toast('Demande transmise pour approbation. Aucun congé approuvé automatiquement.');
+ }catch{
+  if(sameIdentity())toast('Envoi non confirmé. Actualisez vos demandes avant une nouvelle tentative.');
+ }finally{
+  state.leaveSubmitting=false;
+  // reload() draws while submitting=true; re-enable this form after it completes.
+  // Do not redraw a rejected/ambiguous submission: keep the employee's typed draft.
+  if(refreshAttempted&&sameIdentity()&&state.section==='sub'&&state.sub==='leave')draw();
+ }
+}
 // Update counters without replacing the chat composer: redraw() would discard
 // an unsent message if a background read acknowledgement finished mid-typing.
 function refreshChatUnreadBadges(){
@@ -485,13 +1157,161 @@ function clearPublicPlanSelection(){
  // on a shared tablet; failed company creation keeps it for a retry.
  clearSavedPublicPlanSelection(sessionStorage);
 }
-async function createCompany(){if(state.authBusy)return;const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);state.authBusy=true;draw();try{const r=await sb.rpc('create_company_for_edition',{p_name:n,p_edition:state.creationEdition});if(r.error)throw r.error;clearPublicPlanSelection();await initialize();toast('Ton espace PUNCH est prêt')}catch(err){authFailure(err)}finally{state.authBusy=false;draw()}}
+function restoreAnonymousPricingAfterSignout(){
+ // Do not issue another Supabase request synchronously inside the auth
+ // callback. The isolated public load never restores private tenant state.
+ setTimeout(()=>{if(!state.user)void essentialUI.refreshPublicCatalog()},0);
+}
+// The server returns the UUID of an already-created company. A failed
+// UI refresh must never issue another create RPC or claim the space is ready.
+async function confirmCreatedWorkspace(){
+ const pending=state.pendingCompanyCreation;
+ if(!pending)return;
+ if(pending.companyId&&state.user?.id){
+  try{localStorage.setItem('punch-last-company:'+state.user.id,pending.companyId)}catch{}
+ }
+ await initialize();
+ // If the create RPC response was lost, recover ONLY from exactly one newly
+ // server-verified boss membership; the stored baseline never grants access.
+ let createdCompanyId=pending.companyId;
+ if(!createdCompanyId){
+  const recovered=recoverCreatedCompanyWorkspace(pending,state.user?.id,companyContext.list);
+  if(recovered){
+   createdCompanyId=recovered.companyId;
+   if(state.account?.company_id!==createdCompanyId){
+    setVerifiedAccount(recovered);
+    await initialize();
+   }
+  }
+ }
+ if(isCreatedCompanyVerified(createdCompanyId,state.user?.id,state.account,companyContext.list)){
+  state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);
+  authMessage('');toast('Ton espace PUNCH est prêt');return;
+ }
+ authMessage(pending.companyId?'Entreprise créée, mais accès non encore vérifié. Utilisez « Vérifier mon accès ».':'Création non confirmée. Vérifiez vos accès avant de réessayer; une seconde création pourrait produire un doublon.',true);
+}
+async function verifyCreatedCompany(){
+ if(state.authBusy||!state.pendingCompanyCreation)return;
+ state.authBusy=true;authMessage('');draw();
+ try{await confirmCreatedWorkspace()}
+ catch{authMessage('Accès non vérifié actuellement. Réessayez la vérification, pas la création.',true)}
+ finally{state.authBusy=false;draw()}
+}
+async function createCompany(){
+ if(state.authBusy||state.pendingCompanyCreation)return;
+ const n=$val('companyName');if(n.length<2)return authMessage('Entre le nom de ton entreprise (au moins 2 caractères).',true);
+ const pendingContext={previousIds:companyContext.list.map(w=>w.companyId),edition:state.creationEdition};
+ state.authBusy=true;authMessage('');draw();
+ try{
+  let definiteError=false,accepted;
+  try{accepted=await createCompanyOnce(async(name,params)=>{const r=await sb.rpc(name,params);if(r?.error)definiteError=isDefinitiveRpcRejection(r.error);return r;},n,state.creationEdition)}
+  catch(err){if(definiteError)throw err;state.pendingCompanyCreation={companyId:null,...pendingContext};savePendingCompanyCreation(sessionStorage,state.user?.id,null,pendingContext);authMessage('Réponse du serveur incertaine. Vérifiez vos accès avant toute nouvelle création.',true);return;}
+  state.pendingCompanyCreation={companyId:accepted.companyId,...pendingContext};
+  savePendingCompanyCreation(sessionStorage,state.user?.id,accepted.companyId,pendingContext);
+  clearPublicPlanSelection();
+  await confirmCreatedWorkspace();
+ }catch(err){
+  if(state.pendingCompanyCreation)authMessage('Entreprise créée sur le serveur, mais la vérification de l’accès a échoué. Utilisez « Vérifier mon accès » sans relancer la création.',true);
+  else authFailure(err);
+ }finally{state.authBusy=false;draw()}
+}
 
-async function logOut(){chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');await sb.auth.signOut();clearPublicPlanSelection();state.user=null;state.account=null;state.confirmationEmail='';state.authMode='welcome';state.section='home';state.chatId=null;draw()}
+// Accept exactly once. An uncertain transport response may already have
+// committed server-side: subsequent actions verify RLS state, never replay
+// the one-time invitation or create another worker/seat.
+async function confirmWorkerActivation(){
+ const pending=state.pendingWorkerActivation;
+ if(!pending||!state.user)return false;
+ if(pending.companyId){
+  try{localStorage.setItem('punch-last-company:'+state.user.id,pending.companyId)}catch{}
+ }
+ await initialize();
+ let createdCompanyId=pending.companyId;
+ if(!createdCompanyId){
+  const recovered=recoverWorkerActivation(pending,state.user?.id,companyContext.list);
+  if(recovered){
+   createdCompanyId=recovered.companyId;
+   try{localStorage.setItem('punch-last-company:'+state.user.id,createdCompanyId)}catch{}
+   await initialize();
+  }
+ }
+ if(isWorkerActivationVerified(createdCompanyId,state.user?.id,state.account,companyContext.list,essentialUI.state.worker)){
+  state.pendingWorkerActivation=null;clearPendingWorkerActivation(sessionStorage);
+  authMessage('');toast('Ton dossier salarié est activé.');return true;
+ }
+ authMessage('Activation non vérifiée. Vérifiez votre accès au serveur; ne réutilisez pas l’invitation. Si le problème persiste, contactez votre responsable.',true);
+ return false;
+}
+async function verifyWorkerActivation(){
+ if(state.authBusy||!state.pendingWorkerActivation)return;
+ state.authBusy=true;authMessage('');draw();
+ try{await confirmWorkerActivation()}
+ catch{authMessage('Impossible de vérifier le dossier actuellement. Réessayez la vérification, pas l’activation.',true)}
+ finally{state.authBusy=false;draw()}
+}
+async function activateWorker(){
+ if(state.authBusy||state.pendingWorkerActivation||!state.user)return;
+ const token=sessionStorage.getItem('punch-worker-invite');
+ if(!validWorkerInviteToken(token))return authMessage('Lien d’activation invalide. Demandez une nouvelle invitation.',true);
+ const baseline=companyContext.list.map(w=>w.companyId);
+ state.authBusy=true;authMessage('');draw();
+ try{
+  let rejected=false,accepted;
+  try{
+   accepted=await acceptWorkerInviteOnce(async(name,args)=>{
+    const response=await sb.rpc(name,args);
+    if(response?.error)rejected=isDefinitiveRpcRejection(response.error);
+    return response;
+   },token);
+  }catch(err){
+   if(rejected)throw err;
+   state.pendingWorkerActivation={companyId:null,previousIds:baseline};
+   savePendingWorkerActivation(sessionStorage,state.user.id,null,baseline);
+   sessionStorage.removeItem('punch-worker-invite');
+   authMessage('Réponse d’activation incertaine. Vérifiez vos accès plutôt que de réutiliser l’invitation.',true);
+   return;
+  }
+  state.pendingWorkerActivation={companyId:accepted.companyId,previousIds:baseline};
+  savePendingWorkerActivation(sessionStorage,state.user.id,accepted.companyId,baseline);
+  sessionStorage.removeItem('punch-worker-invite');
+  await confirmWorkerActivation();
+ }catch(err){
+  if(state.pendingWorkerActivation)authMessage('Activation acceptée, mais accès non encore vérifié. Utilisez « Vérifier mon accès ».',true);
+  else authFailure(err);
+ }finally{state.authBusy=false;draw()}
+}
+async function logOut(){chatDrafts.clear();state.chatLoadRevision++;state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);state.pendingWorkerActivation=null;clearPendingWorkerActivation(sessionStorage);localStorage.removeItem('punch-local-user');await sb.auth.signOut();clearPublicPlanSelection();state.user=null;state.account=null;state.localPending=0;state.localPunchEvents=[];state.confirmationEmail='';state.authMode='welcome';state.section='home';state.chatId=null;draw();restoreAnonymousPricingAfterSignout()}
 function tick(){state.time=Date.now();const t=$('liveTimer'),cs=currentSession();if(t)t.textContent=isEssential()?elapsed(essentialToday()):elapsed(cs?state.time-Date.parse(cs.started_at):0);const w=$('weekTotal'),y=$('yearTotal');if(w||y){const tot=clockTotals();if(w)w.textContent=mins(tot.week);if(y)y.textContent=mins(tot.year)}if($('topclock'))$('topclock').textContent=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'})}
 document.addEventListener('click',async ev=>{const el=ev.target.closest('[data-action]');if(!el)return;const a=el.dataset.action,id=el.dataset.id;try{
 if(isEssential()&&!essentialMessagesAllowed()&&['chat','sendMessage','newGroup','createGroup','privateChat'].includes(a)){toast('Messages non autorisés pour ce forfait.');return;}
 if(a==='togglePassword'){togglePublicPasswordVisibility(document,id,el);return;}
+ if(a==='syncPendingPunches'){
+ if(!member()||!isEssential())throw Error('Synchronisation des pointages non autorisée.');
+ if(state.busy)return;
+ if(!navigator.onLine){toast('Connexion Internet requise pour synchroniser.');return;}
+ const companyId=company(),userId=state.user?.id;
+ await reload({quiet:true});
+ if(!member()||company()!==companyId||state.user?.id!==userId)return;
+ if(state.localJournalBlocked?.companyId===companyId&&state.localJournalBlocked.userId===userId){
+  toast('Journal local non vérifiable : aucun pointage envoyé. Contactez votre responsable.');return;
+ }
+ // Read the journal again after the retry. A failed server reload must not
+ // leave a stale in-memory list claiming everything was synchronized.
+ const events=await punchJournal().read();
+ if(!member()||company()!==companyId||state.user?.id!==userId)return;
+ if(hasUnsafePunchJournalEntries(events,companyId,userId)){
+  toast('Journal local à vérifier : aucun pointage envoyé. Contactez votre responsable.');return;
+ }
+ state.localPunchEvents=events;
+ const {pending,conflicts}=localPunchSyncState(events,companyId,userId);
+ state.localPending=pending.length;
+ draw();
+ toast(pending.length&&conflicts.length?pending.length+' pointage(s) à transmettre et '+conflicts.length+' conflit(s) à vérifier.':
+  pending.length?pending.length+' pointage(s) encore en attente. Réessayez avec une connexion stable.':
+  conflicts.length?'Aucun envoi en attente, mais '+conflicts.length+' conflit(s) nécessitent une vérification.':
+  'Aucun envoi local en attente. Vérifiez le relevé serveur avant de considérer vos heures confirmées.');
+ return;
+}
 if(member()&&manager()&&managementIsRestricted()&&!(state.account.role==='boss'&&state.fieldMode)&&!canUseRestrictedManagement({role:state.account.role,action:a,id,section:state.section,sub:state.sub})){toast('Gestion suspendue : utilisez Abonnement, Support ou votre pointage.');return;}
 if(a==='navPrefSet'||a==='navPrefClear'){
  if(!isEssential()||!state.user?.id||!company())throw Error('Compte Essentiel requis pour cette préférence.');
@@ -530,7 +1350,8 @@ if(a==='mission:sync'){
   if(!isEssential()||personalMissions.state.company!==company())throw Error('Mission non autorisée.');
   await personalMissions.syncQueued();draw();return;
 }
-if(a==='activateWorker'){const r=await sb.rpc('accept_worker_invitation',{p_token:sessionStorage.getItem('punch-worker-invite')});if(r.error)throw r.error;sessionStorage.removeItem('punch-worker-invite');await initialize();return;}
+if(a==='activateWorker'){await activateWorker();return;}
+if(a==='verifyWorkerActivation'){await verifyWorkerActivation();return;}
 if(a.startsWith('subdir:')){await essentialUI.subscriptions.handle(el);return;}
 if(a.startsWith('boss-handoff:')){await bossHandoff.handle(el);return;}
  if(a.startsWith('qualified:')){await essentialUI.qualifiedCoverage.handle(el);return;}
@@ -591,12 +1412,13 @@ else if(a==='logout')await logOut();
  else if(a==='selectCompany')await switchCompany(id);
 else if(a==='resetPassword')await resetPassword();
 else if(a==='createCompany')await createCompany();
+else if(a==='verifyCreatedCompany')await verifyCreatedCompany();
 else if(a==='chooseEdition'){if(!isPublicEdition(id))return;state.creationEdition=id;if(id!=='essential')clearPublicPlanSelection();try{localStorage.setItem('punch-creation-edition',id)}catch{}const url=new URL(location.href);url.searchParams.set('edition',id);history.replaceState(null,'',url);draw()}
 else if(a==='pausePaid')await doPause(true);
 else if(a==='pause')await doPause();
 else if(a==='reviewBreak')await reviewBreak(id,el.dataset.worker);
-else if(a==='reviewCorrection')await reviewRecord('review_punch_correction',id,el.dataset.approve==='true');
-else if(a==='reviewLeave')await reviewRecord('review_leave',id,el.dataset.approve==='true');
+else if(a==='reviewCorrection')await (isEssential()?reviewEssentialCorrection(id,el.dataset.approve==='true'):reviewRecord('review_punch_correction',id,el.dataset.approve==='true'));
+else if(a==='reviewLeave')await (isEssential()?reviewEssentialLeave(id,el.dataset.approve==='true'):reviewRecord('review_leave',id,el.dataset.approve==='true'));
 else if(a==='advanceOrder')await advanceOrder(id,el.dataset.status);
 else if(a==='saveGeofence')await saveGeofence(id);
 else if(a==='reviewLocation'||a==='correctLocation')await reviewLocation(id,a==='correctLocation');
@@ -612,6 +1434,12 @@ else if(a==='closeWeek'||a==='reopenWeek')await setWeek(a==='closeWeek');
 else if(a==='exportHours')await exportHours();
 else if(a==='correction')await submitCorrection();
 else if(a==='submitOrder')await createOrder();
+else if(a==='hoursWeek'&&(id==='older'||id==='newer')){
+ const scope=company()+':'+(state.user?.id||'');
+ if(state.hoursWeekScope!==scope){state.hoursWeekScope=scope;state.hoursWeekOffset=0}
+ state.hoursWeekOffset=Math.max(0,Math.min(4,state.hoursWeekOffset+(id==='older'?1:-1)));draw();
+}
+else if(a==='requestFilter'){if(['all','pending','approved','rejected','cancelled'].includes(id)){state.requestFilter=id;draw()}}
 else if(a==='subpage'){state.section='sub';state.sub=id;if(id==='supervision')await essentialUI.supervision.refresh();if(id==='bossHandoff'&&isEssential()&&manager())await bossHandoff.load(company(),state.account.role,state.user.id);draw()}
 else if(['createTeam','addTeamWorker','assignTeamJob'].includes(a))await saveTeam(a);
 else if(a==='createJob')await createJob();
@@ -628,7 +1456,7 @@ else if(a==='privateChat')await privateChat();
 document.addEventListener('change',ev=>{if(ev.target?.id==='essential-language'&&isEssential()){locale.select(ev.target.value);draw();return;}essentialUI.planning.input(ev.target);essentialUI.billing.input(ev.target);});
 document.addEventListener('submit',ev=>{if(ev.target?.id==='recoveryForm'){ev.preventDefault();savePassword();return}if(ev.target?.id==='authForm'){ev.preventDefault();login(state.authMode)}});
 document.addEventListener('input',ev=>{if(ev.target?.id==='chatMessage')saveChatDraft();essentialUI.input(ev.target);bossHandoff.input(ev.target);if(ev.target?.id==='jobSearch'){state.search=ev.target.value;const current=ev.target.selectionStart;const newHtml=jobsPage();const m=$('main');if(m){const y=m.scrollTop;m.innerHTML=newHtml;m.scrollTop=y;const inp=$('jobSearch');inp?.focus();try{inp?.setSelectionRange(current,current)}catch{}}renderMap()}});
-sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){state.recovery=true;setTimeout(draw,0)}else if(event==='SIGNED_OUT'){chatDrafts.clear();state.chatLoadRevision++;state.chatId=null;state.messages=[];state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();localStorage.removeItem('punch-local-user');clearPublicPlanSelection();state.confirmationEmail='';state.user=null;state.account=null;state.section='home';draw()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
+sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){state.recovery=true;setTimeout(draw,0)}else if(event==='SIGNED_OUT'){chatDrafts.clear();state.chatLoadRevision++;state.chatId=null;state.messages=[];state.conversationsCompany=null;chatUnread.reset();companyContext.list=[];companyContext.choosing=false;bossHandoff.reset();essentialUI.reset();state.pendingCompanyCreation=null;clearPendingCompanyCreation(sessionStorage);state.pendingWorkerActivation=null;clearPendingWorkerActivation(sessionStorage);localStorage.removeItem('punch-local-user');clearPublicPlanSelection();state.confirmationEmail='';state.user=null;state.account=null;state.section='home';draw();restoreAnonymousPricingAfterSignout()}else if(event==='SIGNED_IN'){setTimeout(initialize,0)}});
 initialize().then(()=>showOAuthCallbackError());loadProviders();setInterval(tick,1000);setInterval(async()=>{if(state.section!=='messages'||!state.chatId||!member()||state.busy||document.visibilityState!=='visible')return;const id=state.chatId,previous=state.messages.at(-1)?.id;try{await loadChat(id);if(state.section==='messages'&&state.chatId===id&&state.messages.at(-1)?.id!==previous)draw()}catch{}},10000);
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(console.warn);

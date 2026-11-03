@@ -11,8 +11,13 @@ export function rememberLocalIdentity(user:LocalIdentity):Promise<void>{return c
 export function forgetLocalIdentity():Promise<void>{return cache.forget();}
 export function cachedLocalIdentity():Promise<LocalIdentity|null>{return cache.read();}
 export async function getLocalIdentity():Promise<LocalIdentity>{
- const network=await Network.getNetworkStateAsync();
- const offline=network.isConnected===false||network.isInternetReachable===false;
+ // An unavailable Expo network probe is not proof of offline status.
+ // Attempt fresh server verification instead of unlocking a cached identity.
+ let offline=false;
+ try{
+  const network=await Network.getNetworkStateAsync();
+  offline=network.isConnected===false||network.isInternetReachable===false;
+ }catch{/* The server still has to verify this identity. */}
  return selectNativeDeviceIdentity(offline,cachedLocalIdentity,async()=>{
   const {data,error}=await supabase.auth.getSession();
   if(error||!data.session)throw Error('IDENTITY_VERIFICATION_REQUIRED');

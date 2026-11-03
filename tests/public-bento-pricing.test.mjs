@@ -245,14 +245,17 @@ test('Real public pricing renderer uses only three visible synthetic test plans 
   assert.deepEqual(cards.map(el=>el.querySelector('h3').textContent),
    ['FICTION A','FICTION B','FICTION C']);
   assert.equal(window.document.querySelectorAll('[data-action="ess:choose"]').length,3);
-  // Public cards promise only the common capabilities, not unfinished SMS
-  // delivery or design catalog assets. The details panel stays available.
+  // Only the exact catalog entitlements may appear on public cards:
+  // the empty feature lists in A and C must not promise missing capabilities.
   for(const card of cards){
-   assert.match(card.textContent,/Pointage et heures/);
-   assert.match(card.textContent,/Compte personnel facultatif/);
    assert.doesNotMatch(card.textContent,/Invitations SMS|20 designs prévus/);
-   assert.equal(card.querySelectorAll('li').length,2,'Only the two supported common features appear on public cards');
   }
+  assert.equal(cards[0].querySelector('li')?.textContent,'Fonctions à vérifier dans le comparatif');
+  assert.equal(cards[1].querySelector('li')?.textContent,'Horaires avancés');
+  assert.equal(cards[2].querySelector('li')?.textContent,'Fonctions à vérifier dans le comparatif');
+  assert.ok(cards.every(card=>card.querySelectorAll('li').length===1));
+  assert.doesNotMatch(cards[0].textContent,/Pointage des employés|Compte personnel facultatif/);
+  assert.doesNotMatch(cards[2].textContent,/Pointage des employés|Compte personnel facultatif/);
   assert.equal(window.document.querySelector('.ess-pricing-status'),null);
   assert.ok(window.document.querySelector('.ess-market-details summary'));
   // 1250 base cents + 2 extra seats at 200 cents = 1650 cents, never a hardcoded public price.

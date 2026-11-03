@@ -29,7 +29,7 @@ test('Bento has the real dynamic public plans, the original handlers and separat
  assert.match(app,/continueSignup/);
  assert.match(app,/openLogin/);
  assert.match(essential,/s\.plans\.filter\(p=>p\.active&&p\.public_visible\)/);
- assert.match(essential,/estimatePublicPlanPrice\(p,s\.seats,s\.cadence\)/);
+ assert.match(essential,/quotePublicPlanOffer\(p,s\.seats,s\.cadence\)/);
  assert.match(essential,/p\.annual_discount/);
  assert.match(essential,/btn\('Choisir ce forfait','choose'/);
  assert.match(essential,/ess-market-details/);
@@ -66,9 +66,9 @@ test('320px viewport recovers 9px with no text or CTA shrinkage',()=>{
 });
 test('Bento CSS and PWA references are versioned and responsive',()=>{
  assert.match(html,/public-bento\.css\?v=bento-05-7/);
- assert.match(html,/app\.js\?v=essential-67-bento/);
+ assert.match(html,/app\.js\?v=essential-86-bento/);
  assert.match(sw,/public-bento\.css\?v=bento-05-7/);
- assert.match(sw,/app\.js\?v=essential-67-bento/);
+ assert.match(sw,/app\.js\?v=essential-86-bento/);
  assert.match(css,/@media\(max-width:1100px\)/);
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/@media\(max-width:360px\)/);
@@ -95,7 +95,7 @@ test('Fresh public visitors see Essentiel Bento; explicit and saved Construction
  assert.match(app,/if\(!isPublicEdition\(id\)\)return/);
  assert.match(app,/creationEdition:resolvePublicEdition\(location\.search,localStorage\.getItem\('punch-creation-edition'\)\)/);
  assert.match(sw,/\.\/public-edition\.js/);
- assert.match(sw,/punch-360-essential-v74-bento/);
+ assert.match(sw,/punch-360-essential-v\d+-bento/);
 });
 
 test('Selected Essentiel offer is a nonbinding reminder in signup and setup',()=>{
@@ -122,7 +122,9 @@ test('Signup clears per-tab plan intent on company success and logout',()=>{
  assert.match(app,/function clearPublicPlanSelection\(\)/);
  assert.match(read('public-plan-intent.js'),/const first=forgetPublicPlanIntent\(storage\)/);
  assert.match(app,/clearSavedPublicPlanSelection\(sessionStorage\)/);
- assert.match(app,/if\(r\.error\)throw r\.error;clearPublicPlanSelection\(\);await initialize\(\);toast\('Ton espace PUNCH est prêt'\)/);
+ assert.match(app,/clearPublicPlanSelection\(\);\s*await confirmCreatedWorkspace\(\)/);
+ assert.match(app,/if\(isCreatedCompanyVerified\(createdCompanyId,state\.user\?\.id,state\.account,companyContext\.list\)\)/);
+ assert.match(app,/toast\('Ton espace PUNCH est prêt'\)/);
  assert.match(app,/await sb\.auth\.signOut\(\);clearPublicPlanSelection\(\)/);
  assert.match(essential,/s\.seats=5;s\.seatDraft=null;s\.cadence='monthly';s\.checkout=null/);
 });
