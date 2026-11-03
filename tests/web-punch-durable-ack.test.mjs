@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PunchJournal,hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from '../web/live/journal.js';
+import {currentPunchBreakState} from '../web/live/active-punch-break.js';
 
 const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
 const begin=app.indexOf('async function locatedPunch(');
@@ -85,11 +86,43 @@ test('invalid server acknowledgement remains pending, not delivered',async()=>{
  assert.equal((await h.journal.read())[0].status,'pending');
 });
 test('Web pause and transfer messages use this event, never another pending event',()=>{
- assert.match(app,/const result=await locatedPunch\(activeBreak\(\)\?'break_end':'break_start',null,paid\)/);
+ const pauseAction=app.slice(app.indexOf('async function doPause('),app.indexOf('function breakApprovals('));
+ assert.match(pauseAction,/if\(breakState\.status==='ambiguous'\|\|breakState\.status==='unavailable'\)\{[\s\S]*?return;\s*\}\s*state\.busy=true/);
+ assert.match(pauseAction,/const result=await locatedPunch\(breakState\.break\?'break_end':'break_start',null,paid\)/);
  assert.match(app,/result\.review_status==='local'\?'Pause conservée sur cet appareil/);
  assert.match(app,/result\.review_status==='local'\?'Transfert conservé sur cet appareil/);
  assert.match(app,/catch\(err\)\{error\(err\);return\}finally\{state\.busy=false\}\}state\.selected=id/);
  assert.doesNotMatch(app,/toast\(state\.localPending\?'Pause conservée/);
+});
+
+test('real Web pause handler refuses duplicate or malformed open pauses before sending',async()=>{
+ const start=app.indexOf('async function doPause(');
+ const end=app.indexOf('function breakApprovals(',start);
+ assert.ok(start>=0&&end>start,'Web pause action must exist');
+ const pauseSource=app.slice(start,end);
+ const session={id:'session-A',company_id:'company-A',user_id:'worker-A',ended_at:null};
+ const entry=id=>({id,session_id:session.id,company_id:'company-A',
+  user_id:'worker-A',started_at:'2026-11-01T10:00:00Z',ended_at:null});
+ for(const breaks of [[entry('first'),entry('second')],
+  [entry('second'),entry('first')],[entry(null)]]){
+  const state={account:{role:'employee'},busy:false,user:{id:'worker-A'},breaks};
+  const notifications=[];
+  let sent=0,loaded=0,redrawn=0;
+  const run=new Function('isEssential','essentialMobilePunchAllowed','toast','state',
+   'currentSession','currentPunchBreakState','company','locatedPunch','loadData',
+   'error','draw',pauseSource+'\nreturn doPause;')(
+    ()=>true,()=>true,message=>notifications.push(message),state,
+    ()=>session,currentPunchBreakState,()=>session.company_id,
+    async()=>{sent++;return {review_status:'pending'}},
+    async()=>{loaded++},error=>{throw error},()=>{redrawn++});
+  await run();
+  assert.equal(sent,0,'ambiguous pauses must never dispatch a local or server event');
+  assert.equal(loaded,0,'blocked action must not refresh as if it succeeded');
+  assert.equal(redrawn,0,'blocked action must not enter the busy/finally path');
+  assert.equal(state.busy,false);
+  assert.equal(notifications.length,1);
+  assert.match(notifications[0],/État des pauses non vérifiable/);
+ }
 });
 
 test('changing company while GPS permission is pending never creates a punch in either account',async()=>{
