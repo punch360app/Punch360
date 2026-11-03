@@ -85,7 +85,9 @@ test('invalid server acknowledgement remains pending, not delivered',async()=>{
  assert.equal((await h.journal.read())[0].status,'pending');
 });
 test('Web pause and transfer messages use this event, never another pending event',()=>{
- assert.match(app,/const result=await locatedPunch\(activeBreak\(\)\?'break_end':'break_start',null,paid\)/);
+ const pauseAction=app.slice(app.indexOf('async function doPause('),app.indexOf('function breakApprovals('));
+ assert.match(pauseAction,/if\(breakState\.status==='ambiguous'\|\|breakState\.status==='unavailable'\)\{[\s\S]*?return;\s*\}\s*state\.busy=true/);
+ assert.match(pauseAction,/const result=await locatedPunch\(breakState\.break\?'break_end':'break_start',null,paid\)/);
  assert.match(app,/result\.review_status==='local'\?'Pause conservée sur cet appareil/);
  assert.match(app,/result\.review_status==='local'\?'Transfert conservé sur cet appareil/);
  assert.match(app,/catch\(err\)\{error\(err\);return\}finally\{state\.busy=false\}\}state\.selected=id/);
