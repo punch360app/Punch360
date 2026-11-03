@@ -258,7 +258,7 @@ async function exportHours(){
   let rows=[],offset=0;
   while(true){
    let q=sb.from('punch_segments')
-    .select('id,company_id,session_id,job_id,started_at,ended_at,punch_sessions!inner(company_id,user_id,worker_id)')
+    .select('id,company_id,session_id,job_id,started_at,ended_at,punch_sessions!inner(company_id,user_id,worker_id,started_at,ended_at)')
     .eq('company_id',companyId).eq('punch_sessions.company_id',companyId).order('id').range(offset,offset+499);
    if(selfOnly)q=q.eq('punch_sessions.user_id',userId);
    const result=await q;
