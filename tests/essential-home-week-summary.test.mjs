@@ -29,7 +29,8 @@ test('home weekly total uses parent-bounded server sessions, not the pending loc
   company_id:'company-A',started_at:at(13),ended_at:null}];
  const result=essentialHomeWeekSummary({...scope,pendingCount:1,
   projectedSessions,projectedSegments,projectedBreaks:snapshot.breaks});
- assert.deepEqual(result,{ready:true,confirmedMs:3.5*3600000,estimatedMs:7.5*3600000});
+ // 13 h to the local 18 h clock is five pending hours, kept separate from 3.5 confirmed hours.
+ assert.deepEqual(result,{ready:true,confirmedMs:3.5*3600000,estimatedMs:8.5*3600000});
 });
 
 test('absence of a server snapshot is unknown, not a claimed zero-hour week',()=>{
