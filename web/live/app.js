@@ -28,7 +28,7 @@ import {listVerifiedWorkspaces,chooseVerifiedWorkspace} from './company-workspac
 import {createBossHandoffController} from './boss-handoff.js';
 import {isRestrictedManagement,canUseRestrictedManagement} from './restricted-management.js';
 import {PunchJournal,projectPendingPunches,hasUnsafePunchJournalEntries,normalizeFreshPunchFix} from './journal.js';
-import {currentOpenPunchBreak} from './active-punch-break.js';
+import {currentOpenPunchBreak,currentPunchBreakState} from './active-punch-break.js';
 import {localPunchSyncState,localPunchStatusSummary,isOwnPunchJournalEvent} from './punch-sync-state.js';
 import {createClient} from './vendor/supabase.js';
 const PROJECT='https://mlabstdxxwjdpfaxiwmg.supabase.co';
@@ -768,7 +768,29 @@ function essentialApprovals(){
     button('Fermer','closeWeek','gold')+button('Rouvrir','reopenWeek')+button('Exporter les heures','exportHours','full'));
 }
 function essentialPage(){if(state.section==='messages')return messagesPage();if(state.account?.role==='admin'&&state.section==='punch')return adminHome();if(state.section==='home')return manager()&&!state.fieldMode?adminHome():essentialHome();if(state.section==='punch')return essentialHome();if(state.section==='hours')return essentialHours();if(state.section==='schedule')return schedulePage();if(state.section==='more')return essentialMore();if(state.section==='sub'){if(state.sub==='approvals')return manager()?essentialApprovals():heading('Accès réservé','more')+card('Les approbations sont réservées aux responsables autorisés.');if(state.sub==='breakCorrections')return essentialUI.breakCorrections.render();if(state.sub==='essentialCorrection')return essentialCorrectionPage();if(state.sub==='myRequests')return essentialRequestsPage();if(state.sub==='leave')return essentialLeavePage();if(['supervision','missingDays','members','profile','leave','geofence','invitations','notifications','settings','schedule','appearance','hr','communications','payroll','support'].includes(state.sub))return subPage();}return essentialHome();}
-async function doPause(paid=false){if(isEssential()&&!essentialMobilePunchAllowed()){toast('Pointage mobile non autorisé pour ce compte.');return;}if(state.account?.role==='admin')return;if(state.busy||!currentSession())return;state.busy=true;try{const result=await locatedPunch(activeBreak()?'break_end':'break_start',null,paid);await loadData();toast(result.review_status==='local'?'Pause conservée sur cet appareil — en attente d’envoi':result.review_status==='pending'?'Pause transmise — validation requise':'Pause transmise au serveur')}catch(err){error(err)}finally{state.busy=false;draw()}}
+async function doPause(paid=false){
+ if(isEssential()&&!essentialMobilePunchAllowed()){
+  toast('Pointage mobile non autorisé pour ce compte.');return;
+ }
+ if(state.account?.role==='admin')return;
+ const session=currentSession();
+ if(state.busy||!session)return;
+ const breakState=currentPunchBreakState(company(),state.user?.id,session,state.breaks);
+ // Do not turn an ambiguous break_end into a new break_start.
+ // Keep all cached records unchanged for an explicit refresh or correction.
+ if(breakState.status==='ambiguous'||breakState.status==='unavailable'){
+  toast('État des pauses non vérifiable. Actualisez Mes heures ou contactez votre responsable.');
+  return;
+ }
+ state.busy=true;
+ try{
+  const result=await locatedPunch(breakState.break?'break_end':'break_start',null,paid);
+  await loadData();
+  toast(result.review_status==='local'?'Pause conservée sur cet appareil — en attente d’envoi':
+   result.review_status==='pending'?'Pause transmise — validation requise':
+   'Pause transmise au serveur');
+ }catch(err){error(err)}finally{state.busy=false;draw()}
+}
 function breakApprovals(){if(!manager())return '';return card('<b>Pauses hors ligne à valider</b>'+state.receipts.filter(r=>r.action?.startsWith('break_')&&r.result?.review_status==='pending').map(r=>'<div class="group">'+e(r.action==='break_start'?(r.result?.is_paid?'Début de pause payée':'Début de pause non payée'):'Fin de pause')+' · '+when(r.occurred_at)+button('Valider','reviewBreak','gold',`data-id="${e(r.event_id)}" data-worker="${e(r.user_id)}"`)+'</div>').join(''));}
 async function reviewBreak(id,worker){const note=prompt('Motif de validation');if(!note)return;try{const r=await sb.rpc('review_break_event',{p_company:company(),p_worker:worker,p_event:id,p_note:note});if(r.error)throw r.error;await reload({quiet:true})}catch(err){error(err)}}
 
