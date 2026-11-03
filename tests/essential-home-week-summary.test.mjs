@@ -33,6 +33,19 @@ test('home weekly total uses parent-bounded server sessions, not the pending loc
  assert.deepEqual(result,{ready:true,confirmedMs:3.5*3600000,estimatedMs:8.5*3600000});
 });
 
+test('a pending projection never includes another employee of the same company',()=>{
+ const other={id:'other-worker-session',company_id:'company-A',user_id:'worker-B',
+  started_at:at(6),ended_at:at(18)};
+ const result=essentialHomeWeekSummary({...scope,pendingCount:1,
+  projectedSessions:[...snapshot.sessions,other],
+  projectedSegments:[...snapshot.segments,{
+   session_id:other.id,company_id:'company-A',user_id:'worker-B',
+   started_at:other.started_at,ended_at:other.ended_at}],
+  projectedBreaks:snapshot.breaks});
+ // A pending journal entry never authorizes including a coworker's hours.
+ assert.deepEqual(result,{ready:true,confirmedMs:3.5*3600000,estimatedMs:3.5*3600000});
+});
+
 test('absence of a server snapshot is unknown, not a claimed zero-hour week',()=>{
  const result=essentialHomeWeekSummary({...scope,snapshotCompanyId:'company-B',
   pendingCount:1,projectedSessions:snapshot.sessions,
