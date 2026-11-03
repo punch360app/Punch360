@@ -15,7 +15,7 @@ test('export fetches unique session IDs in bounded chunks',()=>{
 });
 
 test('net time clips unpaid pauses to the segment, merges overlaps and excludes paid pauses',()=>{
- const row={session_id:'s1',started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T16:00:00Z'};
+ const row={session_id:'s1',started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T16:00:00Z',punch_sessions:{started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T16:00:00Z'}};
  const breaks=[
   {session_id:'s1',is_paid:false,started_at:'2026-11-01T11:30:00Z',ended_at:'2026-11-01T12:30:00Z'},
   {session_id:'s1',is_paid:false,started_at:'2026-11-01T12:20:00Z',ended_at:'2026-11-01T13:00:00Z'},
@@ -27,7 +27,7 @@ test('net time clips unpaid pauses to the segment, merges overlaps and excludes 
 });
 
 test('long shift, open shift, invalid and negative timestamps are flagged without invalid hours',()=>{
- const row={session_id:'s',started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-02T12:00:00Z'};
+ const row={session_id:'s',started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-02T12:00:00Z',punch_sessions:{started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-02T12:00:00Z'}};
  assert.deepEqual(segmentExportDuration(row,[]),{gross:'24.0000',unpaid:'0.0000',net:'24.0000',anomaly:'PLUS DE 16H'});
  assert.equal(segmentExportDuration({...row,ended_at:null}).anomaly,'SORTIE MANQUANTE');
  assert.equal(segmentExportDuration({...row,ended_at:'invalid'}).anomaly,'HORODATAGE INVALIDE');
@@ -36,7 +36,7 @@ test('long shift, open shift, invalid and negative timestamps are flagged withou
 });
 
 test('unpaid breaks exceeding the segment never create negative net time',()=>{
- const row={session_id:'s',started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T12:30:00Z'};
+ const row={session_id:'s',started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T12:30:00Z',punch_sessions:{started_at:'2026-11-01T12:00:00Z',ended_at:'2026-11-01T12:30:00Z'}};
  const breaks=[
   {session_id:'s',is_paid:false,started_at:'2026-11-01T10:00:00Z',ended_at:'2026-11-01T15:00:00Z'},
   {session_id:'s',is_paid:false,started_at:'bad',ended_at:null},
@@ -56,4 +56,22 @@ test('CSV comes from scoped server sessions and associated breaks only',()=>{
  assert.match(app,/const data=createHoursCsv\(\{/);
  assert.match(app,/let rows=\[\],offset=0/);
  assert.doesNotMatch(app,/const paused=r=>breaks\.filter/);
+});
+
+test('CSV excludes payable time beyond parent session and clips unpaid break once',()=>{
+ const row={session_id:'s',started_at:'2026-11-04T07:00:00Z',ended_at:'2026-11-04T12:00:00Z'};
+ const parent={started_at:'2026-11-04T08:00:00Z',ended_at:'2026-11-04T10:00:00Z'};
+ const pauses=[{session_id:'s',is_paid:false,started_at:'2026-11-04T07:30:00Z',ended_at:'2026-11-04T08:30:00Z'}];
+ assert.deepEqual(segmentExportDuration(row,pauses,parent),
+  {gross:'2.0000',unpaid:'0.5000',net:'1.5000',anomaly:'SEGMENT HORS SESSION'});
+});
+test('CSV never invents confirmed hours for missing or disjoint parent sessions',()=>{
+ const row={session_id:'s',started_at:'2026-11-04T07:00:00Z',ended_at:'2026-11-04T08:00:00Z'};
+ assert.deepEqual(segmentExportDuration(row,[],{started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T12:00:00Z'}),
+  {gross:'',unpaid:'',net:'',anomaly:'SEGMENT HORS SESSION'});
+ for(const parent of [null,{}, {started_at:'bad',ended_at:null},
+  {started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T09:00:00Z'}]){
+  assert.deepEqual(segmentExportDuration(row,[],parent),
+   {gross:'',unpaid:'',net:'',anomaly:'SESSION NON VÉRIFIÉE'});
+ }
 });
