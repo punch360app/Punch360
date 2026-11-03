@@ -27,7 +27,10 @@ test('All three local entry points block Essentiel mobile punch, without hiding 
  assert.match(app,/hidden disabled aria-disabled="true"/);
  assert.match(app,/async function locatedPunch\(action,job,paid=false\)\{if\(isEssential\(\)&&!essentialMobilePunchAllowed\(\)\)throw new Error/);
  assert.match(app,/async function doPunch\(\)\{if\(isEssential\(\)&&!essentialMobilePunchAllowed\(\)\)/);
- assert.match(app,/async function doPause\(paid=false\)\{if\(isEssential\(\)&&!essentialMobilePunchAllowed\(\)\)/);
+ const pauseAction=app.slice(app.indexOf('async function doPause('),app.indexOf('function breakApprovals('));
+ assert.match(pauseAction,/^async function doPause\(paid=false\)\{\s*if\(isEssential\(\)&&!essentialMobilePunchAllowed\(\)\)/);
+ assert.match(pauseAction,/const breakState=currentPunchBreakState\(company\(\),state\.user\?\.id,session,state\.breaks\)/);
+ assert.match(pauseAction,/if\(breakState\.status==='ambiguous'\|\|breakState\.status==='unavailable'\)\{[\s\S]*?return;\s*\}\s*state\.busy=true/);
  assert.match(app,/function essentialHours\(\)/);
  assert.match(app,/function essentialSchedule\(\)/);
 });
