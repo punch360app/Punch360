@@ -7,7 +7,7 @@ const company='company-a',user='user-a';
 const row=(id,person=user,tenant=company)=>({
  id,company_id:tenant,session_id:'session-'+id,job_id:'job-1',
  started_at:'2026-11-04T10:00:00Z',ended_at:'2026-11-04T12:00:00Z',
- punch_sessions:{company_id:tenant,user_id:person,worker_id:'worker-1'}
+ punch_sessions:{company_id:tenant,user_id:person,worker_id:'worker-1',started_at:'2026-11-04T09:00:00Z',ended_at:'2026-11-04T13:00:00Z'}
 });
 const pause=(session_id,start,end,is_paid=false)=>({
  company_id:company,session_id,started_at:start,ended_at:end,is_paid
@@ -92,5 +92,21 @@ test('web export fetches only breaks of exported sessions and does not use the o
  assert.match(fn,/\.range\(offset,offset\+499\)/);
  assert.match(fn,/company\(\)!==companyId\|\|state\.user\?\.id!==userId/);
  assert.match(fn,/const data=createHoursCsv\(/);
+ assert.match(fn,/punch_sessions!inner\(company_id,user_id,worker_id,started_at,ended_at\)/);
  assert.doesNotMatch(fn,/projectPendingPunches|punchJournal\(/);
+});
+
+test('CSV projection keeps raw timestamps but flags and clips a legacy segment outside session',()=>{
+ const shifted={...row('shifted'),
+  started_at:'2026-11-04T07:00:00Z',ended_at:'2026-11-04T12:00:00Z',
+  punch_sessions:{...row('shifted').punch_sessions,started_at:'2026-11-04T08:00:00Z',ended_at:'2026-11-04T10:00:00Z'}};
+ const out=createHoursCsv({...fixtures,rows:[shifted],breaks:[]});
+ assert.equal(out.rows.length,1);
+ assert.equal(out.rows[0][3],'2026-11-04T07:00:00Z');
+ assert.equal(out.rows[0][5],'2.0000');
+ assert.equal(out.rows[0][7],'2.0000');
+ assert.equal(out.rows[0][8],'SEGMENT HORS SESSION');
+ const missing={...shifted,punch_sessions:{...shifted.punch_sessions,started_at:null}};
+ const rejected=createHoursCsv({...fixtures,rows:[missing],breaks:[]});
+ assert.deepEqual(rejected.rows[0].slice(5,9),['','','','SESSION NON VÉRIFIÉE']);
 });
