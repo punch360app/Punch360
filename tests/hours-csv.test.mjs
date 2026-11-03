@@ -85,7 +85,8 @@ test('web export fetches only breaks of exported sessions and does not use the o
  const beginning=app.indexOf('async function exportHours(){');
  const ending=app.indexOf('\n\nfunction schedulePage()',beginning);
  const fn=app.slice(beginning,ending);
- assert.match(fn,/const \{companyId,userId,ownOnly:selfOnly\}=hoursExportScope\(company\(\),state\.user\.id,state\.account\?\.role,state\.section\)/);
+ assert.match(fn,/const \{companyId,userId,ownOnly:selfOnly\}=hoursExportScope\(/);
+ assert.match(fn,/company\(\),state\.user\.id,roleAtStart,sectionAtStart\)/);
  assert.match(fn,/\.eq\('company_id',companyId\)\.eq\('punch_sessions\.company_id',companyId\)/);
  assert.match(fn,/if\(selfOnly\)q=q\.eq\('punch_sessions\.user_id',userId\)/);
  assert.match(fn,/\.in\('session_id',ids\)/);
