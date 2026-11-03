@@ -77,15 +77,38 @@ function handler(request, response) {
   response.end(fs.readFileSync(filename));
 }
 
-function listen(server) {
+function listen(server, port = 0) {
   return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve('http://127.0.0.1:' + server.address().port));
+    const onError = error => { server.off('listening', onListening); reject(error); };
+    const onListening = () => {
+      server.off('error', onError);
+      resolve('http://127.0.0.1:' + server.address().port);
+    };
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(port, '127.0.0.1');
   });
 }
 async function closeServer(server) {
+  if (!server.listening) return;
+  const closed = new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  // Stop accepting first, then close even keep-alive connections. Offline mode
+  // alone did not interrupt the worker's network in the first Chromium run.
   server.closeAllConnections();
-  await new Promise(resolve => server.close(resolve));
+  await closed;
+}
+function assertConnectionRefused(origin) {
+  return new Promise((resolve, reject) => {
+    const request = http.get(origin + scope + '__qa_bootstrap.html', {agent: false, timeout: 3000}, response => {
+      response.resume();
+      reject(Error('Disconnected origin unexpectedly returned HTTP ' + response.statusCode));
+    });
+    request.once('timeout', () => request.destroy(Error('Connection refusal probe timed out')));
+    request.once('error', error => {
+      if (error.code === 'ECONNREFUSED') resolve({probeError: error.code, serverListening: false});
+      else reject(error);
+    });
+  });
 }
 async function scenario(name, run) {
   const start = Date.now();
@@ -107,6 +130,19 @@ async function main() {
     const origin = await listen(server);
     report.origin = origin;
     const base = origin + scope;
+    const port = Number(new URL(origin).port);
+    async function disconnectOrigin() {
+      await closeServer(server);
+      assert.equal(server.listening, false, 'Offline origin must not be listening');
+      return assertConnectionRefused(origin);
+    }
+    async function reconnectOrigin() {
+      assert.equal(await listen(server, port), origin, 'Restart must preserve the installed worker origin');
+      const response = await fetch(base + '__qa_bootstrap.html');
+      assert.equal(response.status, 200, 'The same origin must recover before HTTP failure injection');
+      await response.arrayBuffer();
+      return {sameOrigin: true, status: response.status};
+    }
     const expectedURLs = files.map(file => new URL(file, base).href).sort();
     const expectedHashes = Object.fromEntries(expectedURLs.map(url => {
       const relative = new URL(url).pathname.slice(scope.length) || 'index.html';
@@ -124,6 +160,11 @@ async function main() {
       return {precacheEntries: expectedURLs.length, workerUnmodified: true};
     });
     if (process.argv.includes('--server-check')) {
+      await scenario('fixture transport closes completely and reopens on the same origin', async () => {
+        const disconnected = await disconnectOrigin();
+        const reconnected = await reconnectOrigin();
+        return {disconnected, reconnected};
+      });
       report.mode = 'SERVER CHECK ONLY — no browser validation';
       return;
     }
@@ -208,9 +249,22 @@ async function main() {
         'Every cached response body must retain the authentic installed bytes');
     }
 
-    await scenario('installed home, kiosk and JavaScript work during a real offline transition', async () => {
+    async function whileDisconnected(run) {
       await context.setOffline(true);
+      const disconnected = await disconnectOrigin();
       const before = requests.length;
+      try {
+        assert.equal(await page.evaluate(() => navigator.onLine), false, 'The page must observe offline state');
+        const details = await run();
+        assert.equal(requests.length, before, 'Offline responses must not reach the server');
+        return {...details, transport: disconnected, receivedRequests: requests.length - before};
+      } finally {
+        await reconnectOrigin();
+        await context.setOffline(false);
+        assert.equal(await page.evaluate(() => navigator.onLine), true, 'The page must observe recovery');
+      }
+    }
+    await scenario('installed home, kiosk and JavaScript work during a real offline transition', () => whileDisconnected(async () => {
       const scopeRoot = await navigate('', '?qa=offline-root');
       assert.deepEqual(scopeRoot, {status: 200, fromServiceWorker: true, hash: hashFile('index.html')});
       const home = await navigate('index.html', '?qa=offline');
@@ -220,10 +274,8 @@ async function main() {
       const asset = await fetchProbe(base + 'essential.js');
       assert.equal(asset.status, 200); assert.equal(asset.fromServiceWorker, true);
       assert.equal(asset.hash, hashFile('essential.js'));
-      assert.equal(requests.length, before, 'Offline responses must not reach the server');
-      await context.setOffline(false);
       return {scopeRoot, home, kiosk, asset: {status: asset.status, fromServiceWorker: asset.fromServiceWorker, hash: asset.hash}};
-    });
+    }));
 
     for (const status of [502, 503, 504]) {
       await scenario('HTTP ' + status + ' returns installed public files without caching the outage', async () => {
@@ -261,8 +313,7 @@ async function main() {
         return {injectedStatus: status, network, homeStatus: home.status, assetStatus: asset.status};
       });
     }
-    await scenario('offline reread after HTTP failures still returns the original installed bytes', async () => {
-      await context.setOffline(true);
+    await scenario('offline reread after HTTP failures still returns the original installed bytes', () => whileDisconnected(async () => {
       const home = await navigate('index.html', '?qa=after-errors');
       const kiosk = await navigate('kiosk.html', '?qa=after-errors');
       const asset = await fetchProbe(base + 'essential.js');
@@ -271,9 +322,8 @@ async function main() {
       assert.equal(asset.hash, hashFile('essential.js'));
       assert.equal(asset.status, 200); assert.equal(asset.fromServiceWorker, true);
       await assertCacheUnchanged();
-      await context.setOffline(false);
       return {home, kiosk, assetHash: asset.hash};
-    });
+    }));
     await scenario('private paths, JSON, non-GET requests and other origins bypass the worker', async () => {
       for (const route of ['private/reports', 'api/attendance.json']) {
         overrides.set(scope + route, 503);
