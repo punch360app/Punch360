@@ -252,11 +252,11 @@ async function exportHours(){
  if(!member())return toast('Connexion requise pour exporter les heures.');
  if(!navigator.onLine)return toast('Export serveur indisponible hors ligne. Synchronisez avant de réessayer.');
  hoursExportRunning=true;
- const roleAtStart=state.account?.role,sectionAtStart=state.section,
-  editionAtStart=isEssential();
- const {companyId,userId,ownOnly:selfOnly}=hoursExportScope(
-  company(),state.user.id,roleAtStart,sectionAtStart);
  try{
+  const roleAtStart=state.account?.role,sectionAtStart=state.section,
+   editionAtStart=isEssential();
+  const {companyId,userId,ownOnly:selfOnly}=hoursExportScope(
+   company(),state.user.id,roleAtStart,sectionAtStart);
   // Always query server records. Projected offline entries are never exported.
   let rows=[],offset=0;
   while(true){
