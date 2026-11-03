@@ -1,0 +1,49 @@
+name: PUNCH PWA browser
+
+# Stacked PRs need this check too. This job never deploys or uses real accounts.
+on:
+  pull_request:
+    paths:
+      - 'web/live/**'
+      - '.github/scripts/visual-pwa-offline.cjs'
+      - '.github/workflows/pwa-browser.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: punch-pwa-browser-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      NODE_PATH: /tmp/punch-pwa-deps/node_modules
+      PUNCH_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser tooling
+        run: npm install --prefix /tmp/punch-pwa-deps --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.56.0
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: punch-chromium-headless-1.56.0-${{ runner.os }}-${{ runner.arch }}
+      - name: Install Chromium headless shell and system libraries
+        run: node /tmp/punch-pwa-deps/node_modules/playwright/cli.js install --with-deps --only-shell chromium
+      - name: Test the authentic PWA worker with isolated local responses
+        run: node .github/scripts/visual-pwa-offline.cjs
+      - name: Preserve exact revision, browser results and trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: punch-pwa-browser
+          path: pwa-captures/
+          retention-days: 14
+          if-no-files-found: warn
