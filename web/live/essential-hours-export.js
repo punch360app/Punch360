@@ -37,13 +37,22 @@ export function netSegmentMilliseconds(row,breaks,from,until){
 /** Segment-specific time; unpaid breaks are clipped to segment boundaries.
  * Overlapping break intervals are merged to prevent double subtraction.
  */
-export function segmentExportDuration(row,breaks=[]){
+export function segmentExportDuration(row,breaks=[],session=row?.punch_sessions){
  const start=timestamp(row?.started_at),end=timestamp(row?.ended_at);
  if(start===null)return {gross:'',unpaid:'',net:'',anomaly:'HORODATAGE INVALIDE'};
  if(row?.ended_at==null)return {gross:'',unpaid:'',net:'',anomaly:'SORTIE MANQUANTE'};
  if(end===null)return {gross:'',unpaid:'',net:'',anomaly:'HORODATAGE INVALIDE'};
  if(end<start)return {gross:'',unpaid:'',net:'',anomaly:'SORTIE AVANT ENTRÉE'};
- const gross=end-start,net=netSegmentMilliseconds(row,breaks,start,end);
+ // The exported segment must not claim payable time beyond its RLS-scoped
+ // parent session, even if a legacy/corrupt segment has wider timestamps.
+ const sessionStart=timestamp(session?.started_at);
+ const sessionEnd=session?.ended_at==null?null:timestamp(session.ended_at);
+ if(sessionStart===null||(session?.ended_at!=null&&
+    (sessionEnd===null||sessionEnd<sessionStart)))
+  return {gross:'',unpaid:'',net:'',anomaly:'SESSION NON VÉRIFIÉE'};
+ const lo=Math.max(start,sessionStart),hi=Math.min(end,sessionEnd??end);
+ if(hi<=lo)return {gross:'',unpaid:'',net:'',anomaly:'SEGMENT HORS SESSION'};
+ const gross=hi-lo,net=netSegmentMilliseconds(row,breaks,lo,hi);
  return {gross:hours(gross),unpaid:hours(Math.max(0,gross-net)),net:hours(net),
-  anomaly:gross>16*3600000?'PLUS DE 16H':''};
+  anomaly:lo!==start||hi!==end?'SEGMENT HORS SESSION':gross>16*3600000?'PLUS DE 16H':''};
 }
