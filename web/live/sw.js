@@ -13,8 +13,12 @@ self.addEventListener('fetch',event=>{
  if(!url.pathname.startsWith(scopePath))return;
  const precached=PUBLIC_ASSETS.has(url.href);
  const navigation=request.mode==='navigate';
- // Never intercept or store arbitrary same-origin JSON, API or employee data.
- if(!precached&&!navigation)return;
+ const homePath=new URL('./index.html',self.registration.scope).pathname;
+ const kioskPath=new URL('./kiosk.html',self.registration.scope).pathname;
+ // Only the two real PWA entrypoints (and the scope root) get an offline HTML shell.
+ const publicNavigation=navigation&&(url.pathname===scopePath||url.pathname===homePath||url.pathname===kioskPath);
+ // Never intercept arbitrary same-origin navigations, JSON, APIs or employee data.
+ if(!precached&&!publicNavigation)return;
  const network=fetch(request,{cache:'no-cache'});
  // Register lifetime work synchronously, before the fetch event dispatch returns.
  if(precached)event.waitUntil(network.then(response=>{
@@ -27,9 +31,9 @@ self.addEventListener('fetch',event=>{
    const cached=await caches.match(request);
    if(cached)return cached;
   }
-  if(navigation&&url.pathname.endsWith('/kiosk.html'))
+  if(publicNavigation&&url.pathname===kioskPath)
    return await caches.match('./kiosk.html')||Response.error();
-  if(navigation)return await caches.match('./index.html')||Response.error();
+  if(publicNavigation)return await caches.match('./index.html')||Response.error();
   return Response.error();
  }));
 });
