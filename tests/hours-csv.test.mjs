@@ -14,7 +14,7 @@ const pause=(session_id,start,end,is_paid=false)=>({
 });
 const fixtures={
  companyId:company,userId:user,ownOnly:true,essential:true,
- roster:[{id:'worker-1',employee_number:'E-009'}],
+ roster:[{id:'worker-1',company_id:company,employee_number:'E-009'}],
  locations:[{punch_job_id:'job-1',company_id:company,name:'Atelier central'}],
  jobs:[],
  rows:[row('own'),row('other','user-b'),row('foreign',user,'company-b')],
@@ -93,6 +93,10 @@ test('web export fetches only breaks of exported sessions and does not use the o
  assert.match(fn,/company\(\)!==companyId\|\|state\.user\?\.id!==userId/);
  assert.match(fn,/const data=createHoursCsv\(/);
  assert.match(fn,/punch_sessions!inner\(company_id,user_id,worker_id,started_at,ended_at\)/);
+ assert.match(fn,/state\.account\?\.role!==roleAtStart/);
+ assert.match(fn,/state\.section!==sectionAtStart/);
+ assert.match(fn,/isEssential\(\)!==editionAtStart/);
+ assert.match(fn,/!member\(\)/);
  assert.doesNotMatch(fn,/projectPendingPunches|punchJournal\(/);
 });
 
@@ -109,4 +113,18 @@ test('CSV projection keeps raw timestamps but flags and clips a legacy segment o
  const missing={...shifted,punch_sessions:{...shifted.punch_sessions,started_at:null}};
  const rejected=createHoursCsv({...fixtures,rows:[missing],breaks:[]});
  assert.deepEqual(rejected.rows[0].slice(5,9),['','','','SESSION NON VÉRIFIÉE']);
+});
+
+
+test('employee badge lookup ignores foreign tenant even when its worker ID collides',()=>{
+ const foreign={id:'worker-1',company_id:'company-b',employee_number:'B-SECRET'};
+ const own={id:'worker-1',company_id:company,employee_number:'E-009'};
+ const matched=createHoursCsv({...fixtures,rows:[row('own')],breaks:[],
+  roster:[foreign,own]});
+ assert.equal(matched.rows[0][1],'E-009');
+ assert.doesNotMatch(matched.csv,/B-SECRET/);
+ const unverified=createHoursCsv({...fixtures,rows:[row('own')],breaks:[],
+  roster:[foreign]});
+ assert.equal(unverified.rows[0][1],'worker-1');
+ assert.doesNotMatch(unverified.csv,/B-SECRET/);
 });
