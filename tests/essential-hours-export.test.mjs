@@ -52,7 +52,8 @@ test('CSV comes from scoped server sessions and associated breaks only',()=>{
  assert.match(app,/if\(selfOnly\)q=q\.eq\('punch_sessions\.user_id',userId\)/);
  assert.match(app,/for\(const ids of sessionIdChunks\(rows\)\)/);
  assert.match(app,/\.eq\('company_id',companyId\)\.in\('session_id',ids\)/);
- assert.match(app,/if\(company\(\)!==companyId\|\|state\.user\?\.id!==userId\)throw/);
+ assert.match(app,/if\(company\(\)!==companyId\|\|state\.user\?\.id!==userId\|\|!member\(\)\|\|/);
+ assert.match(app,/state\.account\?\.role!==roleAtStart\|\|state\.section!==sectionAtStart/);
  assert.match(app,/const data=createHoursCsv\(\{/);
  assert.match(app,/let rows=\[\],offset=0/);
  assert.doesNotMatch(app,/const paused=r=>breaks\.filter/);
