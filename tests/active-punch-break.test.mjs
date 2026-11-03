@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {currentOpenPunchBreak,hasConflictingOpenPunchBreak} from '../web/live/active-punch-break.js';
+import {currentOpenPunchBreak,currentPunchBreakState,hasConflictingOpenPunchBreak} from '../web/live/active-punch-break.js';
 
 const company='tenant-A',user='employee-A';
 const active={id:'session-1',company_id:company,user_id:user,ended_at:null};
@@ -25,6 +25,15 @@ test('a foreign user or company cannot switch pause action or UI',()=>{
  ])assert.equal(currentOpenPunchBreak(company,user,active,[candidate]),null);
 });
 
+test('invalid scoped open break blocks home and action without clearing cached rows',()=>{
+ const invalid=pause(null);
+ assert.deepEqual(currentPunchBreakState(company,user,active,[invalid]),{status:'ambiguous',break:null});
+ assert.equal(currentOpenPunchBreak(company,user,active,[invalid]),null);
+ assert.equal(hasConflictingOpenPunchBreak(company,user,active,[invalid]),true);
+ assert.equal(currentPunchBreakState(company,user,active,[pause('valid')]).status,'open');
+ assert.equal(currentPunchBreakState(company,user,active,null).status,'unavailable');
+});
+
 test('a closed or missing session does not resume a break',()=>{
  assert.equal(currentOpenPunchBreak(company,user,null,[pause('mine')]),null);
  assert.equal(currentOpenPunchBreak(company,user,{...active,ended_at:'2026-11-01T12:05:00Z'},[pause('mine')]),null);
@@ -39,10 +48,10 @@ test('invalid or mixed snapshot data fails closed',()=>{
 
 test('the employee home and pause button use exactly the same scoped break selection',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{currentOpenPunchBreak,hasConflictingOpenPunchBreak\} from '\.\/active-punch-break\.js';/);
+ assert.match(app,/import \{currentOpenPunchBreak,currentPunchBreakState,hasConflictingOpenPunchBreak\} from '\.\/active-punch-break\.js';/);
  assert.match(app,/function activeBreak\(\)\{return currentOpenPunchBreak\(company\(\),state\.user\?\.id,currentSession\(\),state\.breaks\)\}/);
  assert.match(app,/const active=currentSession\(\),pause=activeBreak\(\)/);
- assert.match(app,/locatedPunch\(activeBreak\(\)\?'break_end':'break_start',null,paid\)/);
+ assert.match(app,/locatedPunch\(breakState\.break\?'break_end':'break_start',null,paid\)/);
  assert.doesNotMatch(app,/state\.breaks\.find\(b=>!b\.ended_at\)/);
  assert.doesNotMatch(app,/state\.breaks\.some\(b=>!b\.ended_at\)/);
 });
@@ -61,7 +70,7 @@ test('two open breaks in one session fail closed instead of selecting the first'
 test('Web pause controls and handler block ambiguous local pause state',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
  assert.match(app,/function activeBreakConflict\(\)\{return hasConflictingOpenPunchBreak\(/);
- assert.match(app,/if\(activeBreakConflict\(\)\)\{toast\('Plusieurs pauses ouvertes/);
+ assert.match(app,/if\(breakState\.status==='ambiguous'\|\|breakState\.status==='unavailable'\)\{/);
  assert.match(app,/pauseConflict\?'disabled aria-disabled="true"'/);
- assert.match(app,/pauseConflict\?'<p class="ess-notice" role="status">Plusieurs pauses/);
+ assert.match(app,/pauseConflict\?'<p class="ess-notice" role="status">État des pauses non vérifiable/);
 });
