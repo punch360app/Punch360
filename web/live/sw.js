@@ -15,14 +15,14 @@ self.addEventListener('fetch',event=>{
  const navigation=request.mode==='navigate';
  // Never intercept or store arbitrary same-origin JSON, API or employee data.
  if(!precached&&!navigation)return;
- event.respondWith(fetch(request,{cache:'no-cache'}).then(response=>{
-  if(response.ok&&precached){
-   const copy=response.clone();
-   // The worker must stay alive until its public-asset cache update settles.
-   event.waitUntil(caches.open(CACHE).then(cache=>cache.put(request,copy)));
-  }
-  return response;
- }).catch(async()=>{
+ const network=fetch(request,{cache:'no-cache'});
+ // Register lifetime work synchronously, before the fetch event dispatch returns.
+ if(precached)event.waitUntil(network.then(response=>{
+  if(!response.ok)return;
+  const copy=response.clone();
+  return caches.open(CACHE).then(cache=>cache.put(request,copy));
+ }).catch(()=>{}));
+ event.respondWith(network.catch(async()=>{
   if(precached){
    const cached=await caches.match(request);
    if(cached)return cached;
