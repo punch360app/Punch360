@@ -18,8 +18,10 @@ export function createScopedPassivePunchRefresh({
   const scope=current?{companyId:current.companyId,userId:current.userId,role:current.role}:null;
   if(!scope||typeof scope.companyId!=='string'||!scope.companyId||
    typeof scope.userId!=='string'||!scope.userId||
-   isBusy()||!isCurrent(scope))return Promise.resolve(false);
+   !isCurrent(scope))return Promise.resolve(false);
+  // The same workspace shares the current task even while its refresh is busy.
   if(inFlight&&sameScope(inFlight.scope,scope))return inFlight.task;
+  if(isBusy())return Promise.resolve(false);
   // A -> B -> A must not revive an older A request after B was selected.
   const token=++revision;
   const stillCurrent=()=>token===revision&&isCurrent(scope);
