@@ -9,6 +9,7 @@ export function createScopedPassivePunchRefresh({
 }){
  let inFlight=null;
  let revision=0;
+ let observedScope=null;
  const sameScope=(a,b)=>a.companyId===b.companyId&&
   a.userId===b.userId&&a.role===b.role;
  return function passivePunchRefresh(){
@@ -18,12 +19,20 @@ export function createScopedPassivePunchRefresh({
   const scope=current?{companyId:current.companyId,userId:current.userId,role:current.role}:null;
   if(!scope||typeof scope.companyId!=='string'||!scope.companyId||
    typeof scope.userId!=='string'||!scope.userId||
-   !isCurrent(scope))return Promise.resolve(false);
-  // The same workspace shares the current task even while its refresh is busy.
-  if(inFlight&&sameScope(inFlight.scope,scope))return inFlight.task;
+   !isCurrent(scope)){
+   if(observedScope){observedScope=null;revision++}
+   return Promise.resolve(false);
+  }
+  // A workspace switch invalidates the previous verification even when busy.
+  // Otherwise A -> busy B -> A could reuse an obsolete authorized request.
+  if(!observedScope||!sameScope(observedScope,scope)){
+   observedScope=scope;
+   revision++;
+  }
+  // The same workspace shares only its current generation of verification.
+  if(inFlight&&inFlight.token===revision&&sameScope(inFlight.scope,scope))return inFlight.task;
   if(isBusy())return Promise.resolve(false);
-  // A -> B -> A must not revive an older A request after B was selected.
-  const token=++revision;
+  const token=revision;
   const stillCurrent=()=>token===revision&&isCurrent(scope);
   const run=async()=>{
    try{
@@ -42,7 +51,7 @@ export function createScopedPassivePunchRefresh({
    }catch{return false}
   };
   const task=run();
-  const entry={scope,task};
+  const entry={scope,task,token};
   inFlight=entry;
   task.finally(()=>{if(inFlight===entry)inFlight=null});
   return task;
