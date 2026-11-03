@@ -98,6 +98,9 @@ test('web export fetches only breaks of exported sessions and does not use the o
  assert.match(fn,/state\.section!==sectionAtStart/);
  assert.match(fn,/isEssential\(\)!==editionAtStart/);
  assert.match(fn,/!member\(\)/);
+ assert.ok(fn.indexOf('try{')<fn.indexOf('hoursExportScope('),
+  'context validation must run inside the export try/finally');
+ assert.match(fn,/finally\{hoursExportRunning=false\}/);
  assert.doesNotMatch(fn,/projectPendingPunches|punchJournal\(/);
 });
 
