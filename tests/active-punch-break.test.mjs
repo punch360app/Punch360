@@ -39,7 +39,7 @@ test('invalid or mixed snapshot data fails closed',()=>{
 
 test('the employee home and pause button use exactly the same scoped break selection',()=>{
  const app=readFileSync(new URL('../web/live/app.js',import.meta.url),'utf8');
- assert.match(app,/import \{currentOpenPunchBreak\} from '\.\/active-punch-break\.js';/);
+ assert.match(app,/import \{currentOpenPunchBreak,hasConflictingOpenPunchBreak\} from '\.\/active-punch-break\.js';/);
  assert.match(app,/function activeBreak\(\)\{return currentOpenPunchBreak\(company\(\),state\.user\?\.id,currentSession\(\),state\.breaks\)\}/);
  assert.match(app,/const active=currentSession\(\),pause=activeBreak\(\)/);
  assert.match(app,/locatedPunch\(activeBreak\(\)\?'break_end':'break_start',null,paid\)/);
