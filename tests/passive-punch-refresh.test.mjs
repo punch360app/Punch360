@@ -156,6 +156,24 @@ test('same-workspace callbacks share the active refresh even after busy begins',
  assert.equal(await task,true);
  assert.deepEqual(h.calls,['auth','membership','refresh']);
 });
+test('busy workspace switch invalidates old verification even after returning to its identity',async()=>{
+ const release=[];
+ const h=harness({getUser:()=>new Promise(resolve=>release.push(resolve))});
+ const old=h.retry();
+ h.setScope({companyId:'company-B'});
+ h.setBusy(true);
+ assert.equal(await h.retry(),false,'Busy B must not run a second refresh');
+ h.setScope({companyId:'company-A'});
+ h.setBusy(false);
+ release[0]('user-A');
+ assert.equal(await old,false,'A verification interrupted by B cannot be revived');
+ const fresh=h.retry();
+ assert.notStrictEqual(fresh,old,'Return to A must recheck authorization');
+ release[1]('user-A');
+ assert.equal(await fresh,true);
+ assert.deepEqual(h.calls,['auth','auth','membership','refresh']);
+});
+
 test('Web online, foreground and periodic refresh paths all go through scoped gate',()=>{
  const start=app.indexOf('const passivePunchRefresh=');
  const end=app.indexOf('const locationLabel=',start);
