@@ -331,3 +331,35 @@ test('native My Hours uses scoped open-shift labels instead of treating cache as
  assert.match(hours,/new Date\(s\.ended_at\).*:openShiftLabel/);
  assert.doesNotMatch(hours,/hoursLimit\.excludeOpen\?'Fin non vérifiée':'En cours'/);
 });
+
+
+test('native daily rows never exceed their verified parent session',()=>{
+ const shift=session('bounded',time(2,8),time(2,10));
+ const outside=segment('bounded',time(2,7),time(2,12));
+ const source=JSON.stringify(outside);
+ const rows=daily({sessions:[shift],segments:[outside],
+  breaks:[pause('bounded',time(2,9),time(2,9,30))]},time(2,16));
+ assert.deepEqual(rows,[{dayStart:time(2),grossMs:2*3600000,
+  netMs:90*60000,unpaidMs:30*60000}]);
+ assert.equal(JSON.stringify(outside),source,'Clipping must not mutate server or cached records');
+});
+
+test('a completed session bounds a stale open segment in native daily hours',()=>{
+ const rows=daily({sessions:[session('closed',time(2,8),time(2,10))],
+  segments:[segment('closed',time(2,8))],breaks:[]},time(2,16));
+ assert.deepEqual(rows,[{dayStart:time(2),grossMs:2*3600000,
+  netMs:2*3600000,unpaidMs:0}]);
+});
+
+test('native daily totals reject invalid, foreign and orphan parent sessions',()=>{
+ const rows=daily({sessions:[
+  session('reversed',time(2,12),time(2,10)),
+  session('other',time(2,8),time(2,12),'B'),
+  session('another-worker',time(2,8),time(2,12),'A','V')],
+  segments:[
+   segment('reversed',time(2,8),time(2,12)),
+   segment('other',time(2,8),time(2,12)),
+   segment('another-worker',time(2,8),time(2,12)),
+   segment('orphan',time(2,8),time(2,12))],breaks:[]},time(2,16));
+ assert.deepEqual(rows,[]);
+});
